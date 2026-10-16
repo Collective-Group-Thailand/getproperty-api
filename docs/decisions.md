@@ -133,6 +133,7 @@
 | D-159 | Workflow engine (generic state machine + SLA timers, `workflow_instance`/`workflow_event`) is a platform module built in B1.3 and used by service requests, dunning, deposit settlement, AGM (later) and inspections; it is designed to move to `collective-shared`. | Accepted |
 | D-160 | Deployment target per blueprint: GCP (Cloud Run for web/api/liff, Cloud Run jobs for workers, GKE Autopilot for EMQX, Cloud SQL + TimescaleDB extension, GCS, Memorystore); the AWS-flavoured integrations from the getpack copy (S3/SES/Secrets Manager) are kept behind their ports and get GCS/SES-equivalent adapters in B6.5 — not a Phase 1 blocker. | Accepted |
 | D-161 | Platform admin extends with tenant onboarding (type, plan, import), IoT device inventory, support and **AI usage cost per tenant** (AI gateway shared with getbuild, Phase 2+). | Accepted |
+| D-162 | **Telemetry storage is portable** (resolves O-005; founder accepted the recommendation 2026-10-17): Cloud SQL for PostgreSQL does not offer the `timescaledb` extension, so `smart.telemetry_point` and `smart.device_health_sample` are created as **native PostgreSQL range-partitioned tables (monthly)** with hand-written rollup tables `smart.telemetry_15m/_1h/_1d` maintained by a worker job, and retention by dropping partitions. When `timescaledb` is available (compose, self-managed), a separate optional migration converts them to hypertables/continuous aggregates; application code reads only the rollup tables, never Timescale-specific functions. Production stays on Cloud SQL (D-160). ADR-0001 amended accordingly. | Accepted |
 
 ## Open
 | ID | Question | Owner |
@@ -141,4 +142,4 @@
 | O-002 | Exact สคบ. 2568 text: deposit cap values, late-fee permissibility, estimate billing permissibility. | Legal counsel |
 | O-003 | Meter models for the pilot (electric Modbus 1-phase class 1; water pulse) and the gateway model — after the site survey. | Founder + IoT engineer |
 | O-004 | Does the pilot org register for VAT? Decides whether tax-invoice documents are needed in R1. | Pilot org |
-| O-005 | TimescaleDB on GCP (D-160 vs ADR-0001): Cloud SQL for PostgreSQL must offer the `timescaledb` extension for `smart.telemetry_point` / `device_health` hypertables; if it does not, choose self-managed PostgreSQL + TimescaleDB on GCE/GKE, Timescale Cloud on GCP, or plain partitioned tables with hand-written rollups. Raised by the schema lock (2026-10-17); needed before B3.2. | Founder + tech lead |
+| ~~O-005~~ | Resolved by D-162. | — |
