@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
-import { OrgContextMiddleware } from '@common/context/org-context.middleware';
 import { RequestContextMiddleware } from '@common/context/request-context.middleware';
+import { TenantContextMiddleware } from '@common/context/tenant-context.middleware';
 import { DeprecationInterceptor } from '@common/deprecation/deprecation';
 import { ProblemDetailsFilter } from '@common/errors/problem-details.filter';
 import { EtagInterceptor } from '@common/etag/etag.interceptor';
@@ -70,9 +70,9 @@ import { SurfacesModule } from './surfaces/surfaces.module';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(RequestContextMiddleware).forRoutes('*path');
-    // Org context on the two org-scoped surfaces (contract §8). Express 5 path syntax.
+    // Tenant context on the two operator surfaces (contract §8, D-151). Express 5 path syntax.
     consumer
-      .apply(OrgContextMiddleware)
+      .apply(TenantContextMiddleware)
       .forRoutes(
         `${SURFACE_PREFIX.owner}*path`,
         `${SURFACE_PREFIX.staff}*path`,

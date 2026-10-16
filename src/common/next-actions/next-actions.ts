@@ -31,5 +31,5 @@ export function nextActions<T>(
   return out;
 }
 
-/** No permission at all (a tenant's own records are scoped by the lease, not permissions). */
+/** No permission at all (a resident's own records are scoped by the lease, not permissions). */
 export const NO_PERMISSIONS: ReadonlySet<string> = new Set();

@@ -1,6 +1,7 @@
 import { applyDecorators, SetMetadata, type Type } from '@nestjs/common';
 import { ApiExtension, ApiExtraModels, ApiOperation, ApiResponse, getSchemaPath } from '@nestjs/swagger';
 
+import { type Audience } from '../../surfaces/surfaces';
 import {
   assertDeprecationInfo,
   DEPRECATION_METADATA,
@@ -38,7 +39,7 @@ export const PUBLISHED_EXT = {
 const ext = (base: string, source: string, value: unknown) => ApiExtension(`${base}-${source}`, value);
 
 export const OPERATION_ID_PATTERN =
-  /^(auth|owner|tenant|staff|admin|device|webhooks|ops)\.[a-z][A-Za-z0-9]*\.[a-z][A-Za-z0-9]*$/;
+  /^(auth|owner|resident|staff|technician|admin|device|webhooks|ops)\.[a-z][A-Za-z0-9]*\.[a-z][A-Za-z0-9]*$/;
 const REFERENCE_PATTERN = /^(D-\d{3}|ADR-\d{4})$/;
 
 export interface ApiEndpointOptions {
@@ -175,14 +176,14 @@ export function ApiCompliance(...ruleIds: [ComplianceCode, ...ComplianceCode[]])
   );
 }
 
-/** Org-scoped operation on `/v1/owner` or `/v1/staff` (contract §8): documents `X-Org-Id` and its problems. */
-export function ApiOrgContext() {
+/** Tenant-scoped operation on `/v1/owner` or `/v1/staff` (contract §8): documents `X-Tenant-Id` and its problems. */
+export function ApiTenantContext() {
   return applyDecorators(
-    ext(EXT.parameters, 'org', ['XOrgId'] satisfies ParameterName[]),
-    ext(EXT.errors, 'org', [
-      'org.context_required',
-      'org.context_invalid',
-      'org.not_in_scope',
+    ext(EXT.parameters, 'tenant', ['TenantIdHeader'] satisfies ParameterName[]),
+    ext(EXT.errors, 'tenant', [
+      'tenant.context_required',
+      'tenant.context_invalid',
+      'tenant.not_in_scope',
     ] satisfies ErrorCode[]),
   );
 }
@@ -193,7 +194,7 @@ export function ApiPublic() {
 }
 
 /** Anonymous or with a bearer token of `audience` (`security: [{}, { <scheme>: [] }]`). */
-export function ApiOptionalAuth(audience: 'org' | 'tenant' | 'platform' | 'device') {
+export function ApiOptionalAuth(audience: Audience) {
   return ApiExtension(EXT.optionalAuth, audience);
 }
 

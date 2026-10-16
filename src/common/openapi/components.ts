@@ -20,18 +20,19 @@ export const PARAMETERS = {
     required: false,
     description:
       'Language of `title`/`detail` in problems and of generated documents: `th` (default) or `en` ' +
-      '(tenant surface also `my|km|lo|zh` in R2, D-064).',
+      '(resident surface also `my|km|lo|zh` in R2, D-064).',
     schema: { type: 'string', example: 'th' },
   },
-  XOrgId: {
-    name: 'X-Org-Id',
+  TenantIdHeader: {
+    name: 'X-Tenant-Id',
     in: 'header',
     required: false,
     description:
-      'Org context for users who belong to several orgs (contract §8): must be one of the `org:<uuid>` scopes ' +
-      'of the token. Not a uuid → 400 `org.context_invalid`; not in the token → 403 `org.not_in_scope`; ' +
-      'omitted with several orgs → 400 `org.context_required`. Single-org users never need it.',
-    schema: { type: 'string', format: 'uuid', example: FAKE.orgId },
+      'Tenant context (the SaaS customer organisation, D-151) for operators who belong to several tenants ' +
+      '(contract §8): must be one of the `tenant:<uuid>` scopes of the token. Not a uuid → 400 ' +
+      '`tenant.context_invalid`; not in the token → 403 `tenant.not_in_scope`; omitted with several tenants → ' +
+      '400 `tenant.context_required`. Single-tenant users never need it.',
+    schema: { type: 'string', format: 'uuid', example: FAKE.tenantId },
   },
   IdempotencyKey: {
     name: 'Idempotency-Key',
@@ -166,8 +167,8 @@ export function problemExamples(i18nDir: string): Record<string, ExampleObject> 
           { path: 'readings[0].register', code: 'matches', message: 'register must be a decimal string' },
         ];
       }
-      if (code === 'org.context_invalid') {
-        value.errors = [{ path: 'x-org-id', code: 'isUuid', message: 'X-Org-Id must be a uuid' }];
+      if (code === 'tenant.context_invalid') {
+        value.errors = [{ path: 'x-tenant-id', code: 'isUuid', message: 'X-Tenant-Id must be a uuid' }];
       }
       if (group === 'compliance') {
         value.legalRef = EXAMPLE_LEGAL_REF;

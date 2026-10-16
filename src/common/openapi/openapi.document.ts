@@ -43,8 +43,12 @@ const I18N_DIR = join(__dirname, '..', '..', 'i18n');
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'patch', 'options', 'head', 'trace'] as const;
 
 const AUDIENCE_DESCRIPTIONS: Record<Audience, string> = {
-  org: 'Access token with `aud=org` — `/v1/owner/*` and `/v1/staff/*` (Owner, Manager, Accountant, Staff; scopes `org:<uuid>`, `property:<uuid>`).',
-  tenant: 'Access token with `aud=tenant` — `/v1/tenant/*` (scopes `lease:<uuid>`).',
+  operator:
+    'Access token with `aud=operator` — `/v1/owner/*` and `/v1/staff/*`: people working for a tenant (Owner, Manager, Accountant, building Staff; scopes `tenant:<uuid>`, `building:<uuid>`; D-151).',
+  resident:
+    'Access token with `aud=resident` — `/v1/resident/*`, served by the getproperty-liff LINE Mini App: lessees, co-occupants, condo owners (scopes `lease:<uuid>`, `unit:<uuid>`; D-154).',
+  technician:
+    'Access token with `aud=technician` — `/v1/technician/*`, external technicians and contractors in LIFF (scopes `work_order:<uuid>`; R2).',
   platform: 'Access token with `aud=platform` — `/v1/admin/*` (Collective Group staff, TOTP mandatory).',
   device: 'Device JWT with `aud=device` minted at mTLS bootstrap — `/v1/device/*` (one gateway).',
 };
@@ -52,12 +56,12 @@ const AUDIENCE_DESCRIPTIONS: Record<Audience, string> = {
 const INFO_DESCRIPTION = `getproperty — บิลทำเอง เก็บเงินเอง ถูกกฎหมาย, operated by Collective Group (Thailand) (D-001).
 Rules: \`docs/contract/api-conventions.md\` (shared with getproperty-web and getproperty-edge); MQTT payloads: \`docs/contract/device-protocol.md\` / \`contract/device-protocol.json\` (D-130).
 
-- **Surfaces:** \`/v1/auth\`, \`/v1/owner\` (org), \`/v1/tenant\` (tenant), \`/v1/staff\` (org, Staff role), \`/v1/admin\` (platform), \`/v1/device\` (device), \`/webhooks\`. A token is accepted only on its own audience's prefix.
-- **Tenancy:** every owner/staff request runs in one org (\`org:<uuid>\` scope or \`X-Org-Id\`); a cross-org id is a 404 (contract §8, D-004).
+- **Surfaces:** \`/v1/auth\`, \`/v1/owner\` (operator), \`/v1/staff\` (operator, Staff role), \`/v1/resident\` (resident), \`/v1/technician\` (technician, R2), \`/v1/admin\` (platform), \`/v1/device\` (device), \`/webhooks\`. A token is accepted only on its own audience's prefix.
+- **Tenancy:** a *tenant* is the SaaS customer organisation (D-151). Every owner/staff request runs in one tenant (\`tenant:<uuid>\` scope or \`X-Tenant-Id\`); a cross-tenant id is a 404 (contract §8, D-152).
 - **Money:** decimal strings with exactly 2 decimals (\`"1234.50"\`) plus \`currency: "THB"\` on the object; never JSON numbers. Clients never compute prices (D-046).
 - **Meter quantities:** \`register\` and \`units\` are decimal strings with up to 3 decimals (\`"12345.678"\`), \`unit\` is \`kwh | m3\`; tariff \`pricePerUnit\` has up to 4 decimals.
 - **Dates:** ISO 8601 with offset, rendered in \`Asia/Bangkok\` (\`2026-11-01T00:00:00+07:00\`); date-only fields \`YYYY-MM-DD\`.
-- **IDs:** uuid only; business keys (\`billNumber\`, \`roomCode\`, \`deviceSerial\`) are separate fields.
+- **IDs:** uuid only; business keys (\`invoiceNumber\`, \`unitNo\`, \`deviceSerial\`) are separate fields.
 - **Errors:** RFC 9457 \`application/problem+json\` with a stable \`code\`; \`title\`/\`detail\` localised by \`Accept-Language\` (\`th\` default, \`en\`). \`compliance.*\` refusals carry \`legalRef\` (D-020).
 - **Lists:** \`?page&perPage(≤100)&sort&order&q\` → \`{ data, meta: { page, perPage, total } }\`; feeds use \`?cursor&limit\` → \`{ data, meta: { nextCursor } }\`; series take \`from\`, \`to\`, \`bucket\` (\`15m | 1h | 1d\`).
 - **Idempotency:** irreversible POSTs require \`Idempotency-Key\` (uuid); replays within 24 h return the original response.
@@ -282,7 +286,13 @@ export function asyncDescription(description: string, poll: string | false): str
   return poll ? `${description}. Poll \`${poll}\` until it completes.` : `${description}. Nothing to poll.`;
 }
 
-const UPLOAD_SURFACES = new Set<string>([SURFACES.owner, SURFACES.tenant, SURFACES.staff, SURFACES.admin]);
+const UPLOAD_SURFACES = new Set<string>([
+  SURFACES.owner,
+  SURFACES.resident,
+  SURFACES.staff,
+  SURFACES.technician,
+  SURFACES.admin,
+]);
 const FILE_FIELD = /^(fileId|fileIds|[a-z][A-Za-z]*FileIds?)$/;
 const UPLOAD_FLOW =
   '**Files:** upload first — `<surface>.files.presign` → PUT the bytes to the returned URL → ' +

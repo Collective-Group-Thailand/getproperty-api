@@ -1,8 +1,8 @@
 import { type Actor } from '@common/context/actor';
-import { type OrgContext } from '@common/context/org-context';
 import { RequestContext } from '@common/context/request-context';
+import { type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
-import { ApiAuthErrors, ApiOptionalAuth, ApiOrgContext, ApiPublic } from '@common/openapi/decorators';
+import { ApiAuthErrors, ApiOptionalAuth, ApiPublic, ApiTenantContext } from '@common/openapi/decorators';
 import { applyDecorators, createParamDecorator, SetMetadata } from '@nestjs/common';
 
 import { type Audience } from '../../surfaces/surfaces';
@@ -34,14 +34,14 @@ export const OptionalActor = createParamDecorator((_data: unknown): Actor | unde
 );
 
 /**
- * The org this request runs in (contract §8): 400 `org.context_required` when it could not be
- * resolved. Pair with `@ApiOrgContext()` on multi-org operations so the header is documented.
+ * The tenant this request runs in (contract §8, D-151): 400 `tenant.context_required` when it could
+ * not be resolved. Pair with `@TenantScoped()` so the `X-Tenant-Id` header is documented.
  */
-export const CurrentOrg = createParamDecorator((_data: unknown): OrgContext => {
-  const org = RequestContext.org();
-  if (!org) throw new DomainException('org.context_required');
-  return org;
+export const CurrentTenant = createParamDecorator((_data: unknown): TenantContext => {
+  const tenant = RequestContext.tenant();
+  if (!tenant) throw new DomainException('tenant.context_required');
+  return tenant;
 });
 
-/** Documents the optional `X-Org-Id` header and its problems on an org-scoped operation. */
-export const OrgScoped = () => ApiOrgContext();
+/** Documents the optional `X-Tenant-Id` header and its problems on a tenant-scoped operation. */
+export const TenantScoped = () => ApiTenantContext();
