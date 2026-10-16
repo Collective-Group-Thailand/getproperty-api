@@ -3,6 +3,8 @@
 **Status:** Accepted (2026-10-16, B1.1)
 **Decision ids:** D-002, D-004, D-030, D-032, D-034, D-040, D-046 · master plan §3, §5
 
+> **Amendment (ADR-0009, 2026-10-17).** Names below are v1. In schema-design v2: `org_id` → `tenant_id` (RLS enforced for the application role on `app.tenant_id`, not only for reporting), `readings` → `smart.meter_reading`, `telemetry_points` → `smart.telemetry_point`; tables live in schemas `core` / `platform` / `ops` / `smart` / `bridge` / `juristic`, and `core` migrations come from `collective-asset-core` (ADR-0010). Hosting is GCP (D-160): Cloud SQL must offer the TimescaleDB extension, otherwise TimescaleDB is self-managed or Timescale Cloud — open as O-005.
+
 ## Context
 getproperty stores two very different kinds of data under one roof:
 - **Business records** — orgs, properties, rooms, leases, deposits, bills, receipts, payments, settings, audit. Relational, transactional, `org_id` on every row (D-004), immutable financial documents with gapless numbering (D-040), money as `numeric(14,2)` (D-046).
