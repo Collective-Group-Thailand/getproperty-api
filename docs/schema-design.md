@@ -1476,6 +1476,31 @@ Forward references across deliverables use **nullable columns without FK** at cr
 9. **`ops.receivable_balance` per (party, unit)** instead of per lease — needed for condo co-owners and landlords paying common fees; apartments get the same numbers (one lessee per unit). Confirm.
 10. **v1 migration files** in `prisma/migrations/` are superseded and must not be applied; B1.2 step 2b deletes them and starts the history from §7.2 (they were never applied anywhere).
 
+### 7.5 Implementation notes — B1.2 step 2 (2026-10-17, v2.1)
+Applied by `collective-asset-core` v0.1.0 and getproperty-api migrations 0001–0009. The founder accepted every §7.4
+proposal (singular names, uuidv7-only ids, `adjustment` source type, `meter_assignment` in core, RLS on hypertables
+verified in B3.2, owner-stamped rows via `acts_for`, platform-only `user_account`, cycles per property, receivables per
+(party, unit), v1 files archived). Deviations from §3/§4 made while migrating (this section is the PR to the design):
+
+| # | Where | Change | Why |
+|---|---|---|---|
+| 1 | all tables | `created_by`/`updated_by` (and `deleted_by`, `revoked_by`, …) are logical references **without FK** to `core.user_account` | system/device actors, PDPA erasure of users, no hot-row FK locks, no 100+ Prisma back-relations; real FKs remain where §3 names a relation (`membership.user_id`, `support_grant.requested_by`, `compliance_acknowledgement.acknowledged_by`, …) |
+| 2 | `platform.audit_log` | new column `actor_id uuid null` (= `actor.id` for user/device actors) indexed `(actor_id, occurred_at)` instead of the expression index on `actor->>'id'` | Prisma cannot model expression indexes (ADR-0011); same lookup |
+| 3 | `notification_route`, `workflow_definition`, `document_series` | `UNIQUE … NULLS NOT DISTINCT (tenant_id, …)` instead of `UQ(coalesce(tenant_id, '0…0'), …)` | same semantics (PG 15+), representable in Prisma |
+| 4 | `platform.utility_tariff_version` | + `needs_check bool` (true while any value awaits confirmation; `structure.needsCheck` lists the JSON paths); maker-checker CHECK written `verified_by IS NULL OR entered_by IS NULL OR verified_by <> entered_by` (the §3 form rejected unverified rows); verified/published rows need `verified_by`, `verified_at` and `needs_check = false`; `entered_by` nullable (seeded rows) | O-006, "never invent precision" |
+| 5 | settings | the no-backdating CHECK also on `tenant_setting_version` and `property_setting_version`; `property_setting_version.tenant_id` is an FK + index | ADR-0004 applies to every scope |
+| 6 | `bridge.integration_event` | `ack_due_at` default `now() + 24 h`, recomputed from `occurred_at` by a BEFORE trigger; status must match direction (CHECK); `event_type` limited to the eight contract types | §3.5 rule "ack within 24 h" |
+| 7 | RLS (§4.5) | helper `platform.apply_rls(table, kind, module)` with kinds `tenant`, `tenant_or_shared`, `building`, `unit`, `platform`, `platform_only`; outbox: gp_app may INSERT/SELECT rows whose event it can see (relay = gp_platform); `idempotency_key`: open policy (scope = actor); `notification_preference`/`web_push_subscription`: tenant rows + the user's own rows (`app.actor_id`); `user_credential`, `auth_session`, `otp_challenge`: gp_platform only; `workflow_instance` uses module key `ops.workflow` (never grantable except `*`), events/timers inherit via the instance; catalogue tables are read-only for gp_app (grants) | concrete policies for the generic rules |
+| 8 | core RLS | `user_account`/`user_identity`: a user reads its own row (`core.current_actor_id()`); `tenant_data_key` invisible to gp_app (only `core.tenant_dek()`); grant module key `core.occupancy` added, occupancy also visible to `ops.lease` grants; `property` readable when one of its buildings is; helpers `accessible_property_ids()`, `owns_or_operates()` (only an owner/operator may grant), `can_see_building()`; SECURITY DEFINER helpers owned by `gp_platform` | ADR-0010 package |
+| 9 | append-only | `core.deny_mutation(col)` allows the single close of an open period/version (`valid_to`/`effective_to`); TRUNCATE is refused on audit/event/consent/compliance logs | §4.1 + §4.9 |
+| 10 | names | `compliance_ack_tenant_id_rule_id_acknowledged_at_idx`, `property_setting_version_property_setting_from_key`, `notification_tenant_recipient_created_at_idx` (Prisma's default names exceed 63 bytes) | PostgreSQL identifier limit |
+| 11 | `platform.compliance_rule` | + `created_at`/`updated_at`; `applies_to` values also `tenant`, `notice` | rules `compliance.scope`, notice rules |
+| 12 | `platform.retention_policy.retain_for` | stays `interval` (Prisma `Unsupported("interval")`, written with SQL) | §3.2.7 |
+| 13 | `ops.workflow_instance`, `platform.notification` | + `created_at`/`updated_at` | audit columns everywhere (§1.2) |
+| 14 | 0001 | no `timescaledb` extension | D-162 |
+| 15 | integration envelope (§4.8) | fields `eventId, type, version (int), occurredAt, idempotencyKey, sourcePlatform, tenantId, correlationId?, causationId?, payload`; `contract_version` column = package semver | B1.2 session spec |
+| 16 | many tables | extra CHECKs (E.164 phones, language codes, period ranges, state ↔ timestamp consistency, `document_series` platform types ↔ `tenant_id` null) | defence in depth |
+
 ---
 
 ## 8. v1 → v2 rename map

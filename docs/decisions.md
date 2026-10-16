@@ -143,3 +143,4 @@
 | O-003 | Meter models for the pilot (electric Modbus 1-phase class 1; water pulse) and the gateway model — after the site survey. | Founder + IoT engineer |
 | O-004 | Does the pilot org register for VAT? Decides whether tax-invoice documents are needed in R1. | Pilot org |
 | ~~O-005~~ | Resolved by D-162. | — |
+| O-006 | Utility tariff reference data (cap reference, D-021a/D-140): (a) the Ft of Jan–Apr and May–Aug 2026 and the exact block rates inside the first 200 kWh of the residential structure in force from the September 2026 bills (announced as "not exceeding 3.00 THB/kWh"), the monthly service charges after that change and whether the TOU rates changed; (b) MWA/PWA residential tables, service charges per meter size, minimum charges and effective dates. Seeded values are `entered` + `needs_check` (B1.2); there is no cap reference for Jan–Aug 2026 until (a) is entered and verified. | Platform admin (maker) + second admin (checker) |

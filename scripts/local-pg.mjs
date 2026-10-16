@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // `pnpm db:local [start|stop|status]` — a local PostgreSQL 18 cluster for developers without Docker
-// (embedded-postgres). A development convenience only: docker-compose (timescale/timescaledb-ha:pg18) stays
-// the primary path and the only one with TimescaleDB — the embedded build ships pgcrypto, pg_trgm, citext and
-// btree_gist but NOT timescaledb, so hypertables (B3.2+) need compose. Migrations create the extension
-// conditionally (0001_extensions) so the B1 schema applies here unchanged.
+// (embedded-postgres). The embedded build ships pgcrypto, pg_trgm, citext and btree_gist (everything the
+// migrations need) but not timescaledb — not needed: telemetry uses native monthly partitions (D-162).
+// After `start`, in another shell: `pnpm db:migrate` (asset-core + prisma; needs Prisma's schema engine) and
+// `pnpm db:seed:dev`. Set DATABASE_APP_ROLE=gp_app so the app runs under row-level security.
 //
 //   pnpm db:local start      initialises (first run) and starts the cluster in the foreground; Ctrl-C stops it.
 //   pnpm db:local stop       stops a cluster left running by a crashed shell (uses the data dir's pid file).
