@@ -1,16 +1,25 @@
 // Prisma 7 configuration (reference: getpack-api). The datasource URL lives here, not in the schema:
 // `DATABASE_URL` / `SHADOW_DATABASE_URL` come from the environment (.env.example; `pnpm db:local` prints them).
 // Multi-file schema (one file per bounded context) in prisma/schema; hand-written SQL migrations in
-// prisma/migrations (schema-design §1.2 "Prisma": hypertables, triggers, RLS, exclusion constraints and partial
-// indexes live in the SQL tail — Prisma models the relational shape only).
+// prisma/migrations (schema-design §1.2 "Prisma": CHECK/EXCLUDE constraints, partial indexes, triggers and RLS
+// live in the SQL — Prisma models the relational shape only).
+//
+// The `core` schema belongs to @collective/asset-core (D-153, ADR-0010, ADR-0011): its 18 tables and 31 enums are
+// declared EXTERNAL so Prisma Migrate never creates, alters or drops them, and the shadow database used by
+// `prisma migrate dev|diff --from-migrations` is initialised with the package's own SQL first.
 import 'dotenv/config';
 
+import { CORE_ENUMS, CORE_TABLES, coreMigrationSql } from '@collective/asset-core';
 import { defineConfig } from 'prisma/config';
 
 export default defineConfig({
   schema: 'prisma/schema',
+  experimental: { externalTables: true },
+  tables: { external: CORE_TABLES.map((t) => `core.${t}`) },
+  enums: { external: Object.keys(CORE_ENUMS).map((e) => `core.${e}`) },
   migrations: {
     path: 'prisma/migrations',
+    initShadowDb: coreMigrationSql(),
     // `prisma migrate dev` / `prisma migrate reset` seed the reference data (roles, settings, tariffs, …).
     seed: 'pnpm db:seed',
   },

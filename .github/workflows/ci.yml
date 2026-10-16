@@ -20,6 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
+        with:
+          asset-core-token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck
@@ -31,6 +33,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
+        with:
+          asset-core-token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
       - run: pnpm test:cov
       - uses: actions/upload-artifact@v4
         with:
@@ -46,12 +50,51 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
+        with:
+          asset-core-token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
       - run: pnpm test:e2e
 
+  migrations:
+    # Real PostgreSQL 18 (no TimescaleDB needed, D-162): @collective/asset-core migrations → prisma migrate deploy →
+    # drift check → seeds (twice) → integration suite (RLS, append-only, settings, idempotency, tariffs).
+    name: migrations · prisma drift · seeds · integration (PostgreSQL 18)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: gp
+          POSTGRES_PASSWORD: gp
+          POSTGRES_DB: getproperty
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U gp" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://gp:gp@localhost:5432/getproperty
+      SHADOW_DATABASE_URL: postgresql://gp:gp@localhost:5432/getproperty_shadow
+      INT_DATABASE_URL: postgresql://gp:gp@localhost:5432/postgres
+      PRISMA_MIGRATE_DIFF: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          asset-core-token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
+      - name: Create the shadow database
+        run: psql "postgresql://gp:gp@localhost:5432/postgres" -c 'CREATE DATABASE getproperty_shadow'
+      - name: Migrate (asset-core, then prisma migrate deploy)
+        run: pnpm db:migrate
+      - name: Prisma drift (schema ↔ migrated database) must be empty
+        run: pnpm db:diff
+      - name: Prisma drift (schema ↔ migrations replayed on the shadow database, core via initShadowDb)
+        run: pnpm exec prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema --exit-code
+      - name: Seeds are idempotent
+        run: pnpm db:seed:dev && pnpm db:seed:dev
+      - name: Integration tests
+        run: pnpm test:int
+
   e2e-real:
-    # Testcontainers (TimescaleDB, Redis, EMQX). Wired for B1.2+; runs on demand or with the `e2e:real` label
-    # until the schema and migrations exist.
-    name: e2e + integration (Testcontainers)
+    # Testcontainers (Redis, EMQX) for the real-mode e2e suite; runs on demand or with the `e2e:real` label.
+    name: e2e (real data stores, Testcontainers)
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'e2e:real')
     env:
@@ -59,7 +102,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - run: pnpm test:int
+        with:
+          asset-core-token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
       - run: pnpm test:e2e
 
   contract:
@@ -70,6 +114,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
+        with:
+          asset-core-token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
       - name: Regenerate the contracts
         run: pnpm contract:build
       - name: Contract lint (Spectral, api-conventions §5)
@@ -102,11 +148,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
+        with:
+          asset-core-token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
       - run: pnpm build
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
           context: .
+          build-contexts: asset-core-src=../collective-asset-core
           load: true
           tags: getproperty-api:ci
           build-args: GIT_COMMIT=${{ github.sha }}

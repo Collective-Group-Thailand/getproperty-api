@@ -31,9 +31,10 @@
       "@database/*": ["./src/database/*"],
       "@platform/*": ["./src/platform/*"],
       "@modules/*": ["./src/modules/*"],
+      "@core/*": ["./src/core/*"],
       "@integrations/*": ["./src/integrations/*"],
       "@generated/*": ["./src/generated/*"]
     }
   },
-  "include": ["src", "test", "scripts", "jest.config.ts", "prisma.config.ts"]
+  "include": ["src", "test", "scripts", "prisma/seed", "jest.config.ts", "prisma.config.ts"]
 }

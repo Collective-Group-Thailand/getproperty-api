@@ -1,0 +1,217 @@
+// platform — notification templates, routes, preferences, delivery log, web push (§3.2.6).
+
+enum NotificationChannel {
+  line
+  sms
+  email
+  in_app
+  web_push
+
+  @@map("notification_channel")
+  @@schema("platform")
+}
+
+enum NotificationAudience {
+  resident
+  technician
+  owner
+  manager
+  staff
+  accountant
+  platform
+
+  @@map("notification_audience")
+  @@schema("platform")
+}
+
+enum TemplateFormat {
+  handlebars_text
+  line_flex_json
+  mjml
+  plain
+
+  @@map("template_format")
+  @@schema("platform")
+}
+
+enum TemplateVersionState {
+  draft
+  published
+  retired
+
+  @@map("template_version_state")
+  @@schema("platform")
+}
+
+enum NotificationRecipient {
+  user
+  party
+  phone
+  email
+  line_user
+
+  @@map("notification_recipient")
+  @@schema("platform")
+}
+
+enum NotificationState {
+  queued
+  held_quiet_hours
+  held_no_consent
+  sent
+  delivered
+  failed
+  read
+  cancelled
+
+  @@map("notification_state")
+  @@schema("platform")
+}
+
+model NotificationTemplate {
+  id          String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  key         String
+  channel     NotificationChannel
+  audience    NotificationAudience
+  description String
+  isSystem    Boolean              @default(true) @map("is_system")
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   String?              @map("created_by") @db.Uuid
+  updatedAt   DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy   String?              @map("updated_by") @db.Uuid
+
+  versions NotificationTemplateVersion[]
+
+  @@unique([key, channel, audience], map: "notification_template_key_channel_audience_key")
+  @@map("notification_template")
+  @@schema("platform")
+}
+
+model NotificationTemplateVersion {
+  id          String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  templateId  String               @map("template_id") @db.Uuid
+  version     Int
+  language    String               @db.Char(2)
+  subject     String?
+  body        String
+  format      TemplateFormat
+  state       TemplateVersionState @default(draft)
+  publishedAt DateTime?            @map("published_at") @db.Timestamptz(6)
+  publishedBy String?              @map("published_by") @db.Uuid
+  sampleData  Json                 @default("{}") @map("sample_data")
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   String?              @map("created_by") @db.Uuid
+  updatedAt   DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy   String?              @map("updated_by") @db.Uuid
+
+  template      NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "notification_template_version_template_id_fkey")
+  notifications Notification[]
+
+  @@unique([templateId, language, version], map: "notification_template_version_template_id_language_version_key")
+  @@unique([templateId, language], map: "notification_template_version_published_key", where: raw("(state = 'published'::platform.template_version_state)"))
+  @@map("notification_template_version")
+  @@schema("platform")
+}
+
+/// Routing matrix event × audience × channel; tenant_id null = platform default (NULLS NOT DISTINCT).
+model NotificationRoute {
+  id        String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String?              @map("tenant_id") @db.Uuid
+  eventType String               @map("event_type")
+  audience  NotificationAudience
+  channel   NotificationChannel
+  enabled   Boolean              @default(true)
+  urgent    Boolean              @default(false)
+  createdAt DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?              @map("created_by") @db.Uuid
+  updatedAt DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?              @map("updated_by") @db.Uuid
+
+  tenant Tenant? @relation("NotificationRouteTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "notification_route_tenant_id_fkey")
+
+  @@unique([tenantId, eventType, audience, channel], map: "notification_route_tenant_id_event_type_audience_channel_key")
+  @@map("notification_route")
+  @@schema("platform")
+}
+
+model NotificationPreference {
+  id              String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String?             @map("tenant_id") @db.Uuid
+  userId          String?             @map("user_id") @db.Uuid
+  partyId         String?             @map("party_id") @db.Uuid
+  channel         NotificationChannel
+  enabled         Boolean             @default(true)
+  quietHoursStart DateTime?           @map("quiet_hours_start") @db.Time(6)
+  quietHoursEnd   DateTime?           @map("quiet_hours_end") @db.Time(6)
+  language        String?             @db.Char(2)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy       String?             @map("created_by") @db.Uuid
+  updatedAt       DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy       String?             @map("updated_by") @db.Uuid
+
+  tenant Tenant?      @relation("NotificationPreferenceTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "notification_preference_tenant_id_fkey")
+  user   UserAccount? @relation("NotificationPreferenceUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "notification_preference_user_id_fkey")
+  party  Party?       @relation("NotificationPreferenceParty", fields: [partyId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "notification_preference_party_id_fkey")
+
+  @@unique([userId, channel], map: "notification_preference_user_id_channel_key")
+  @@unique([partyId, channel], map: "notification_preference_party_id_channel_key")
+  @@index([tenantId], map: "notification_preference_tenant_id_idx")
+  @@map("notification_preference")
+  @@schema("platform")
+}
+
+/// Delivery log, idempotent per (event, recipient, channel).
+model Notification {
+  id                String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String?               @map("tenant_id") @db.Uuid
+  buildingId        String?               @map("building_id") @db.Uuid
+  eventId           String?               @map("event_id") @db.Uuid
+  templateVersionId String?               @map("template_version_id") @db.Uuid
+  recipientType     NotificationRecipient @map("recipient_type")
+  recipientId       String?               @map("recipient_id") @db.Uuid
+  recipientAddress  String?               @map("recipient_address")
+  channel           NotificationChannel
+  state             NotificationState     @default(queued)
+  scheduledFor      DateTime              @default(now()) @map("scheduled_for") @db.Timestamptz(6)
+  sentAt            DateTime?             @map("sent_at") @db.Timestamptz(6)
+  deliveredAt       DateTime?             @map("delivered_at") @db.Timestamptz(6)
+  readAt            DateTime?             @map("read_at") @db.Timestamptz(6)
+  failedReason      String?               @map("failed_reason")
+  provider          String?
+  providerMessageId String?               @map("provider_message_id")
+  rendered          Json?
+  attempts          Int                   @default(0) @db.SmallInt
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant          Tenant?                      @relation("NotificationTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "notification_tenant_id_fkey")
+  event           DomainEvent?                 @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "notification_event_id_fkey")
+  templateVersion NotificationTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "notification_template_version_id_fkey")
+
+  @@unique([eventId, recipientType, recipientId, channel], map: "notification_event_id_recipient_type_recipient_id_channel_key", where: raw("(event_id IS NOT NULL)"))
+  @@index([tenantId, recipientType, recipientId, createdAt(sort: Desc)], map: "notification_tenant_recipient_created_at_idx")
+  @@index([state, scheduledFor], map: "notification_state_scheduled_for_idx")
+  @@map("notification")
+  @@schema("platform")
+}
+
+model WebPushSubscription {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  endpoint   String    @unique(map: "web_push_subscription_endpoint_key")
+  p256dh     String
+  auth       String
+  userAgent  String?   @map("user_agent")
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz(6)
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?   @map("created_by") @db.Uuid
+  updatedAt  DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy  String?   @map("updated_by") @db.Uuid
+
+  user UserAccount @relation("WebPushSubscriptionUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "web_push_subscription_user_id_fkey")
+
+  @@index([userId], map: "web_push_subscription_user_id_idx")
+  @@map("web_push_subscription")
+  @@schema("platform")
+}

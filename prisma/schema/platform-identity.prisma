@@ -1,0 +1,403 @@
+// platform — credentials, sessions, OTP, roles & permissions, platform role assignments, support grants,
+// invitations, tenant bank accounts (ADR-0003, D-090, D-091, D-145, D-042).
+
+enum Audience {
+  operator
+  resident
+  technician
+  platform
+  device
+
+  @@map("audience")
+  @@schema("platform")
+}
+
+enum SessionRevokeReason {
+  logout
+  reuse_detected
+  password_change
+  admin
+  expired
+
+  @@map("session_revoke_reason")
+  @@schema("platform")
+}
+
+enum OtpPurpose {
+  operator_login
+  resident_login
+  technician_login
+  bank_account_change
+  lease_signature
+  phone_verify
+
+  @@map("otp_purpose")
+  @@schema("platform")
+}
+
+enum RoleScopeKind {
+  tenant
+  platform
+
+  @@map("role_scope_kind")
+  @@schema("platform")
+}
+
+enum SupportGrantState {
+  requested
+  approved
+  active
+  expired
+  revoked
+  denied
+
+  @@map("support_grant_state")
+  @@schema("platform")
+}
+
+enum SupportGrantApprovalVia {
+  in_app
+  platform_admin_incident
+
+  @@map("support_grant_approval_via")
+  @@schema("platform")
+}
+
+enum InvitationKind {
+  tenant_member
+  lease_resident
+
+  @@map("invitation_kind")
+  @@schema("platform")
+}
+
+enum InvitationChannel {
+  sms
+  line_qr
+  email
+  link
+
+  @@map("invitation_channel")
+  @@schema("platform")
+}
+
+enum InvitationState {
+  pending
+  accepted
+  expired
+  revoked
+
+  @@map("invitation_state")
+  @@schema("platform")
+}
+
+enum PromptpayIdType {
+  national_id
+  tax_id
+  phone
+  ewallet
+  bank_account
+
+  @@map("promptpay_id_type")
+  @@schema("platform")
+}
+
+enum PaymentProvider {
+  kbank
+  scb
+  opn
+  none
+
+  @@map("payment_provider")
+  @@schema("platform")
+}
+
+enum BankAccountState {
+  pending_otp
+  active
+  replaced
+  removed
+
+  @@map("bank_account_state")
+  @@schema("platform")
+}
+
+enum BankChange {
+  created
+  activated
+  replaced
+  removed
+  default_changed
+
+  @@map("bank_change")
+  @@schema("platform")
+}
+
+/// App-specific secrets of a core.user_account (gp_platform only).
+model UserCredential {
+  userId                String    @id @map("user_id") @db.Uuid
+  passwordHash          String?   @map("password_hash")
+  passwordChangedAt     DateTime? @map("password_changed_at") @db.Timestamptz(6)
+  totpSecretEnc         Bytes?    @map("totp_secret_enc")
+  totpEnabledAt         DateTime? @map("totp_enabled_at") @db.Timestamptz(6)
+  totpRecoveryCodesHash Bytes[]   @map("totp_recovery_codes_hash")
+  failedLoginCount      Int       @default(0) @map("failed_login_count") @db.SmallInt
+  lockedUntil           DateTime? @map("locked_until") @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy             String?   @map("created_by") @db.Uuid
+  updatedAt             DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy             String?   @map("updated_by") @db.Uuid
+
+  user UserAccount @relation("UserCredentialUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_credential_user_id_fkey")
+
+  @@map("user_credential")
+  @@schema("platform")
+}
+
+/// Refresh-token families (rotation + reuse detection). device_id ⇢ smart.device (FK in B3.1).
+model AuthSession {
+  id               String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId           String?              @map("user_id") @db.Uuid
+  deviceId         String?              @map("device_id") @db.Uuid
+  audience         Audience
+  familyId         String               @map("family_id") @db.Uuid
+  refreshTokenHash Bytes                @unique(map: "auth_session_refresh_token_hash_key") @map("refresh_token_hash")
+  parentTokenHash  Bytes?               @map("parent_token_hash")
+  issuedAt         DateTime             @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt        DateTime             @map("expires_at") @db.Timestamptz(6)
+  rotatedAt        DateTime?            @map("rotated_at") @db.Timestamptz(6)
+  revokedAt        DateTime?            @map("revoked_at") @db.Timestamptz(6)
+  revokeReason     SessionRevokeReason? @map("revoke_reason")
+  ip               String?              @db.Inet
+  userAgent        String?              @map("user_agent")
+  scopes           String[]             @default([])
+  lastUsedAt       DateTime?            @map("last_used_at") @db.Timestamptz(6)
+
+  user UserAccount? @relation("AuthSessionUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "auth_session_user_id_fkey")
+
+  @@index([userId, revokedAt], map: "auth_session_user_id_revoked_at_idx")
+  @@index([familyId], map: "auth_session_family_id_idx")
+  @@index([expiresAt], map: "auth_session_expires_at_idx")
+  @@map("auth_session")
+  @@schema("platform")
+}
+
+/// SMS OTP (login, bank-account change, e-sign); the code is stored only as a hash.
+model OtpChallenge {
+  id          String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  purpose     OtpPurpose
+  phoneE164   String     @map("phone_e164")
+  phoneHash   Bytes      @map("phone_hash")
+  codeHash    Bytes      @map("code_hash")
+  attempts    Int        @default(0) @db.SmallInt
+  maxAttempts Int        @default(5) @map("max_attempts") @db.SmallInt
+  expiresAt   DateTime   @map("expires_at") @db.Timestamptz(6)
+  consumedAt  DateTime?  @map("consumed_at") @db.Timestamptz(6)
+  subjectType String?    @map("subject_type")
+  subjectId   String?    @map("subject_id") @db.Uuid
+  ip          String?    @db.Inet
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  confirmedBankAccounts TenantBankAccount[]
+  bankAccountHistory    TenantBankAccountHistory[]
+
+  @@index([phoneHash, purpose, createdAt(sort: Desc)], map: "otp_challenge_phone_hash_purpose_created_at_idx")
+  @@index([expiresAt], map: "otp_challenge_expires_at_idx")
+  @@map("otp_challenge")
+  @@schema("platform")
+}
+
+/// Tenant roles and platform roles (D-090), seeded from code.
+model Role {
+  id          String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  key         String        @unique(map: "role_key_key")
+  scopeKind   RoleScopeKind @map("scope_kind")
+  nameTh      String        @map("name_th")
+  nameEn      String        @map("name_en")
+  description String
+  isSystem    Boolean       @default(true) @map("is_system")
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   String?       @map("created_by") @db.Uuid
+  updatedAt   DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy   String?       @map("updated_by") @db.Uuid
+
+  permissions RolePermission[]
+  assignments PlatformRoleAssignment[]
+
+  @@map("role")
+  @@schema("platform")
+}
+
+/// `resource.action` catalogue generated from code → docs/rbac.md (D-091).
+model Permission {
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  key         String   @unique(map: "permission_key_key")
+  resource    String
+  action      String
+  description String
+  surfaces    String[] @default([])
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  roles RolePermission[]
+
+  @@map("permission")
+  @@schema("platform")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "role_permission_role_id_fkey")
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "role_permission_permission_id_fkey")
+
+  @@id([roleId, permissionId], map: "role_permission_pkey")
+  @@index([permissionId], map: "role_permission_permission_id_idx")
+  @@map("role_permission")
+  @@schema("platform")
+}
+
+/// Collective Group staff roles (tenant roles live on core.membership.role).
+model PlatformRoleAssignment {
+  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  roleId    String    @map("role_id") @db.Uuid
+  grantedBy String?   @map("granted_by") @db.Uuid
+  grantedAt DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?   @map("updated_by") @db.Uuid
+
+  user UserAccount @relation("PlatformRoleAssignmentUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_role_assignment_user_id_fkey")
+  role Role        @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_role_assignment_role_id_fkey")
+
+  @@unique([userId, roleId], map: "platform_role_assignment_user_id_role_id_key", where: raw("(revoked_at IS NULL)"))
+  @@index([roleId], map: "platform_role_assignment_role_id_idx")
+  @@map("platform_role_assignment")
+  @@schema("platform")
+}
+
+/// Time-boxed Support read access into a tenant (D-090, contract §8).
+model SupportGrant {
+  id          String                   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String                   @map("tenant_id") @db.Uuid
+  requestedBy String                   @map("requested_by") @db.Uuid
+  reason      String
+  ticketRef   String?                  @map("ticket_ref")
+  state       SupportGrantState        @default(requested)
+  approvedBy  String?                  @map("approved_by") @db.Uuid
+  approvedVia SupportGrantApprovalVia? @map("approved_via")
+  approvedAt  DateTime?                @map("approved_at") @db.Timestamptz(6)
+  validFrom   DateTime?                @map("valid_from") @db.Timestamptz(6)
+  validTo     DateTime?                @map("valid_to") @db.Timestamptz(6)
+  revokedAt   DateTime?                @map("revoked_at") @db.Timestamptz(6)
+  revokedBy   String?                  @map("revoked_by") @db.Uuid
+  createdAt   DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   String?                  @map("created_by") @db.Uuid
+  updatedAt   DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy   String?                  @map("updated_by") @db.Uuid
+
+  tenant          Tenant      @relation("SupportGrantTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "support_grant_tenant_id_fkey")
+  requestedByUser UserAccount @relation("SupportGrantRequestedBy", fields: [requestedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "support_grant_requested_by_fkey")
+  auditLogs       AuditLog[]
+
+  @@index([tenantId, state, validTo], map: "support_grant_tenant_id_state_valid_to_idx")
+  @@index([requestedBy, state], map: "support_grant_requested_by_state_idx")
+  @@map("support_grant")
+  @@schema("platform")
+}
+
+/// Tenant-member and lease-resident invitations (D-145). lease_id ⇢ ops.lease (FK in B2.3).
+model Invitation {
+  id               String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String            @map("tenant_id") @db.Uuid
+  kind             InvitationKind
+  role             String?
+  buildingIds      String[]          @map("building_ids") @db.Uuid
+  leaseId          String?           @map("lease_id") @db.Uuid
+  partyId          String?           @map("party_id") @db.Uuid
+  phoneE164        String?           @map("phone_e164")
+  email            String?           @db.Citext
+  codeHash         Bytes             @unique(map: "invitation_code_hash_key") @map("code_hash")
+  channel          InvitationChannel
+  state            InvitationState   @default(pending)
+  expiresAt        DateTime          @map("expires_at") @db.Timestamptz(6)
+  acceptedAt       DateTime?         @map("accepted_at") @db.Timestamptz(6)
+  acceptedByUserId String?           @map("accepted_by_user_id") @db.Uuid
+  invitedBy        String?           @map("invited_by") @db.Uuid
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?           @map("created_by") @db.Uuid
+  updatedAt        DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy        String?           @map("updated_by") @db.Uuid
+
+  tenant         Tenant       @relation("InvitationTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invitation_tenant_id_fkey")
+  party          Party?       @relation("InvitationParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invitation_party_id_fkey")
+  acceptedByUser UserAccount? @relation("InvitationAcceptedByUser", fields: [acceptedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invitation_accepted_by_user_id_fkey")
+
+  @@index([tenantId, state], map: "invitation_tenant_id_state_idx")
+  @@index([leaseId], map: "invitation_lease_id_idx")
+  @@map("invitation")
+  @@schema("platform")
+}
+
+/// Accounts that receive residents' money — the platform never holds funds (D-042); OTP to change (D-091).
+model TenantBankAccount {
+  id                     String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId               String           @map("tenant_id") @db.Uuid
+  bankCode               String           @map("bank_code")
+  bankNameTh             String           @map("bank_name_th")
+  branch                 String?
+  accountNoEnc           Bytes            @map("account_no_enc")
+  accountNoHash          Bytes            @map("account_no_hash")
+  accountNoMasked        String           @map("account_no_masked")
+  accountName            String           @map("account_name")
+  promptpayIdType        PromptpayIdType? @map("promptpay_id_type")
+  promptpayIdEnc         Bytes?           @map("promptpay_id_enc")
+  paymentProvider        PaymentProvider  @default(none) @map("payment_provider")
+  providerMerchantRefEnc Bytes?           @map("provider_merchant_ref_enc")
+  buildingIds            String[]         @map("building_ids") @db.Uuid
+  isDefault              Boolean          @default(false) @map("is_default")
+  state                  BankAccountState @default(pending_otp)
+  effectiveFrom          DateTime         @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo            DateTime?        @map("effective_to") @db.Timestamptz(6)
+  confirmedByOtpId       String?          @map("confirmed_by_otp_id") @db.Uuid
+  confirmedAt            DateTime?        @map("confirmed_at") @db.Timestamptz(6)
+  createdAt              DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy              String?          @map("created_by") @db.Uuid
+  updatedAt              DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy              String?          @map("updated_by") @db.Uuid
+
+  tenant         Tenant                     @relation("TenantBankAccountTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tenant_bank_account_tenant_id_fkey")
+  confirmedByOtp OtpChallenge?              @relation(fields: [confirmedByOtpId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tenant_bank_account_confirmed_by_otp_id_fkey")
+  history        TenantBankAccountHistory[]
+
+  @@unique([tenantId], map: "tenant_bank_account_tenant_id_default_key", where: raw("(is_default AND (state = 'active'::platform.bank_account_state))"))
+  @@index([tenantId, state], map: "tenant_bank_account_tenant_id_state_idx")
+  @@map("tenant_bank_account")
+  @@schema("platform")
+}
+
+/// Append-only history of bank account changes (masked values only).
+model TenantBankAccountHistory {
+  id             String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String     @map("tenant_id") @db.Uuid
+  bankAccountId  String     @map("bank_account_id") @db.Uuid
+  change         BankChange
+  before         Json?
+  after          Json?
+  otpChallengeId String?    @map("otp_challenge_id") @db.Uuid
+  actor          Json
+  occurredAt     DateTime   @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  tenant       Tenant            @relation("TenantBankAccountHistoryTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tenant_bank_account_history_tenant_id_fkey")
+  bankAccount  TenantBankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tenant_bank_account_history_bank_account_id_fkey")
+  otpChallenge OtpChallenge?     @relation(fields: [otpChallengeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tenant_bank_account_history_otp_challenge_id_fkey")
+
+  @@index([tenantId, occurredAt(sort: Desc)], map: "tenant_bank_account_history_tenant_id_occurred_at_idx")
+  @@index([bankAccountId], map: "tenant_bank_account_history_bank_account_id_idx")
+  @@map("tenant_bank_account_history")
+  @@schema("platform")
+}

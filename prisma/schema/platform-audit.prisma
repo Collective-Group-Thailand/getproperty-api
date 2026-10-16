@@ -1,0 +1,152 @@
+// platform — attachments, audit log ⟲, domain events ⟲, outbox, idempotency keys (§3.2.5, §4.8).
+
+enum AuditOutcome {
+  success
+  denied
+  failure
+
+  @@map("audit_outcome")
+  @@schema("platform")
+}
+
+enum OutboxState {
+  pending
+  publishing
+  published
+  failed
+  dead
+
+  @@map("outbox_state")
+  @@schema("platform")
+}
+
+enum IdempotencyStatus {
+  in_progress
+  completed
+
+  @@map("idempotency_status")
+  @@schema("platform")
+}
+
+/// Polymorphic link core.document ↔ any app row (photos, evidence, signed PDFs, slips).
+model Attachment {
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  documentId  String   @map("document_id") @db.Uuid
+  subjectType String   @map("subject_type")
+  subjectId   String   @map("subject_id") @db.Uuid
+  buildingId  String?  @map("building_id") @db.Uuid
+  role        String
+  position    Int      @default(0) @db.SmallInt
+  caption     String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy   String?  @map("updated_by") @db.Uuid
+
+  tenant   Tenant    @relation("AttachmentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "attachment_tenant_id_fkey")
+  document Document  @relation("AttachmentDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "attachment_document_id_fkey")
+  building Building? @relation("AttachmentBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "attachment_building_id_fkey")
+
+  @@unique([documentId, subjectType, subjectId, role], map: "attachment_document_id_subject_type_subject_id_role_key")
+  @@index([subjectType, subjectId], map: "attachment_subject_type_subject_id_idx")
+  @@index([tenantId], map: "attachment_tenant_id_idx")
+  @@map("attachment")
+  @@schema("platform")
+}
+
+/// Security, money and PDPA actions — append-only, 10-year retention.
+model AuditLog {
+  id             String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  occurredAt     DateTime     @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  tenantId       String?      @map("tenant_id") @db.Uuid
+  buildingId     String?      @map("building_id") @db.Uuid
+  actor          Json
+  actorId        String?      @map("actor_id") @db.Uuid
+  action         String
+  subjectType    String?      @map("subject_type")
+  subjectId      String?      @map("subject_id") @db.Uuid
+  outcome        AuditOutcome @default(success)
+  requestId      String?      @map("request_id")
+  ip             String?      @db.Inet
+  userAgent      String?      @map("user_agent")
+  supportGrantId String?      @map("support_grant_id") @db.Uuid
+  before         Json?
+  after          Json?
+  metadata       Json         @default("{}")
+
+  supportGrant SupportGrant? @relation(fields: [supportGrantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "audit_log_support_grant_id_fkey")
+
+  @@index([tenantId, occurredAt(sort: Desc)], map: "audit_log_tenant_id_occurred_at_idx")
+  @@index([subjectType, subjectId], map: "audit_log_subject_type_subject_id_idx")
+  @@index([actorId, occurredAt], map: "audit_log_actor_id_occurred_at_idx")
+  @@index([action, occurredAt], map: "audit_log_action_occurred_at_idx")
+  @@index([supportGrantId], map: "audit_log_support_grant_id_idx")
+  @@map("audit_log")
+  @@schema("platform")
+}
+
+/// Every state change (envelope §4.8); id = envelope id. Append-only.
+model DomainEvent {
+  id            String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  type          String
+  aggregateType String   @map("aggregate_type")
+  aggregateId   String   @map("aggregate_id") @db.Uuid
+  tenantId      String?  @map("tenant_id") @db.Uuid
+  buildingId    String?  @map("building_id") @db.Uuid
+  actor         Json
+  occurredAt    DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  correlationId String   @map("correlation_id") @db.Uuid
+  causationId   String?  @map("causation_id") @db.Uuid
+  payload       Json
+  schemaVersion Int      @default(1) @map("schema_version") @db.SmallInt
+
+  outbox        OutboxMessage?
+  notifications Notification[]
+
+  @@index([aggregateType, aggregateId, occurredAt], map: "domain_event_aggregate_type_aggregate_id_occurred_at_idx")
+  @@index([tenantId, type, occurredAt], map: "domain_event_tenant_id_type_occurred_at_idx")
+  @@index([correlationId], map: "domain_event_correlation_id_idx")
+  @@map("domain_event")
+  @@schema("platform")
+}
+
+/// Relay queue for domain events (same transaction); the relay runs as gp_platform.
+model OutboxMessage {
+  id            String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  eventId       String      @unique(map: "outbox_message_event_id_key") @map("event_id") @db.Uuid
+  topic         String
+  state         OutboxState @default(pending)
+  attempts      Int         @default(0) @db.SmallInt
+  nextAttemptAt DateTime    @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  lastError     String?     @map("last_error")
+  publishedAt   DateTime?   @map("published_at") @db.Timestamptz(6)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event DomainEvent @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "outbox_message_event_id_fkey")
+
+  @@index([state, nextAttemptAt], map: "outbox_message_state_next_attempt_at_idx", where: raw("(state = ANY (ARRAY['pending'::platform.outbox_state, 'failed'::platform.outbox_state]))"))
+  @@index([createdAt], map: "outbox_message_created_at_idx")
+  @@map("outbox_message")
+  @@schema("platform")
+}
+
+/// Durable tier behind Redis (contract §3).
+model IdempotencyKey {
+  scope           String
+  key             String            @db.Uuid
+  requestSha256   Bytes             @map("request_sha256")
+  status          IdempotencyStatus
+  responseStatus  Int?              @map("response_status") @db.SmallInt
+  responseHeaders Json?             @map("response_headers")
+  responseBody    Json?             @map("response_body")
+  lockedUntil     DateTime?         @map("locked_until") @db.Timestamptz(6)
+  expiresAt       DateTime          @map("expires_at") @db.Timestamptz(6)
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@id([scope, key], map: "idempotency_key_pkey")
+  @@index([expiresAt], map: "idempotency_key_expires_at_idx")
+  @@map("idempotency_key")
+  @@schema("platform")
+}

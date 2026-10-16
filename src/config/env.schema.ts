@@ -105,6 +105,16 @@ export class EnvironmentVariables {
   @Matches(/^postgres(ql)?:\/\//, { message: 'DATABASE_URL must be a postgres:// URL' })
   DATABASE_URL?: string;
 
+  /**
+   * `SET LOCAL ROLE` at the start of every tenant-scoped transaction (schema-design §4.5): set to `gp_app` when
+   * the login user is a member of gp_app but not gp_app itself (e.g. local development as a superuser).
+   * Empty = the login role is used as is (production logs in as a gp_app member with INHERIT).
+   */
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z_][a-z0-9_]*$/, { message: 'DATABASE_APP_ROLE must be a plain role name' })
+  DATABASE_APP_ROLE?: string;
+
   @IsOptional()
   @IsString()
   @Matches(/^rediss?:\/\//, { message: 'REDIS_URL must be a redis:// or rediss:// URL' })

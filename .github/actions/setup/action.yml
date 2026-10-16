@@ -1,12 +1,33 @@
 name: Setup
-description: Node 24 + pnpm with cache, frozen install.
+description: >-
+  Node 24 + pnpm with cache, @collective/asset-core checked out and built beside this repository (the
+  `link:../collective-asset-core` dependency, ADR-0011 — replaced by the published package once the private registry
+  exists), then a frozen install (postinstall generates the Prisma client).
+inputs:
+  asset-core-ref:
+    description: Git ref of collective-asset-core matching package.json
+    default: v0.1.0
+  asset-core-token:
+    description: Token with read access to collective-group/collective-asset-core
+    required: true
 runs:
   using: composite
   steps:
+    - name: Check out @collective/asset-core beside this repository
+      shell: bash
+      env:
+        TOKEN: ${{ inputs.asset-core-token }}
+        REF: ${{ inputs.asset-core-ref }}
+      run: |
+        git clone --depth 1 --branch "$REF" "https://x-access-token:${TOKEN}@github.com/collective-group/collective-asset-core.git" ../collective-asset-core
     - uses: pnpm/action-setup@v4
     - uses: actions/setup-node@v4
       with:
         node-version-file: .nvmrc
         cache: pnpm
+    - name: Build @collective/asset-core
+      shell: bash
+      working-directory: ../collective-asset-core
+      run: pnpm install --frozen-lockfile && pnpm build
     - run: pnpm install --frozen-lockfile
       shell: bash

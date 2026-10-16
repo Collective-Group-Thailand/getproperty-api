@@ -41,7 +41,7 @@ export default tseslint.config(
   },
   {
     // Nest DI reads constructor parameter types at runtime: type-only imports would erase them.
-    files: ['src/**/*.ts', 'test/**/*.ts', 'scripts/**/*.ts'],
+    files: ['src/**/*.ts', 'test/**/*.ts', 'scripts/**/*.ts', 'prisma/seed/**/*.ts'],
     rules: { '@typescript-eslint/consistent-type-imports': 'off' },
   },
   {
@@ -56,7 +56,7 @@ export default tseslint.config(
   },
   {
     // CLI entry points report to the terminal.
-    files: ['scripts/**/*.ts'],
+    files: ['scripts/**/*.ts', 'prisma/seed/**/*.ts'],
     rules: { 'no-console': 'off' },
   },
   {
