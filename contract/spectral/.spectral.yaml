@@ -1,0 +1,179 @@
+# getproperty contract ruleset — `pnpm contract:lint` (docs/contract/api-conventions.md §5).
+# Runs on the generated contract/openapi.json; any warning fails CI (--fail-severity warn).
+extends: [[spectral:oas, recommended]]
+functionsDir: ./functions
+functions:
+  - responseSet
+  - hasExample
+  - noInlineEnum
+  - objectShape
+  - noDuplicateSchemas
+  - noRealPersonalData
+  - surfaceSecurity
+  - statusByKind
+  - fieldFormats
+
+rules:
+  # --- built-in rules tightened ---------------------------------------------------------------
+  tag-description: error
+  operation-tag-defined: error
+  operation-description: error
+  oas3-unused-component: error
+  oas3-valid-media-example: error
+  oas3-valid-schema-example: error
+
+  # --- operations ----------------------------------------------------------------------------
+  getproperty-operation-id:
+    description: operationId is `<surface>.<resource>.<action>` (e.g. owner.bills.issue).
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      field: operationId
+      function: pattern
+      functionOptions:
+        match: '^(auth|owner|tenant|staff|admin|device|webhooks|ops)\.[a-z][A-Za-z0-9]*\.[a-z][A-Za-z0-9]*$'
+
+  getproperty-operation-summary:
+    description: Every operation has a one-line summary.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      field: summary
+      function: truthy
+
+  getproperty-operation-implements:
+    description: The description cites the decision (D-###) or ADR (ADR-####) the operation implements.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      field: description
+      function: pattern
+      functionOptions:
+        match: '(D-\d{3}|ADR-\d{4})'
+
+  getproperty-operation-surface-tag:
+    description: Exactly one tag, prefixed by the surface (owner., tenant., staff., admin., device., auth., webhooks., ops.).
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      field: tags
+      function: schema
+      functionOptions:
+        schema:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            type: string
+            pattern: '^(auth|owner|tenant|staff|admin|device|webhooks|ops)\.[a-z][A-Za-z0-9]*$'
+
+  getproperty-operation-security-declared:
+    description: Every operation declares `security` (an empty list means public, on purpose).
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      field: security
+      function: defined
+
+  getproperty-surface-security:
+    description: /v1/owner, /v1/staff, /v1/tenant, /v1/admin and /v1/device operations use their audience's bearer scheme.
+    message: '{{error}}'
+    resolved: false
+    severity: error
+    given: $.paths
+    then:
+      function: surfaceSecurity
+
+  getproperty-response-set:
+    description: 2xx + 500, a 4xx set (401/403 when secured, 400/422 with a body), all errors as problem+json.
+    message: '{{error}}'
+    resolved: false
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      function: responseSet
+
+  getproperty-status-by-kind:
+    description: If-Match ⇒ 412, Idempotency-Key ⇒ 409, 202 ⇒ the polling operation is named (@ApiAsync).
+    message: '{{error}}'
+    resolved: false
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      function: statusByKind
+
+  # --- examples ------------------------------------------------------------------------------
+  getproperty-response-example:
+    description: Every response body has an example.
+    message: '{{error}}'
+    resolved: false
+    severity: error
+    given: $.paths[*][*].responses[*].content[*]
+    then:
+      function: hasExample
+
+  getproperty-request-example:
+    description: Every request body has an example.
+    message: '{{error}}'
+    resolved: false
+    severity: error
+    given: $.paths[*][*].requestBody.content[*]
+    then:
+      function: hasExample
+
+  getproperty-no-real-personal-data:
+    description: Examples must use obviously fake data (see contract/spectral/README.md).
+    message: '{{error}}'
+    resolved: false
+    severity: error
+    given: $
+    then:
+      function: noRealPersonalData
+
+  # --- schemas -------------------------------------------------------------------------------
+  getproperty-no-inline-enum:
+    description: Enums are named components (enumName), never inline.
+    message: '{{error}}'
+    resolved: false
+    severity: error
+    given: $
+    then:
+      function: noInlineEnum
+
+  getproperty-object-shape:
+    description: '`type: object` must declare properties, additionalProperties or composition.'
+    message: '{{error}}'
+    resolved: false
+    severity: error
+    given: $
+    then:
+      function: objectShape
+
+  getproperty-field-formats:
+    description: Money fields are decimal strings (never numbers); …At → date-time; …On / …Date → date.
+    message: '{{error}}'
+    resolved: false
+    severity: error
+    given: $.components.schemas
+    then:
+      function: fieldFormats
+
+  getproperty-no-duplicate-schemas:
+    description: Two component schemas must not have the same shape.
+    message: '{{error}}'
+    resolved: false
+    severity: error
+    given: $.components.schemas
+    then:
+      function: noDuplicateSchemas
+
+  # --- getproperty additions -----------------------------------------------------------------
+  getproperty-compliance-legal-ref:
+    description: Every `compliance.*` problem example carries `legalRef` (contract §3, D-020).
+    message: '{{error}}'
+    resolved: false
+    severity: error
+    given: $.components.examples[?(@property.match(/^problem\.compliance\./))].value
+    then:
+      field: legalRef
+      function: truthy

@@ -1,0 +1,27 @@
+# ADR-0003 — Auth audiences & tokens (org, tenant, platform, device)
+
+**Status:** Accepted (2026-10-16, B1.1) — implemented in B1.3
+**Decision ids:** D-004, D-025, D-060, D-061, D-090, D-091, D-130 · contract: `docs/contract/api-conventions.md` §2, §4, §7, §8
+
+## Context
+Four kinds of principals use one API, with sharply different data visibility: an org's people (owner, manager, accountant, staff — D-090) who must only ever see their own org's rows (D-004); tenants in a LINE Mini App who must only see their own leases (D-060); Collective Group's platform staff who see every org but whose reads into an org are audited and, for Support, time-boxed (D-090); and gateways in buildings that publish telemetry over MQTT and call a few HTTPS endpoints (D-130). The browser apps run behind a BFF, so the backend never deals with cookies.
+
+## Decision
+- **Audiences:** `org`, `tenant`, `platform`, `device`. Each access token carries exactly one `aud`; a guard on each surface prefix rejects any other audience (`/v1/owner` and `/v1/staff` ← `org`, `/v1/tenant` ← `tenant`, `/v1/admin` ← `platform`, `/v1/device` ← `device`). `/v1/auth` issues tokens; `/webhooks` uses provider signatures, not tokens. The OpenAPI security schemes are named after the audiences: `orgBearer`, `tenantBearer`, `platformBearer`, `deviceBearer`.
+- **Access token:** signed JWT, **EdDSA (Ed25519)**, 10–15 minutes. Claims: `sub` (user or device uuid), `aud`, `sid` (session family, enables revocation), `scp` — scopes `org:<uuid>` (every org the user belongs to), `property:<uuid>` (a Staff role limited to properties), `lease:<uuid>` (a tenant's rooms), `iat`, `exp`, `kid`. Public keys at `/v1/auth/.well-known/jwks.json`; the private keys come from Secrets Manager (`JWT_SIGNING_KEYS`, a JSON array: the first signs, the others still verify, so rotation publishes the new `kid` before signing with it).
+- **Refresh token:** opaque random value, stored **hashed** in `auth_sessions`, single-use and rotating; presenting an already-rotated token revokes the whole session family (theft detection). Logout revokes the session. Revoked families are also marked in Redis for the access-token lifetime so their access tokens stop at once; when Redis is unreachable the guard fails closed (503).
+- **Tokens in bodies, not cookies:** login endpoints return `{ accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt, subject }`; the web BFF keeps them in httpOnly cookies and forwards `Authorization: Bearer`. Browsers never hold tokens in JS-readable storage.
+- **Login methods per audience:** org users — phone OTP (6 digits; rate and attempt limits; primary) or email + password (argon2id) + optional TOTP; tenants — LINE Login / LIFF id-token exchange with account linking (primary) or phone-OTP magic link; platform — email + password + **mandatory TOTP**; devices — **mTLS bootstrap**: `POST /v1/device/bootstrap` with the one-time provisioning code mints the X.509 client certificate (CN `gw-<gatewayId>`, 12-month rotation) and a short-lived device JWT; the certificate is the MQTT identity and an EMQX ACL row (`gp/v1/<gatewayId>/+`) is written at bootstrap.
+- **Org context (contract §8):** every owner/staff request runs in exactly one org — the single `org:` scope of the token, or `X-Org-Id` when the user has several (it must be one of the token's org scopes). `OrgContextMiddleware` → `OrgContext` → repositories add `org_id` to every query; a cross-org id anywhere (URL, filter, file key, cursor) is a **404**, and every module's test suite proves it. B1.1 ships the resolver and the header checks; B1.3 wires the token scopes.
+- **Authorisation is separate from authentication:** permissions `resource.action` (D-091) checked by `@Can()`; org roles Owner / Manager / Staff / Accountant and platform roles Platform admin / Support / Field engineer / Finance (D-090); **support grants** gate Support reads into an org (time-boxed, approved by the org Owner or granted by a Platform admin for incidents, every read audited). Tenant is an audience, not a role: tenant data is scoped by `lease:` scopes, not permissions.
+- **Never logged:** tokens, OTPs, passwords, TOTP secrets, provisioning codes, national ids, passport numbers, bank accounts (pino redaction list, `src/common/logging/redaction.ts`; PDPA, D-025).
+
+## Alternatives considered
+- **One audience with roles only:** a tenant token could reach owner endpoints by a permission bug; audiences fail closed at the prefix before any business code runs.
+- **Sessions in cookies on the API:** ties the API to browsers; the LIFF app, the staff PWA and the BFF all prefer bearer tokens.
+- **Shared broker password per building** instead of per-gateway certificates: one leaked credential would let any device publish for any meter; per-device certificates make the ACL (`gp/v1/<gatewayId>/+`) enforceable by the broker.
+
+## Consequences
+- Every protected controller declares its surface with `ApiSurface()` so the contract shows the right scheme; `@Public()` and `@OptionalAuth(audience)` are the only ways to relax it and both are visible in the document (`security: []` / `[{}, { scheme: [] }]`).
+- `auth_sessions`, `users`, `roles`, `permissions`, `user_roles` (scope `platform | org:{id} | property:{id}`), `support_grants` and the device certificate columns are part of the B1.2 schema design.
+- Token lifetimes, OTP policy and lockout rules are **settings** (ADR-0004), seeded as proposed values and confirmed by the security review before launch.

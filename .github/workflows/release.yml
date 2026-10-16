@@ -1,0 +1,28 @@
+name: Release
+
+# Tag vX.Y.Z → GitHub release with contract/openapi.json and contract/device-protocol.json attached
+# (api-conventions §1): getproperty-web pins the OpenAPI asset, getproperty-edge the device protocol.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Contracts at this tag match the code and pass contract:lint
+        run: |
+          pnpm contract:build
+          pnpm contract:lint
+          git diff --exit-code -- contract/openapi.json contract/device-protocol.json
+      - name: Tag matches package.json version
+        run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
+      - name: Publish release with the contracts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" contract/openapi.json contract/device-protocol.json --title "$GITHUB_REF_NAME" --generate-notes --verify-tag

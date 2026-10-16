@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+src/generated
+contract/openapi.json
+contract/device-protocol.json
+# Documentation is hand-formatted; decisions.md and the contract documents must stay identical to getproperty-web / getproperty-edge.
+*.md
+docs
+.eslintcache

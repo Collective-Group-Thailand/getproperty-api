@@ -1,0 +1,124 @@
+{
+  "http": {
+    "bad_request": {
+      "title": "Bad request",
+      "detail": "The request is invalid. Check the data and try again."
+    },
+    "malformed_json": { "title": "Malformed JSON", "detail": "The request body is not valid JSON." },
+    "not_found": { "title": "Not found", "detail": "The requested resource or route was not found." },
+    "method_not_allowed": {
+      "title": "Method not allowed",
+      "detail": "This route does not support the requested method."
+    },
+    "conflict": {
+      "title": "Conflict",
+      "detail": "The request conflicts with the current state of the resource."
+    },
+    "payload_too_large": {
+      "title": "Payload too large",
+      "detail": "The request body exceeds the allowed size."
+    },
+    "unsupported_media_type": {
+      "title": "Unsupported media type",
+      "detail": "The request content type is not supported."
+    },
+    "too_many_requests": {
+      "title": "Too many requests",
+      "detail": "Too many requests. Please wait a moment and try again."
+    },
+    "error": { "title": "Request failed", "detail": "The request could not be completed." }
+  },
+  "auth": {
+    "unauthenticated": { "title": "Authentication required", "detail": "Please sign in to continue." },
+    "forbidden": { "title": "Forbidden", "detail": "You do not have permission to perform this action." },
+    "wrong_audience": {
+      "title": "Wrong token audience",
+      "detail": "This token cannot be used on this part of the API."
+    },
+    "scope_unavailable": {
+      "title": "Scope unavailable",
+      "detail": "The token has no scope for the requested organisation, property or lease."
+    }
+  },
+  "validation": {
+    "failed": { "title": "Validation failed", "detail": "Some fields are invalid. See errors for details." }
+  },
+  "org": {
+    "context_required": {
+      "title": "Organisation required",
+      "detail": "Choose the organisation with the X-Org-Id header."
+    },
+    "context_invalid": { "title": "Invalid organisation id", "detail": "X-Org-Id must be a uuid." },
+    "not_in_scope": {
+      "title": "Organisation not accessible",
+      "detail": "Your account has no access to this organisation."
+    }
+  },
+  "idempotency": {
+    "key_required": {
+      "title": "Idempotency-Key required",
+      "detail": "This operation requires an Idempotency-Key header (uuid)."
+    },
+    "key_invalid": { "title": "Invalid Idempotency-Key", "detail": "Idempotency-Key must be a uuid." },
+    "key_reused": {
+      "title": "Idempotency-Key reused",
+      "detail": "This Idempotency-Key was already used with a different request body."
+    },
+    "in_progress": {
+      "title": "Request in progress",
+      "detail": "A request with this Idempotency-Key is still being processed. Retry shortly."
+    }
+  },
+  "concurrency": {
+    "stale": {
+      "title": "Resource changed",
+      "detail": "The resource was modified by someone else. Reload and try again."
+    },
+    "precondition_required": {
+      "title": "If-Match required",
+      "detail": "Send the If-Match header with the ETag of the resource."
+    }
+  },
+  "compliance": {
+    "tariff_cap": {
+      "title": "Bill line above the utility tariff cap",
+      "detail": "The price per unit is above the utility's tariff; the bill cannot be issued (D-021)."
+    },
+    "deposit_cap": {
+      "title": "Deposit above the legal cap",
+      "detail": "Security deposit plus advance rent exceed the cap of the residential rental announcement (D-023)."
+    },
+    "bill_immutable": {
+      "title": "Bill already issued",
+      "detail": "An issued bill cannot be changed; issue a credit or debit note instead (D-040)."
+    },
+    "no_power_cutoff": {
+      "title": "Power cut-off not allowed",
+      "detail": "The platform never cuts power or access for arrears (D-024)."
+    }
+  },
+  "device": {
+    "invalid_payload": {
+      "title": "Invalid device payload",
+      "detail": "The gateway payload does not match the device protocol."
+    }
+  },
+  "provider": {
+    "unavailable": {
+      "title": "Provider unavailable",
+      "detail": "A third-party provider is unavailable. Please try again later."
+    }
+  },
+  "service": {
+    "unavailable": {
+      "title": "Service unavailable",
+      "detail": "The service is temporarily unavailable. Please try again later."
+    }
+  },
+  "internal": {
+    "unexpected": {
+      "title": "Unexpected error",
+      "detail": "Something went wrong on our side. The request id helps us find it."
+    }
+  }
+}

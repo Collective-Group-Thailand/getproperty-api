@@ -1,0 +1,95 @@
+# Local infrastructure for getproperty-api. `docker compose up -d`, then `pnpm dev` / `pnpm dev:worker` /
+# `pnpm dev:ingest` with DATA_STORES_MODE=real. Images match Testcontainers and production (ADR-0001).
+# Credentials are dev-only and obviously fake.
+name: getproperty-api
+
+services:
+  postgres:
+    image: timescale/timescaledb-ha:pg18
+    environment:
+      POSTGRES_USER: getproperty
+      POSTGRES_PASSWORD: getproperty
+      POSTGRES_DB: getproperty
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/home/postgres/pgdata/data
+      - ./docker/postgres/init-shadow-db.sql:/docker-entrypoint-initdb.d/10-shadow-db.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U getproperty -d getproperty']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  emqx:
+    # MQTT 5 broker (D-130). Dev: password auth from docker/emqx/users.json, ACL from docker/emqx/acl.conf.
+    # Production uses per-gateway X.509 client certificates and ACL rows pushed by the API (B1.3 / B3.1).
+    image: emqx/emqx:5.8
+    environment:
+      EMQX_NODE__NAME: emqx@127.0.0.1
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: getproperty
+      EMQX_AUTHENTICATION__1__MECHANISM: password_based
+      EMQX_AUTHENTICATION__1__BACKEND: built_in_database
+      EMQX_AUTHENTICATION__1__USER_ID_TYPE: username
+      EMQX_AUTHENTICATION__1__PASSWORD_HASH_ALGORITHM__NAME: plain
+      EMQX_AUTHENTICATION__1__PASSWORD_HASH_ALGORITHM__SALT_POSITION: disable
+      EMQX_AUTHENTICATION__1__BOOTSTRAP_FILE: /opt/emqx/etc/getproperty-users.json
+      EMQX_AUTHENTICATION__1__BOOTSTRAP_TYPE: plain
+      EMQX_AUTHORIZATION__NO_MATCH: deny
+      EMQX_AUTHORIZATION__SOURCES__1__TYPE: file
+      EMQX_AUTHORIZATION__SOURCES__1__ENABLE: 'true'
+      EMQX_AUTHORIZATION__SOURCES__1__PATH: /opt/emqx/etc/getproperty-acl.conf
+    ports:
+      - '1883:1883' # MQTT
+      - '8883:8883' # MQTT over TLS (self-signed dev certificate shipped with EMQX)
+      - '8083:8083' # MQTT over WebSocket
+      - '18083:18083' # dashboard (admin / getproperty)
+    volumes:
+      - ./docker/emqx/acl.conf:/opt/emqx/etc/getproperty-acl.conf:ro
+      - ./docker/emqx/users.json:/opt/emqx/etc/getproperty-users.json:ro
+      - emqx-data:/opt/emqx/data
+    healthcheck:
+      test: ['CMD', 'emqx', 'ctl', 'status']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  localstack:
+    image: localstack/localstack:4
+    environment:
+      SERVICES: s3,secretsmanager
+      AWS_DEFAULT_REGION: ap-southeast-1
+    ports:
+      - '4566:4566'
+    volumes:
+      - ./docker/localstack/init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'awslocal s3api head-bucket --bucket getproperty-dev']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - '1025:1025' # SMTP
+      - '8025:8025' # web UI
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  postgres-data:
+  emqx-data:

@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "resolvePackageJsonExports": true,
+    "resolveJsonModule": true,
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "types": ["node", "jest"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": false,
+    "strictPropertyInitialization": false,
+    "useUnknownInCatchVariables": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "declaration": false,
+    "removeComments": true,
+    "sourceMap": true,
+    "incremental": true,
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "paths": {
+      "@common/*": ["./src/common/*"],
+      "@config/*": ["./src/config/*"],
+      "@database/*": ["./src/database/*"],
+      "@platform/*": ["./src/platform/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@integrations/*": ["./src/integrations/*"],
+      "@generated/*": ["./src/generated/*"]
+    }
+  },
+  "include": ["src", "test", "scripts", "jest.config.ts"]
+}

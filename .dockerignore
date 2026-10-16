@@ -1,0 +1,16 @@
+.git
+.github
+.vscode
+node_modules
+dist
+coverage
+src/generated
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+docs
+test
+contract
+docker
