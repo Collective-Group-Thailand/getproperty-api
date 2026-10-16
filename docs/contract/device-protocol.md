@@ -1,6 +1,7 @@
 # getproperty Device Protocol (v1) — MQTT between `getproperty-edge` and `getproperty-api`
 
 > Owned by `getproperty-api`; identical copy in `getproperty-edge/docs/contract/device-protocol.md`. JSON Schemas of every payload are generated into `contract/device-protocol.json` by `pnpm contract:build` (from the same DTO classes the MQTT ingest worker validates with). Implements D-130, D-131, D-030, D-033, D-034.
+> **Schema mapping (schema-design v2, D-151/D-152):** `gatewayId` and `meterId` are `smart.device` ids (a meter device is linked to its `core.asset_item` once installed, and to a unit or common area through `core.meter_assignment`); `roomCode` is a display label only — it carries `core.unit.unit_no` or the meter assignment's `code` for common areas, and keeps its wire name until a coordinated protocol change with `getproperty-edge`. Accepted readings land in `smart.telemetry_point` (insight) and `smart.meter_reading` (billing, D-030); dedup stays `(meterId, seq)` (D-143). The protocol itself is unchanged by the schema lock.
 
 ## 1. Transport & identity
 - Broker: EMQX (managed or self-hosted), MQTT 5 over TLS 1.2+ on 8883; WebSocket 443 fallback for buildings whose network blocks 8883.
