@@ -13,7 +13,7 @@ NestJS backend of getproperty: a multi-tenant SaaS for Thai apartment owners (30
 
 ## Hard rules
 - **Tenancy**: every business row carries `org_id`; repositories take an `OrgContext`; cross-org access is a `404`; tests prove it for every module (contract §8).
-- **Compliance before convenience** (D-020–D-025): a bill line above the utility tariff cap is refused (`compliance.tariff_cap`), bills are immutable once issued (D-040), the platform never cuts power or revokes access for arrears (D-024, D-071), deposits follow the 7-day settlement flow (D-023). Every compliance rule has an id, a legal reference and a test.
+- **Compliance before convenience** (D-020–D-025): a bill line above the utility tariff triggers the legal warning and requires an Owner acknowledgement, and is blocked only where the platform admin set `block` (`compliance.tariff_cap`, D-021a), bills are immutable once issued (D-040), the platform never cuts power or revokes access for arrears (D-024, D-071), deposits follow the 7-day settlement flow (D-023). Every compliance rule has an id, a legal reference and a test.
 - **Readings → bills**: bills come only from cumulative registers (D-030); the billing engine reads `readings`, never raw telemetry; every reading keeps its `source`, `confidence` and evidence (D-012, D-035).
 - Every business value that a decision marks as configurable is a **setting with effective dates, audited, editable by the role named in the decision** — never a constant in code. Tariffs are platform-level versioned tables (D-021).
 - Money: `numeric(14,2)` in DB, `decimal.js` in code, decimal **strings** in JSON; meter quantities `numeric(12,3)`. Time: `timestamptz` (UTC), business rules in `Asia/Bangkok`.
