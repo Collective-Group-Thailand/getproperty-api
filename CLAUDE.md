@@ -1,27 +1,38 @@
 # CLAUDE.md — getproperty-api
 
 **getproperty — บิลทำเอง เก็บเงินเอง ถูกกฎหมาย** · operated by **Collective Group (Thailand)**
-NestJS backend of getproperty: a multi-tenant SaaS for Thai apartment owners (30–300 rooms) with IoT metering — meter readings arrive automatically → bills computed at the lawful utility tariff (สคบ. 2568) → sent through LINE → paid by Thai QR and confirmed by the bank → receipt issued, with the owner touching nothing. Frontend is the separate repo `getproperty-web` (one Next.js app: owner, tenant, staff and admin zones); the gateway agent is `getproperty-edge`.
+NestJS backend of getproperty, Collective Group's **Building Operations platform** (D-150): one neutral core for four tenant types — `apartment` (the first customer, Phase 1), `condo_juristic`, `pm_company`, `landlord`. Phase 1 delivers group A to the first apartment: meter readings arrive automatically → invoices computed at the tenant's rate plan with the สคบ. 2568 utility-tariff warning → sent through LINE → paid by Thai QR and confirmed by the bank → receipt issued, with the owner touching nothing.
+Sibling repos: `getproperty-web` (owner console, staff PWA, platform admin), `getproperty-liff` (LINE Mini App for residents, technicians, landlords — D-154), `getproperty-edge` (gateway agent), and the package **`collective-asset-core`** (owns the `core` schema, its migrations and the integration event contracts — D-153, ADR-0010).
+
+## Vocabulary (D-151 — never mix these up)
+- **tenant** = the SaaS customer organisation (`core.tenant`, `type`), never the person who rents. Code: `TenantContext`, `@CurrentTenant()`, `X-Tenant-Id`, scope `tenant:<uuid>`.
+- **party** = any person or company (`core.party`); a lessee is a party with `occupancy.role = tenant` and `lease.lessee_party_id`. A login is a `core.user_account`, linked to parties by `core.party_user_link`.
+- Audiences: **operator** (people working for a tenant: `/v1/owner`, `/v1/staff`), **resident** (`/v1/resident`, served by getproperty-liff), **technician** (`/v1/technician`, R2), **platform** (`/v1/admin`), **device** (`/v1/device`).
+- Assets: `property` → `building` (`owner_tenant_id`, `operator_tenant_id`) → `floor` → `unit` (`unit.type`); meters, gateways, locks, pumps are `asset_item`; meters bind to units through `meter_assignment`; bills are `invoice` + `invoice_line.source_type`; readings are `smart.meter_reading`.
 
 ## Read before every task
 1. `docs/prompts/00-master-plan.md` — architecture, conventions, run order, Definition of Done.
-2. `docs/decisions.md` — **business and legal decisions (D-###). They override everything else.**
-3. `docs/contract/api-conventions.md` — API contract rules shared with `getproperty-web` and `getproperty-edge`; `docs/contract/device-protocol.md` for anything touching gateways or readings.
-4. The prompt you were asked to execute (`docs/prompts/B*.md`) — **only the deliverable you were given**.
-5. `docs/PROGRESS.md` (latest entries).
-6. `../getpack-api` (if checked out beside this repo) — a **conventions reference only** (D-003): copy structure, tooling, platform-module patterns and documentation decorators; never copy packaging business logic.
+2. `docs/decisions.md` — **business and legal decisions (D-###). They override everything else**; D-150–D-161 supersede conflicting earlier text.
+3. `docs/schema-design.md` (v2) — every table, column, enum, index, RLS rule and which deliverable migrates it. A deviation is a PR to that file first.
+4. `docs/contract/api-conventions.md` — API contract rules shared with `getproperty-web`, `getproperty-liff` and `getproperty-edge`; `docs/contract/device-protocol.md` for anything touching gateways or readings.
+5. The prompt you were asked to execute (`docs/prompts/B*.md`) — **only the deliverable you were given**.
+6. `docs/PROGRESS.md` (latest entries); `docs/platform-blueprint.md` for context on groups B–D (do not build them).
+7. `../getpack-api` (if checked out beside this repo) — a **conventions reference only** (D-003): copy structure, tooling, platform-module patterns and documentation decorators; never copy packaging business logic.
 
 ## Hard rules
-- **Tenancy**: every business row carries `org_id`; repositories take an `OrgContext`; cross-org access is a `404`; tests prove it for every module (contract §8).
-- **Compliance before convenience** (D-020–D-025): a bill line above the utility tariff triggers the legal warning and requires an Owner acknowledgement, and is blocked only where the platform admin set `block` (`compliance.tariff_cap`, D-021a), bills are immutable once issued (D-040), the platform never cuts power or revokes access for arrears (D-024, D-071), deposits follow the 7-day settlement flow (D-023). Every compliance rule has an id, a legal reference and a test.
-- **Readings → bills**: bills come only from cumulative registers (D-030); the billing engine reads `readings`, never raw telemetry; every reading keeps its `source`, `confidence` and evidence (D-012, D-035).
-- Every business value that a decision marks as configurable is a **setting with effective dates, audited, editable by the role named in the decision** — never a constant in code. Tariffs are platform-level versioned tables (D-021).
-- Money: `numeric(14,2)` in DB, `decimal.js` in code, decimal **strings** in JSON; meter quantities `numeric(12,3)`. Time: `timestamptz` (UTC), business rules in `Asia/Bangkok`.
+- **Tenancy (D-152)**: every row carries `tenant_id`; repositories take a `TenantContext`, add `tenant_id` to every query and run every transaction with `SET LOCAL app.tenant_id`; RLS policies are enforced for the application role. Cross-tenant reads only through `core.asset_access_grant`; building rows are visible to the building's owner and operator tenants. A cross-tenant id is a `404`; tests prove it for every module (contract §8).
+- **Asset core is a package (D-153)**: never write a migration that creates or alters a `core.*` table here — change `collective-asset-core`, release, bump the dependency. App migrations may reference `core` tables (FKs) and run after the package's migrations.
+- **Neutral naming**: no table, column, enum, DTO or route named `org`, `room`, `apartment`, `bill`, `meter_point`, or `tenant` in the sense of a renter. Enums are PostgreSQL enums (`tenant.type`, `unit.type`, `invoice_line.source_type`, every status).
+- **Compliance before convenience** (D-020–D-025): an invoice line above the utility's effective rate triggers the legal warning and requires an Owner acknowledgement (`platform.compliance_acknowledgement`), and is blocked only where the platform admin set `block` (`compliance.tariff_cap`, D-021a); invoices are immutable once issued (D-040); the platform never cuts power or revokes access for arrears (D-024, D-071, D-157); deposits follow the 7-day settlement flow (D-023). The สคบ. 2568 scope is ≥ 3 units (D-158). Every compliance rule has an id, a legal reference and a test.
+- **Readings → invoices**: invoices come only from cumulative registers (D-030); the billing engine reads `smart.meter_reading`, never raw telemetry; every reading keeps its `source`, `confidence` and evidence (D-012, D-035); corrections supersede (D-142); dedup per D-143.
+- Every business value that a decision marks as configurable is a **setting with effective dates, audited, editable by the role named in the decision** — never a constant in code. Utility tariffs (the cap reference) are platform-level versioned tables; tenant rates are versioned `rate_plan`s (D-021a, D-151).
+- Money: `numeric(14,2)` in DB, `decimal.js` in code, decimal **strings** in JSON; meter quantities `numeric(12,3)`. Time: `timestamptz` (UTC), business rules in `Asia/Bangkok`. Ids: `uuid` (UUIDv7) primary keys.
+- PII (ID/passport numbers, bank accounts) is encrypted per column with the tenant's data key; every decrypt is audited (blueprint rule 5, D-148).
 - Every endpoint change → `pnpm contract:build` **and** `pnpm contract:lint`, then commit `contract/openapi.json` (and `contract/device-protocol.json` when payloads change) in the same commit. Every operation needs operationId, summary, description with its decision id, security, full status-code set and examples (contract §5).
-- Every state change: one DB transaction + audit/activity row + domain event via the outbox. Notifications, document generation, ledger-like postings and analytics are **event subscribers**, never inline.
+- Every state change: one DB transaction + audit/activity row + domain event via the outbox. Notifications, document generation, ledger-like postings, analytics and integration events (`bridge.integration_event`) are **event subscribers**, never inline. Anything with an SLA or a clock runs on the workflow engine (D-159).
 - Money-moving and irreversible operations require `Idempotency-Key`, explicit permissions and maker-checker where decisions say so.
-- No secrets, OTPs, tokens, bank or ID-card data in logs (PDPA, D-025). Platform company data (Collective Group legal name, tax id, logo) comes from `settings`; each org's company data from `org_settings`.
+- No secrets, OTPs, tokens, bank or ID-card data in logs (PDPA, D-025). Platform company data (Collective Group legal name, tax id, logo) comes from `platform.setting`; each tenant's company data from `core.tenant` + tenant settings.
 - Plan Mode first for each deliverable; wait for approval. Small vertical slices, Conventional Commits, CI green per slice. When ambiguous: record the assumption in `docs/PROGRESS.md` and choose the most conservative option; never guess a legal or business value — write an `O-###` in `docs/decisions.md`.
 
 ## Commands
-`pnpm dev` · `pnpm dev:worker` · `pnpm dev:ingest` · `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm test:int` · `pnpm test:e2e` · `pnpm contract:build` · `pnpm contract:lint` · `pnpm db:migrate` · `pnpm db:seed:dev` · `pnpm sim:gateway` (publishes fake telemetry for a seeded building) · `docker compose up -d`
+`pnpm dev` · `pnpm dev:worker` · `pnpm dev:ingest` · `pnpm lint` · `pnpm format:check` · `pnpm typecheck` · `pnpm test` · `pnpm test:int` · `pnpm test:e2e` · `pnpm contract:build` · `pnpm contract:lint` · `pnpm build` · `pnpm db:migrate` (asset-core migrations, then this repo's) · `pnpm db:seed:dev` · `pnpm sim:gateway` (publishes fake telemetry for a seeded building) · `docker compose up -d`
