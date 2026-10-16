@@ -53,7 +53,9 @@ const pg = new EmbeddedPostgres({
 async function start() {
   const initialised = existsSync(resolve(dataDir, 'PG_VERSION'));
   if (!initialised) {
-    console.log(`db:local — initialising a new cluster in ${dataDir}${osUser ? ` (as OS user ${osUser})` : ''}`);
+    console.log(
+      `db:local — initialising a new cluster in ${dataDir}${osUser ? ` (as OS user ${osUser})` : ''}`,
+    );
     await pg.initialise();
   }
   await pg.start();
@@ -72,9 +74,13 @@ async function start() {
       `SELECT name FROM pg_available_extensions WHERE name IN ('timescaledb','pgcrypto','pg_trgm','citext','btree_gist') ORDER BY 1`,
     );
     const names = ext.map((r) => r.name);
-    console.log(`db:local — PostgreSQL ready on 127.0.0.1:${port}; extensions available: ${names.join(', ')}`);
+    console.log(
+      `db:local — PostgreSQL ready on 127.0.0.1:${port}; extensions available: ${names.join(', ')}`,
+    );
     if (!names.includes('timescaledb')) {
-      console.log('db:local — timescaledb is NOT available in the embedded build: hypertables need docker compose.');
+      console.log(
+        'db:local — timescaledb is NOT available in the embedded build: hypertables need docker compose.',
+      );
     }
   } finally {
     await client.end();
@@ -115,7 +121,11 @@ switch (command) {
     await stop();
     break;
   case 'status':
-    console.log(existsSync(resolve(dataDir, 'postmaster.pid')) ? 'db:local — a cluster appears to be running' : 'db:local — not running');
+    console.log(
+      existsSync(resolve(dataDir, 'postmaster.pid'))
+        ? 'db:local — a cluster appears to be running'
+        : 'db:local — not running',
+    );
     printUrls();
     break;
   default:
