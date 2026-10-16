@@ -1,0 +1,392 @@
+// `pnpm db:seed` (reference data) and `pnpm db:seed:dev` (reference + the development tenant).
+//   node dist/prisma/seed/run.js reference|dev
+// Idempotent: every insert is ON CONFLICT DO NOTHING / DO UPDATE on a natural key, so running twice changes
+// nothing (the integration suite proves it). Seeds write platform catalogues and core rows, so they run with a
+// role that bypasses RLS: a superuser (local embedded cluster), or a login that is a member of gp_platform
+// (the script switches with SET ROLE gp_platform). Business values come from src/core/* catalogues and
+// prisma/seed/data/* with their decision ids and sources.
+import { Client, type ClientBase } from 'pg';
+
+import { COMPLIANCE_RULES } from '../../src/core/compliance/rules';
+import { PERMISSIONS, ROLE_PERMISSIONS, ROLES, splitPermission } from '../../src/core/rbac/catalogue';
+import { SETTINGS } from '../../src/core/settings/catalogue';
+import { HOLIDAYS } from './data/holidays';
+import { NOTIFICATION_TEMPLATES } from './data/notifications';
+import { CONSENT_PURPOSES, RETENTION_POLICIES } from './data/privacy';
+import { UTILITY_TARIFFS } from './data/utility-tariffs';
+
+export type SeedMode = 'reference' | 'dev';
+
+/** Date the reference data was authored (retention policies are keyed by it). */
+const SEED_DATE = '2026-10-17';
+
+/** Fixed ids of the development data (uuidv7-shaped) so re-runs and tests can find them. */
+export const DEV = {
+  tenantId: '0199f2a0-0000-7000-8000-000000000001',
+  legalPartyId: '0199f2a0-0000-7000-8000-000000000002',
+  propertyId: '0199f2a0-0000-7000-8000-000000000003',
+  buildingId: '0199f2a0-0000-7000-8000-000000000004',
+  users: {
+    owner: '0199f2a0-0000-7000-8000-0000000000a1',
+    manager: '0199f2a0-0000-7000-8000-0000000000a2',
+    staff: '0199f2a0-0000-7000-8000-0000000000a3',
+    platformAdmin: '0199f2a0-0000-7000-8000-0000000000b1',
+    support: '0199f2a0-0000-7000-8000-0000000000b2',
+  },
+} as const;
+
+type Log = (line: string) => void;
+
+async function tx<T>(db: ClientBase, work: () => Promise<T>): Promise<T> {
+  await db.query('BEGIN');
+  try {
+    const result = await work();
+    await db.query('COMMIT');
+    return result;
+  } catch (error) {
+    await db.query('ROLLBACK');
+    throw error;
+  }
+}
+
+/** Seeds the reference data (and, in dev mode, the development tenant). Returns row counts per seeded table. */
+export async function runSeed(
+  db: ClientBase,
+  mode: SeedMode,
+  log: Log = () => undefined,
+): Promise<Record<string, number>> {
+  const { rows: who } = await db.query<{ rolsuper: boolean; rolbypassrls: boolean }>(
+    'SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user',
+  );
+  if (!who[0]?.rolsuper && !who[0]?.rolbypassrls) {
+    await db.query('SET ROLE gp_platform');
+    log('seed: running as gp_platform (BYPASSRLS)');
+  }
+
+  await tx(db, () => seedRbac(db));
+  await tx(db, () => seedSettings(db));
+  await tx(db, () => seedComplianceRules(db));
+  await tx(db, () => seedUtilityTariffs(db));
+  await tx(db, () => seedCalendar(db));
+  await tx(db, () => seedPrivacy(db));
+  await tx(db, () => seedNotificationTemplates(db));
+  if (mode === 'dev') await tx(db, () => seedDev(db));
+
+  const counts = await countRows(db);
+  for (const [table, n] of Object.entries(counts)) log(`seed: ${table.padEnd(42)} ${n}`);
+  return counts;
+}
+
+async function seedRbac(db: ClientBase): Promise<void> {
+  for (const r of ROLES) {
+    await db.query(
+      `INSERT INTO platform.role (key, scope_kind, name_th, name_en, description, is_system)
+       VALUES ($1, $2, $3, $4, $5, true)
+       ON CONFLICT (key) DO UPDATE SET scope_kind = EXCLUDED.scope_kind, name_th = EXCLUDED.name_th,
+         name_en = EXCLUDED.name_en, description = EXCLUDED.description
+       WHERE (platform.role.scope_kind, platform.role.name_th, platform.role.name_en, platform.role.description)
+             IS DISTINCT FROM (EXCLUDED.scope_kind, EXCLUDED.name_th, EXCLUDED.name_en, EXCLUDED.description)`,
+      [r.key, r.scopeKind, r.nameTh, r.nameEn, r.description],
+    );
+  }
+  for (const p of PERMISSIONS) {
+    const { resource, action } = splitPermission(p.key);
+    await db.query(
+      `INSERT INTO platform.permission (key, resource, action, description, surfaces) VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (key) DO UPDATE SET description = EXCLUDED.description, surfaces = EXCLUDED.surfaces
+       WHERE (platform.permission.description, platform.permission.surfaces) IS DISTINCT FROM (EXCLUDED.description, EXCLUDED.surfaces)`,
+      [p.key, resource, action, p.description, p.surfaces],
+    );
+  }
+  for (const [role, keys] of Object.entries(ROLE_PERMISSIONS)) {
+    await db.query(
+      `INSERT INTO platform.role_permission (role_id, permission_id)
+       SELECT r.id, p.id FROM platform.role r JOIN platform.permission p ON p.key = ANY ($2::text[]) WHERE r.key = $1
+       ON CONFLICT DO NOTHING`,
+      [role, keys],
+    );
+    // the catalogue is the truth: drop grants removed from code (system roles only)
+    await db.query(
+      `DELETE FROM platform.role_permission rp USING platform.role r, platform.permission p
+        WHERE rp.role_id = r.id AND rp.permission_id = p.id AND r.key = $1 AND r.is_system AND NOT (p.key = ANY ($2::text[]))`,
+      [role, keys],
+    );
+  }
+}
+
+async function seedSettings(db: ClientBase): Promise<void> {
+  for (const s of SETTINGS) {
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO platform.setting (key, value_type, scope_allowed, description, editable_by)
+       VALUES ($1, $2, $3::platform.setting_scope[], $4, $5)
+       ON CONFLICT (key) DO UPDATE SET description = EXCLUDED.description, scope_allowed = EXCLUDED.scope_allowed,
+         editable_by = EXCLUDED.editable_by
+       RETURNING id`,
+      [s.key, s.valueType, s.scopeAllowed, s.description, s.editableBy],
+    );
+    // the first platform value only; later changes are new versions made by the platform admin (never backdated)
+    await db.query(
+      `INSERT INTO platform.setting_version (setting_id, value, effective_from, reason)
+       SELECT $1, $2::jsonb, now(), $3
+        WHERE NOT EXISTS (SELECT 1 FROM platform.setting_version WHERE setting_id = $1)`,
+      [rows[0]!.id, JSON.stringify(s.value), s.reason],
+    );
+  }
+}
+
+async function seedComplianceRules(db: ClientBase): Promise<void> {
+  for (const r of COMPLIANCE_RULES) {
+    // status is never overwritten: a rule the legal team verified stays verified (D-149)
+    await db.query(
+      `INSERT INTO platform.compliance_rule (id, legal_ref, default_severity, applies_to, description_th, description_en, settings_used, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending_legal_verification')
+       ON CONFLICT (id) DO UPDATE SET legal_ref = EXCLUDED.legal_ref, default_severity = EXCLUDED.default_severity,
+         applies_to = EXCLUDED.applies_to, description_th = EXCLUDED.description_th,
+         description_en = EXCLUDED.description_en, settings_used = EXCLUDED.settings_used, synced_at = now()
+       WHERE (platform.compliance_rule.legal_ref, platform.compliance_rule.default_severity, platform.compliance_rule.applies_to,
+              platform.compliance_rule.description_th, platform.compliance_rule.description_en, platform.compliance_rule.settings_used)
+             IS DISTINCT FROM (EXCLUDED.legal_ref, EXCLUDED.default_severity, EXCLUDED.applies_to,
+              EXCLUDED.description_th, EXCLUDED.description_en, EXCLUDED.settings_used)`,
+      [r.id, r.legalRef, r.defaultSeverity, r.appliesTo, r.descriptionTh, r.descriptionEn, r.settingsUsed],
+    );
+  }
+}
+
+async function seedUtilityTariffs(db: ClientBase): Promise<void> {
+  for (const t of UTILITY_TARIFFS) {
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO platform.utility_tariff (utility, provider, tariff_code, name_th, name_en)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (provider, tariff_code) DO UPDATE SET name_th = EXCLUDED.name_th, name_en = EXCLUDED.name_en
+       RETURNING id`,
+      [t.utility, t.provider, t.tariffCode, t.nameTh, t.nameEn],
+    );
+    for (const v of t.versions) {
+      await db.query(
+        `INSERT INTO platform.utility_tariff_version (utility_tariff_id, effective_from, effective_to, structure, ceiling_per_unit,
+           source_url, source_published_at, state, needs_check, notes)
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, 'entered', $8, $9)
+         ON CONFLICT (utility_tariff_id, effective_from) DO NOTHING`,
+        [
+          rows[0]!.id,
+          v.effectiveFrom,
+          v.effectiveTo,
+          JSON.stringify(v.structure),
+          v.structure.ceilingPerUnit,
+          v.sourceUrl,
+          v.sourcePublishedAt,
+          v.needsCheck,
+          v.notes,
+        ],
+      );
+    }
+  }
+}
+
+async function seedCalendar(db: ClientBase): Promise<void> {
+  for (const h of HOLIDAYS) {
+    await db.query(
+      `INSERT INTO platform.business_calendar (calendar, holiday_date, name_th, name_en, source_url)
+       VALUES ('th_public', $1, $2, $3, $4) ON CONFLICT (calendar, holiday_date) DO NOTHING`,
+      [h.date, h.nameTh, h.nameEn, h.sourceUrl],
+    );
+  }
+}
+
+async function seedPrivacy(db: ClientBase): Promise<void> {
+  for (const p of CONSENT_PURPOSES) {
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO platform.consent_purpose (key, audience, required) VALUES ($1, $2, $3)
+       ON CONFLICT (key) DO UPDATE SET audience = EXCLUDED.audience RETURNING id`,
+      [p.key, p.audience, p.required],
+    );
+    for (const [language, text] of [
+      ['th', p.th],
+      ['en', p.en],
+    ] as const) {
+      await db.query(
+        `INSERT INTO platform.consent_purpose_version (purpose_id, version, language, title, body_markdown, effective_from)
+         VALUES ($1, 1, $2, $3, $4, now()) ON CONFLICT (purpose_id, language, version) DO NOTHING`,
+        [rows[0]!.id, language, text.title, text.body],
+      );
+    }
+  }
+  for (const r of RETENTION_POLICIES) {
+    await db.query(
+      `INSERT INTO platform.retention_policy (target, target_key, retain_for, basis, action, legal_ref, effective_from)
+       VALUES ($1, $2, $3::interval, $4, $5, $6, $7) ON CONFLICT (target, target_key, effective_from) DO NOTHING`,
+      [r.target, r.targetKey, r.retainFor, r.basis, r.action, r.legalRef, SEED_DATE],
+    );
+  }
+}
+
+async function seedNotificationTemplates(db: ClientBase): Promise<void> {
+  for (const t of NOTIFICATION_TEMPLATES) {
+    const { rows } = await db.query<{ id: string }>(
+      `INSERT INTO platform.notification_template (key, channel, audience, description) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (key, channel, audience) DO UPDATE SET description = EXCLUDED.description RETURNING id`,
+      [t.key, t.channel, t.audience, t.description],
+    );
+    for (const v of t.versions) {
+      await db.query(
+        `INSERT INTO platform.notification_template_version (template_id, version, language, subject, body, format, state, published_at)
+         VALUES ($1, 1, $2, $3, $4, 'handlebars_text', 'published', now())
+         ON CONFLICT (template_id, language, version) DO NOTHING`,
+        [rows[0]!.id, v.language, v.subject, v.body],
+      );
+    }
+  }
+}
+
+/** Development data: one apartment tenant "หอพักตัวอย่าง" with obviously fake people (+66 0… numbers). */
+async function seedDev(db: ClientBase): Promise<void> {
+  const users: [string, string, string, string][] = [
+    [DEV.users.owner, 'เจ้าของ ตัวอย่าง (ทดสอบ)', '+660000000001', 'owner@example.invalid'],
+    [DEV.users.manager, 'ผู้จัดการ ตัวอย่าง (ทดสอบ)', '+660000000002', 'manager@example.invalid'],
+    [DEV.users.staff, 'พนักงาน ตัวอย่าง (ทดสอบ)', '+660000000003', 'staff@example.invalid'],
+    [DEV.users.platformAdmin, 'Platform Admin (test)', '+660000000091', 'admin@getproperty.invalid'],
+    [DEV.users.support, 'Support (test)', '+660000000092', 'support@getproperty.invalid'],
+  ];
+  for (const [id, name, phone, email] of users) {
+    await db.query(
+      `INSERT INTO core.user_account (id, display_name, phone_e164, email, phone_verified_at, email_verified_at)
+       VALUES ($1, $2, $3, $4, now(), now()) ON CONFLICT (id) DO NOTHING`,
+      [id, name, phone, email],
+    );
+  }
+  await db.query(
+    `INSERT INTO core.tenant (id, type, slug, display_name, legal_name, legal_form, vat_registered, address, plan)
+     VALUES ($1, 'apartment', 'sample-dormitory', 'หอพักตัวอย่าง', 'บริษัท หอพักตัวอย่าง จำกัด (ข้อมูลทดสอบ)', 'company', false,
+             $2::jsonb, 'apartment_starter')
+     ON CONFLICT (id) DO NOTHING`,
+    [
+      DEV.tenantId,
+      JSON.stringify({
+        line1: '99/9 ถนนตัวอย่าง',
+        district: 'เขตตัวอย่าง',
+        province: 'กรุงเทพมหานคร',
+        postcode: '10000',
+        country: 'TH',
+      }),
+    ],
+  );
+  await db.query(
+    `INSERT INTO core.party (id, tenant_id, type, display_name, company_name) VALUES ($1, $2, 'company', $3, $3)
+     ON CONFLICT (id) DO NOTHING`,
+    [DEV.legalPartyId, DEV.tenantId, 'บริษัท หอพักตัวอย่าง จำกัด (ข้อมูลทดสอบ)'],
+  );
+  await db.query(
+    `UPDATE core.tenant SET legal_party_id = $2 WHERE id = $1 AND legal_party_id IS DISTINCT FROM $2`,
+    [DEV.tenantId, DEV.legalPartyId],
+  );
+  for (const [user, role] of [
+    [DEV.users.owner, 'owner'],
+    [DEV.users.manager, 'manager'],
+    [DEV.users.staff, 'staff'],
+  ] as const) {
+    await db.query(
+      `INSERT INTO core.membership (tenant_id, user_id, role, status, joined_at) VALUES ($1, $2, $3, 'active', now())
+       ON CONFLICT (tenant_id, user_id) WHERE deleted_at IS NULL DO NOTHING`,
+      [DEV.tenantId, user, role],
+    );
+  }
+  await db.query(
+    `INSERT INTO core.property (id, tenant_id, code, name, address, province_code)
+     VALUES ($1, $2, 'MAIN', 'หอพักตัวอย่าง', $3::jsonb, '10') ON CONFLICT (id) DO NOTHING`,
+    [
+      DEV.propertyId,
+      DEV.tenantId,
+      JSON.stringify({
+        line1: '99/9 ถนนตัวอย่าง',
+        province: 'กรุงเทพมหานคร',
+        postcode: '10000',
+        country: 'TH',
+      }),
+    ],
+  );
+  // apartment: owner = operator = the tenant (§4.6); floors and units arrive with B2.1
+  await db.query(
+    `INSERT INTO core.building (id, tenant_id, property_id, code, name, type, floors_count, owner_tenant_id, operator_tenant_id)
+     VALUES ($1, $2, $3, 'A', 'อาคาร A', 'apartment', 2, $2, $2) ON CONFLICT (id) DO NOTHING`,
+    [DEV.buildingId, DEV.tenantId, DEV.propertyId],
+  );
+  await db.query(
+    `INSERT INTO core.building_operator_period (tenant_id, building_id, owner_tenant_id, operator_tenant_id, valid_from, reason)
+     SELECT $1, $2, $1, $1, '2026-10-01T00:00:00+07:00', 'initial'
+      WHERE NOT EXISTS (SELECT 1 FROM core.building_operator_period WHERE building_id = $2)`,
+    [DEV.tenantId, DEV.buildingId],
+  );
+  for (const [user, role] of [
+    [DEV.users.platformAdmin, 'platform_admin'],
+    [DEV.users.support, 'support'],
+  ] as const) {
+    await db.query(
+      `INSERT INTO platform.platform_role_assignment (user_id, role_id)
+       SELECT $1, r.id FROM platform.role r WHERE r.key = $2
+       ON CONFLICT (user_id, role_id) WHERE revoked_at IS NULL DO NOTHING`,
+      [user, role],
+    );
+  }
+}
+
+const COUNTED_TABLES = [
+  'platform.role',
+  'platform.permission',
+  'platform.role_permission',
+  'platform.setting',
+  'platform.setting_version',
+  'platform.compliance_rule',
+  'platform.utility_tariff',
+  'platform.utility_tariff_version',
+  'platform.business_calendar',
+  'platform.consent_purpose',
+  'platform.consent_purpose_version',
+  'platform.retention_policy',
+  'platform.notification_template',
+  'platform.notification_template_version',
+  'platform.platform_role_assignment',
+  'core.tenant',
+  'core.user_account',
+  'core.membership',
+  'core.party',
+  'core.property',
+  'core.building',
+  'core.building_operator_period',
+];
+
+export async function countRows(db: ClientBase): Promise<Record<string, number>> {
+  const counts: Record<string, number> = {};
+  for (const t of COUNTED_TABLES) {
+    const { rows } = await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM ${t}`);
+    counts[t] = rows[0]!.n;
+  }
+  return counts;
+}
+
+async function main(): Promise<void> {
+  const arg = process.argv[2] ?? 'reference';
+  if (arg !== 'reference' && arg !== 'dev') {
+    console.error(`usage: run.js reference|dev (got "${arg}")`);
+    process.exit(64);
+  }
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    console.error('DATABASE_URL is required (see .env.example; `pnpm db:local` prints it)');
+    process.exit(64);
+  }
+  const db = new Client({ connectionString: url, application_name: 'getproperty-seed' });
+  await db.connect();
+  try {
+    await runSeed(db, arg, (line) => console.log(line));
+    console.log(`seed: ${arg} done`);
+  } finally {
+    await db.end();
+  }
+}
+
+if (require.main === module) {
+  void main().catch((error: unknown) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
