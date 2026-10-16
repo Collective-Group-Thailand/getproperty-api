@@ -1,0 +1,22 @@
+{
+  "$schema": "https://swc.rs/schema.json",
+  "sourceMaps": true,
+  "module": { "type": "commonjs", "ignoreDynamic": true },
+  "jsc": {
+    "target": "es2023",
+    "parser": { "syntax": "typescript", "decorators": true, "dynamicImport": true },
+    "transform": { "legacyDecorator": true, "decoratorMetadata": true },
+    "keepClassNames": true,
+    "baseUrl": "./",
+    "paths": {
+      "@common/*": ["./src/common/*"],
+      "@config/*": ["./src/config/*"],
+      "@database/*": ["./src/database/*"],
+      "@platform/*": ["./src/platform/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@integrations/*": ["./src/integrations/*"],
+      "@generated/*": ["./src/generated/*"]
+    }
+  },
+  "minify": false
+}

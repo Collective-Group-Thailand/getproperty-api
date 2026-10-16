@@ -1,0 +1,112 @@
+# getproperty — Decision Log
+
+> Same file in `getproperty-api/docs/decisions.md`, `getproperty-web/docs/decisions.md` and `getproperty-edge/docs/decisions.md`. Prompts reference decisions by id (`D-###`). A decision changes only by a new entry that supersedes the old one.
+> Status: **Accepted** = business confirmed · **Proposed** = recommendation awaiting confirmation · **Open** = needs an answer.
+> Source of the product strategy: *Smart Apartment Platform — Competitive Study & Product Blueprint* (2026-10-12).
+
+## Architecture & programme
+| ID | Decision | Status |
+|---|---|---|
+| D-001 | Brand: **getproperty** (lower-case wordmark, Latin name kept in Thai copy), operated by **Collective Group (Thailand)**. Tagline (working): *"บิลทำเอง เก็บเงินเอง ถูกกฎหมาย"*. Domain `getproperty.co`. | Accepted |
+| D-002 | Three repositories, same stack and conventions as getpack: `getproperty-api` (NestJS 12, PostgreSQL 18 + TimescaleDB), `getproperty-web` (one Next.js 16 app, four host-based zones, BFF auth) and `getproperty-edge` (gateway agent running on the Linux gateway inside each building). Only the OpenAPI contract and the device protocol document are shared. | Accepted |
+| D-003 | getproperty is a **new product with no legacy**. getpack code is a *conventions* reference (structure, tooling, platform modules) — copy patterns, never business logic. No code is shared between the two products except through published npm packages if ever needed. | Accepted |
+| D-004 | **Multi-tenant SaaS from day one.** The tenancy unit is an **organisation** (`org`) = a landlord (person or company) that owns one or more **properties** (buildings). Every business row carries `org_id`; row-level isolation is enforced in the repository layer and tested. Collective Group (Thailand) is the platform operator, not a landlord. | Accepted |
+| D-005 | Working language: Thai is the product language (th default, en secondary); tenant-facing surfaces also support my, km, lo, zh (D-064). Code, docs and commits in English; prompt headers in Thai as in getpack. | Accepted |
+
+## Positioning & scope
+| ID | Decision | Consequences | Status |
+|---|---|---|---|
+| D-010 | **Target customer:** apartments / rental buildings of **30–300 rooms** managed by the owner or family with 0–3 staff, in Thailand. Larger chains and condominium juristic persons are out of scope for R1 (the juristic-person platform is a separate product). | Features default to the solo-owner workflow; multi-property and staff roles exist but stay simple. | Accepted |
+| D-011 | **Value proposition = Zero-touch billing**: meter readings arrive automatically (IoT) → bills computed at the lawful tariff → sent through LINE → payment confirmed by the bank → receipt issued — with the owner touching nothing. Every R1 feature serves that loop or the **utility-loss** insight (D-032). | Scope discipline: a feature that does not shorten the loop or protect the owner's money waits. | Accepted |
+| D-012 | **Start without IoT**: a building can run fully on manual/OCR readings (Lite) and move to IoT per building or per floor (Smart). The billing engine does not know where a reading came from; it only knows the reading's `source` and `confidence`. | Reading sources: `iot`, `ocr`, `manual`, `estimated`. Estimated readings are flagged on the bill and reconciled on the next actual reading (D-041). | Accepted |
+| D-013 | **Hardware-agnostic**: electric meters over Modbus RTU (RS485) first, water meters with pulse output (counted by the gateway) or LoRaWAN; smart locks through TTLock and Tuya cloud APIs. Device drivers live in `getproperty-edge`; the cloud sees a normalised telemetry envelope (D-130). | New meter models = a driver, never an API change. | Accepted |
+| D-014 | Release scope **R1 (friend's building live, Feb 2027)**: properties/rooms, leases with the สคบ. standard contract, deposits, manual + OCR + IoT readings, lawful utility billing, LINE bill delivery, Thai QR with automatic reconciliation, receipts, arrears, owner dashboard with utility loss, tenant LINE Mini App, staff PWA (readings, move-in/out photos, installs), platform admin for orgs/subscriptions/devices. **R2 (pilot → expand, to Jun 2027)**: maintenance tickets, smart locks, parcels & announcements, e-Tax Invoice/e-Receipt, TM30 data pack, 6 languages, energy insight/anomaly alerts. **R3 (scale, H2 2027)**: vacancy listing & online booking, embedded renter insurance, owner building insurance, equipment leasing partner. | Accepted |
+
+## Legal & compliance (สคบ. 2568)
+| ID | Decision | Consequences | Status |
+|---|---|---|---|
+| D-020 | The platform implements the **Contract Committee announcement on residential building rental B.E. 2568** (effective 4 Sep 2025, landlords with ≥ 3 units) as *rules in code with settings*, verified against the Royal Gazette text before launch (⚖ legal counsel). Rules in code: utility tariffs, bill line disclosure, deposit cap and refund timeline, notice periods, no mid-contract increases, no entry without notice. | Compliance engine module `compliance` (B4) with a rule registry; each rule has an id, legal reference, severity and a test. | Accepted (⚖ text verification pending) |
+| D-021 | **Utility tariffs are locked**: an org may bill electricity and water **at most at the tariff of the supplying utility** (MEA/PEA, MWA/PWA, including Ft and service charge where applicable). Tariff tables are platform-maintained, versioned, effective-dated (`tariff_versions`) and the platform admin publishes new versions when the utilities change them. An org can configure *lower* rates (e.g. flat fair rate under the cap) but the system refuses a bill line above the cap (`compliance.tariff_cap`). | No "ค่าไฟหน่วยละ 8 บาท". Owners who used to overcharge lose that income; the product's pitch is recovering it lawfully through loss reduction (D-032). | Accepted |
+| D-022 | Every bill shows, per utility line: previous reading, current reading, reading source, units consumed, tariff version, price per unit and amount — and keeps the raw readings as evidence (D-040). | Bill PDF and LINE Flex message carry the same fields. | Accepted |
+| D-023 | **Deposit**: security deposit + advance rent capped together per the announcement (settings `deposit.max_months`, default 1 + 1 as reported; ⚖ confirm). On move-out the system opens a **deposit settlement** with a 7-day clock, a photo-backed damage list (move-in vs move-out comparison) and computes the refund; it blocks a deduction without a damage item and evidence. Refund due date and days-remaining are shown on the owner dashboard. | Settlement states: `opened → inspected → proposed → agreed/disputed → refunded`. | Accepted (⚖ cap values) |
+| D-024 | **Prepaid electricity and automatic power cut-off are not in scope** until legal counsel confirms a compliant model; the platform never cuts power or locks a tenant out for arrears. Collections = reminders, late-fee lines only where the standard contract allows them (setting, default off), and an arrears workflow. Smart-lock access ends only when the **lease** ends (D-071). | A hard rule documented in the compliance module and the tenant-facing terms. | Accepted |
+| D-025 | PDPA: tenants consent in the LINE Mini App on first use (purposes versioned, consent log), personal data minimised (ID card number stored encrypted and only when a lease needs it; images of ID cards are retention-classed), data subject requests handled in the platform admin. Orgs are joint controllers for their tenants; the platform's DPA with orgs is a setting-driven template (⚖). | `privacy` module in B1 (consent purposes, requests, retention jobs). | Accepted |
+
+## Metering & IoT
+| ID | Decision | Consequences | Status |
+|---|---|---|---|
+| D-030 | Bills are computed from **cumulative meter registers** (kWh / m³ at the register), never from summed interval telemetry. A reading = `(meter_id, register_value, read_at, source, confidence, evidence)`. Interval telemetry is kept in TimescaleDB for insight and loss analysis only. | Lost telemetry never produces a wrong bill. | Accepted |
+| D-031 | Billing cut-off: each property has a `billing_cycle` setting (cut-off day, default end of month, 23:59 Asia/Bangkok). The cycle job picks, per meter, the reading closest to the cut-off within a configurable window (±2 h for IoT); if none, it requests an OCR/manual reading from staff; if still none by the grace deadline, it bills an **estimate** (flagged, D-012) based on the trailing average, settled on the next actual reading. | Owner can set `estimate_policy` = `allow | block` (default block for the first 2 cycles of a new building). | Accepted |
+| D-032 | **Utility loss** = utility invoice units (owner enters the MEA/PEA/MWA/PWA invoice, or OCR of its photo) − Σ tenant-billed units − common-area sub-meters. Shown per property per cycle in units and THB at tariff, with a trend and a list of suspects (meters with zero or abnormal consumption, rooms with usage while vacant, night-time water flow). | The owner's "money recovered" number; the sales argument for Smart. | Accepted |
+| D-033 | **Device registry and provisioning**: every gateway and meter is a `device` with a serial, model, driver, org, property, room/meter binding and status (`inventory → assigned → provisioned → online → degraded → offline → retired`). Provisioning is done by staff in the staff PWA by scanning the device QR; the cloud pushes the binding config to the gateway (D-131). Meter replacement keeps history through a `meter_swap` event with the last old and first new register values. | Platform admin sees the whole fleet; an org sees only its devices. | Accepted |
+| D-034 | Meter health: a meter is `stale` when no reading for `health.stale_after` (default 2 h electric, 6 h water), `silent` after 24 h; the owner and staff are notified and a maintenance ticket is opened automatically (R2). Gateway heartbeat every 60 s; offline after 5 missed. | Health rules are settings with effective dates. | Accepted |
+| D-035 | **OCR fallback**: staff photograph the meter in the staff PWA; the image is OCR'd (vision model behind an adapter, fake in tests); the reading is accepted only when it is monotonic vs the previous reading and within a plausibility band, otherwise it goes to a review queue with the photo. Owner can require photo evidence for every manual reading (setting). | Same reading API for all sources (D-012). | Accepted |
+
+## Billing, payments & money
+| ID | Decision | Consequences | Status |
+|---|---|---|---|
+| D-040 | Bills are **immutable once issued**; corrections are credit notes / debit notes referencing the original bill. Every bill snapshots the tariff version, readings, lease terms and settings it used. | Audit trail for สคบ. disputes. | Accepted |
+| D-041 | Bill lines: rent, electricity, water (D-021/022), common fees as agreed in the lease (internet, parking, cleaning, furniture — each a lease line with a fixed amount), one-off items (keys, damages agreed), late fee (only if enabled and allowed), estimate settlements, prior-balance carry-over. Pro-rata for partial first/last months by calendar days. | Line types are a Postgres enum with a compliance flag per type. | Accepted |
+| D-042 | **Collection = Thai QR per bill**: each bill gets a dynamic PromptPay/Thai QR (Tag 30) with a unique reference (bill number) through a payment gateway or bank API (adapter: KBank, SCB, Opn/Omise — chosen per org from supported providers; the org's own bank account receives the money, the platform never holds funds). Payment confirmation by **webhook**, idempotent, matched to the bill by reference; a daily statement/settlement file reconcile catches missed webhooks. | No manual slip checking in the happy path; getproperty is not a payment agent (no e-money licence question — ⚖ confirm with counsel). | Accepted |
+| D-043 | **Slip upload is the fallback only** (bank transfer to the org's account without QR): the tenant uploads the slip in LINE; a slip-verification adapter (EasySlip/SlipOK-class providers, or bank API) checks it; a verified slip with matching amount and the org's account auto-applies; anything else goes to the owner's review queue with the duplicate check (same slip reference used twice). | Setting `payments.allow_slip` per org (default on). | Accepted |
+| D-044 | Receipts are issued automatically on full payment (receipt number series per org per year, PDF with the org's details from org settings, sent in LINE). Partial payments are allowed when enabled; a receipt per payment, bill balance tracked. | Tax invoices (VAT-registered orgs) and e-Tax in D-050. | Accepted |
+| D-045 | Arrears: after due date + grace (settings), reminders by LINE on a configurable schedule (default day 1, 3, 7), an arrears list for the owner with aging, and a **late fee** line only if `late_fee.enabled` and within the standard contract (⚖). Nothing else automatic (D-024). | | Accepted |
+| D-046 | Money: `numeric(14,2)`, decimal strings in JSON, THB only; rounding per line half-up to satang then bill total; unit quantities `numeric(12,3)`. | Same rule as getpack. | Accepted |
+
+## Tax & documents
+| ID | Decision | Consequences | Status |
+|---|---|---|---|
+| D-050 | Documents per org: bill (ใบแจ้งหนี้), receipt (ใบเสร็จรับเงิน), tax invoice / receipt-tax invoice for VAT-registered orgs, credit/debit notes, deposit receipt, deposit settlement statement, standard lease contract (D-020), move-in/out inspection reports. Numbering series per org per document type per year, gapless, assigned in a transaction. **e-Tax Invoice & e-Receipt** (R2) through a Revenue-Department-approved service provider adapter — the platform does not become a service provider itself. | `documents` module (B4); e-Tax adapter (B6). | Accepted |
+| D-051 | Accounting is **not** a general ledger in R1: the platform produces an org's income/expense report, VAT output report (ภ.พ.30 working figures) for VAT-registered orgs, WHT is out of scope (tenants rarely withhold; company tenants' WHT recorded as a payment deduction type), and exports to FlowAccount / PEAK / Excel. A full ledger is reconsidered after R3. | | Accepted |
+| D-052 | **TM30 (foreign tenant residence notification)**: R2 produces the data pack (tenant passport data captured at move-in, arrival date, room) as the Immigration Bureau's upload format and reminds the owner of the 24-hour deadline; no direct submission (no public API). | | Accepted |
+
+## Tenant experience
+| ID | Decision | Consequences | Status |
+|---|---|---|---|
+| D-060 | **Tenant surface = LINE Mini App (LIFF) first**, with the same pages reachable as a mobile web app for tenants without LINE (magic link by SMS). No native app store app in R1–R2. | `tenant` zone of `getproperty-web`. | Accepted |
+| D-061 | Tenant onboarding: the owner (or staff) creates the lease and sends an invite (LINE QR or SMS link); the tenant links their LINE account, consents (D-025), e-signs the lease (D-062) and sees the room from then on. One LINE account may hold several rooms (families, companies). | | Accepted |
+| D-062 | **e-signature** of the standard lease: draw-to-sign in LIFF, signer identity = verified phone OTP + LINE user id, timestamped PDF with the hash, audit record. Not a certified e-signature (ⓘ counsel confirms this is adequate for residential leases under the ETA; otherwise fall back to signed scan upload). | | Accepted (⚖) |
+| D-063 | Tenants see: bills and QR, payment history and receipts, **daily usage** (electric/water from telemetry where IoT exists), repair requests with photos (R2), announcements, parcels (R2), lease and contract documents, move-out notice (30-day notice form), profile and consent. | | Accepted |
+| D-064 | Languages for the tenant zone: th, en in R1; my, km, lo, zh in R2 (machine-translated base, reviewed). Owner/staff/admin zones: th, en. | | Accepted |
+
+## Access control & operations (R2)
+| ID | Decision | Consequences | Status |
+|---|---|---|---|
+| D-070 | Smart locks: TTLock and Tuya cloud adapters in R2; a room lock is a `device` bound to the room; tenants get a permanent credential for the lease period, staff and visitors get time-boxed codes, every unlock event is logged (PDPA: tenants see their own room's log). | | Accepted |
+| D-071 | Access follows the **lease**, never the bill: credentials are issued at move-in and revoked at lease end or by owner action with a reason; never automatically for arrears (D-024). | | Accepted |
+| D-072 | Maintenance: tenant request with photos → owner/staff triage → assignment → done with photos → tenant rating; SLA settings per category; auto-tickets from meter health (D-034). | | Accepted |
+| D-073 | Community: announcements with read receipts, parcels (staff photographs the parcel, tenant notified, pick-up confirmed), building rules, emergency contacts. | | Accepted |
+
+## Platform, subscriptions & HaaS
+| ID | Decision | Consequences | Status |
+|---|---|---|---|
+| D-080 | **Pricing (proposed, confirmed by pilot)**: *Lite* THB 8/room/month (min THB 290/month) — software, OCR, QR auto-reconcile; *Smart* THB 129–159/room/month on a 36-month term — Lite + IoT meters + gateway + installation + replacement (HaaS); *Smart (purchased)* hardware at cost + THB 29/room/month; *Access add-on* +THB 60–90/room/month. VAT excluded. Values are platform settings with effective dates; the platform admin maintains price plans. | Subscription billing to orgs is the platform's own AR (invoices issued by Collective Group (Thailand)), separate from the org's tenant billing. | Proposed |
+| D-081 | HaaS asset register: every HaaS device belongs to the platform, is depreciated over the term, and is tracked in the device registry (D-033) with install date, term, replacement history; an org's cancellation triggers a de-install work order. | | Accepted |
+| D-082 | Subscription lifecycle: `trial (30 days) → active → past_due → suspended → cancelled`; suspension is **read-only mode** (owner can still see data and export; tenants can still see and pay bills already issued) — never data loss. Per-room counting = rooms with status ≠ `inactive` on the 1st of the month. | | Accepted |
+| D-083 | Pilot terms with the first customer (the founder's friend's building): a paid pilot at a discounted Smart rate (never free, to prove willingness to pay), reference-site rights, anonymised data use per PDPA, bi-weekly feedback sessions, 90-day KPI review (time to bill −80 %, bill errors < 1 %, on-time payment +10 pts, ≥ 90 % auto-reconciled, loss identified, uptime ≥ 99.5 %, CSAT ≥ 4.3). | Captured as an org-level `pilot_agreement` record. | Accepted |
+
+## Roles (R1)
+| ID | Decision | Status |
+|---|---|---|
+| D-090 | Org roles: **Owner** (everything in the org), **Manager** (everything except billing settings, bank account, subscription), **Staff** (readings, move-in/out, repairs, parcels, device installs; no money), **Accountant** (read bills/payments/exports, issue documents, no settings). Platform roles: **Platform admin**, **Support** (read-only into orgs with a time-boxed, logged support grant), **Field engineer** (device fleet, installs), **Finance** (subscriptions). Tenant is an audience, not a role. | Accepted |
+| D-091 | Permission catalogue `resource.action` generated into `docs/rbac.md` as in getpack; maker-checker only for platform finance (subscription credit notes) and org bank-account changes (owner confirms by OTP). | Accepted |
+
+## Design
+| ID | Decision | Status |
+|---|---|---|
+| D-100 | Art direction: calm, trustworthy, Thai-first; the owner console is a *morning dashboard* (what needs me today), the tenant app is a *bill that is pleasant to pay*. Design tokens in `getproperty-web/src/ui/tokens` (own brand, no getpack colours). No brand kit yet — placeholder wordmark until the brand kit exists. | Accepted |
+
+## Edge / device protocol
+| ID | Decision | Status |
+|---|---|---|
+| D-130 | **Telemetry envelope** (`docs/contract/device-protocol.md`, shared by api and edge): MQTT over TLS 1.2+, per-device X.509 client certificate issued at provisioning, topics `gp/v1/{gatewayId}/telemetry`, `/health`, `/events`, `/config` (cloud → gateway), `/cmd` + `/cmd/ack`. Readings are `{ meterId, register, unit, readAt, seq, quality }` batched; the gateway stores-and-forwards with a 30-day on-disk buffer; the cloud deduplicates on `(meterId, seq)`. | Accepted |
+| D-131 | Gateway config is pushed by the cloud (retained `/config`): meter list with driver, address/port, polling interval (default 15 min electric, 15 min water pulse snapshot), register map, scaling; the gateway acknowledges and reports the applied config version in health. OTA agent updates signed and staged by the platform admin (fleet rings: canary → pilot → all). | Accepted |
+| D-132 | Gateway hardware baseline: Linux ARM64 (industrial gateway with RS485 ports, or Raspberry Pi CM4-class for pilot), Ethernet/Wi-Fi/4G, local RTC; the agent is a single Node 24 binary (`getproperty-edge`), systemd-managed, with a local status page on the LAN. | Accepted |
+
+## Open
+| ID | Question | Owner |
+|---|---|---|
+| O-001 | Which payment gateway/bank API first for dynamic QR + webhook (KBank, SCB, Opn)? Depends on the pilot org's bank. | Founder |
+| O-002 | Exact สคบ. 2568 text: deposit cap values, late-fee permissibility, estimate billing permissibility. | Legal counsel |
+| O-003 | Meter models for the pilot (electric Modbus 1-phase class 1; water pulse) and the gateway model — after the site survey. | Founder + IoT engineer |
+| O-004 | Does the pilot org register for VAT? Decides whether tax-invoice documents are needed in R1. | Pilot org |

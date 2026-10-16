@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "src",
+  "entryFile": "src/main",
+  "compilerOptions": {
+    "builder": "tsc",
+    "tsConfigPath": "tsconfig.build.json",
+    "deleteOutDir": true,
+    "assets": [
+      {
+        "include": "i18n/**/*",
+        "outDir": "dist",
+        "watchAssets": true
+      },
+      {
+        "include": "../package.json",
+        "outDir": "dist"
+      }
+    ],
+    "watchAssets": true,
+    "_comment": "No @nestjs/swagger CLI plugin: every DTO field documents itself with @ApiProperty, so the contract is identical whether built by nest (tsc) or served from swc/jest (e2e compares both)."
+  }
+}

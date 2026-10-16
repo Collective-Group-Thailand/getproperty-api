@@ -1,0 +1,4 @@
+[
+  { "user_id": "getproperty-api", "password": "getproperty-api", "is_superuser": false },
+  { "user_id": "getproperty-dev", "password": "getproperty-dev", "is_superuser": false }
+]
