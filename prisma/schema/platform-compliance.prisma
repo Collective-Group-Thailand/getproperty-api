@@ -1,0 +1,105 @@
+// platform — compliance (D-020, D-021a, D-149, §3.2.8). Evaluations and acknowledgements are append-only.
+
+enum ComplianceSeverity {
+  block
+  warn
+
+  @@map("compliance_severity")
+  @@schema("platform")
+}
+
+enum RuleStatus {
+  active
+  pending_legal_verification
+  verified
+  retired
+
+  @@map("rule_status")
+  @@schema("platform")
+}
+
+enum ComplianceOutcome {
+  pass
+  warn
+  block
+
+  @@map("compliance_outcome")
+  @@schema("platform")
+}
+
+/// Mirror of the code registry; legal_ref = clause ids of docs/compliance/legal-reference.md.
+model ComplianceRule {
+  id              String             @id
+  legalRef        String             @map("legal_ref")
+  defaultSeverity ComplianceSeverity @map("default_severity")
+  appliesTo       String[]           @map("applies_to")
+  descriptionTh   String             @map("description_th")
+  descriptionEn   String             @map("description_en")
+  settingsUsed    String[]           @default([]) @map("settings_used")
+  status          RuleStatus         @default(pending_legal_verification)
+  syncedAt        DateTime           @default(now()) @map("synced_at") @db.Timestamptz(6)
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  evaluations      ComplianceEvaluation[]
+  acknowledgements ComplianceAcknowledgement[]
+
+  @@map("compliance_rule")
+  @@schema("platform")
+}
+
+/// Every warn/block decision with the values compared (evidence for disputes).
+model ComplianceEvaluation {
+  id              String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String             @map("tenant_id") @db.Uuid
+  buildingId      String?            @map("building_id") @db.Uuid
+  ruleId          String             @map("rule_id")
+  subjectType     String             @map("subject_type")
+  subjectId       String             @map("subject_id") @db.Uuid
+  outcome         ComplianceOutcome
+  severityApplied ComplianceSeverity @map("severity_applied")
+  context         Json
+  legalRef        String             @map("legal_ref")
+  actor           Json
+  occurredAt      DateTime           @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  tenant           Tenant                      @relation("ComplianceEvaluationTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "compliance_evaluation_tenant_id_fkey")
+  building         Building?                   @relation("ComplianceEvaluationBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "compliance_evaluation_building_id_fkey")
+  rule             ComplianceRule              @relation(fields: [ruleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "compliance_evaluation_rule_id_fkey")
+  acknowledgements ComplianceAcknowledgement[]
+
+  @@index([tenantId, ruleId, occurredAt(sort: Desc)], map: "compliance_evaluation_tenant_id_rule_id_occurred_at_idx")
+  @@index([subjectType, subjectId], map: "compliance_evaluation_subject_type_subject_id_idx")
+  @@map("compliance_evaluation")
+  @@schema("platform")
+}
+
+/// The Owner's acknowledgement of a warning (D-021a; legal-reference §4).
+model ComplianceAcknowledgement {
+  id               String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  buildingId       String?  @map("building_id") @db.Uuid
+  ruleId           String   @map("rule_id")
+  evaluationId     String   @map("evaluation_id") @db.Uuid
+  subjectType      String   @map("subject_type")
+  subjectId        String   @map("subject_id") @db.Uuid
+  acknowledgedBy   String   @map("acknowledged_by") @db.Uuid
+  acknowledgedAt   DateTime @default(now()) @map("acknowledged_at") @db.Timestamptz(6)
+  ip               String?  @db.Inet
+  userAgent        String?  @map("user_agent")
+  shown            Json
+  legalTextKey     String   @map("legal_text_key")
+  legalTextVersion Int      @map("legal_text_version")
+  language         String   @db.Char(2)
+
+  tenant             Tenant               @relation("ComplianceAcknowledgementTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "compliance_acknowledgement_tenant_id_fkey")
+  building           Building?            @relation("ComplianceAcknowledgementBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "compliance_acknowledgement_building_id_fkey")
+  rule               ComplianceRule       @relation(fields: [ruleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "compliance_acknowledgement_rule_id_fkey")
+  evaluation         ComplianceEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "compliance_acknowledgement_evaluation_id_fkey")
+  acknowledgedByUser UserAccount          @relation("ComplianceAcknowledgementAcknowledgedBy", fields: [acknowledgedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "compliance_acknowledgement_acknowledged_by_fkey")
+
+  @@index([tenantId, ruleId, acknowledgedAt(sort: Desc)], map: "compliance_ack_tenant_id_rule_id_acknowledged_at_idx")
+  @@index([subjectType, subjectId], map: "compliance_acknowledgement_subject_type_subject_id_idx")
+  @@map("compliance_acknowledgement")
+  @@schema("platform")
+}

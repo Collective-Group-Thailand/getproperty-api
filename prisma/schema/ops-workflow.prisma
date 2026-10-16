@@ -1,0 +1,147 @@
+// ops — workflow engine (D-159; services in B1.3) and gapless document series (D-050, D-146, §4.4).
+
+enum WorkflowTimerKind {
+  sla_warn
+  sla_breach
+  step
+  reminder
+
+  @@map("workflow_timer_kind")
+  @@schema("ops")
+}
+
+enum DocumentType {
+  invoice
+  receipt
+  deposit_receipt
+  tax_invoice
+  receipt_tax_invoice
+  credit_note
+  debit_note
+  deposit_statement
+  contract
+  inspection_report
+  platform_invoice
+  platform_receipt
+  platform_credit_note
+
+  @@map("document_type")
+  @@schema("ops")
+}
+
+/// State machine + SLA policy, versioned, seeded from code; tenant_id null = platform definition.
+model WorkflowDefinition {
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String?  @map("tenant_id") @db.Uuid
+  key         String
+  version     Int
+  states      Json
+  transitions Json
+  sla         Json     @default("{}")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy   String?  @map("updated_by") @db.Uuid
+
+  tenant    Tenant?            @relation("WorkflowDefinitionTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workflow_definition_tenant_id_fkey")
+  instances WorkflowInstance[]
+
+  @@unique([tenantId, key, version], map: "workflow_definition_tenant_id_key_version_key")
+  @@map("workflow_definition")
+  @@schema("ops")
+}
+
+model WorkflowInstance {
+  id             String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  buildingId     String?   @map("building_id") @db.Uuid
+  definitionId   String    @map("definition_id") @db.Uuid
+  subjectType    String    @map("subject_type")
+  subjectId      String    @map("subject_id") @db.Uuid
+  state          String
+  stateEnteredAt DateTime  @default(now()) @map("state_entered_at") @db.Timestamptz(6)
+  slaDueAt       DateTime? @map("sla_due_at") @db.Timestamptz(6)
+  slaWarnedAt    DateTime? @map("sla_warned_at") @db.Timestamptz(6)
+  slaBreachedAt  DateTime? @map("sla_breached_at") @db.Timestamptz(6)
+  startedAt      DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  closedAt       DateTime? @map("closed_at") @db.Timestamptz(6)
+  context        Json      @default("{}")
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant     Tenant             @relation("WorkflowInstanceTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workflow_instance_tenant_id_fkey")
+  building   Building?          @relation("WorkflowInstanceBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workflow_instance_building_id_fkey")
+  definition WorkflowDefinition @relation(fields: [definitionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workflow_instance_definition_id_fkey")
+  events     WorkflowEvent[]
+  timers     WorkflowTimer[]
+
+  @@unique([subjectType, subjectId, definitionId], map: "workflow_instance_subject_type_subject_id_definition_id_key", where: raw("(closed_at IS NULL)"))
+  @@index([tenantId, definitionId, state], map: "workflow_instance_tenant_id_definition_id_state_idx")
+  @@index([slaDueAt], map: "workflow_instance_sla_due_at_idx", where: raw("(closed_at IS NULL)"))
+  @@index([buildingId], map: "workflow_instance_building_id_idx")
+  @@map("workflow_instance")
+  @@schema("ops")
+}
+
+/// Append-only history of a workflow instance.
+model WorkflowEvent {
+  id            String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  instanceId    String   @map("instance_id") @db.Uuid
+  fromState     String?  @map("from_state")
+  toState       String   @map("to_state")
+  event         String
+  actor         Json
+  occurredAt    DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  data          Json     @default("{}")
+  domainEventId String?  @map("domain_event_id") @db.Uuid
+
+  tenant   Tenant           @relation("WorkflowEventTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workflow_event_tenant_id_fkey")
+  instance WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workflow_event_instance_id_fkey")
+
+  @@index([instanceId, occurredAt], map: "workflow_event_instance_id_occurred_at_idx")
+  @@index([tenantId], map: "workflow_event_tenant_id_idx")
+  @@map("workflow_event")
+  @@schema("ops")
+}
+
+/// SLA/step timers fired exactly once by the worker.
+model WorkflowTimer {
+  id          String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String            @map("tenant_id") @db.Uuid
+  instanceId  String            @map("instance_id") @db.Uuid
+  kind        WorkflowTimerKind
+  fireAt      DateTime          @map("fire_at") @db.Timestamptz(6)
+  firedAt     DateTime?         @map("fired_at") @db.Timestamptz(6)
+  cancelledAt DateTime?         @map("cancelled_at") @db.Timestamptz(6)
+  attempt     Int               @default(0) @db.SmallInt
+
+  tenant   Tenant           @relation("WorkflowTimerTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workflow_timer_tenant_id_fkey")
+  instance WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "workflow_timer_instance_id_fkey")
+
+  @@index([fireAt], map: "workflow_timer_fire_at_idx", where: raw("((fired_at IS NULL) AND (cancelled_at IS NULL))"))
+  @@index([instanceId], map: "workflow_timer_instance_id_idx")
+  @@index([tenantId], map: "workflow_timer_tenant_id_idx")
+  @@map("workflow_timer")
+  @@schema("ops")
+}
+
+/// Gapless counters per tenant × document type × fiscal year; tenant_id NULL = Collective Group (D-146).
+model DocumentSeries {
+  id         String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String?      @map("tenant_id") @db.Uuid
+  docType    DocumentType @map("doc_type")
+  fiscalYear Int          @map("fiscal_year") @db.SmallInt
+  prefix     String
+  nextNumber Int          @default(1) @map("next_number")
+  width      Int          @default(5) @db.SmallInt
+  updatedAt  DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant? @relation("DocumentSeriesTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "document_series_tenant_id_fkey")
+
+  @@unique([tenantId, docType, fiscalYear], map: "document_series_tenant_id_doc_type_fiscal_year_key")
+  @@map("document_series")
+  @@schema("ops")
+}

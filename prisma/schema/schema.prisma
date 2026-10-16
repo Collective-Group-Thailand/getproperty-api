@@ -1,17 +1,27 @@
-// getproperty — Prisma schema root (Prisma 7, multi-file). Models live in one file per bounded context:
-// iam.prisma, tenancy.prisma, platform-config.prisma, platform-files-audit.prisma, platform-notifications.prisma,
-// platform-privacy.prisma. Table and column names stay snake_case through @@map/@map (schema-design §1.2).
-// Anything Prisma cannot express (CHECK/EXCLUSION constraints, partial and expression indexes, triggers, RLS,
-// views, the uuidv7() guard, TimescaleDB objects) is in the hand-written prisma/migrations/*/migration.sql and
-// is deliberately absent here; `prisma migrate diff --from-migrations --to-schema-datamodel` must stay empty.
+// getproperty — Prisma schema root (Prisma 7, multi-file, multiSchema). One file per schema/context:
+//   core.prisma                 GENERATED from @collective/asset-core (`pnpm prisma:core`) — never edit, never migrated here
+//   platform-config.prisma      settings, feature flags, utility tariffs, business calendar
+//   platform-identity.prisma    credentials, sessions, OTP, roles & permissions, support grants, invitations, bank accounts
+//   platform-audit.prisma       attachments, audit log, domain events, outbox, idempotency keys
+//   platform-notifications.prisma  templates, routes, preferences, delivery log, web push
+//   platform-privacy.prisma     consent purposes + versions, consent log, DSR, retention policies
+//   platform-compliance.prisma  compliance rules, evaluations, acknowledgements
+//   ops-workflow.prisma         workflow engine tables, document series
+//   bridge.prisma               integration events
+// Table and column names stay snake_case through @@map/@map (schema-design §1.2). Anything Prisma cannot express
+// (CHECK and EXCLUDE constraints, triggers, RLS policies, views, functions) lives in the hand-written SQL of
+// prisma/migrations/*/migration.sql. `pnpm db:diff` (prisma migrate diff) and the integration drift test must
+// stay empty. ADR-0011 explains how the package-owned `core` schema is kept out of Prisma Migrate.
 
 generator client {
-  provider = "prisma-client"
-  output   = "../../src/generated/prisma"
-  runtime  = "nodejs"
-  moduleFormat = "cjs"
+  provider        = "prisma-client"
+  output          = "../../src/generated/prisma"
+  runtime         = "nodejs"
+  moduleFormat    = "cjs"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
+  schemas  = ["core", "platform", "ops", "smart", "bridge", "juristic"]
 }

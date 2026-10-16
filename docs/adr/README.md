@@ -11,3 +11,4 @@
 | 0008 | Payment adapters and the no-funds-held model | B4.1 |
 | 0009 | [Platform blueprint: tenant types, neutral asset core, schemas](0009-platform-blueprint-tenant-types-asset-core-schemas.md) | Accepted (schema lock) |
 | 0010 | [`collective-asset-core` as a separate package](0010-collective-asset-core-separate-package.md) | Accepted (schema lock) |
+| 0011 | [Prisma with a package-owned schema (`core` from `@collective/asset-core`)](0011-prisma-with-a-package-owned-schema.md) | Accepted (B1.2 step 2b) |

@@ -17,6 +17,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1152.0
         version: 3.1152.0
+      '@collective/asset-core':
+        specifier: link:../collective-asset-core
+        version: link:../collective-asset-core
       '@nestjs/bullmq':
         specifier: ^12.0.0
         version: 12.0.0(@nestjs/common@12.1.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.1.3)(bullmq@6.3.15(ioredis@6.0.0)(pg@8.23.1))
@@ -126,6 +129,9 @@ importers:
       '@nestjs/testing':
         specifier: ^12.1.3
         version: 12.1.3(@nestjs/common@12.1.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.1.3)(@nestjs/platform-express@12.1.3)
+      '@prisma/prisma-schema-wasm':
+        specifier: 8.1.0-1.d1b3f377ca835d73fd50954a5e22128b9ebdd6b8
+        version: 8.1.0-1.d1b3f377ca835d73fd50954a5e22128b9ebdd6b8
       '@stoplight/spectral-cli':
         specifier: ^6.17.0
         version: 6.17.0
@@ -2185,6 +2191,9 @@ packages:
 
   '@prisma/get-platform@7.2.0':
     resolution: {integrity: sha512-k1V0l0Td1732EHpAfi2eySTezyllok9dXb6UQanajkJQzPUGi3vO2z7jdkz67SypFTdmbnyGYxvEvYZdZsMAVA==}
+
+  '@prisma/prisma-schema-wasm@8.1.0-1.d1b3f377ca835d73fd50954a5e22128b9ebdd6b8':
+    resolution: {integrity: sha512-VG5rgJX6+nNIPxTt0ehpz7ETZG37IXqmgUWz9HDqZgbI8xHoDS7NBKaoBddTYk8TZELK+CvdqKrTCu3IMSI31A==}
 
   '@prisma/query-plan-executor@7.2.0':
     resolution: {integrity: sha512-EOZmNzcV8uJ0mae3DhTsiHgoNCuu1J9mULQpGCh62zN3PxPTd+qI9tJvk5jOst8WHKQNwJWR3b39t0XvfBB0WQ==}
@@ -9505,6 +9514,8 @@ snapshots:
   '@prisma/get-platform@7.2.0':
     dependencies:
       '@prisma/debug': 7.2.0
+
+  '@prisma/prisma-schema-wasm@8.1.0-1.d1b3f377ca835d73fd50954a5e22128b9ebdd6b8': {}
 
   '@prisma/query-plan-executor@7.2.0': {}
 

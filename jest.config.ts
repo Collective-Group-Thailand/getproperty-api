@@ -25,8 +25,11 @@ const shared = {
     '^@database/(.*)$': '<rootDir>/src/database/$1',
     '^@platform/(.*)$': '<rootDir>/src/platform/$1',
     '^@modules/(.*)$': '<rootDir>/src/modules/$1',
+    '^@core/(.*)$': '<rootDir>/src/core/$1',
     '^@integrations/(.*)$': '<rootDir>/src/integrations/$1',
     '^@generated/(.*)$': '<rootDir>/src/generated/$1',
+    // The generated Prisma client (and ESM-style sources) import siblings as `./x.js`; resolve them to `./x.ts`.
+    '^(\\.{1,2}/.*)\\.js$': '$1',
   },
 };
 
@@ -48,10 +51,13 @@ const config: Config = {
       testMatch: ['<rootDir>/src/**/*.spec.ts', '<rootDir>/test/unit/**/*.spec.ts'],
     },
     {
-      // `pnpm test:int` — Testcontainers (TimescaleDB, Redis, EMQX); runs only with DATA_STORES_MODE=real.
+      // `pnpm test:int` — real PostgreSQL 18 (EMBEDDED_PG=1 or INT_DATABASE_URL, scripts/run-int-tests.mjs):
+      // the global setup migrates (asset-core + prisma/migrations) and seeds a template database.
       ...shared,
       displayName: 'integration',
       testMatch: ['<rootDir>/test/integration/**/*.int-spec.ts'],
+      globalSetup: '<rootDir>/test/integration/global-setup.ts',
+      globalTeardown: '<rootDir>/test/integration/global-teardown.ts',
       setupFilesAfterEnv: ['<rootDir>/test/support/container-timeout.ts'],
     },
     {

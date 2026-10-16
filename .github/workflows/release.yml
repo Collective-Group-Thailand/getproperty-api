@@ -15,6 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
+        with:
+          asset-core-token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
       - name: Contracts at this tag match the code and pass contract:lint
         run: |
           pnpm contract:build

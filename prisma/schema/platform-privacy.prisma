@@ -1,0 +1,170 @@
+// platform — PDPA (D-025): consent purposes + versions, consent log ⟲, data subject requests, retention
+// (§3.2.7). The view platform.v_consent_state is SQL-only.
+
+enum ConsentSubject {
+  party
+  user
+
+  @@map("consent_subject")
+  @@schema("platform")
+}
+
+enum ConsentChannel {
+  liff
+  web
+  paper
+  sms
+
+  @@map("consent_channel")
+  @@schema("platform")
+}
+
+enum DsrKind {
+  access
+  rectification
+  erasure
+  portability
+  objection
+  restriction
+
+  @@map("dsr_kind")
+  @@schema("platform")
+}
+
+enum DsrState {
+  received
+  verifying
+  in_progress
+  fulfilled
+  rejected
+  withdrawn
+
+  @@map("dsr_state")
+  @@schema("platform")
+}
+
+enum RetentionTarget {
+  document_class
+  table
+
+  @@map("retention_target")
+  @@schema("platform")
+}
+
+enum RetentionAction {
+  delete
+  anonymise
+  archive
+
+  @@map("retention_action")
+  @@schema("platform")
+}
+
+model ConsentPurpose {
+  id        String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  key       String               @unique(map: "consent_purpose_key_key")
+  audience  NotificationAudience
+  required  Boolean              @default(false)
+  createdAt DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?              @map("created_by") @db.Uuid
+  updatedAt DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?              @map("updated_by") @db.Uuid
+
+  versions ConsentPurposeVersion[]
+
+  @@map("consent_purpose")
+  @@schema("platform")
+}
+
+model ConsentPurposeVersion {
+  id            String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  purposeId     String   @map("purpose_id") @db.Uuid
+  version       Int
+  language      String   @db.Char(2)
+  title         String
+  bodyMarkdown  String   @map("body_markdown")
+  effectiveFrom DateTime @map("effective_from") @db.Timestamptz(6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?  @map("created_by") @db.Uuid
+  updatedAt     DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?  @map("updated_by") @db.Uuid
+
+  purpose  ConsentPurpose @relation(fields: [purposeId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "consent_purpose_version_purpose_id_fkey")
+  consents Consent[]
+
+  @@unique([purposeId, language, version], map: "consent_purpose_version_purpose_id_language_version_key")
+  @@map("consent_purpose_version")
+  @@schema("platform")
+}
+
+/// Consent log — append-only; a withdrawal is a new row with granted = false.
+model Consent {
+  id                 String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String?        @map("tenant_id") @db.Uuid
+  subjectType        ConsentSubject @map("subject_type")
+  subjectId          String         @map("subject_id") @db.Uuid
+  purposeVersionId   String         @map("purpose_version_id") @db.Uuid
+  granted            Boolean
+  capturedAt         DateTime       @default(now()) @map("captured_at") @db.Timestamptz(6)
+  channel            ConsentChannel
+  ip                 String?        @db.Inet
+  userAgent          String?        @map("user_agent")
+  evidenceDocumentId String?        @map("evidence_document_id") @db.Uuid
+
+  tenant           Tenant?               @relation("ConsentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "consent_tenant_id_fkey")
+  purposeVersion   ConsentPurposeVersion @relation(fields: [purposeVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "consent_purpose_version_id_fkey")
+  evidenceDocument Document?             @relation("ConsentEvidenceDocument", fields: [evidenceDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "consent_evidence_document_id_fkey")
+
+  @@index([subjectType, subjectId, capturedAt(sort: Desc)], map: "consent_subject_type_subject_id_captured_at_idx")
+  @@index([tenantId], map: "consent_tenant_id_idx")
+  @@map("consent")
+  @@schema("platform")
+}
+
+/// PDPA data subject requests (tenant = controller, Collective = processor).
+model DataSubjectRequest {
+  id                  String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String?        @map("tenant_id") @db.Uuid
+  subjectType         ConsentSubject @map("subject_type")
+  subjectId           String?        @map("subject_id") @db.Uuid
+  requesterContactEnc Bytes          @map("requester_contact_enc")
+  kind                DsrKind
+  state               DsrState       @default(received)
+  receivedAt          DateTime       @default(now()) @map("received_at") @db.Timestamptz(6)
+  dueAt               DateTime       @map("due_at") @db.Timestamptz(6)
+  fulfilledAt         DateTime?      @map("fulfilled_at") @db.Timestamptz(6)
+  handledBy           String?        @map("handled_by") @db.Uuid
+  exportDocumentId    String?        @map("export_document_id") @db.Uuid
+  notes               String?
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy           String?        @map("created_by") @db.Uuid
+  updatedAt           DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy           String?        @map("updated_by") @db.Uuid
+
+  tenant         Tenant?   @relation("DataSubjectRequestTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "data_subject_request_tenant_id_fkey")
+  exportDocument Document? @relation("DataSubjectRequestExportDocument", fields: [exportDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "data_subject_request_export_document_id_fkey")
+
+  @@index([tenantId, state], map: "data_subject_request_tenant_id_state_idx")
+  @@map("data_subject_request")
+  @@schema("platform")
+}
+
+/// Retention per document class or table; retain_for is a PostgreSQL interval (read/written with raw SQL).
+model RetentionPolicy {
+  id            String                   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  target        RetentionTarget
+  targetKey     String                   @map("target_key")
+  retainFor     Unsupported("interval")  @map("retain_for")
+  basis         String
+  action        RetentionAction
+  legalRef      String?                  @map("legal_ref")
+  effectiveFrom DateTime                 @map("effective_from") @db.Date
+  createdAt     DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?                  @map("created_by") @db.Uuid
+  updatedAt     DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?                  @map("updated_by") @db.Uuid
+
+  @@unique([target, targetKey, effectiveFrom], map: "retention_policy_target_target_key_effective_from_key")
+  @@map("retention_policy")
+  @@schema("platform")
+}

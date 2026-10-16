@@ -1,0 +1,73 @@
+// bridge — integration events with getbuild / getpack (D-153; contracts in @collective/asset-core).
+
+enum IntegrationDirection {
+  inbound
+  outbound
+
+  @@map("integration_direction")
+  @@schema("bridge")
+}
+
+enum IntegrationPlatform {
+  getbuild
+  getpack
+
+  @@map("integration_platform")
+  @@schema("bridge")
+}
+
+enum IntegrationStatus {
+  received
+  validated
+  applied
+  rejected
+  pending
+  sent
+  acked
+  failed
+  dead
+
+  @@map("integration_status")
+  @@schema("bridge")
+}
+
+/// Every event exchanged with getbuild / getpack, persisted for replay; ack within 24 h.
+model IntegrationEvent {
+  id               String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  direction        IntegrationDirection
+  platform         IntegrationPlatform
+  eventType        String               @map("event_type")
+  contractVersion  String               @map("contract_version")
+  idempotencyKey   String               @map("idempotency_key")
+  tenantId         String?              @map("tenant_id") @db.Uuid
+  buildingId       String?              @map("building_id") @db.Uuid
+  subjectType      String?              @map("subject_type")
+  subjectId        String?              @map("subject_id") @db.Uuid
+  payload          Json
+  payloadSha256    Bytes                @map("payload_sha256")
+  correlationId    String?              @map("correlation_id") @db.Uuid
+  causationEventId String?              @map("causation_event_id") @db.Uuid
+  status           IntegrationStatus
+  attempts         Int                  @default(0) @db.SmallInt
+  nextAttemptAt    DateTime?            @map("next_attempt_at") @db.Timestamptz(6)
+  lastError        String?              @map("last_error")
+  occurredAt       DateTime             @map("occurred_at") @db.Timestamptz(6)
+  receivedAt       DateTime?            @map("received_at") @db.Timestamptz(6)
+  sentAt           DateTime?            @map("sent_at") @db.Timestamptz(6)
+  ackedAt          DateTime?            @map("acked_at") @db.Timestamptz(6)
+  ackDueAt         DateTime             @default(dbgenerated("(now() + '24:00:00'::interval)")) @map("ack_due_at") @db.Timestamptz(6)
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?              @map("created_by") @db.Uuid
+  updatedAt        DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy        String?              @map("updated_by") @db.Uuid
+
+  tenant   Tenant?   @relation("IntegrationEventTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "integration_event_tenant_id_fkey")
+  building Building? @relation("IntegrationEventBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "integration_event_building_id_fkey")
+
+  @@unique([platform, direction, idempotencyKey], map: "integration_event_platform_direction_idempotency_key_key")
+  @@index([status, nextAttemptAt], map: "integration_event_status_next_attempt_at_idx")
+  @@index([status, ackDueAt], map: "integration_event_status_ack_due_at_idx", where: raw("(acked_at IS NULL)"))
+  @@index([tenantId, eventType, occurredAt(sort: Desc)], map: "integration_event_tenant_id_event_type_occurred_at_idx")
+  @@map("integration_event")
+  @@schema("bridge")
+}

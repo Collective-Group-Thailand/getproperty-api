@@ -1,0 +1,247 @@
+// platform — settings & feature flags (ADR-0004, D-144), utility tariffs (D-021a, D-140), business calendar.
+
+enum SettingValueType {
+  string
+  int
+  decimal
+  bool
+  json
+  duration
+  money
+  date
+  time
+
+  @@map("setting_value_type")
+  @@schema("platform")
+}
+
+enum SettingScope {
+  platform
+  tenant
+  property
+
+  @@map("setting_scope")
+  @@schema("platform")
+}
+
+enum UtilityProvider {
+  mea
+  pea
+  mwa
+  pwa
+
+  @@map("utility_provider")
+  @@schema("platform")
+}
+
+enum TariffVersionState {
+  draft
+  entered
+  verified
+  published
+  superseded
+
+  @@map("tariff_version_state")
+  @@schema("platform")
+}
+
+enum CalendarKind {
+  th_public
+  th_bank
+
+  @@map("calendar_kind")
+  @@schema("platform")
+}
+
+/// Setting catalogue, one row per key (D-144). description cites the decision id.
+model Setting {
+  id           String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  key          String           @unique(map: "setting_key_key")
+  valueType    SettingValueType @map("value_type")
+  scopeAllowed SettingScope[]   @map("scope_allowed")
+  description  String
+  editableBy   String[]         @default([]) @map("editable_by")
+  jsonSchema   Json?            @map("json_schema")
+  isSecret     Boolean          @default(false) @map("is_secret")
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy    String?          @map("created_by") @db.Uuid
+  updatedAt    DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy    String?          @map("updated_by") @db.Uuid
+
+  versions         SettingVersion[]
+  tenantVersions   TenantSettingVersion[]
+  propertyVersions PropertySettingVersion[]
+
+  @@map("setting")
+  @@schema("platform")
+}
+
+/// Effective-dated platform values (closed by trigger, never backdated).
+model SettingVersion {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  settingId     String    @map("setting_id") @db.Uuid
+  value         Json
+  effectiveFrom DateTime  @map("effective_from") @db.Timestamptz(6)
+  effectiveTo   DateTime? @map("effective_to") @db.Timestamptz(6)
+  reason        String
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+
+  setting Setting @relation(fields: [settingId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "setting_version_setting_id_fkey")
+
+  @@unique([settingId, effectiveFrom], map: "setting_version_setting_id_effective_from_key")
+  @@map("setting_version")
+  @@schema("platform")
+}
+
+/// Effective-dated tenant values.
+model TenantSettingVersion {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  settingId     String    @map("setting_id") @db.Uuid
+  value         Json
+  effectiveFrom DateTime  @map("effective_from") @db.Timestamptz(6)
+  effectiveTo   DateTime? @map("effective_to") @db.Timestamptz(6)
+  reason        String
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+
+  tenant  Tenant  @relation("TenantSettingVersionTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tenant_setting_version_tenant_id_fkey")
+  setting Setting @relation(fields: [settingId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "tenant_setting_version_setting_id_fkey")
+
+  @@unique([tenantId, settingId, effectiveFrom], map: "tenant_setting_version_tenant_id_setting_id_effective_from_key")
+  @@map("tenant_setting_version")
+  @@schema("platform")
+}
+
+/// Effective-dated property values.
+model PropertySettingVersion {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  propertyId    String    @map("property_id") @db.Uuid
+  settingId     String    @map("setting_id") @db.Uuid
+  value         Json
+  effectiveFrom DateTime  @map("effective_from") @db.Timestamptz(6)
+  effectiveTo   DateTime? @map("effective_to") @db.Timestamptz(6)
+  reason        String
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+
+  tenant   Tenant   @relation("PropertySettingVersionTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "property_setting_version_tenant_id_fkey")
+  property Property @relation("PropertySettingVersionProperty", fields: [propertyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "property_setting_version_property_id_fkey")
+  setting  Setting  @relation(fields: [settingId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "property_setting_version_setting_id_fkey")
+
+  @@unique([propertyId, settingId, effectiveFrom], map: "property_setting_version_property_setting_from_key")
+  @@index([tenantId], map: "property_setting_version_tenant_id_idx")
+  @@map("property_setting_version")
+  @@schema("platform")
+}
+
+model FeatureFlag {
+  id             String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  key            String   @unique(map: "feature_flag_key_key")
+  description    String
+  defaultEnabled Boolean  @default(false) @map("default_enabled")
+  rolloutPct     Int      @default(0) @map("rollout_pct") @db.SmallInt
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?  @map("created_by") @db.Uuid
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy      String?  @map("updated_by") @db.Uuid
+
+  overrides FeatureFlagOverride[]
+
+  @@map("feature_flag")
+  @@schema("platform")
+}
+
+model FeatureFlagOverride {
+  id            String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  featureFlagId String   @map("feature_flag_id") @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  enabled       Boolean
+  reason        String
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?  @map("created_by") @db.Uuid
+  updatedAt     DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?  @map("updated_by") @db.Uuid
+
+  featureFlag FeatureFlag @relation(fields: [featureFlagId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "feature_flag_override_feature_flag_id_fkey")
+  tenant      Tenant      @relation("FeatureFlagOverrideTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "feature_flag_override_tenant_id_fkey")
+
+  @@unique([featureFlagId, tenantId], map: "feature_flag_override_feature_flag_id_tenant_id_key")
+  @@index([tenantId], map: "feature_flag_override_tenant_id_idx")
+  @@map("feature_flag_override")
+  @@schema("platform")
+}
+
+/// One row per (utility, provider, customer class): the สคบ. cap reference (D-021a).
+model UtilityTariff {
+  id         String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  utility    Utility
+  provider   UtilityProvider
+  tariffCode String          @map("tariff_code")
+  nameTh     String          @map("name_th")
+  nameEn     String          @map("name_en")
+  isActive   Boolean         @default(true) @map("is_active")
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?         @map("created_by") @db.Uuid
+  updatedAt  DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy  String?         @map("updated_by") @db.Uuid
+
+  versions UtilityTariffVersion[]
+
+  @@unique([provider, tariffCode], map: "utility_tariff_provider_tariff_code_key")
+  @@map("utility_tariff")
+  @@schema("platform")
+}
+
+/// Effective-dated published rate tables (structure = schema-design §4.2.1). state entered = unverified.
+model UtilityTariffVersion {
+  id                String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  utilityTariffId   String             @map("utility_tariff_id") @db.Uuid
+  effectiveFrom     DateTime           @map("effective_from") @db.Date
+  effectiveTo       DateTime?          @map("effective_to") @db.Date
+  structure         Json
+  ceilingPerUnit    Decimal            @map("ceiling_per_unit") @db.Decimal(14, 4)
+  capBasis          String             @default("effective_average_rate") @map("cap_basis")
+  sourceUrl         String             @map("source_url")
+  sourceDocumentId  String?            @map("source_document_id") @db.Uuid
+  sourcePublishedAt DateTime?          @map("source_published_at") @db.Date
+  state             TariffVersionState @default(draft)
+  needsCheck        Boolean            @default(true) @map("needs_check")
+  enteredBy         String?            @map("entered_by") @db.Uuid
+  verifiedBy        String?            @map("verified_by") @db.Uuid
+  verifiedAt        DateTime?          @map("verified_at") @db.Timestamptz(6)
+  publishedBy       String?            @map("published_by") @db.Uuid
+  publishedAt       DateTime?          @map("published_at") @db.Timestamptz(6)
+  notes             String?
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?            @map("created_by") @db.Uuid
+  updatedAt         DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?            @map("updated_by") @db.Uuid
+
+  utilityTariff  UtilityTariff @relation(fields: [utilityTariffId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "utility_tariff_version_utility_tariff_id_fkey")
+  sourceDocument Document?     @relation("UtilityTariffVersionSourceDocument", fields: [sourceDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "utility_tariff_version_source_document_id_fkey")
+
+  @@unique([utilityTariffId, effectiveFrom], map: "utility_tariff_version_utility_tariff_id_effective_from_key")
+  @@map("utility_tariff_version")
+  @@schema("platform")
+}
+
+/// Thai public / bank holidays (SLA timers and due dates, D-159).
+model BusinessCalendar {
+  id          String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  calendar    CalendarKind
+  holidayDate DateTime     @map("holiday_date") @db.Date
+  nameTh      String       @map("name_th")
+  nameEn      String       @map("name_en")
+  sourceUrl   String       @map("source_url")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   String?      @map("created_by") @db.Uuid
+  updatedAt   DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy   String?      @map("updated_by") @db.Uuid
+
+  @@unique([calendar, holidayDate], map: "business_calendar_calendar_holiday_date_key")
+  @@map("business_calendar")
+  @@schema("platform")
+}
