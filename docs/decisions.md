@@ -141,3 +141,4 @@
 | O-002 | Exact สคบ. 2568 text: deposit cap values, late-fee permissibility, estimate billing permissibility. | Legal counsel |
 | O-003 | Meter models for the pilot (electric Modbus 1-phase class 1; water pulse) and the gateway model — after the site survey. | Founder + IoT engineer |
 | O-004 | Does the pilot org register for VAT? Decides whether tax-invoice documents are needed in R1. | Pilot org |
+| O-005 | TimescaleDB on GCP (D-160 vs ADR-0001): Cloud SQL for PostgreSQL must offer the `timescaledb` extension for `smart.telemetry_point` / `device_health` hypertables; if it does not, choose self-managed PostgreSQL + TimescaleDB on GCE/GKE, Timescale Cloud on GCP, or plain partitioned tables with hand-written rollups. Raised by the schema lock (2026-10-17); needed before B3.2. | Founder + tech lead |

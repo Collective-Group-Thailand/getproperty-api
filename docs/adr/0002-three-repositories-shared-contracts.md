@@ -3,6 +3,8 @@
 **Status:** Accepted (2026-10-16, B1.1)
 **Decision ids:** D-002, D-003, D-013, D-130 · contract: `docs/contract/api-conventions.md` §1, §5, §7; `docs/contract/device-protocol.md`
 
+> **Amendment (D-153, D-154; ADR-0009/0010, 2026-10-17).** The product now has four application repositories plus one shared package: `getproperty-api`, `getproperty-web` (owner console, staff PWA, platform admin), **`getproperty-liff`** (LINE Mini App for residents, technicians and landlords — consumes `contract/openapi.json` like the web), `getproperty-edge`, and the package **`collective-asset-core`** (the `core` schema, its migrations and the integration event contracts). Surfaces are `/v1/auth`, `/v1/owner`, `/v1/staff`, `/v1/resident` (was `/v1/tenant`), `/v1/technician`, `/v1/admin`, `/v1/device`, `/webhooks`. The rest of this ADR stands.
+
 ## Context
 getproperty has three deployables with different lifecycles and runtimes: the backend (NestJS, three processes), the web app (one Next.js app with owner / tenant / staff / admin zones and a BFF) and the gateway agent (a Node binary on Linux ARM64 inside each building, updated by OTA rings). They are built by the same small team but released at different cadences: a gateway fleet cannot be redeployed with every API change, and the web app must be able to work ahead of the backend.
 
