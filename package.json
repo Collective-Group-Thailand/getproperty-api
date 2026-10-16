@@ -44,6 +44,8 @@
     "@opentelemetry/auto-instrumentations-node": "^0.81.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.223.0",
     "@opentelemetry/sdk-node": "^0.223.0",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
     "@scalar/api-reference": "^1.74.0",
     "@scalar/nestjs-api-reference": "^1.2.29",
     "@sentry/nestjs": "^11.8.0",
@@ -83,12 +85,15 @@
     "@types/supertest": "^7.2.1",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
+    "embedded-postgres": "18.4.0-beta.17",
     "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-simple-import-sort": "^14.0.0",
     "jest": "^30.5.2",
+    "pgsql-parser": "^18.2.12",
     "pino-pretty": "^13.2.0",
     "prettier": "^3.9.10",
+    "prisma": "7.10.1",
     "supertest": "^7.3.1",
     "testcontainers": "^12.2.1",
     "typescript": "6.0.3",
@@ -96,13 +101,20 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@prisma/engines",
+      "prisma",
       "@swc/core",
       "protobufjs",
       "msgpackr-extract",
       "@parcel/watcher",
       "cpu-features",
       "ssh2",
-      "unrs-resolver"
+      "unrs-resolver",
+      "@embedded-postgres/linux-x64",
+      "@embedded-postgres/linux-arm64",
+      "@embedded-postgres/darwin-arm64",
+      "@embedded-postgres/darwin-x64",
+      "@embedded-postgres/windows-x64"
     ]
   }
 }
