@@ -1,4 +1,4 @@
-import { OptionalAuth, Public } from '@common/auth/auth.decorators';
+import { OptionalAuth, Public, TenantScoped } from '@common/auth/auth.decorators';
 import { ApiEndpoint, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { toBangkokIso } from '@common/time/bangkok';
 import { Controller, type ControllerOptions, Get, type Type, VERSION_NEUTRAL } from '@nestjs/common';
@@ -20,6 +20,8 @@ export function systemPingController(surface: Surface): Type<unknown> {
     surface === SURFACES.webhooks ? { path: 'webhooks', version: VERSION_NEUTRAL } : { path: surface };
   const audience = SURFACE_AUDIENCE[surface];
   const access = audience ? OptionalAuth(audience) : Public();
+  // The operator surfaces resolve `X-Tenant-Id` on every route (contract §8), the ping included.
+  const tenantScope = audience === 'operator' ? TenantScoped() : () => undefined;
 
   @ApiTags(`${surface}.system`)
   @ApiSurface(surface)
@@ -27,6 +29,7 @@ export function systemPingController(surface: Surface): Type<unknown> {
   class SystemPingController {
     @Get('ping')
     @access
+    @tenantScope
     @ApiEndpoint({
       id: `${surface}.system.ping`,
       summary: `Ping the ${surface} surface`,
@@ -35,8 +38,11 @@ export function systemPingController(surface: Surface): Type<unknown> {
         `\`${surface}\` surface until its real endpoints land. ` +
         (audience
           ? `Anonymous or with an \`${audience}\` token (checked from B1.3: wrong audience → 403 \`auth.wrong_audience\`).`
-          : 'Public: this surface has no token audience.'),
-      implements: ['D-002', 'ADR-0002'],
+          : 'Public: this surface has no token audience.') +
+        (audience === 'operator'
+          ? ' An `X-Tenant-Id` header, when sent, must be a uuid (contract §8, D-151).'
+          : ''),
+      implements: audience === 'operator' ? ['D-002', 'D-151', 'ADR-0002'] : ['D-002', 'ADR-0002'],
     })
     @ApiSuccess(200, { description: 'The surface is up', type: SystemPingDto, example: pingExample(surface) })
     @ApiStandardErrors()

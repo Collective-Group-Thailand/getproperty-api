@@ -10,7 +10,7 @@ export interface ComplianceRuleRef {
 
 /**
  * A refusal of the compliance engine (D-020–D-025; CLAUDE.md "Compliance before convenience").
- * Always a `compliance.*` code and always published with `legalRef` (contract §3), so a tenant or
+ * Always a `compliance.*` code and always published with `legalRef` (contract §3), so a resident or
  * an owner can see which law the platform applied. The rule registry itself arrives in B4.1; this
  * class exists from B1.1 so every later module throws the same shape.
  */

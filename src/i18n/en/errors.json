@@ -37,18 +37,18 @@
     },
     "scope_unavailable": {
       "title": "Scope unavailable",
-      "detail": "The token has no scope for the requested organisation, property or lease."
+      "detail": "The token has no scope for the requested organisation, building, unit or lease."
     }
   },
   "validation": {
     "failed": { "title": "Validation failed", "detail": "Some fields are invalid. See errors for details." }
   },
-  "org": {
+  "tenant": {
     "context_required": {
       "title": "Organisation required",
-      "detail": "Choose the organisation with the X-Org-Id header."
+      "detail": "Choose the organisation with the X-Tenant-Id header."
     },
-    "context_invalid": { "title": "Invalid organisation id", "detail": "X-Org-Id must be a uuid." },
+    "context_invalid": { "title": "Invalid organisation id", "detail": "X-Tenant-Id must be a uuid." },
     "not_in_scope": {
       "title": "Organisation not accessible",
       "detail": "Your account has no access to this organisation."

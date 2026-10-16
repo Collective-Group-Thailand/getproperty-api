@@ -10,9 +10,13 @@ describe('surfaces registry', () => {
     expect(surfaceOfPath('/v1/owner/bills')).toBe(SURFACES.owner);
     expect(surfaceOfPath('/webhooks/kbank')).toBe(SURFACES.webhooks);
     expect(surfaceOfPath('/health')).toBeUndefined();
-    expect(SURFACE_AUDIENCE.owner).toBe('org');
-    expect(SURFACE_AUDIENCE.staff).toBe('org');
-    expect(SURFACE_AUDIENCE.tenant).toBe('tenant');
+    expect(surfaceOfPath('/v1/resident/invoices')).toBe(SURFACES.resident);
+    expect(surfaceOfPath('/v1/technician/work-orders')).toBe(SURFACES.technician);
+    expect(surfaceOfPath('/v1/tenant/ping')).toBeUndefined();
+    expect(SURFACE_AUDIENCE.owner).toBe('operator');
+    expect(SURFACE_AUDIENCE.staff).toBe('operator');
+    expect(SURFACE_AUDIENCE.resident).toBe('resident');
+    expect(SURFACE_AUDIENCE.technician).toBe('technician');
     expect(SURFACE_AUDIENCE.admin).toBe('platform');
     expect(SURFACE_AUDIENCE.device).toBe('device');
     expect(SURFACE_AUDIENCE.auth).toBeNull();

@@ -46,7 +46,7 @@ export interface IngestCounters {
  * Validates every MQTT envelope against the protocol DTOs (device-protocol.md §5) and reports the
  * outcome. B1.1 only logs: dedup on (meterId, seq), persistence into readings / telemetry hypertables
  * and the `device.invalid_payload` alert threshold arrive in B3.2. No authorisation yet either — the
- * certificate → device → org/property binding is B1.3/B3.1.
+ * certificate → device → tenant/building binding is B1.3/B3.1.
  */
 @Injectable()
 export class IngestService {

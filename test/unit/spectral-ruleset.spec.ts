@@ -35,8 +35,8 @@ describe('getproperty Spectral ruleset (contract §5)', () => {
 
   it('fails on a wrong audience scheme, an inline enum, a bare object and a missing example', () => {
     const doc = clone(committed);
-    doc.paths['/v1/owner/ping'].get.security = [{ tenantBearer: [] }];
-    doc.components.schemas.SystemPingDto.properties.surface = { type: 'string', enum: ['owner', 'tenant'] };
+    doc.paths['/v1/owner/ping'].get.security = [{ residentBearer: [] }];
+    doc.components.schemas.SystemPingDto.properties.surface = { type: 'string', enum: ['owner', 'resident'] };
     doc.components.schemas.SystemPingDto.properties.blob = { type: 'object' };
     delete doc.paths['/v1/admin/system/info'].get.responses['200'].content['application/json'].example;
     const found = codes(doc);

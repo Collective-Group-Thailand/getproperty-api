@@ -23,11 +23,11 @@ describe('log redaction (PDPA, D-025)', () => {
 
   it('redacts deeply and case-insensitively without touching other values', () => {
     const out = redactDeep({
-      tenant: { NationalId: '0000000000001', name: 'ผู้เช่า ทดสอบ', docs: [{ passportNo: 'X1' }] },
+      party: { NationalId: '0000000000001', name: 'ผู้เช่า ทดสอบ', docs: [{ passportNo: 'X1' }] },
       headers: { Authorization: 'Bearer x', 'x-request-id': 'r' },
     });
     expect(out).toEqual({
-      tenant: { NationalId: '[REDACTED]', name: 'ผู้เช่า ทดสอบ', docs: [{ passportNo: '[REDACTED]' }] },
+      party: { NationalId: '[REDACTED]', name: 'ผู้เช่า ทดสอบ', docs: [{ passportNo: '[REDACTED]' }] },
       headers: { Authorization: '[REDACTED]', 'x-request-id': 'r' },
     });
   });

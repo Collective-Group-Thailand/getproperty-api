@@ -88,6 +88,46 @@
           "title": "ระบบไม่พร้อมให้บริการ",
           "type": "https://errors.getproperty.co/service.unavailable"
         }
+      },
+      "problem.tenant.context_invalid": {
+        "summary": "tenant.context_invalid",
+        "value": {
+          "code": "tenant.context_invalid",
+          "detail": "X-Tenant-Id ต้องเป็น uuid",
+          "errors": [
+            {
+              "code": "isUuid",
+              "message": "X-Tenant-Id must be a uuid",
+              "path": "x-tenant-id"
+            }
+          ],
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 400,
+          "title": "รหัสองค์กรไม่ถูกต้อง",
+          "type": "https://errors.getproperty.co/tenant.context_invalid"
+        }
+      },
+      "problem.tenant.context_required": {
+        "summary": "tenant.context_required",
+        "value": {
+          "code": "tenant.context_required",
+          "detail": "กรุณาเลือกองค์กรด้วยส่วนหัว X-Tenant-Id",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 400,
+          "title": "ต้องระบุองค์กร",
+          "type": "https://errors.getproperty.co/tenant.context_required"
+        }
+      },
+      "problem.tenant.not_in_scope": {
+        "summary": "tenant.not_in_scope",
+        "value": {
+          "code": "tenant.not_in_scope",
+          "detail": "บัญชีของคุณไม่มีสิทธิ์เข้าถึงองค์กรนี้",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 403,
+          "title": "เข้าถึงองค์กรนี้ไม่ได้",
+          "type": "https://errors.getproperty.co/tenant.not_in_scope"
+        }
       }
     },
     "headers": {
@@ -129,12 +169,23 @@
     },
     "parameters": {
       "AcceptLanguage": {
-        "description": "Language of `title`/`detail` in problems and of generated documents: `th` (default) or `en` (tenant surface also `my|km|lo|zh` in R2, D-064).",
+        "description": "Language of `title`/`detail` in problems and of generated documents: `th` (default) or `en` (resident surface also `my|km|lo|zh` in R2, D-064).",
         "in": "header",
         "name": "Accept-Language",
         "required": false,
         "schema": {
           "example": "th",
+          "type": "string"
+        }
+      },
+      "TenantIdHeader": {
+        "description": "Tenant context (the SaaS customer organisation, D-151) for operators who belong to several tenants (contract §8): must be one of the `tenant:<uuid>` scopes of the token. Not a uuid → 400 `tenant.context_invalid`; not in the token → 403 `tenant.not_in_scope`; omitted with several tenants → 400 `tenant.context_required`. Single-tenant users never need it.",
+        "in": "header",
+        "name": "X-Tenant-Id",
+        "required": false,
+        "schema": {
+          "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+          "format": "uuid",
           "type": "string"
         }
       }
@@ -372,8 +423,9 @@
         "enum": [
           "auth",
           "owner",
-          "tenant",
           "staff",
+          "resident",
+          "technician",
           "admin",
           "device",
           "webhooks"
@@ -461,9 +513,9 @@
         "scheme": "bearer",
         "type": "http"
       },
-      "orgBearer": {
+      "operatorBearer": {
         "bearerFormat": "JWT",
-        "description": "Access token with `aud=org` — `/v1/owner/*` and `/v1/staff/*` (Owner, Manager, Accountant, Staff; scopes `org:<uuid>`, `property:<uuid>`).",
+        "description": "Access token with `aud=operator` — `/v1/owner/*` and `/v1/staff/*`: people working for a tenant (Owner, Manager, Accountant, building Staff; scopes `tenant:<uuid>`, `building:<uuid>`; D-151).",
         "scheme": "bearer",
         "type": "http"
       },
@@ -473,9 +525,15 @@
         "scheme": "bearer",
         "type": "http"
       },
-      "tenantBearer": {
+      "residentBearer": {
         "bearerFormat": "JWT",
-        "description": "Access token with `aud=tenant` — `/v1/tenant/*` (scopes `lease:<uuid>`).",
+        "description": "Access token with `aud=resident` — `/v1/resident/*`, served by the getproperty-liff LINE Mini App: lessees, co-occupants, condo owners (scopes `lease:<uuid>`, `unit:<uuid>`; D-154).",
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "technicianBearer": {
+        "bearerFormat": "JWT",
+        "description": "Access token with `aud=technician` — `/v1/technician/*`, external technicians and contractors in LIFF (scopes `work_order:<uuid>`; R2).",
         "scheme": "bearer",
         "type": "http"
       }
@@ -487,7 +545,7 @@
       "name": "Collective Group (Thailand) — getproperty",
       "url": "https://getproperty.co"
     },
-    "description": "getproperty — บิลทำเอง เก็บเงินเอง ถูกกฎหมาย, operated by Collective Group (Thailand) (D-001).\nRules: `docs/contract/api-conventions.md` (shared with getproperty-web and getproperty-edge); MQTT payloads: `docs/contract/device-protocol.md` / `contract/device-protocol.json` (D-130).\n\n- **Surfaces:** `/v1/auth`, `/v1/owner` (org), `/v1/tenant` (tenant), `/v1/staff` (org, Staff role), `/v1/admin` (platform), `/v1/device` (device), `/webhooks`. A token is accepted only on its own audience's prefix.\n- **Tenancy:** every owner/staff request runs in one org (`org:<uuid>` scope or `X-Org-Id`); a cross-org id is a 404 (contract §8, D-004).\n- **Money:** decimal strings with exactly 2 decimals (`\"1234.50\"`) plus `currency: \"THB\"` on the object; never JSON numbers. Clients never compute prices (D-046).\n- **Meter quantities:** `register` and `units` are decimal strings with up to 3 decimals (`\"12345.678\"`), `unit` is `kwh | m3`; tariff `pricePerUnit` has up to 4 decimals.\n- **Dates:** ISO 8601 with offset, rendered in `Asia/Bangkok` (`2026-11-01T00:00:00+07:00`); date-only fields `YYYY-MM-DD`.\n- **IDs:** uuid only; business keys (`billNumber`, `roomCode`, `deviceSerial`) are separate fields.\n- **Errors:** RFC 9457 `application/problem+json` with a stable `code`; `title`/`detail` localised by `Accept-Language` (`th` default, `en`). `compliance.*` refusals carry `legalRef` (D-020).\n- **Lists:** `?page&perPage(≤100)&sort&order&q` → `{ data, meta: { page, perPage, total } }`; feeds use `?cursor&limit` → `{ data, meta: { nextCursor } }`; series take `from`, `to`, `bucket` (`15m | 1h | 1d`).\n- **Idempotency:** irreversible POSTs require `Idempotency-Key` (uuid); replays within 24 h return the original response.\n- **Concurrency:** editable resources return `ETag`; updates send `If-Match` (412 `concurrency.stale`).\n- **Files:** presign → PUT to the returned URL → reference the `fileId`; downloads are short-lived signed URLs.",
+    "description": "getproperty — บิลทำเอง เก็บเงินเอง ถูกกฎหมาย, operated by Collective Group (Thailand) (D-001).\nRules: `docs/contract/api-conventions.md` (shared with getproperty-web and getproperty-edge); MQTT payloads: `docs/contract/device-protocol.md` / `contract/device-protocol.json` (D-130).\n\n- **Surfaces:** `/v1/auth`, `/v1/owner` (operator), `/v1/staff` (operator, Staff role), `/v1/resident` (resident), `/v1/technician` (technician, R2), `/v1/admin` (platform), `/v1/device` (device), `/webhooks`. A token is accepted only on its own audience's prefix.\n- **Tenancy:** a *tenant* is the SaaS customer organisation (D-151). Every owner/staff request runs in one tenant (`tenant:<uuid>` scope or `X-Tenant-Id`); a cross-tenant id is a 404 (contract §8, D-152).\n- **Money:** decimal strings with exactly 2 decimals (`\"1234.50\"`) plus `currency: \"THB\"` on the object; never JSON numbers. Clients never compute prices (D-046).\n- **Meter quantities:** `register` and `units` are decimal strings with up to 3 decimals (`\"12345.678\"`), `unit` is `kwh | m3`; tariff `pricePerUnit` has up to 4 decimals.\n- **Dates:** ISO 8601 with offset, rendered in `Asia/Bangkok` (`2026-11-01T00:00:00+07:00`); date-only fields `YYYY-MM-DD`.\n- **IDs:** uuid only; business keys (`invoiceNumber`, `unitNo`, `deviceSerial`) are separate fields.\n- **Errors:** RFC 9457 `application/problem+json` with a stable `code`; `title`/`detail` localised by `Accept-Language` (`th` default, `en`). `compliance.*` refusals carry `legalRef` (D-020).\n- **Lists:** `?page&perPage(≤100)&sort&order&q` → `{ data, meta: { page, perPage, total } }`; feeds use `?cursor&limit` → `{ data, meta: { nextCursor } }`; series take `from`, `to`, `bucket` (`15m | 1h | 1d`).\n- **Idempotency:** irreversible POSTs require `Idempotency-Key` (uuid); replays within 24 h return the original response.\n- **Concurrency:** editable resources return `ETag`; updates send `If-Match` (412 `concurrency.stale`).\n- **Files:** presign → PUT to the returned URL → reference the `fileId`; downloads are short-lived signed URLs.",
     "title": "getproperty API",
     "version": "0.1.0"
   },
@@ -1076,9 +1134,12 @@
     },
     "/v1/owner/ping": {
       "get": {
-        "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `owner` surface until its real endpoints land. Anonymous or with an `org` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`).\n\nImplements: D-002, ADR-0002.",
+        "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `owner` surface until its real endpoints land. Anonymous or with an `operator` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`). An `X-Tenant-Id` header, when sent, must be a uuid (contract §8, D-151).\n\nImplements: D-002, D-151, ADR-0002.",
         "operationId": "owner.system.ping",
         "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
           {
             "$ref": "#/components/parameters/AcceptLanguage"
           }
@@ -1113,6 +1174,171 @@
               }
             }
           },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Ping the owner surface",
+        "tags": [
+          "owner.system"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/resident/ping": {
+      "get": {
+        "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `resident` surface until its real endpoints land. Anonymous or with an `resident` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`).\n\nImplements: D-002, ADR-0002.",
+        "operationId": "resident.system.ping",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "serverTime": "2026-11-01T00:15:00+07:00",
+                  "surface": "resident",
+                  "version": "0.1.0"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SystemPingDto"
+                }
+              }
+            },
+            "description": "The surface is up",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
           "401": {
             "content": {
               "application/problem+json": {
@@ -1203,21 +1429,24 @@
         "security": [
           {},
           {
-            "orgBearer": []
+            "residentBearer": []
           }
         ],
-        "summary": "Ping the owner surface",
+        "summary": "Ping the resident surface",
         "tags": [
-          "owner.system"
+          "resident.system"
         ],
-        "x-surface": "owner"
+        "x-surface": "resident"
       }
     },
     "/v1/staff/ping": {
       "get": {
-        "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `staff` surface until its real endpoints land. Anonymous or with an `org` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`).\n\nImplements: D-002, ADR-0002.",
+        "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `staff` surface until its real endpoints land. Anonymous or with an `operator` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`). An `X-Tenant-Id` header, when sent, must be a uuid (contract §8, D-151).\n\nImplements: D-002, D-151, ADR-0002.",
         "operationId": "staff.system.ping",
         "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
           {
             "$ref": "#/components/parameters/AcceptLanguage"
           }
@@ -1252,6 +1481,29 @@
               }
             }
           },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
           "401": {
             "content": {
               "application/problem+json": {
@@ -1281,6 +1533,9 @@
                   },
                   "auth.wrong_audience": {
                     "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
                   }
                 },
                 "schema": {
@@ -1288,7 +1543,7 @@
                 }
               }
             },
-            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -1342,7 +1597,7 @@
         "security": [
           {},
           {
-            "orgBearer": []
+            "operatorBearer": []
           }
         ],
         "summary": "Ping the staff surface",
@@ -1352,10 +1607,10 @@
         "x-surface": "staff"
       }
     },
-    "/v1/tenant/ping": {
+    "/v1/technician/ping": {
       "get": {
-        "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `tenant` surface until its real endpoints land. Anonymous or with an `tenant` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`).\n\nImplements: D-002, ADR-0002.",
-        "operationId": "tenant.system.ping",
+        "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `technician` surface until its real endpoints land. Anonymous or with an `technician` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`).\n\nImplements: D-002, ADR-0002.",
+        "operationId": "technician.system.ping",
         "parameters": [
           {
             "$ref": "#/components/parameters/AcceptLanguage"
@@ -1367,7 +1622,7 @@
               "application/json": {
                 "example": {
                   "serverTime": "2026-11-01T00:15:00+07:00",
-                  "surface": "tenant",
+                  "surface": "technician",
                   "version": "0.1.0"
                 },
                 "schema": {
@@ -1481,14 +1736,14 @@
         "security": [
           {},
           {
-            "tenantBearer": []
+            "technicianBearer": []
           }
         ],
-        "summary": "Ping the tenant surface",
+        "summary": "Ping the technician surface",
         "tags": [
-          "tenant.system"
+          "technician.system"
         ],
-        "x-surface": "tenant"
+        "x-surface": "technician"
       }
     },
     "/webhooks/ping": {
@@ -1621,7 +1876,7 @@
   ],
   "tags": [
     {
-      "description": "Platform admin zone — Collective Group staff: orgs, subscriptions, device fleet, tariffs, support (`platform` audience). System: ping and build information.",
+      "description": "Platform admin zone — Collective Group staff: tenants, subscriptions, device fleet, tariffs, support, AI usage cost (`platform` audience, D-161). System: ping and build information.",
       "name": "admin.system"
     },
     {
@@ -1637,16 +1892,20 @@
       "name": "ops.health"
     },
     {
-      "description": "Owner zone of getproperty-web — Owner, Manager, Accountant and Staff roles of one org (`org` audience, D-090). Placeholder until B1.3 (ping only).",
+      "description": "Owner console of getproperty-web — Owner, Manager, Accountant and Staff roles of one tenant (`operator` audience, D-090, D-151). Placeholder until B1.3 (ping only).",
       "name": "owner.system"
     },
     {
-      "description": "Staff PWA — readings, inspections, installs, repairs, parcels (`org` audience with the Staff role). Placeholder until B1.3 (ping only).",
+      "description": "Resident LINE Mini App (getproperty-liff, D-154) — lessees, co-occupants and condo owners, scoped to their leases and units (`resident` audience, D-060, D-151). Placeholder until B1.3 (ping only).",
+      "name": "resident.system"
+    },
+    {
+      "description": "Staff PWA of getproperty-web — readings, inspections, installs, service requests, parcels (`operator` audience with the Staff role). Placeholder until B1.3 (ping only).",
       "name": "staff.system"
     },
     {
-      "description": "Tenant zone — LINE Mini App / mobile web, scoped to the tenant’s leases (`tenant` audience, D-060). Placeholder until B1.3 (ping only).",
-      "name": "tenant.system"
+      "description": "Technician LINE Mini App (getproperty-liff) — external technicians and contractors, scoped to the work orders assigned to them (`technician` audience; R2). Placeholder until B5 (ping only).",
+      "name": "technician.system"
     },
     {
       "description": "PLACEHOLDER provider callback shape (payload, signature header, expected response); the real providers (payment QR, slip verification, LINE) arrive in B4.",

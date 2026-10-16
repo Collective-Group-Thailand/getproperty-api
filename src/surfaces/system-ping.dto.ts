@@ -5,8 +5,9 @@ import { type Surface, SURFACES } from './surfaces';
 export enum SurfaceName {
   Auth = 'auth',
   Owner = 'owner',
-  Tenant = 'tenant',
   Staff = 'staff',
+  Resident = 'resident',
+  Technician = 'technician',
   Admin = 'admin',
   Device = 'device',
   Webhooks = 'webhooks',

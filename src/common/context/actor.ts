@@ -1,19 +1,25 @@
 import { type Audience } from '../../surfaces/surfaces';
 
 /**
- * Who performs an action. Internal `bigint` ids stay inside the API (they arrive with the schema in
- * B1.2); the public ids are what tokens and responses carry (contract §3, §4).
+ * Who performs an action. Ids are the rows' uuidv7 primary keys — the same ids tokens and responses
+ * carry (contract §3, §4; schema-design v2 §1.2).
  */
 export type Actor = UserActor | DeviceActor | SystemActor | WebhookActor;
 
 export interface UserActor {
   type: 'user';
   publicId: string;
-  /** `org` (owner, manager, staff, accountant), `tenant` or `platform` (ADR-0003). */
+  /**
+   * `operator` (owner, manager, accountant, building staff of a tenant), `resident` (lessees, co-occupants,
+   * condo owners), `technician` (external contractors, R2) or `platform` (Collective staff) — ADR-0003, D-151.
+   */
   audience: Exclude<Audience, 'device'>;
   /** Session family id (`sid`), absent for actors built outside a request. */
   sessionId?: string;
-  /** Token scopes: `org:<uuid>`, `property:<uuid>`, `lease:<uuid>` (contract §4). */
+  /**
+   * Token scopes (contract §4): `tenant:<uuid>`, `building:<uuid>` (staff limited to buildings),
+   * `lease:<uuid>` / `unit:<uuid>` (residents), `work_order:<uuid>` (technicians).
+   */
   scopes: readonly string[];
 }
 
@@ -22,8 +28,9 @@ export interface DeviceActor {
   type: 'device';
   publicId: string;
   audience: 'device';
-  orgId: string;
-  propertyId: string;
+  /** The tenant that operates the device's building (`building.operator_tenant_id`). */
+  tenantId: string;
+  buildingId: string;
   scopes: readonly string[];
 }
 

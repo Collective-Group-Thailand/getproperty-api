@@ -1,9 +1,10 @@
 // Operations under a surface prefix must use that surface's audience scheme, or be explicitly public
 // or optionally authenticated (contract §2, ADR-0003).
 const SURFACE_SCHEME = {
-  '/v1/owner/': 'orgBearer',
-  '/v1/staff/': 'orgBearer',
-  '/v1/tenant/': 'tenantBearer',
+  '/v1/owner/': 'operatorBearer',
+  '/v1/staff/': 'operatorBearer',
+  '/v1/resident/': 'residentBearer',
+  '/v1/technician/': 'technicianBearer',
   '/v1/admin/': 'platformBearer',
   '/v1/device/': 'deviceBearer',
 };

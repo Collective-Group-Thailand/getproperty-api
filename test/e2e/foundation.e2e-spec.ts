@@ -106,23 +106,31 @@ describe('B1.1 foundation (e2e, fake data stores)', () => {
     expect(res.body.code).toBe('http.malformed_json');
   });
 
-  it('X-Org-Id that is not a uuid is refused on the owner surface with 400 org.context_invalid', async () => {
+  it('X-Tenant-Id that is not a uuid is refused on the owner surface with 400 tenant.context_invalid', async () => {
     const res = await request(app.getHttpServer())
       .get('/v1/owner/ping')
-      .set('X-Org-Id', 'not-a-uuid')
+      .set('X-Tenant-Id', 'not-a-uuid')
       .expect(400);
-    expect(res.body.code).toBe('org.context_invalid');
+    expect(res.body.code).toBe('tenant.context_invalid');
     expect(res.body.errors).toEqual([
-      { path: 'x-org-id', code: 'isUuid', message: 'X-Org-Id must be a uuid' },
+      { path: 'x-tenant-id', code: 'isUuid', message: 'X-Tenant-Id must be a uuid' },
     ]);
-    // The header is ignored on surfaces that are not org-scoped.
-    await request(app.getHttpServer()).get('/v1/tenant/ping').set('X-Org-Id', 'not-a-uuid').expect(200);
+    // The header is ignored on surfaces that are not tenant-scoped (resident, technician).
+    await request(app.getHttpServer()).get('/v1/resident/ping').set('X-Tenant-Id', 'not-a-uuid').expect(200);
+    await request(app.getHttpServer())
+      .get('/v1/technician/ping')
+      .set('X-Tenant-Id', 'not-a-uuid')
+      .expect(200);
   });
 
-  it('a valid X-Org-Id is accepted on the staff surface', async () => {
+  it('the retired /v1/tenant surface no longer exists (renamed to /v1/resident, D-151)', async () => {
+    await request(app.getHttpServer()).get('/v1/tenant/ping').expect(404);
+  });
+
+  it('a valid X-Tenant-Id is accepted on the staff surface', async () => {
     await request(app.getHttpServer())
       .get('/v1/staff/ping')
-      .set('X-Org-Id', '0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11')
+      .set('X-Tenant-Id', '0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11')
       .expect(200);
   });
 

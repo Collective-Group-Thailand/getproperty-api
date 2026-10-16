@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 
 /**
  * PostgreSQL 18 + TimescaleDB connection (ADR-0001). In B1.1 the service only owns a `pg` pool for
- * `/health`; Prisma (`PrismaService`, `withTx`, the `OrgScoped` repository base) arrives with the
+ * `/health`; Prisma (`PrismaService`, `withTx`, the `TenantScoped` repository base) arrives with the
  * schema in B1.2 and will sit next to this pool. With `DATA_STORES_MODE=fake` no connection is
  * opened and `ping()` resolves at once.
  */
