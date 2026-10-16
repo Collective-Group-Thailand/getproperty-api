@@ -1,0 +1,17 @@
+// getproperty — Prisma schema root (Prisma 7, multi-file). Models live in one file per bounded context:
+// iam.prisma, tenancy.prisma, platform-config.prisma, platform-files-audit.prisma, platform-notifications.prisma,
+// platform-privacy.prisma. Table and column names stay snake_case through @@map/@map (schema-design §1.2).
+// Anything Prisma cannot express (CHECK/EXCLUSION constraints, partial and expression indexes, triggers, RLS,
+// views, the uuidv7() guard, TimescaleDB objects) is in the hand-written prisma/migrations/*/migration.sql and
+// is deliberately absent here; `prisma migrate diff --from-migrations --to-schema-datamodel` must stay empty.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../src/generated/prisma"
+  runtime  = "nodejs"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
