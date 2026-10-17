@@ -1,0 +1,270 @@
+import { FAKE } from '@common/openapi/examples';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsOptional, IsString, Length, Matches } from 'class-validator';
+
+export enum TenantTypeName {
+  Apartment = 'apartment',
+  CondoJuristic = 'condo_juristic',
+  PmCompany = 'pm_company',
+  Landlord = 'landlord',
+}
+
+export enum TenantStatusName {
+  Active = 'active',
+  ReadOnly = 'read_only',
+  Deactivated = 'deactivated',
+}
+
+export enum TenantRoleName {
+  Owner = 'owner',
+  Manager = 'manager',
+  Staff = 'staff',
+  Accountant = 'accountant',
+}
+
+export enum SubscriptionStateName {
+  Trial = 'trial',
+  Active = 'active',
+  PastDue = 'past_due',
+  Suspended = 'suspended',
+  Cancelled = 'cancelled',
+}
+
+export class MeUserDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({ example: FAKE.nameTh })
+  displayName!: string;
+
+  @ApiProperty({ type: String, nullable: true, example: '+66810001234' })
+  phone!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: FAKE.email })
+  email!: string | null;
+
+  @ApiProperty({ example: 'th', description: 'th | en (resident surface also my, km, lo, zh in R2, D-064)' })
+  language!: string;
+
+  @ApiProperty({ example: true, description: 'A LINE identity is linked.' })
+  lineLinked!: boolean;
+}
+
+export class OperatorTenantDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.tenantId })
+  id!: string;
+
+  @ApiProperty({ example: FAKE.propertyName })
+  displayName!: string;
+
+  @ApiProperty({ enum: TenantTypeName, enumName: 'TenantType', example: TenantTypeName.Apartment })
+  type!: TenantTypeName;
+
+  @ApiProperty({ enum: TenantStatusName, enumName: 'TenantStatus', example: TenantStatusName.Active })
+  status!: TenantStatusName;
+
+  @ApiProperty({ enum: TenantRoleName, enumName: 'TenantRole', example: TenantRoleName.Owner })
+  role!: TenantRoleName;
+}
+
+export class CurrentTenantDto extends OperatorTenantDto {
+  @ApiProperty({
+    type: [String],
+    nullable: true,
+    example: null,
+    description: 'null = every building; a list = Staff limited to these buildings (D-090).',
+  })
+  buildingIds!: string[] | null;
+}
+
+export class SubscriptionSummaryDto {
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'apartment_starter',
+    description: 'Price plan key (D-156).',
+  })
+  plan!: string | null;
+
+  @ApiProperty({
+    enum: SubscriptionStateName,
+    enumName: 'SubscriptionState',
+    nullable: true,
+    example: null,
+    description: 'From platform.subscription (B6.1); null until subscriptions exist.',
+  })
+  state!: SubscriptionStateName | null;
+
+  @ApiProperty({ example: false, description: 'Suspended tenants are read-only (D-082).' })
+  readOnly!: boolean;
+}
+
+export class OperatorMeDto {
+  @ApiProperty({ type: () => MeUserDto })
+  user!: MeUserDto;
+
+  @ApiProperty({ example: true })
+  hasPassword!: boolean;
+
+  @ApiProperty({ example: false })
+  totpEnabled!: boolean;
+
+  @ApiProperty({ type: () => [OperatorTenantDto], description: 'Every tenant the operator belongs to.' })
+  tenants!: OperatorTenantDto[];
+
+  @ApiProperty({
+    type: () => CurrentTenantDto,
+    nullable: true,
+    description:
+      'The tenant of this request (single tenant or `X-Tenant-Id`); null when the operator must choose.',
+  })
+  currentTenant!: CurrentTenantDto | null;
+
+  @ApiProperty({ type: [String], example: ['owner'] })
+  roles!: string[];
+
+  @ApiProperty({ type: [String], example: ['tenant.read', 'invoice.read'] })
+  permissions!: string[];
+
+  @ApiProperty({
+    type: [String],
+    example: ['dashboard', 'buildings', 'invoices'],
+    description: 'Menu entitlements (keys).',
+  })
+  menu!: string[];
+
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { type: 'boolean' },
+    example: { 'module.service_requests': false, 'channel.web_push': true },
+  })
+  featureFlags!: Record<string, boolean>;
+
+  @ApiProperty({ type: () => SubscriptionSummaryDto, nullable: true })
+  subscription!: SubscriptionSummaryDto | null;
+
+  @ApiProperty({ type: [String], example: [`tenant:${FAKE.tenantId}`] })
+  scopes!: string[];
+}
+
+export class ResidentUnitDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  unitId!: string;
+
+  @ApiProperty({ example: FAKE.unitCode })
+  unitNo!: string;
+
+  @ApiProperty({ format: 'uuid', example: FAKE.buildingId })
+  buildingId!: string;
+
+  @ApiProperty({ example: 'อาคาร A' })
+  buildingName!: string;
+
+  @ApiProperty({ format: 'uuid', example: FAKE.tenantId })
+  tenantId!: string;
+
+  @ApiProperty({ example: FAKE.propertyName })
+  tenantName!: string;
+
+  @ApiProperty({
+    example: 'tenant',
+    description: 'Occupancy role (tenant = lessee, co_tenant, owner_occupier, family, staff).',
+  })
+  role!: string;
+
+  @ApiProperty({ format: 'date', example: FAKE.date })
+  validFrom!: string;
+}
+
+export class ResidentConsentStateDto {
+  @ApiProperty({ example: 'resident.service' })
+  purposeKey!: string;
+
+  @ApiProperty({ example: true })
+  required!: boolean;
+
+  @ApiProperty({ type: 'integer', example: 1 })
+  version!: number;
+
+  @ApiProperty({
+    type: Boolean,
+    nullable: true,
+    example: true,
+    description: 'null = never answered this version.',
+  })
+  granted!: boolean | null;
+}
+
+export class ResidentMeDto {
+  @ApiProperty({ type: () => MeUserDto })
+  user!: MeUserDto;
+
+  @ApiProperty({ type: () => [ResidentUnitDto] })
+  units!: ResidentUnitDto[];
+
+  @ApiProperty({ type: [String], example: [], description: 'Lease ids (from B2.3).' })
+  leaseIds!: string[];
+
+  @ApiProperty({ type: () => [ResidentConsentStateDto] })
+  consents!: ResidentConsentStateDto[];
+
+  @ApiProperty({ example: true, description: 'Every required consent purpose is granted (D-025).' })
+  consentComplete!: boolean;
+
+  @ApiProperty({ type: [String], example: ['unit:3b241101-e2bb-4255-8caf-4136c566a962'] })
+  scopes!: string[];
+}
+
+export class TechnicianMeDto {
+  @ApiProperty({ type: () => MeUserDto })
+  user!: MeUserDto;
+
+  @ApiProperty({ type: [String], example: [], description: 'Work order ids (B5).' })
+  workOrderIds!: string[];
+
+  @ApiProperty({ type: [String], example: [] })
+  scopes!: string[];
+}
+
+export class AdminMeDto {
+  @ApiProperty({ type: () => MeUserDto })
+  user!: MeUserDto;
+
+  @ApiProperty({ type: [String], example: ['platform_admin'] })
+  roles!: string[];
+
+  @ApiProperty({ type: [String], example: ['admin.tenant.read'] })
+  permissions!: string[];
+
+  @ApiProperty({ type: [String], example: ['tenants', 'utility_tariffs'] })
+  menu!: string[];
+
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { type: 'boolean' },
+    example: { 'channel.web_push': true },
+  })
+  featureFlags!: Record<string, boolean>;
+
+  @ApiProperty({ example: true })
+  totpEnabled!: boolean;
+}
+
+export class SetPasswordDto {
+  @ApiPropertyOptional({ example: FAKE.email, description: 'Required when the account has no email yet.' })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiProperty({ example: 'correct horse battery staple', description: '12–128 characters.' })
+  @IsString()
+  @Length(1, 200)
+  password!: string;
+}
+
+export class TotpCodeDto {
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @Matches(/^\d{6}$/)
+  code!: string;
+}
