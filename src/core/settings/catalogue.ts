@@ -111,6 +111,16 @@ export const SETTINGS: readonly SettingDef[] = [
     value: false,
     reason: 'seed: D-045 conservative default (⚖ O-002)',
   },
+  {
+    key: 'late_fee.amount',
+    valueType: 'money',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-045 ⚖ O-002 (B4.5): the flat late fee assessed once per overdue invoice for the next invoice — only when `late_fee.enabled`, the lease states a late fee and compliance.late_fee_policy allows; 0 = none.',
+    editableBy: OWNER_BILLING,
+    value: '0.00',
+    reason: 'seed: D-045 conservative default (no amount until the owner sets the contract amount, ⚖ O-002)',
+  },
   // --- billing & collections ------------------------------------------------------------------------
   {
     key: 'billing.cutoff',

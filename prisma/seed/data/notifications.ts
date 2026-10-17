@@ -266,6 +266,7 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         subject: null,
         body: 'Reminder: invoice {{invoice.number}} has {{invoice.balance}} THB outstanding, {{daysOverdue}} days overdue.',
       },
+      ...flexVersions(),
     ],
   },
   {

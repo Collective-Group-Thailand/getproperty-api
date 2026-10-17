@@ -147,6 +147,18 @@ export const WORKFLOW_DEFINITIONS: readonly WorkflowDefinitionSpec[] = [
       { from: '*', event: 'withdraw', to: 'withdrawn' },
     ],
   },
+  {
+    key: 'dunning',
+    version: 1,
+    description:
+      'D-045 (B4.5): light dunning of one overdue invoice — reminders on the days of `reminders.schedule` after the due date (step timers), stopped when the invoice is paid or voided. Nothing else happens automatically (D-024).',
+    initial: 'overdue',
+    states: [{ key: 'overdue' }, { key: 'paid', terminal: true }, { key: 'cancelled', terminal: true }],
+    transitions: [
+      { from: 'overdue', event: 'pay', to: 'paid' },
+      { from: 'overdue', event: 'cancel', to: 'cancelled' },
+    ],
+  },
 ];
 
 export function workflowDefinition(key: string, version?: number): WorkflowDefinitionSpec {

@@ -187,6 +187,7 @@ model Notification {
   tenant          Tenant?                      @relation("NotificationTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "notification_tenant_id_fkey")
   event           DomainEvent?                 @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "notification_event_id_fkey")
   templateVersion NotificationTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "notification_template_version_id_fkey")
+  dunningReminders DunningReminder[]
 
   @@unique([eventId, recipientType, recipientId, channel], map: "notification_event_id_recipient_type_recipient_id_channel_key", where: raw("(event_id IS NOT NULL)"))
   @@index([tenantId, recipientType, recipientId, createdAt(sort: Desc)], map: "notification_tenant_recipient_created_at_idx")

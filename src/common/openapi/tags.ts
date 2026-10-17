@@ -122,6 +122,10 @@ export const API_TAGS: Record<string, string> = {
     'Money received into my own account (D-042): payments by QR callback, settlement file, slip or by hand; slip reviews, settlement reconciliations, receipts, payers’ credit and refunds (D-043, D-044).',
   'resident.payments':
     'Paying an invoice: Thai QR to the landlord’s account, transfer slips, my receipts (D-042, D-043, D-044).',
+  'owner.dashboard':
+    'The owner dashboard: income, collected %, arrears, due today, cycles, compliance score, loss % (B4.5, D-044, D-045, D-190).',
+  'owner.receivables':
+    'Receivables per billed party × unit with aging, the ledger, payment reminders and the late-fee record (D-044, D-045, ⚖ O-002).',
   'admin.documentTemplates': 'Preview of the billing document templates with sample data (D-050).',
   'admin.featureFlags': 'Feature flags and tenant overrides.',
   'admin.auditLog': 'Platform-wide audit log (D-161).',

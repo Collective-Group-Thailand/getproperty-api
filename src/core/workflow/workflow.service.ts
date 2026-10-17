@@ -171,6 +171,27 @@ export class WorkflowService {
     return fresh;
   }
 
+  /**
+   * Host-scheduled steps of an instance (timer kind `step`, fired once by the worker as `workflow.step_due`): e.g. the
+   * dunning reminders on the days of `reminders.schedule` (B4.5). Steps already in the past are not created.
+   */
+  async addStepTimers(tx: Tx, instance: WorkflowInstance, fireAts: readonly Date[]) {
+    const now = this.clock.now();
+    const timers = [];
+    for (const fireAt of fireAts)
+      timers.push(
+        await tx.workflowTimer.create({
+          data: {
+            tenantId: instance.tenantId,
+            instanceId: instance.id,
+            kind: 'step',
+            fireAt: fireAt.getTime() < now.getTime() ? now : fireAt,
+          },
+        }),
+      );
+    return timers;
+  }
+
   /** Events allowed now (UI next actions). */
   async allowedEvents(tx: Tx, instance: WorkflowInstance): Promise<string[]> {
     const def = await tx.workflowDefinition.findUniqueOrThrow({ where: { id: instance.definitionId } });

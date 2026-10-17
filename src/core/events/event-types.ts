@@ -31,6 +31,7 @@ export const DOMAIN_EVENT_TYPES = {
   'workflow.transitioned': 'A workflow instance moved to another state.',
   'workflow.sla_warning': 'A workflow instance is close to its SLA due time.',
   'workflow.sla_breached': 'A workflow instance breached its SLA (emitted once).',
+  'workflow.step_due': 'A host-scheduled step of a workflow instance is due (e.g. a dunning reminder, B4.5).',
   'workflow.sla_reminder': 'A reminder before a workflow SLA due time (e.g. T-3 / T-1 of a deposit refund).',
   'document.uploaded': 'A file finished uploading; scan and thumbnail follow.',
   'document.scanned': 'A file was scanned (clean or infected).',

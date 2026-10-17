@@ -556,6 +556,12 @@ export class InvoicesService extends TenantScopedRepository {
           where: { id: l.sourceId, status: 'pending' },
           data: { status: 'applied', appliedInvoiceLineId: l.id, updatedBy: by() },
         });
+      // a late fee assessed on an earlier overdue invoice reached this one (D-045, B4.5)
+      if (l.sourceId && l.lineKind === 'late_fee')
+        await tx.penaltyAssessment.updateMany({
+          where: { invoiceChargeId: l.sourceId, status: 'pending' },
+          data: { status: 'applied', appliedInvoiceLineId: l.id, updatedBy: by(), version: { increment: 1 } },
+        });
       if (l.isEstimated && l.sourceType === 'meter' && l.lineKind !== 'estimate_settlement') {
         const segments = (l.meterSegments ?? []) as unknown as MeterSegment[];
         const est = segments.find((s) => s.to?.isEstimated);
@@ -957,6 +963,10 @@ export class InvoicesService extends TenantScopedRepository {
         },
       });
       // queued one-offs return to the queue; open estimate settlements of the voided lines go away with it
+      await tx.penaltyAssessment.updateMany({
+        where: { appliedInvoiceLine: { invoiceId: id } },
+        data: { status: 'pending', appliedInvoiceLineId: null, updatedBy: by(), version: { increment: 1 } },
+      });
       await tx.invoiceCharge.updateMany({
         where: { appliedLine: { invoiceId: id } },
         data: { status: 'pending', appliedInvoiceLineId: null, updatedBy: by() },

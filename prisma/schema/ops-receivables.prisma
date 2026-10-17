@@ -1,0 +1,188 @@
+// B4.5 — receivables, dunning, penalties (migration 0023, schema-design v2 §3.3.6).
+
+enum ReceivableEntryType {
+  invoice
+  payment
+  credit_note
+  debit_note
+  refund
+  write_off
+  deposit_offset
+  opening
+
+  @@map("receivable_entry_type")
+  @@schema("ops")
+}
+
+enum ReminderStatus {
+  scheduled
+  sent
+  skipped_paid
+  deferred_quiet_hours
+  cancelled
+  failed
+
+  @@map("reminder_status")
+  @@schema("ops")
+}
+
+enum ReminderTrigger {
+  schedule
+  owner
+
+  @@map("reminder_trigger")
+  @@schema("ops")
+}
+
+enum PenaltyStatus {
+  pending
+  applied
+  waived
+
+  @@map("penalty_status")
+  @@schema("ops")
+}
+
+/// What a billed party owes for a unit, entry by entry (D-044); append-only, posted by event subscribers.
+model ReceivableEntry {
+  id         String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String              @map("tenant_id") @db.Uuid
+  buildingId String              @map("building_id") @db.Uuid
+  unitId     String?             @map("unit_id") @db.Uuid
+  partyId    String              @map("party_id") @db.Uuid
+  leaseId    String?             @map("lease_id") @db.Uuid
+  entryType  ReceivableEntryType @map("entry_type")
+  refType    String              @map("ref_type")
+  refId      String              @map("ref_id") @db.Uuid
+  amount     Decimal             @db.Decimal(14, 2)
+  occurredAt DateTime            @map("occurred_at") @db.Timestamptz(6)
+  eventId    String?             @map("event_id") @db.Uuid
+  createdAt  DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant   Tenant   @relation("ReceivableEntryTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receivable_entry_tenant_id_fkey")
+  building Building @relation("ReceivableEntryBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receivable_entry_building_id_fkey")
+  unit     Unit?    @relation("ReceivableEntryUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receivable_entry_unit_id_fkey")
+  party    Party    @relation("ReceivableEntryParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receivable_entry_party_id_fkey")
+  lease    Lease?   @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receivable_entry_lease_id_fkey")
+
+  @@unique([eventId], map: "receivable_entry_event_id_key", where: raw("(event_id IS NOT NULL)"))
+  @@index([partyId, unitId, occurredAt], map: "receivable_entry_party_id_unit_id_occurred_at_idx")
+  @@index([tenantId], map: "receivable_entry_tenant_id_idx")
+  @@index([buildingId], map: "receivable_entry_building_id_idx")
+  @@index([unitId], map: "receivable_entry_unit_id_idx")
+  @@index([leaseId], map: "receivable_entry_lease_id_idx")
+  @@index([refId], map: "receivable_entry_ref_id_idx")
+  @@map("receivable_entry")
+  @@schema("ops")
+}
+
+/// What a billed party owes for a unit now, with aging (D-044, D-045).
+model ReceivableBalance {
+  id                String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  buildingId        String    @map("building_id") @db.Uuid
+  partyId           String    @map("party_id") @db.Uuid
+  unitId            String?   @map("unit_id") @db.Uuid
+  balance           Decimal   @default(0) @db.Decimal(14, 2)
+  openInvoicesCount Int       @default(0) @map("open_invoices_count")
+  oldestDueDate     DateTime? @map("oldest_due_date") @db.Date
+  daysOverdue       Int       @default(0) @map("days_overdue")
+  aging             Json      @default("{}")
+  creditBalance     Decimal   @default(0) @map("credit_balance") @db.Decimal(14, 2)
+  updatedAt         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  version           Int       @default(1)
+
+  tenant   Tenant   @relation("ReceivableBalanceTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receivable_balance_tenant_id_fkey")
+  building Building @relation("ReceivableBalanceBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receivable_balance_building_id_fkey")
+  party    Party    @relation("ReceivableBalanceParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receivable_balance_party_id_fkey")
+  unit     Unit?    @relation("ReceivableBalanceUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receivable_balance_unit_id_fkey")
+
+  @@unique([tenantId, partyId, unitId], map: "receivable_balance_party_unit_key", where: raw("(unit_id IS NOT NULL)"))
+  @@unique([tenantId, partyId], map: "receivable_balance_party_key", where: raw("(unit_id IS NULL)"))
+  @@index([tenantId, buildingId, balance(sort: Desc)], map: "receivable_balance_tenant_id_building_id_balance_idx")
+  @@index([buildingId], map: "receivable_balance_building_id_idx")
+  @@index([partyId], map: "receivable_balance_party_id_idx")
+  @@index([unitId], map: "receivable_balance_unit_id_idx")
+  @@map("receivable_balance")
+  @@schema("ops")
+}
+
+/// Payment reminders of an overdue invoice (D-045): scheduled workflow steps and the owner's "send now".
+model DunningReminder {
+  id                 String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String          @map("tenant_id") @db.Uuid
+  buildingId         String          @map("building_id") @db.Uuid
+  invoiceId          String          @map("invoice_id") @db.Uuid
+  workflowInstanceId String?         @map("workflow_instance_id") @db.Uuid
+  timerId            String?         @map("timer_id") @db.Uuid
+  step               Int             @db.SmallInt
+  scheduledFor       DateTime        @map("scheduled_for") @db.Timestamptz(6)
+  status             ReminderStatus  @default(scheduled)
+  sentAt             DateTime?       @map("sent_at") @db.Timestamptz(6)
+  notificationId     String?         @map("notification_id") @db.Uuid
+  triggeredBy        ReminderTrigger @map("triggered_by")
+  createdBy          String?         @map("created_by") @db.Uuid
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant           Tenant            @relation("DunningReminderTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "dunning_reminder_tenant_id_fkey")
+  building         Building          @relation("DunningReminderBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "dunning_reminder_building_id_fkey")
+  invoice          Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "dunning_reminder_invoice_id_fkey")
+  workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "dunning_reminder_workflow_instance_id_fkey")
+  timer            WorkflowTimer?    @relation(fields: [timerId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "dunning_reminder_timer_id_fkey")
+  notification     Notification?     @relation(fields: [notificationId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "dunning_reminder_notification_id_fkey")
+  creator          UserAccount?      @relation("DunningReminderCreator", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "dunning_reminder_created_by_fkey")
+
+  @@unique([invoiceId, step], map: "dunning_reminder_invoice_id_step_key", where: raw("(triggered_by = 'schedule'::ops.reminder_trigger)"))
+  @@index([invoiceId], map: "dunning_reminder_invoice_id_idx")
+  @@index([tenantId], map: "dunning_reminder_tenant_id_idx")
+  @@index([buildingId], map: "dunning_reminder_building_id_idx")
+  @@index([workflowInstanceId], map: "dunning_reminder_workflow_instance_id_idx")
+  @@index([timerId], map: "dunning_reminder_timer_id_idx")
+  @@index([notificationId], map: "dunning_reminder_notification_id_idx")
+  @@index([createdBy], map: "dunning_reminder_created_by_idx")
+  @@map("dunning_reminder")
+  @@schema("ops")
+}
+
+/// Late fee of an overdue invoice for the next invoice (D-045, ⚖ O-002).
+model PenaltyAssessment {
+  id                   String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId             String        @map("tenant_id") @db.Uuid
+  buildingId           String        @map("building_id") @db.Uuid
+  invoiceId            String        @unique(map: "penalty_assessment_invoice_id_key") @map("invoice_id") @db.Uuid
+  leaseId              String?       @map("lease_id") @db.Uuid
+  partyId              String        @map("party_id") @db.Uuid
+  unitId               String?       @map("unit_id") @db.Uuid
+  amount               Decimal       @db.Decimal(14, 2)
+  basis                Json          @default("{}")
+  complianceRuleId     String        @default("compliance.late_fee_policy") @map("compliance_rule_id")
+  allowed              Boolean
+  invoiceChargeId      String?       @map("invoice_charge_id") @db.Uuid
+  appliedInvoiceLineId String?       @map("applied_invoice_line_id") @db.Uuid
+  status               PenaltyStatus @default(pending)
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy            String?       @map("created_by") @db.Uuid
+  updatedAt            DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy            String?       @map("updated_by") @db.Uuid
+  version              Int           @default(1)
+
+  tenant             Tenant         @relation("PenaltyAssessmentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "penalty_assessment_tenant_id_fkey")
+  building           Building       @relation("PenaltyAssessmentBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "penalty_assessment_building_id_fkey")
+  invoice            Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "penalty_assessment_invoice_id_fkey")
+  lease              Lease?         @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "penalty_assessment_lease_id_fkey")
+  party              Party          @relation("PenaltyAssessmentParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "penalty_assessment_party_id_fkey")
+  unit               Unit?          @relation("PenaltyAssessmentUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "penalty_assessment_unit_id_fkey")
+  invoiceCharge      InvoiceCharge? @relation(fields: [invoiceChargeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "penalty_assessment_invoice_charge_id_fkey")
+  appliedInvoiceLine InvoiceLine?   @relation(fields: [appliedInvoiceLineId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "penalty_assessment_applied_invoice_line_id_fkey")
+
+  @@index([tenantId], map: "penalty_assessment_tenant_id_idx")
+  @@index([buildingId], map: "penalty_assessment_building_id_idx")
+  @@index([leaseId], map: "penalty_assessment_lease_id_idx")
+  @@index([partyId], map: "penalty_assessment_party_id_idx")
+  @@index([unitId], map: "penalty_assessment_unit_id_idx")
+  @@index([invoiceChargeId], map: "penalty_assessment_invoice_charge_id_idx")
+  @@index([appliedInvoiceLineId], map: "penalty_assessment_applied_invoice_line_id_idx")
+  @@map("penalty_assessment")
+  @@schema("ops")
+}

@@ -105,6 +105,15 @@ export class ExportParamsDto {
   period?: string;
 
   @ApiPropertyOptional({
+    format: 'date',
+    example: '2026-11-30',
+    description: 'Arrears as of this Bangkok date (`arrears_xlsx`; default today).',
+  })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  asOf?: string;
+
+  @ApiPropertyOptional({
     format: 'uuid',
     description: 'One building (required for Staff limited to buildings).',
   })
