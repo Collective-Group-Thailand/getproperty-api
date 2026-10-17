@@ -170,9 +170,23 @@ export function problemExamples(i18nDir: string): Record<string, ExampleObject> 
       if (code === 'tenant.context_invalid') {
         value.errors = [{ path: 'x-tenant-id', code: 'isUuid', message: 'X-Tenant-Id must be a uuid' }];
       }
+      if (code === 'auth.otp_invalid') value.attemptsRemaining = 4;
+      if (code === 'auth.totp_enrollment_required')
+        value.enrollmentToken = 'q2r8XoT1Vb9mJ0yPz4LkWnE6aGs3dHf5';
       if (group === 'compliance') {
         value.legalRef = EXAMPLE_LEGAL_REF;
-        value.ruleId = code;
+        value.ruleId = code === 'compliance.acknowledgement_required' ? 'compliance.tariff_cap' : code;
+        if (code === 'compliance.acknowledgement_required') {
+          value.evaluationId = FAKE.uuid;
+          value.shown = {
+            tenantRate: '7.0000',
+            capPerUnit: '4.4312',
+            units: '150.000',
+            utility: 'electric',
+            provider: 'mea',
+            utilityTariffVersionId: FAKE.uuid,
+          };
+        }
         if (code === 'compliance.tariff_cap') {
           value.errors = [
             {

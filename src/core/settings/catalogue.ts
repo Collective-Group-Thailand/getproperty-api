@@ -19,6 +19,8 @@ export interface SettingDef {
   value: unknown;
   /** Reason recorded on the seeded version. */
   reason: string;
+  /** Closed set of allowed values (validated on every write). */
+  allowedValues?: readonly unknown[];
 }
 
 const OWNER_SETTINGS = ['tenant.settings.update'];
@@ -37,6 +39,7 @@ export const SETTINGS: readonly SettingDef[] = [
     editableBy: ADMIN_COMPLIANCE,
     value: 'warn',
     reason: 'seed: D-021a founder decision 2026-10-16',
+    allowedValues: ['warn', 'block'],
   },
   {
     key: 'tenant.subject_to_ocpb_2568',
@@ -117,6 +120,7 @@ export const SETTINGS: readonly SettingDef[] = [
     editableBy: OWNER_BILLING,
     value: 'block',
     reason: 'seed: D-031',
+    allowedValues: ['allow', 'block'],
   },
   {
     key: 'reminders.schedule',
@@ -205,6 +209,26 @@ export const SETTINGS: readonly SettingDef[] = [
     editableBy: ADMIN,
     value: 30,
     reason: 'seed: D-025',
+  },
+  {
+    key: 'support.grant_max_hours',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-090: longest validity of a Support grant into a tenant (time-boxed, logged). B1.3 assumption: 24 hours until the support process is agreed.',
+    editableBy: ADMIN,
+    value: 24,
+    reason: 'seed: D-090 time-boxed support grant (B1.3 assumption)',
+  },
+  {
+    key: 'invitation.expiry_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-145 / D-061: days an invitation (tenant member or lease resident) stays valid. B1.3 assumption: 7 days.',
+    editableBy: ADMIN,
+    value: 7,
+    reason: 'seed: D-145 (B1.3 assumption)',
   },
   // --- platform business (Proposed until the pilot) ------------------------------------------------------
   {

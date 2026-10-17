@@ -11,9 +11,24 @@ export const TENANT_ID_HEADER = 'x-tenant-id';
  */
 export interface TenantContext {
   tenantId: string;
-  /** How the tenant was chosen: the single `tenant:<uuid>` scope of the token, or the `X-Tenant-Id` header. */
-  source: 'token' | 'header';
+  /**
+   * How the tenant was chosen: the single `tenant:<uuid>` scope of the token, the `X-Tenant-Id` header, the
+   * resource named in the path (resident/technician/admin surfaces), or a worker job (`system`).
+   */
+  source: 'token' | 'header' | 'path' | 'system';
+  /**
+   * Buildings the actor may act on: `null`/absent = every building of the tenant; a list = a Staff member limited to
+   * buildings (D-090, `building:<uuid>` scopes from `membership.module_scopes.buildingIds`).
+   */
+  buildingIds?: readonly string[] | null;
+  /** Tenant role of an operator in this tenant (`owner|manager|staff|accountant`). */
+  role?: string;
+  /** Active support grant when Support reads into the tenant from `/v1/admin` (D-090). */
+  supportGrantId?: string;
 }
+
+/** A tenant context for worker jobs and subscribers (no actor scope limits). */
+export const systemTenantContext = (tenantId: string): TenantContext => ({ tenantId, source: 'system' });
 
 /** `tenant:<uuid>` scopes of a token (contract §4). */
 export function tenantScopesOf(scopes: readonly string[] | undefined): string[] {

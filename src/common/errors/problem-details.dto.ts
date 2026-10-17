@@ -25,6 +25,12 @@ export interface ProblemExtensions {
   /** `compliance.*` only: the rule id in the compliance registry (B4.1). */
   ruleId?: string;
   attemptsRemaining?: number;
+  /** `auth.totp_enrollment_required` only: one-time token for `POST /v1/auth/platform/totp/enroll`. */
+  enrollmentToken?: string;
+  /** `compliance.acknowledgement_required` only: the evaluation to acknowledge (contract §3, D-021a). */
+  evaluationId?: string;
+  /** `compliance.acknowledgement_required` only: the values the warning shows (rate, cap, units, tariff version). */
+  shown?: Record<string, unknown>;
 }
 
 /** RFC 9457 problem details, served as `application/problem+json` (contract §3). */
@@ -73,6 +79,34 @@ export class ProblemDetails {
     description: '`auth.otp_invalid` only (B1.3): codes that may still be tried on this challenge',
   })
   attemptsRemaining?: number;
+
+  @ApiPropertyOptional({
+    example: 'q2r8XoT1Vb9mJ0yPz4LkWnE6aGs3dHf5',
+    description: '`auth.totp_enrollment_required` only: one-time token to enrol an authenticator (B1.3)',
+  })
+  enrollmentToken?: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    example: '3b241101-e2bb-4255-8caf-4136c566a962',
+    description:
+      '`compliance.acknowledgement_required` only: acknowledge it with `POST /v1/owner/compliance-acknowledgements`, then repeat the request with the acknowledgement id (D-021a)',
+  })
+  evaluationId?: string;
+
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: true,
+    example: {
+      tenantRate: '7.0000',
+      capPerUnit: '4.4312',
+      units: '150.000',
+      utility: 'electric',
+      provider: 'mea',
+    },
+    description: '`compliance.acknowledgement_required` only: the values shown in the warning (D-021a)',
+  })
+  shown?: Record<string, unknown>;
 
   @ApiProperty({ example: '6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e' })
   requestId!: string;

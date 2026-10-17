@@ -235,6 +235,17 @@ export const PERMISSIONS: readonly PermissionDef[] = [
   },
   { key: 'parcel.manage', description: 'Record parcels and pick-ups', surfaces: ['owner', 'staff'] },
   { key: 'announcement.manage', description: 'Post announcements', surfaces: ['owner'] },
+  // platform services in the tenant (B1.3)
+  {
+    key: 'notification.route.manage',
+    description: 'Configure which resident-facing events notify through which channels (B1.3 routing matrix)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'privacy.manage',
+    description: 'Handle data subject requests as controller and record paper consents (D-025)',
+    surfaces: ['owner'],
+  },
   // platform (/v1/admin)
   { key: 'admin.tenant.read', description: 'List and view tenants', surfaces: ['admin'] },
   {
@@ -305,6 +316,26 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     surfaces: ['admin'],
   },
   { key: 'admin.ai_usage.read', description: 'AI usage cost per tenant (D-161)', surfaces: ['admin'] },
+  {
+    key: 'admin.outbox.manage',
+    description: 'List dead letters of the outbox and its subscribers, replay them (B1.3)',
+    surfaces: ['admin'],
+  },
+  {
+    key: 'admin.notification_template.manage',
+    description: 'Edit, preview, test-send and publish notification templates (B1.3)',
+    surfaces: ['admin'],
+  },
+  {
+    key: 'admin.feature_flag.manage',
+    description: 'Change feature flag defaults and per-tenant overrides',
+    surfaces: ['admin'],
+  },
+  {
+    key: 'admin.building.manage',
+    description: 'Change the operator of a building between tenants (schema-design §4.6)',
+    surfaces: ['admin'],
+  },
 ];
 
 const tenantKeys = PERMISSIONS.filter((p) => !p.key.startsWith('admin.')).map((p) => p.key);
@@ -318,6 +349,7 @@ const MANAGER_EXCLUDED = new Set([
   'tenant.grant.manage',
   'rate_plan.manage',
   'party.pii.decrypt',
+  'privacy.manage',
 ]);
 
 /** Role → permission keys (D-090). */

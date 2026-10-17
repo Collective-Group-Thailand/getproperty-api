@@ -1,12 +1,12 @@
 import { buildLoggerParams } from '@common/logging/logger.options';
 import { AppConfig } from '@config/app-config';
 import { AppConfigModule } from '@config/app-config.module';
+import { CoreModule } from '@core/core.module';
 import { DatabaseModule } from '@database/database.module';
 import { RedisModule } from '@database/redis.module';
 import { IntegrationsModule } from '@integrations/integrations.module';
 import { IngestModule } from '@modules/ingest/ingest.module';
 import { Module } from '@nestjs/common';
-import { PlatformCoreModule } from '@platform/platform-core.module';
 import { LoggerModule } from 'nestjs-pino';
 
 /**
@@ -28,7 +28,7 @@ import { LoggerModule } from 'nestjs-pino';
     RedisModule,
     DatabaseModule,
     IntegrationsModule,
-    PlatformCoreModule,
+    CoreModule,
     IngestModule,
   ],
 })

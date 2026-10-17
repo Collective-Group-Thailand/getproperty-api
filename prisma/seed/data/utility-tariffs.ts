@@ -1,4 +1,4 @@
-import { type UtilityTariffStructure } from '../../../src/modules/tariffs/tariff-structure';
+import { type UtilityTariffStructure } from '../../../src/core/utility-tariffs/tariff-structure';
 
 /**
  * Utility tariff versions seeded as the สคบ. 2568 cap reference (D-021a, D-140; schema-design §4.2.1).

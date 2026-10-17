@@ -251,6 +251,221 @@ export class EnvironmentVariables {
   @IsString()
   FIELD_ENCRYPTION_KEY?: string;
 
+  /**
+   * HMAC key for lookup hashes (`*_hash` columns: phones, id numbers, bank accounts — D-148, schema-design §4.7).
+   * Required in production; development and tests use a fixed development key (hashes must survive restarts).
+   */
+  @IsOptional()
+  @IsString()
+  FIELD_HASH_KEY?: string;
+
+  /** Overrides DATA_STORES_MODE for Redis only (fake | real) — e.g. a real database with in-memory Redis in tests. */
+  @IsOptional()
+  @IsEnum(DataStoresMode)
+  REDIS_MODE?: DataStoresMode;
+
+  /** Overrides DATA_STORES_MODE for the MQTT broker only (fake | real). */
+  @IsOptional()
+  @IsEnum(DataStoresMode)
+  MQTT_MODE?: DataStoresMode;
+
+  /**
+   * `SET LOCAL ROLE` for platform transactions (identity lookups, `/v1/admin`, relays, cross-tenant jobs —
+   * schema-design §4.5): `gp_platform` when the login is a member of it; empty = the login role as is.
+   */
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z_][a-z0-9_]*$/, { message: 'DATABASE_PLATFORM_ROLE must be a plain role name' })
+  DATABASE_PLATFORM_ROLE?: string;
+
+  // --- Auth (contract §4, ADR-0003) ------------------------------------------------------------------
+
+  /**
+   * Ed25519 private key (PKCS#8 PEM, or base64 of the PEM) that signs access tokens (EdDSA). Required in
+   * production; elsewhere a key is generated per process (tokens do not survive a restart).
+   */
+  @IsOptional()
+  @IsString()
+  AUTH_JWT_PRIVATE_KEY?: string;
+
+  /** Key id (`kid`) of AUTH_JWT_PRIVATE_KEY, published in the JWKS. */
+  @IsString()
+  @Matches(/^[A-Za-z0-9._-]{1,64}$/, { message: 'AUTH_JWT_KID must be a plain token' })
+  AUTH_JWT_KID = 'gp-dev-1';
+
+  /** Previous public keys still accepted during a rotation: JSON `[{"kid":"…","publicKeyPem":"…"}]`. */
+  @IsOptional()
+  @IsString()
+  AUTH_JWT_PREVIOUS_KEYS?: string;
+
+  /** Access token lifetime (contract §4: 10–15 min). */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(60)
+  @Max(900)
+  ACCESS_TOKEN_TTL_SECONDS = 900;
+
+  /** Refresh token family lifetime for operators, residents and technicians. */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1)
+  @Max(180)
+  REFRESH_TOKEN_TTL_DAYS = 30;
+
+  /** Refresh token family lifetime for platform staff (shorter: TOTP-protected admin surface). */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1)
+  @Max(72)
+  PLATFORM_REFRESH_TOKEN_TTL_HOURS = 12;
+
+  /** Device JWT lifetime (minted at bootstrap, refreshed with the device refresh token). */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(300)
+  @Max(86400)
+  DEVICE_ACCESS_TOKEN_TTL_SECONDS = 3600;
+
+  /** Device refresh token lifetime (the certificate lives 12 months; the agent re-bootstraps on expiry). */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1)
+  @Max(400)
+  DEVICE_REFRESH_TOKEN_TTL_DAYS = 365;
+
+  /** SMS OTP: lifetime of a code, attempts per challenge, resend interval and hourly cap per phone and purpose. */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(60)
+  @Max(900)
+  OTP_TTL_SECONDS = 300;
+
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  OTP_MAX_ATTEMPTS = 5;
+
+  @Transform(toNumber)
+  @IsInt()
+  @Min(10)
+  @Max(600)
+  OTP_RESEND_SECONDS = 60;
+
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  OTP_MAX_PER_HOUR = 5;
+
+  /** Failed password logins before the credential is locked, and for how long. */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(3)
+  @Max(20)
+  LOGIN_MAX_FAILURES = 5;
+
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1)
+  @Max(1440)
+  LOGIN_LOCK_MINUTES = 15;
+
+  // --- LINE (D-060, D-154) ----------------------------------------------------------------------------
+
+  /** LINE Login channel ids whose id tokens are accepted (`aud`): the resident LIFF and technician LIFF channels. */
+  @IsOptional()
+  @IsString()
+  LINE_LOGIN_CHANNEL_IDS?: string;
+
+  /** LINE Messaging API channel access token (push messages, Flex). */
+  @IsOptional()
+  @IsString()
+  LINE_MESSAGING_ACCESS_TOKEN?: string;
+
+  // --- SMS OTP provider (ThaiBulkSMS-class) -------------------------------------------------------------
+
+  @IsOptional()
+  @IsUrl({ require_tld: false, require_protocol: true })
+  SMS_API_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  SMS_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  SMS_API_SECRET?: string;
+
+  /** Sender name registered with the provider. */
+  @IsString()
+  @Matches(/^[A-Za-z0-9 .-]{1,11}$/, { message: 'SMS_SENDER: up to 11 letters/digits' })
+  SMS_SENDER = 'getproperty';
+
+  // --- Email (SES v2) -----------------------------------------------------------------------------------
+
+  @IsString()
+  EMAIL_FROM = 'getproperty <no-reply@getproperty.co>';
+
+  // --- Web push (VAPID) ---------------------------------------------------------------------------------
+
+  @IsOptional()
+  @IsString()
+  WEB_PUSH_VAPID_PUBLIC_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  WEB_PUSH_VAPID_PRIVATE_KEY?: string;
+
+  @IsString()
+  WEB_PUSH_SUBJECT = 'mailto:dev@getproperty.co';
+
+  // --- Devices (D-130) ----------------------------------------------------------------------------------
+
+  /** Platform device CA (PEM certificate and PKCS#8 private key, or base64 of the PEM) that signs gateway CSRs. Required in production. */
+  @IsOptional()
+  @IsString()
+  DEVICE_CA_CERT?: string;
+
+  @IsOptional()
+  @IsString()
+  DEVICE_CA_KEY?: string;
+
+  /** Gateway certificate lifetime (device protocol §1: rotate every 12 months). */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1)
+  @Max(825)
+  DEVICE_CERT_VALIDITY_DAYS = 365;
+
+  /** Broker URL handed to gateways at bootstrap (mqtts://… in production). */
+  @IsString()
+  @Matches(/^(mqtts?|wss?):\/\//, { message: 'MQTT_PUBLIC_URL must be an mqtt(s):// or ws(s):// URL' })
+  MQTT_PUBLIC_URL = 'mqtts://mqtt.getproperty.invalid:8883';
+
+  // --- Files ----------------------------------------------------------------------------------------------
+
+  /** ClamAV daemon (INSTREAM) for the virus-scan port; empty with INTEGRATIONS_MODE=real = scans fail closed. */
+  @IsOptional()
+  @IsString()
+  CLAMAV_HOST?: string;
+
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  CLAMAV_PORT = 3310;
+
+  // --- Front-end origins (links in SMS, LINE and email) ----------------------------------------------
+
+  @Matches(/^https?:\/\/[^/]+$/, { message: 'PUBLIC_WEB_APP_URL must be an origin without a trailing slash' })
+  PUBLIC_WEB_APP_URL = 'http://localhost:3001';
+
+  @Matches(/^https?:\/\/[^/]+$/, {
+    message: 'PUBLIC_RESIDENT_APP_URL must be an origin without a trailing slash',
+  })
+  PUBLIC_RESIDENT_APP_URL = 'http://localhost:3002';
+
   /** Git commit of the running build (set by the image build); shown by `admin.system.info`. */
   @IsOptional()
   @IsString()

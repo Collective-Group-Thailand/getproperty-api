@@ -5,13 +5,19 @@
 // role that bypasses RLS: a superuser (local embedded cluster), or a login that is a member of gp_platform
 // (the script switches with SET ROLE gp_platform). Business values come from src/core/* catalogues and
 // prisma/seed/data/* with their decision ids and sources.
+import { lookupHash } from '@collective/asset-core';
 import { Client, type ClientBase } from 'pg';
 
+import { DEV_FIELD_HASH_KEY } from '../../src/common/crypto/lookup-hasher';
 import { COMPLIANCE_RULES } from '../../src/core/compliance/rules';
+import { FEATURE_FLAGS } from '../../src/core/feature-flags/catalogue';
+import { hashPassword } from '../../src/core/identity/crypto/password';
 import { PERMISSIONS, ROLE_PERMISSIONS, ROLES, splitPermission } from '../../src/core/rbac/catalogue';
 import { SETTINGS } from '../../src/core/settings/catalogue';
+import { WORKFLOW_DEFINITIONS } from '../../src/core/workflow/definitions';
+import { specToRow } from '../../src/core/workflow/engine';
 import { HOLIDAYS } from './data/holidays';
-import { NOTIFICATION_TEMPLATES } from './data/notifications';
+import { NOTIFICATION_ROUTES, NOTIFICATION_TEMPLATES } from './data/notifications';
 import { CONSENT_PURPOSES, RETENTION_POLICIES } from './data/privacy';
 import { UTILITY_TARIFFS } from './data/utility-tariffs';
 
@@ -33,6 +39,11 @@ export const DEV = {
     platformAdmin: '0199f2a0-0000-7000-8000-0000000000b1',
     support: '0199f2a0-0000-7000-8000-0000000000b2',
   },
+  /**
+   * Password of the development operators and platform users (dev seed only, never in production: the dev tenant
+   * and its `example.invalid` accounts exist only with `db:seed:dev`). Platform users enrol TOTP at first sign-in.
+   */
+  password: 'getproperty-dev-only-password',
 } as const;
 
 type Log = (line: string) => void;
@@ -70,6 +81,9 @@ export async function runSeed(
   await tx(db, () => seedCalendar(db));
   await tx(db, () => seedPrivacy(db));
   await tx(db, () => seedNotificationTemplates(db));
+  await tx(db, () => seedNotificationRoutes(db));
+  await tx(db, () => seedFeatureFlags(db));
+  await tx(db, () => seedWorkflowDefinitions(db));
   if (mode === 'dev') await tx(db, () => seedDev(db));
 
   const counts = await countRows(db);
@@ -238,6 +252,47 @@ async function seedNotificationTemplates(db: ClientBase): Promise<void> {
   }
 }
 
+async function seedNotificationRoutes(db: ClientBase): Promise<void> {
+  for (const r of NOTIFICATION_ROUTES) {
+    await db.query(
+      `INSERT INTO platform.notification_route (tenant_id, event_type, audience, channel, enabled, urgent)
+       VALUES (NULL, $1, $2, $3, true, $4) ON CONFLICT (tenant_id, event_type, audience, channel) DO NOTHING`,
+      [r.eventType, r.audience, r.channel, r.urgent],
+    );
+  }
+}
+
+async function seedFeatureFlags(db: ClientBase): Promise<void> {
+  for (const f of FEATURE_FLAGS) {
+    // defaults are seeded once; later changes are made by the platform admin (audited)
+    await db.query(
+      `INSERT INTO platform.feature_flag (key, description, default_enabled, rollout_pct) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (key) DO UPDATE SET description = EXCLUDED.description
+       WHERE platform.feature_flag.description IS DISTINCT FROM EXCLUDED.description`,
+      [f.key, f.description, f.defaultEnabled, f.rolloutPct],
+    );
+  }
+}
+
+/** Workflow definitions live in code (D-159) and are versioned: a version once seeded is never rewritten. */
+async function seedWorkflowDefinitions(db: ClientBase): Promise<void> {
+  for (const spec of WORKFLOW_DEFINITIONS) {
+    const row = specToRow(spec);
+    await db.query(
+      `INSERT INTO ops.workflow_definition (tenant_id, key, version, states, transitions, sla, is_active)
+       SELECT NULL, $1, $2, $3::jsonb, $4::jsonb, $5::jsonb, true
+        WHERE NOT EXISTS (SELECT 1 FROM ops.workflow_definition WHERE tenant_id IS NULL AND key = $1 AND version = $2)`,
+      [
+        row.key,
+        row.version,
+        JSON.stringify(row.states),
+        JSON.stringify(row.transitions),
+        JSON.stringify(row.sla),
+      ],
+    );
+  }
+}
+
 /** Development data: one apartment tenant "หอพักตัวอย่าง" with obviously fake people (+66 0… numbers). */
 async function seedDev(db: ClientBase): Promise<void> {
   const users: [string, string, string, string][] = [
@@ -247,11 +302,19 @@ async function seedDev(db: ClientBase): Promise<void> {
     [DEV.users.platformAdmin, 'Platform Admin (test)', '+660000000091', 'admin@getproperty.invalid'],
     [DEV.users.support, 'Support (test)', '+660000000092', 'support@getproperty.invalid'],
   ];
+  const hashKey = Buffer.from(process.env.FIELD_HASH_KEY ?? DEV_FIELD_HASH_KEY, 'utf8');
+  const passwordHash = await hashPassword(DEV.password);
   for (const [id, name, phone, email] of users) {
     await db.query(
-      `INSERT INTO core.user_account (id, display_name, phone_e164, email, phone_verified_at, email_verified_at)
-       VALUES ($1, $2, $3, $4, now(), now()) ON CONFLICT (id) DO NOTHING`,
-      [id, name, phone, email],
+      `INSERT INTO core.user_account (id, display_name, phone_e164, phone_hash, email, phone_verified_at, email_verified_at)
+       VALUES ($1, $2, $3, $4, $5, now(), now())
+       ON CONFLICT (id) DO UPDATE SET phone_hash = EXCLUDED.phone_hash WHERE core.user_account.phone_hash IS NULL`,
+      [id, name, phone, lookupHash(hashKey, '', phone), email],
+    );
+    await db.query(
+      `INSERT INTO platform.user_credential (user_id, password_hash, password_changed_at) VALUES ($1, $2, now())
+       ON CONFLICT (user_id) DO NOTHING`,
+      [id, passwordHash],
     );
   }
   await db.query(
@@ -344,7 +407,11 @@ const COUNTED_TABLES = [
   'platform.retention_policy',
   'platform.notification_template',
   'platform.notification_template_version',
+  'platform.notification_route',
+  'platform.feature_flag',
+  'ops.workflow_definition',
   'platform.platform_role_assignment',
+  'platform.user_credential',
   'core.tenant',
   'core.user_account',
   'core.membership',

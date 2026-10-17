@@ -1,0 +1,34 @@
+import { PERMISSIONS, ROLE_PERMISSIONS } from './catalogue';
+import { ADMIN_MENU, entitledMenu, OWNER_MENU, STAFF_MENU } from './menu';
+
+describe('menu entitlements (/me)', () => {
+  const set = (role: keyof typeof ROLE_PERMISSIONS) => new Set(ROLE_PERMISSIONS[role]);
+
+  it('every menu entry is reachable through a catalogue permission', () => {
+    const keys = new Set(PERMISSIONS.map((p) => p.key));
+    for (const m of [...OWNER_MENU, ...STAFF_MENU, ...ADMIN_MENU])
+      expect(m.anyOf.some((p) => keys.has(p))).toBe(true);
+  });
+
+  it('the Owner sees everything Staff sees, and more', () => {
+    const owner = entitledMenu(OWNER_MENU, set('owner'), 'apartment', {});
+    const staff = entitledMenu(OWNER_MENU, set('staff'), 'apartment', {});
+    expect(owner.length).toBeGreaterThan(staff.length);
+    expect(owner).toEqual(expect.arrayContaining(staff));
+  });
+
+  it('feature-flagged modules appear only when the flag is on', () => {
+    const flagged = OWNER_MENU.filter((m) => m.flag);
+    for (const m of flagged) {
+      expect(entitledMenu([m], new Set(m.anyOf), 'apartment', {})).toEqual([]);
+      const types = m.tenantTypes ?? ['apartment'];
+      expect(entitledMenu([m], new Set(m.anyOf), types[0]!, { [m.flag!]: true })).toEqual([m.key]);
+    }
+  });
+
+  it('platform roles: support sees tenants, not outbox', () => {
+    const support = entitledMenu(ADMIN_MENU, set('support'), null, {});
+    expect(support).toContain('tenants');
+    expect(support).not.toContain('outbox');
+  });
+});

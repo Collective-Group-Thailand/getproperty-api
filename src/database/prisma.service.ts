@@ -36,6 +36,7 @@ const UNUSED_URL = 'postgresql://unused:unused@127.0.0.1:1/unused';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleDestroy {
   readonly appRole?: string;
+  readonly platformRole?: string;
 
   constructor(config: AppConfig) {
     const url = config.useFakeDataStores
@@ -48,9 +49,14 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
         connectionTimeoutMillis: 5_000,
         idleTimeoutMillis: 30_000,
         application_name: config.get('OTEL_SERVICE_NAME'),
+        // The Prisma pg adapter reads timestamptz text and replaces its offset with +00:00, so every session must
+        // run in UTC or instants shift by the server's offset (e.g. +7 h on a cluster set to Asia/Bangkok).
+        // Business rules convert to Asia/Bangkok in code (CLAUDE.md "Time").
+        options: '-c TimeZone=UTC',
       }),
     });
     this.appRole = config.get('DATABASE_APP_ROLE');
+    this.platformRole = config.get('DATABASE_PLATFORM_ROLE');
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -62,9 +68,33 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
     await this.$queryRaw`SELECT 1`;
   }
 
-  /** One database transaction without tenant scope (platform catalogues, gp_platform jobs). */
+  /** One database transaction without tenant scope, as the login role (seeds, tooling). Prefer withPlatform. */
   withTx<T>(work: (tx: Tx) => Promise<T>, options?: TxOptions): Promise<T> {
     return this.$transaction(work, options);
+  }
+
+  /**
+   * One transaction as `gp_platform` (BYPASSRLS, schema-design §4.5): identity lookups (user by phone or LINE id),
+   * the `/v1/admin` surface, the outbox relay, workflow timers and cross-tenant jobs. Every call site is listed in
+   * docs/rbac.md ("platform role call sites") and writes are audited by the caller. `actorId` lets the platform
+   * actor's own audit/user rows be attributed.
+   */
+  withPlatform<T>(
+    work: (tx: Tx) => Promise<T>,
+    options?: TxOptions & { actorId?: string | null; tenantId?: string | null },
+  ): Promise<T> {
+    const role = this.platformRole;
+    if (role && !/^[a-z_][a-z0-9_]*$/.test(role))
+      throw new TypeError(`invalid DATABASE_PLATFORM_ROLE "${role}"`);
+    return this.$transaction(async (tx) => {
+      if (role) await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
+      await tx.$queryRawUnsafe(
+        `SELECT set_config('app.tenant_id', $1, true), set_config('app.actor_id', $2, true), set_config('app.actor_kind', 'platform', true)`,
+        options?.tenantId ?? '',
+        options?.actorId ?? '',
+      );
+      return work(tx);
+    }, options);
   }
 
   /** One transaction scoped to a tenant: every statement inside is subject to its RLS policies. */

@@ -1,5 +1,12 @@
 import { applyDecorators, SetMetadata, type Type } from '@nestjs/common';
-import { ApiExtension, ApiExtraModels, ApiOperation, ApiResponse, getSchemaPath } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiExtension,
+  ApiExtraModels,
+  ApiOperation,
+  ApiResponse,
+  getSchemaPath,
+} from '@nestjs/swagger';
 
 import { type Audience } from '../../surfaces/surfaces';
 import {
@@ -221,4 +228,9 @@ export function ApiAsync(options: { poll: string } | { poll: null }) {
     throw new Error(`ApiAsync: poll "${options.poll}" must be an operation id`);
   }
   return ApiExtension(EXT.async, options.poll ?? false);
+}
+
+/** JSON request body with its schema and a named example (contract §5: every request body has an example). */
+export function ApiJsonBody(type: Type<unknown>, example: unknown, description?: string) {
+  return ApiBody({ type, description, examples: { default: { summary: 'Example', value: example } } });
 }

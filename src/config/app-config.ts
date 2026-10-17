@@ -34,6 +34,16 @@ export class AppConfig {
     return this.env.DATA_STORES_MODE === DataStoresMode.Fake;
   }
 
+  /** Redis (and therefore BullMQ) is the in-memory stand-in: `REDIS_MODE`, else `DATA_STORES_MODE`. */
+  get useFakeRedis(): boolean {
+    return (this.env.REDIS_MODE ?? this.env.DATA_STORES_MODE) === DataStoresMode.Fake;
+  }
+
+  /** The MQTT broker is the in-memory stand-in: `MQTT_MODE`, else `DATA_STORES_MODE`. */
+  get useFakeMqtt(): boolean {
+    return (this.env.MQTT_MODE ?? this.env.DATA_STORES_MODE) === DataStoresMode.Fake;
+  }
+
   /**
    * Who may open `/docs*` (contract §5): everyone in development/test; in production nobody unless
    * `DOCS_ENABLED=true`, and then only callers inside `DOCS_ALLOWED_CIDRS` (platform-token access
