@@ -31,6 +31,7 @@ import {
 } from '../owner/money-settings.dto';
 import { type NotificationChannelName } from '../shared/common.dto';
 import { dateOnly, iso, isoOrNull } from '../shared/mappers';
+import { tariffVersionActions } from '../shared/next-actions';
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
   AcceptedDto,
@@ -63,6 +64,7 @@ import {
 } from './admin.dto';
 
 const tariffVersionDto = (v: UtilityTariffVersion): TariffVersionDto => ({
+  nextActions: tariffVersionActions(v.state, v.enteredBy),
   id: v.id,
   effectiveFrom: dateOnly(v.effectiveFrom)!,
   effectiveTo: dateOnly(v.effectiveTo),
@@ -78,6 +80,7 @@ const tariffVersionDto = (v: UtilityTariffVersion): TariffVersionDto => ({
 });
 
 const TARIFF_VERSION_EXAMPLE = {
+  nextActions: ['verify'],
   id: FAKE.uuid,
   effectiveFrom: '2026-09-01',
   effectiveTo: null,

@@ -6,6 +6,7 @@ import { ConsentService } from '@core/privacy/consent.service';
 import { ADMIN_MENU, entitledMenu, type MenuEntry, OWNER_MENU, STAFF_MENU } from '@core/rbac/menu';
 import { AccessService } from '@core/tenancy/access.service';
 import { TenantTx } from '@database/tenant-tx';
+import { ResidentLeasesService } from '@modules/ops-leases/resident-leases.service';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { dateOnly } from './mappers';
@@ -13,12 +14,23 @@ import {
   type AdminMeDto,
   type MeUserDto,
   type OperatorMeDto,
+  type ResidentLinkedDto,
   type ResidentMeDto,
   type TechnicianMeDto,
   type TenantRoleName,
   type TenantStatusName,
   type TenantTypeName,
+  type UserLanguageName,
 } from './me.dto';
+import {
+  type AdminMenuKey,
+  type LeasePartyRoleName,
+  type LeaseStatusName,
+  type OccupancyRoleName,
+  type OwnerMenuKey,
+  type PlatformRoleName,
+  ResidentEntitlement,
+} from './status.enums';
 
 /** `GET /v1/{surface}/me` for every audience (contract §4): who I am, what I may do, what the app should show. */
 @Injectable()
@@ -28,6 +40,7 @@ export class MeService {
     private readonly access: AccessService,
     private readonly flags: FeatureFlagsService,
     private readonly consents: ConsentService,
+    private readonly residentLeases: ResidentLeasesService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
@@ -47,7 +60,7 @@ export class MeService {
         displayName: user.displayName,
         phone: user.phoneE164,
         email: user.email,
-        language: user.language,
+        language: user.language as UserLanguageName,
         lineLinked: Boolean(user.lineUserId),
       };
       return {
@@ -104,9 +117,11 @@ export class MeService {
               buildingIds: current.buildingIds,
             }
           : null,
-      roles: current ? [current.role] : [],
+      roles: current ? [current.role as TenantRoleName] : [],
       permissions,
-      menu: current ? entitledMenu(entries, current.permissions, current.tenantType, flags) : [],
+      menu: current
+        ? (entitledMenu(entries, current.permissions, current.tenantType, flags) as OwnerMenuKey[])
+        : [],
       featureFlags: flags,
       subscription: currentTenant
         ? { plan: currentTenant.plan, state: null, readOnly: currentTenant.status === 'read_only' }
@@ -177,19 +192,19 @@ export class MeService {
         buildingName: o.unit.building.name,
         tenantId: o.tenantId,
         tenantName: o.tenant.displayName,
-        role: o.role,
+        role: o.role as OccupancyRoleName,
         validFrom: dateOnly(o.validFrom)!,
       })),
       leaseIds: [...new Set(leases.map((l) => l.leaseId))],
       leases: leases.map((l) => ({
         leaseId: l.leaseId,
         number: l.lease.number,
-        status: l.lease.status,
+        status: l.lease.status as LeaseStatusName,
         tenantId: l.tenantId,
         tenantName: l.lease.tenant.displayName,
         unitNo: l.lease.unit.unitNo,
         buildingName: l.lease.building.name,
-        role: l.role,
+        role: l.role as LeasePartyRoleName,
       })),
       consents: purposes.map((p) => ({
         purposeKey: p.key,
@@ -198,7 +213,71 @@ export class MeService {
         granted: p.granted,
       })),
       consentComplete: purposes.filter((p) => p.required).every((p) => p.granted === true),
+      entitlements: await this.entitlements(
+        units.map((u) => ({ unitId: u.unitId, tenantId: u.tenantId })),
+        leases.length > 0,
+        tenants,
+      ),
       scopes: actor && 'scopes' in actor ? [...actor.scopes] : [],
+    };
+  }
+
+  /**
+   * Resident app entitlements (D-063): bills and lease with any lease or occupancy, usage where an installed IoT
+   * meter serves one of my units now, the R2 modules where one of my tenants has the feature flag on.
+   */
+  private async entitlements(
+    units: { unitId: string; tenantId: string }[],
+    hasLease: boolean,
+    tenantIds: string[],
+  ): Promise<ResidentEntitlement[]> {
+    const out = new Set<ResidentEntitlement>();
+    if (hasLease || units.length) {
+      out.add(ResidentEntitlement.Bills);
+      out.add(ResidentEntitlement.Lease);
+    }
+    if (units.length) {
+      const iot = await this.db.platform((tx) =>
+        tx.meterAssignment.count({
+          where: {
+            unitId: { in: units.map((u) => u.unitId) },
+            validTo: null,
+            assetItem: { deviceAssetItem: { status: { notIn: ['retired', 'inventory'] } } },
+          },
+        }),
+      );
+      if (iot > 0) out.add(ResidentEntitlement.Usage);
+    }
+    for (const tenantId of tenantIds) {
+      const flags = await this.flags.forTenant(tenantId);
+      if (flags['module.service_requests']) out.add(ResidentEntitlement.ServiceRequests);
+      if (flags['module.community']) {
+        out.add(ResidentEntitlement.Announcements);
+        out.add(ResidentEntitlement.Parcels);
+      }
+    }
+    const order = Object.values(ResidentEntitlement);
+    return [...out].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  }
+
+  /** `PATCH /v1/resident/me`: the resident's language (D-064), audited through the account row's updated_at. */
+  async setResidentLanguage(language: UserLanguageName): Promise<void> {
+    const userId = this.userId();
+    await this.db.platform((tx) =>
+      tx.userAccount.update({ where: { id: userId }, data: { language, updatedBy: userId } }),
+    );
+  }
+
+  /** `POST /v1/resident/link`: accepts the invitation and answers with the units I now occupy. */
+  async residentLink(code: string, language: string): Promise<ResidentLinkedDto> {
+    const accepted = await this.residentLeases.acceptInvitation(code, language);
+    const me = await this.resident();
+    return {
+      tenantId: accepted.tenantId,
+      leaseId: accepted.leaseId,
+      partyId: accepted.partyId,
+      units: me.units.filter((u) => u.tenantId === accepted.tenantId),
+      refreshRequired: accepted.refreshRequired,
     };
   }
 
@@ -221,9 +300,9 @@ export class MeService {
     const access = await this.access.platform(userId);
     return {
       user: dto,
-      roles: access.roles,
+      roles: access.roles as PlatformRoleName[],
       permissions: [...access.permissions].sort(),
-      menu: entitledMenu(ADMIN_MENU, access.permissions, null, {}),
+      menu: entitledMenu(ADMIN_MENU, access.permissions, null, {}) as AdminMenuKey[],
       featureFlags: await this.flags.forTenant(null),
       totpEnabled,
     };

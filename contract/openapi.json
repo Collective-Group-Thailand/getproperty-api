@@ -478,6 +478,17 @@
           "type": "https://errors.getproperty.co/deposit.invalid_state"
         }
       },
+      "problem.device.certificate_invalid": {
+        "summary": "device.certificate_invalid",
+        "value": {
+          "code": "device.certificate_invalid",
+          "detail": "ใบรับรองของเกตเวย์ไม่ถูกต้อง ถูกเพิกถอน หมดอายุ หรือไม่ตรงกับอุปกรณ์",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 401,
+          "title": "ใบรับรองอุปกรณ์ไม่ถูกต้อง",
+          "type": "https://errors.getproperty.co/device.certificate_invalid"
+        }
+      },
       "problem.device.csr_invalid": {
         "summary": "device.csr_invalid",
         "value": {
@@ -1500,7 +1511,7 @@
               "utility_tariffs"
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/AdminMenuKey"
             },
             "type": "array"
           },
@@ -1518,7 +1529,7 @@
               "platform_admin"
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/PlatformRole"
             },
             "type": "array"
           },
@@ -1539,6 +1550,27 @@
           "totpEnabled"
         ],
         "type": "object"
+      },
+      "AdminMenuKey": {
+        "enum": [
+          "tenants",
+          "platform_users",
+          "utility_tariffs",
+          "settings",
+          "feature_flags",
+          "devices",
+          "ota_releases",
+          "support_grants",
+          "subscriptions",
+          "notification_templates",
+          "outbox",
+          "ingest_dead_letters",
+          "data_subject_requests",
+          "integration_events",
+          "audit_log",
+          "ai_usage"
+        ],
+        "type": "string"
       },
       "AmenityCategory": {
         "enum": [
@@ -2175,6 +2207,16 @@
             "example": true,
             "type": "boolean"
           },
+          "nextActions": {
+            "description": "Actions (`…/actions/{name}`) the caller may take now — never infer them from the status.",
+            "example": [
+              "remove"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "paymentProvider": {
             "allOf": [
               {
@@ -2193,6 +2235,7 @@
           }
         },
         "required": [
+          "nextActions",
           "id",
           "bankCode",
           "bankNameTh",
@@ -2459,12 +2502,16 @@
             ]
           },
           "leaseStatus": {
-            "description": "LeaseStatus of the current lease.",
-            "example": "active",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LeaseStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Status of the current lease.",
+            "example": "active"
           },
           "lessee": {
             "anyOf": [
@@ -3726,6 +3773,25 @@
         ],
         "type": "object"
       },
+      "DeviceAccessTokenDto": {
+        "properties": {
+          "accessToken": {
+            "description": "Device JWT (`aud=device`).",
+            "example": "eyJhbGciOiJFZERTQSJ9.eyJhdWQiOiJkZXZpY2UifQ.c2lnbmF0dXJl",
+            "type": "string"
+          },
+          "expiresAt": {
+            "example": "2026-11-01T01:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accessToken",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
       "DeviceBootstrapDto": {
         "properties": {
           "accessToken": {
@@ -3747,6 +3813,11 @@
             "example": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
             "type": "string"
           },
+          "caChainPem": {
+            "description": "Trust chain of the device CA — also the anchor of the broker certificate.",
+            "example": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+            "type": "string"
+          },
           "certificateNotAfter": {
             "example": "2027-11-01T00:15:00+07:00",
             "format": "date-time",
@@ -3761,6 +3832,20 @@
             "type": "string"
           },
           "deviceId": {
+            "example": "2f6c1d7e-9a3b-4c5d-8e7f-0a1b2c3d4e5f",
+            "format": "uuid",
+            "type": "string"
+          },
+          "deviceToken": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeviceAccessTokenDto"
+              }
+            ],
+            "description": "The access token again, in the agent’s shape."
+          },
+          "gatewayId": {
+            "description": "Same as `deviceId` (edge naming, CR-001).",
             "example": "2f6c1d7e-9a3b-4c5d-8e7f-0a1b2c3d4e5f",
             "format": "uuid",
             "type": "string"
@@ -3793,6 +3878,9 @@
           "refreshTokenExpiresAt",
           "subject",
           "deviceId",
+          "gatewayId",
+          "caChainPem",
+          "deviceToken",
           "tenantId",
           "buildingId",
           "certificatePem",
@@ -3805,25 +3893,68 @@
       },
       "DeviceBootstrapRequestDto": {
         "properties": {
+          "agentVersion": {
+            "description": "Agent version (semver), stored as the gateway firmware.",
+            "example": "0.1.0",
+            "type": "string"
+          },
           "csrPem": {
-            "description": "PEM PKCS#10 request with `CN=gw-<deviceId>`; EC P-256/P-384 or RSA ≥ 2048 key generated on the gateway.",
+            "description": "PEM PKCS#10 request, subject `CN=gw-provisioning` (the CA sets `CN=gw-<gatewayId>`) or already `CN=gw-<gatewayId>`; EC P-256/P-384 or RSA ≥ 2048 key generated on the gateway.",
             "example": "-----BEGIN CERTIFICATE REQUEST-----\nMIIBCzCBsgIBADAuMSwwKgYDVQQDDCNndy0zYjI0MTEwMS1lMmJiLTQyNTUtOGNhZi00MTM2YzU2NmE5NjI=\n-----END CERTIFICATE REQUEST-----",
             "type": "string"
           },
+          "hardware": {
+            "$ref": "#/components/schemas/DeviceHardwareDto"
+          },
           "provisioningCode": {
-            "description": "One-time provisioning code from the gateway QR (D-033).",
+            "description": "One-time provisioning code from the gateway QR (D-033): groups of 4 characters.",
             "example": "ABCD-EFGH-JKLM-NPQR",
             "type": "string"
           },
           "serial": {
-            "description": "Gateway serial printed on the device label.",
+            "description": "Gateway serial printed on the device label. Optional (CR-001): the single-use code identifies the gateway; when sent it must match.",
             "example": "GW-TEST-000001",
             "type": "string"
           }
         },
         "required": [
-          "serial",
           "provisioningCode",
+          "csrPem"
+        ],
+        "type": "object"
+      },
+      "DeviceCertificateDto": {
+        "properties": {
+          "caChainPem": {
+            "example": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+            "type": "string"
+          },
+          "certificatePem": {
+            "example": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+            "type": "string"
+          },
+          "notAfter": {
+            "example": "2027-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "certificatePem",
+          "caChainPem",
+          "notAfter"
+        ],
+        "type": "object"
+      },
+      "DeviceCertificateRenewDto": {
+        "properties": {
+          "csrPem": {
+            "description": "PEM PKCS#10 request for a **new** key, `CN=gw-<gatewayId>`.",
+            "example": "-----BEGIN CERTIFICATE REQUEST-----\nMIIBCzCBsgIBADAuMSwwKgYDVQQDDCNndy0zYjI0MTEwMS1lMmJiLTQyNTUtOGNhZi00MTM2YzU2NmE5NjI=\n-----END CERTIFICATE REQUEST-----",
+            "type": "string"
+          }
+        },
+        "required": [
           "csrPem"
         ],
         "type": "object"
@@ -3952,6 +4083,25 @@
         ],
         "type": "object"
       },
+      "DeviceHardwareDto": {
+        "properties": {
+          "arch": {
+            "description": "CPU architecture of the agent build (OTA manifests).",
+            "example": "arm64",
+            "type": "string"
+          },
+          "hostname": {
+            "example": "gw-pilot-01",
+            "type": "string"
+          },
+          "serial": {
+            "description": "Board serial (e.g. the CM4 serial).",
+            "example": "10000000abcdef01",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "DeviceKind": {
         "enum": [
           "gateway",
@@ -3964,6 +4114,71 @@
           "camera"
         ],
         "type": "string"
+      },
+      "DeviceLogPresignDto": {
+        "properties": {
+          "contentType": {
+            "description": "Log bundles are gzip archives.",
+            "example": "application/gzip",
+            "type": "string"
+          },
+          "sha256": {
+            "example": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "description": "Bytes, at most 50 MB.",
+            "example": 18234,
+            "type": "number"
+          }
+        },
+        "required": [
+          "contentType",
+          "sizeBytes",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "DeviceLogUploadDto": {
+        "properties": {
+          "expiresAt": {
+            "example": "2026-11-01T00:30:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "fileId": {
+            "description": "The `core.document` the bundle becomes.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Headers the PUT must carry exactly.",
+            "example": {
+              "Content-Type": "application/gzip"
+            },
+            "type": "object"
+          },
+          "method": {
+            "example": "PUT",
+            "type": "string"
+          },
+          "uploadUrl": {
+            "example": "https://storage.example.com/getproperty/t/…/log_bundle/…?X-Amz-Signature=abc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fileId",
+          "uploadUrl",
+          "method",
+          "headers",
+          "expiresAt"
+        ],
+        "type": "object"
       },
       "DeviceOwnership": {
         "enum": [
@@ -4013,6 +4228,35 @@
           "expiresAt"
         ],
         "type": "object"
+      },
+      "DocumentKind": {
+        "enum": [
+          "contract",
+          "as_built",
+          "floor_plan",
+          "certificate",
+          "warranty",
+          "meter_photo",
+          "inspection_photo",
+          "service_photo",
+          "slip",
+          "id_document",
+          "logo",
+          "pdf_invoice",
+          "pdf_receipt",
+          "pdf_tax_invoice",
+          "pdf_note",
+          "pdf_statement",
+          "pdf_report",
+          "utility_invoice",
+          "export",
+          "ota_artifact",
+          "log_bundle",
+          "tariff_source",
+          "other",
+          "signature"
+        ],
+        "type": "string"
       },
       "DocumentScanStatus": {
         "enum": [
@@ -4138,6 +4382,17 @@
             ],
             "example": "access"
           },
+          "nextActions": {
+            "description": "Actions (`…/actions/{name}`) the operator may take now; empty for the data subject.",
+            "example": [
+              "verify",
+              "reject"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "notes": {
             "example": null,
             "type": [
@@ -4168,6 +4423,7 @@
           }
         },
         "required": [
+          "nextActions",
           "id",
           "tenantId",
           "kind",
@@ -4483,8 +4739,12 @@
             "type": "string"
           },
           "kind": {
-            "example": "meter_photo",
-            "type": "string"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DocumentKind"
+              }
+            ],
+            "example": "meter_photo"
           },
           "mimeType": {
             "example": "image/jpeg",
@@ -5272,6 +5532,16 @@
               "null"
             ]
           },
+          "nextActions": {
+            "description": "Actions (`…/actions/{name}`) the caller may take now — never infer them from the status.",
+            "example": [
+              "complete"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "notes": {
             "example": null,
             "type": [
@@ -5342,6 +5612,7 @@
           }
         },
         "required": [
+          "nextActions",
           "id",
           "type",
           "status",
@@ -5661,6 +5932,16 @@
             "example": "https://app.getproperty.invalid/join?code=ABCD-EFGH-JKLM-NPQR",
             "type": "string"
           },
+          "nextActions": {
+            "description": "Actions (`…/actions/{name}`) the caller may take now — never infer them from the status.",
+            "example": [
+              "revoke"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "phoneMasked": {
             "example": "+66•••••1234",
             "type": [
@@ -5686,6 +5967,7 @@
           }
         },
         "required": [
+          "nextActions",
           "id",
           "role",
           "buildingIds",
@@ -5748,6 +6030,16 @@
             "format": "uuid",
             "type": "string"
           },
+          "nextActions": {
+            "description": "Actions (`…/actions/{name}`) the caller may take now — never infer them from the status.",
+            "example": [
+              "revoke"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "phoneMasked": {
             "example": "+66•••••1234",
             "type": [
@@ -5773,6 +6065,7 @@
           }
         },
         "required": [
+          "nextActions",
           "id",
           "role",
           "buildingIds",
@@ -6520,7 +6813,7 @@
             "example": "pending"
           },
           "url": {
-            "example": "https://liff.getproperty.invalid/invite?code=ABCD-EFGH-JKLM-NPQR",
+            "example": "https://liff.getproperty.invalid/link?code=ABCD-EFGH-JKLM-NPQR",
             "type": "string"
           }
         },
@@ -6892,6 +7185,7 @@
         "type": "object"
       },
       "LeaseStatus": {
+        "description": "Status of the current lease.",
         "enum": [
           "draft",
           "pending_signature",
@@ -7201,9 +7495,13 @@
             "type": "string"
           },
           "language": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResidentLanguage"
+              }
+            ],
             "description": "th | en (resident surface also my, km, lo, zh in R2, D-064)",
-            "example": "th",
-            "type": "string"
+            "example": "th"
           },
           "lineLinked": {
             "description": "A LINE identity is linked.",
@@ -7607,10 +7905,16 @@
             "description": "Broker username = certificate CN (EMQX ACL key).",
             "example": "gw-2f6c1d7e-9a3b-4c5d-8e7f-0a1b2c3d4e5f",
             "type": "string"
+          },
+          "wsUrl": {
+            "description": "WebSocket fallback for networks that block 8883 (device protocol §1).",
+            "example": "wss://mqtt.getproperty.invalid/mqtt",
+            "type": "string"
           }
         },
         "required": [
           "url",
+          "wsUrl",
           "clientId",
           "username",
           "acl"
@@ -7831,6 +8135,17 @@
         ],
         "type": "object"
       },
+      "OccupancyRole": {
+        "description": "Occupancy role (tenant = lessee, co_tenant, owner_occupier, family, staff).",
+        "enum": [
+          "tenant",
+          "co_tenant",
+          "owner_occupier",
+          "family",
+          "staff"
+        ],
+        "type": "string"
+      },
       "OccupantProfileDto": {
         "properties": {
           "arrivalDate": {
@@ -7984,14 +8299,14 @@
             "type": "boolean"
           },
           "menu": {
-            "description": "Menu entitlements (keys).",
+            "description": "Menu entitlements of the owner console (keys of the web routes).",
             "example": [
               "dashboard",
               "buildings",
               "invoices"
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/OwnerMenuKey"
             },
             "type": "array"
           },
@@ -8010,7 +8325,7 @@
               "owner"
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/TenantRole"
             },
             "type": "array"
           },
@@ -8269,6 +8584,37 @@
           "published",
           "failed",
           "dead"
+        ],
+        "type": "string"
+      },
+      "OwnerMenuKey": {
+        "description": "Menu entitlements of the owner console (keys of the web routes).",
+        "enum": [
+          "dashboard",
+          "buildings",
+          "units",
+          "parties",
+          "leases",
+          "deposits",
+          "readings",
+          "devices",
+          "rate_plans",
+          "invoices",
+          "payments",
+          "reports",
+          "utility_loss",
+          "service_requests",
+          "parcels",
+          "announcements",
+          "members",
+          "bank_accounts",
+          "settings",
+          "notifications",
+          "privacy",
+          "access_grants",
+          "support_access",
+          "audit_log",
+          "subscription"
         ],
         "type": "string"
       },
@@ -9013,8 +9359,12 @@
             "type": "array"
           },
           "status": {
-            "example": "active",
-            "type": "string"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserStatus"
+              }
+            ],
+            "example": "active"
           },
           "totpEnabled": {
             "example": true,
@@ -9031,6 +9381,31 @@
           "lastLoginAt"
         ],
         "type": "object"
+      },
+      "PricePlanKind": {
+        "enum": [
+          "plan",
+          "addon"
+        ],
+        "type": "string"
+      },
+      "PricePlanStatus": {
+        "description": "`proposed` until the pilot confirms the prices (D-156): show them as indicative.",
+        "enum": [
+          "proposed",
+          "confirmed"
+        ],
+        "type": "string"
+      },
+      "PriceUnit": {
+        "enum": [
+          "unit_month",
+          "building_month",
+          "building_year",
+          "month",
+          "report"
+        ],
+        "type": "string"
       },
       "PrivacyControllerDto": {
         "properties": {
@@ -9391,6 +9766,196 @@
           "deviceId",
           "code",
           "expiresAt"
+        ],
+        "type": "object"
+      },
+      "PublicPlanDto": {
+        "properties": {
+          "currency": {
+            "example": "THB",
+            "type": "string"
+          },
+          "features": {
+            "example": [
+              "A1",
+              "A2",
+              "A4",
+              "resident_liff",
+              "promptpay"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "key": {
+            "description": "Stable plan key (D-156).",
+            "example": "apartment_starter",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PricePlanKind"
+              }
+            ],
+            "example": "plan"
+          },
+          "minimumUnits": {
+            "example": 20,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "name": {
+            "example": "Apartment Starter",
+            "type": "string"
+          },
+          "priceFrom": {
+            "description": "Lower bound of a quoted range.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pricePerUnit": {
+            "description": "Single price per `priceUnit` (THB, VAT excluded); null when the plan is quoted as a range.",
+            "example": "25.00",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "priceTo": {
+            "description": "Upper bound of a quoted range.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "priceUnit": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PriceUnit"
+              }
+            ],
+            "example": "unit_month"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PricePlanStatus"
+              }
+            ],
+            "description": "`proposed` until the pilot confirms the prices (D-156): show them as indicative.",
+            "example": "proposed"
+          },
+          "summary": {
+            "example": "ออกบิล เก็บเงิน และแจ้งผู้เช่าผ่าน LINE สำหรับหอพักที่จดมิเตอร์เอง",
+            "type": "string"
+          },
+          "tenantType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TenantType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The tenant type the plan is for; null for add-ons that fit every type.",
+            "example": "apartment"
+          },
+          "vatIncluded": {
+            "description": "Prices exclude VAT (D-156).",
+            "example": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "kind",
+          "tenantType",
+          "name",
+          "summary",
+          "pricePerUnit",
+          "priceFrom",
+          "priceTo",
+          "priceUnit",
+          "minimumUnits",
+          "currency",
+          "vatIncluded",
+          "status",
+          "features"
+        ],
+        "type": "object"
+      },
+      "PublicPlansDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/PublicPlanDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "PublicTariffDto": {
+        "properties": {
+          "ceilingPerUnit": {
+            "description": "The lawful ceiling per unit published by the utility (highest marginal rate + Ft, excl. VAT).",
+            "example": "4.6189",
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "nameTh": {
+            "example": "ประเภท 1.1 บ้านอยู่อาศัย",
+            "type": "string"
+          },
+          "provider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UtilityProvider"
+              }
+            ],
+            "example": "mea"
+          },
+          "sourceUrl": {
+            "example": "https://www.mea.or.th/",
+            "type": "string"
+          },
+          "tariffCode": {
+            "example": "1.1",
+            "type": "string"
+          },
+          "utility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Utility"
+              }
+            ],
+            "example": "electric"
+          }
+        },
+        "required": [
+          "utility",
+          "provider",
+          "nameTh",
+          "tariffCode",
+          "ceilingPerUnit",
+          "effectiveFrom",
+          "sourceUrl"
         ],
         "type": "object"
       },
@@ -9930,7 +10495,20 @@
         ],
         "type": "object"
       },
+      "ResidentEntitlement": {
+        "description": "Bottom navigation and home tiles (D-063): `bills` and `lease` with a lease, `usage` where an IoT meter serves one of my units, `service_requests` / `announcements` / `parcels` where the tenant has the module (feature flags).",
+        "enum": [
+          "bills",
+          "usage",
+          "service_requests",
+          "lease",
+          "announcements",
+          "parcels"
+        ],
+        "type": "string"
+      },
       "ResidentLanguage": {
+        "description": "th | en (resident surface also my, km, lo, zh in R2, D-064)",
         "enum": [
           "th",
           "en",
@@ -10118,14 +10696,21 @@
             ]
           },
           "role": {
-            "description": "My role on the lease (LeasePartyRole).",
-            "example": "lessee",
-            "type": "string"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LeasePartyRole"
+              }
+            ],
+            "description": "My role on the lease.",
+            "example": "lessee"
           },
           "status": {
-            "description": "LeaseStatus.",
-            "example": "active",
-            "type": "string"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LeaseStatus"
+              }
+            ],
+            "example": "active"
           },
           "tenantId": {
             "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
@@ -10153,6 +10738,67 @@
         ],
         "type": "object"
       },
+      "ResidentLinkDto": {
+        "properties": {
+          "code": {
+            "description": "The invitation code from the invite QR / SMS deep link (`liff.state=/link?code=…`).",
+            "example": "ABCD-EFGH-JKLM-NPQR",
+            "type": "string"
+          },
+          "via": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LeaseInvitationChannel"
+              }
+            ],
+            "description": "How the code reached me (analytics only).",
+            "example": "line_qr"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      },
+      "ResidentLinkedDto": {
+        "properties": {
+          "leaseId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "partyId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "refreshRequired": {
+            "description": "Refresh the token to receive the new `lease:`/`unit:` scopes (the BFF rotates on refresh).",
+            "example": true,
+            "type": "boolean"
+          },
+          "tenantId": {
+            "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+            "format": "uuid",
+            "type": "string"
+          },
+          "units": {
+            "description": "The units I now occupy (empty until the lease starts).",
+            "items": {
+              "$ref": "#/components/schemas/ResidentUnitDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "tenantId",
+          "leaseId",
+          "partyId",
+          "units",
+          "refreshRequired"
+        ],
+        "type": "object"
+      },
       "ResidentMeDto": {
         "properties": {
           "consentComplete": {
@@ -10163,6 +10809,18 @@
           "consents": {
             "items": {
               "$ref": "#/components/schemas/ResidentConsentStateDto"
+            },
+            "type": "array"
+          },
+          "entitlements": {
+            "description": "Bottom navigation and home tiles (D-063): `bills` and `lease` with a lease, `usage` where an IoT meter serves one of my units, `service_requests` / `announcements` / `parcels` where the tenant has the module (feature flags).",
+            "example": [
+              "bills",
+              "usage",
+              "lease"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ResidentEntitlement"
             },
             "type": "array"
           },
@@ -10209,7 +10867,25 @@
           "leases",
           "consents",
           "consentComplete",
+          "entitlements",
           "scopes"
+        ],
+        "type": "object"
+      },
+      "ResidentMeUpdateDto": {
+        "properties": {
+          "language": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResidentLanguage"
+              }
+            ],
+            "description": "Language of LINE messages and documents for me (D-064).",
+            "example": "th"
+          }
+        },
+        "required": [
+          "language"
         ],
         "type": "object"
       },
@@ -10363,9 +11039,13 @@
             "type": "string"
           },
           "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OccupancyRole"
+              }
+            ],
             "description": "Occupancy role (tenant = lessee, co_tenant, owner_occupier, family, staff).",
-            "example": "tenant",
-            "type": "string"
+            "example": "tenant"
           },
           "tenantId": {
             "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
@@ -10477,6 +11157,65 @@
         },
         "required": [
           "role"
+        ],
+        "type": "object"
+      },
+      "SearchHitDto": {
+        "properties": {
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "label": {
+            "example": "A-201",
+            "type": "string"
+          },
+          "sublabel": {
+            "example": "อาคาร A",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SearchHitType"
+              }
+            ],
+            "example": "unit"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "label",
+          "sublabel"
+        ],
+        "type": "object"
+      },
+      "SearchHitType": {
+        "enum": [
+          "building",
+          "unit",
+          "party",
+          "lease",
+          "device"
+        ],
+        "type": "string"
+      },
+      "SearchResultDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SearchHitDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
         ],
         "type": "object"
       },
@@ -10976,6 +11715,125 @@
         ],
         "type": "string"
       },
+      "StaffMeDto": {
+        "properties": {
+          "currentTenant": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentTenantDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The tenant of this request (single tenant or `X-Tenant-Id`); null when the operator must choose."
+          },
+          "featureFlags": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "example": {
+              "channel.web_push": true,
+              "module.service_requests": false
+            },
+            "type": "object"
+          },
+          "hasPassword": {
+            "example": true,
+            "type": "boolean"
+          },
+          "menu": {
+            "description": "Menu entitlements of the staff PWA.",
+            "example": [
+              "readings",
+              "reading_rounds",
+              "installs"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StaffMenuKey"
+            },
+            "type": "array"
+          },
+          "permissions": {
+            "example": [
+              "tenant.read",
+              "invoice.read"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "roles": {
+            "example": [
+              "owner"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TenantRole"
+            },
+            "type": "array"
+          },
+          "scopes": {
+            "example": [
+              "tenant:0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subscription": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionSummaryDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tenants": {
+            "description": "Every tenant the operator belongs to.",
+            "items": {
+              "$ref": "#/components/schemas/OperatorTenantDto"
+            },
+            "type": "array"
+          },
+          "totpEnabled": {
+            "example": false,
+            "type": "boolean"
+          },
+          "user": {
+            "$ref": "#/components/schemas/MeUserDto"
+          }
+        },
+        "required": [
+          "user",
+          "hasPassword",
+          "totpEnabled",
+          "tenants",
+          "currentTenant",
+          "roles",
+          "permissions",
+          "featureFlags",
+          "subscription",
+          "scopes",
+          "menu"
+        ],
+        "type": "object"
+      },
+      "StaffMenuKey": {
+        "description": "Menu entitlements of the staff PWA.",
+        "enum": [
+          "readings",
+          "reading_rounds",
+          "inspections",
+          "installs",
+          "service_requests",
+          "parcels"
+        ],
+        "type": "string"
+      },
       "SubjectDto": {
         "properties": {
           "audience": {
@@ -11136,6 +11994,16 @@
             "format": "uuid",
             "type": "string"
           },
+          "nextActions": {
+            "description": "Actions (`…/actions/{name}`) the caller may take now — never infer them from the status.",
+            "example": [
+              "revoke"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "reason": {
             "example": "ตรวจสอบปัญหาการส่งบิลรอบ พ.ย.",
             "type": "string"
@@ -11178,6 +12046,7 @@
           }
         },
         "required": [
+          "nextActions",
           "id",
           "tenantId",
           "reason",
@@ -11229,7 +12098,8 @@
           "technician",
           "admin",
           "device",
-          "webhooks"
+          "webhooks",
+          "public"
         ],
         "type": "string"
       },
@@ -11483,6 +12353,16 @@
             "example": true,
             "type": "boolean"
           },
+          "nextActions": {
+            "description": "Actions (`…/actions/{name}`) the caller may take now — never infer them from the status.",
+            "example": [
+              "verify"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "notes": {
             "example": null,
             "type": [
@@ -11529,6 +12409,7 @@
           }
         },
         "required": [
+          "nextActions",
           "id",
           "effectiveFrom",
           "effectiveTo",
@@ -12488,6 +13369,16 @@
             "format": "uuid",
             "type": "string"
           },
+          "nextActions": {
+            "description": "Actions (`…/actions/{name}`) the caller may take now — never infer them from the status.",
+            "example": [
+              "set-status"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "notes": {
             "example": null,
             "type": [
@@ -12563,6 +13454,7 @@
           }
         },
         "required": [
+          "nextActions",
           "id",
           "buildingId",
           "propertyId",
@@ -12989,6 +13881,14 @@
         ],
         "type": "string"
       },
+      "UserStatus": {
+        "enum": [
+          "active",
+          "locked",
+          "disabled"
+        ],
+        "type": "string"
+      },
       "Utility": {
         "enum": [
           "electric",
@@ -13207,6 +14107,100 @@
         ],
         "type": "string"
       },
+      "WebVitalDto": {
+        "properties": {
+          "id": {
+            "description": "web-vitals metric id.",
+            "example": "v4-a1b2c3d4-e5f6",
+            "type": "string"
+          },
+          "name": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WebVitalName"
+              }
+            ],
+            "example": "LCP"
+          },
+          "navigationType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WebVitalNavigationType"
+              }
+            ],
+            "example": "navigate"
+          },
+          "rating": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WebVitalRating"
+              }
+            ],
+            "example": "good"
+          },
+          "route": {
+            "description": "Route pattern (never a URL with ids or query strings: no personal data).",
+            "example": "/buildings/[buildingId]",
+            "type": "string"
+          },
+          "value": {
+            "description": "Milliseconds (CLS: unitless score).",
+            "example": 1834.2,
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "value",
+          "rating",
+          "id",
+          "route"
+        ],
+        "type": "object"
+      },
+      "WebVitalName": {
+        "enum": [
+          "LCP",
+          "INP",
+          "CLS",
+          "FCP",
+          "TTFB"
+        ],
+        "type": "string"
+      },
+      "WebVitalNavigationType": {
+        "enum": [
+          "navigate",
+          "reload",
+          "back-forward",
+          "back-forward-cache",
+          "prerender",
+          "restore"
+        ],
+        "type": "string"
+      },
+      "WebVitalRating": {
+        "enum": [
+          "good",
+          "needs-improvement",
+          "poor"
+        ],
+        "type": "string"
+      },
+      "WebVitalsReportDto": {
+        "properties": {
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/WebVitalDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "metrics"
+        ],
+        "type": "object"
+      },
       "WorkflowDefinitionDto": {
         "properties": {
           "active": {
@@ -13308,7 +14302,7 @@
       "name": "Collective Group (Thailand) — getproperty",
       "url": "https://getproperty.co"
     },
-    "description": "getproperty — บิลทำเอง เก็บเงินเอง ถูกกฎหมาย, operated by Collective Group (Thailand) (D-001).\nRules: `docs/contract/api-conventions.md` (shared with getproperty-web and getproperty-edge); MQTT payloads: `docs/contract/device-protocol.md` / `contract/device-protocol.json` (D-130).\n\n- **Surfaces:** `/v1/auth`, `/v1/owner` (operator), `/v1/staff` (operator, Staff role), `/v1/resident` (resident), `/v1/technician` (technician, R2), `/v1/admin` (platform), `/v1/device` (device), `/webhooks`. A token is accepted only on its own audience's prefix.\n- **Tenancy:** a *tenant* is the SaaS customer organisation (D-151). Every owner/staff request runs in one tenant (`tenant:<uuid>` scope or `X-Tenant-Id`); a cross-tenant id is a 404 (contract §8, D-152).\n- **Money:** decimal strings with exactly 2 decimals (`\"1234.50\"`) plus `currency: \"THB\"` on the object; never JSON numbers. Clients never compute prices (D-046).\n- **Meter quantities:** `register` and `units` are decimal strings with up to 3 decimals (`\"12345.678\"`), `unit` is `kwh | m3`; tariff `pricePerUnit` has up to 4 decimals.\n- **Dates:** ISO 8601 with offset, rendered in `Asia/Bangkok` (`2026-11-01T00:00:00+07:00`); date-only fields `YYYY-MM-DD`.\n- **IDs:** uuid only; business keys (`invoiceNumber`, `unitNo`, `deviceSerial`) are separate fields.\n- **Errors:** RFC 9457 `application/problem+json` with a stable `code`; `title`/`detail` localised by `Accept-Language` (`th` default, `en`). `compliance.*` refusals carry `legalRef` (D-020).\n- **Lists:** `?page&perPage(≤100)&sort&order&q` → `{ data, meta: { page, perPage, total } }`; feeds use `?cursor&limit` → `{ data, meta: { nextCursor } }`; series take `from`, `to`, `bucket` (`15m | 1h | 1d`).\n- **Idempotency:** irreversible POSTs require `Idempotency-Key` (uuid); replays within 24 h return the original response.\n- **Concurrency:** editable resources return `ETag`; updates send `If-Match` (412 `concurrency.stale`).\n- **Files:** presign → PUT to the returned URL → reference the `fileId`; downloads are short-lived signed URLs.",
+    "description": "getproperty — บิลทำเอง เก็บเงินเอง ถูกกฎหมาย, operated by Collective Group (Thailand) (D-001).\nRules: `docs/contract/api-conventions.md` (shared with getproperty-web and getproperty-edge); MQTT payloads: `docs/contract/device-protocol.md` / `contract/device-protocol.json` (D-130).\n\n- **Surfaces:** `/v1/auth`, `/v1/owner` (operator), `/v1/staff` (operator, Staff role), `/v1/resident` (resident), `/v1/technician` (technician, R2), `/v1/admin` (platform), `/v1/device` (device), `/webhooks`, `/v1/public` (anonymous marketing reads). A token is accepted only on its own audience's prefix.\n- **Tenancy:** a *tenant* is the SaaS customer organisation (D-151). Every owner/staff request runs in one tenant (`tenant:<uuid>` scope or `X-Tenant-Id`); a cross-tenant id is a 404 (contract §8, D-152).\n- **Money:** decimal strings with exactly 2 decimals (`\"1234.50\"`) plus `currency: \"THB\"` on the object; never JSON numbers. Clients never compute prices (D-046).\n- **Meter quantities:** `register` and `units` are decimal strings with up to 3 decimals (`\"12345.678\"`), `unit` is `kwh | m3`; tariff `pricePerUnit` has up to 4 decimals.\n- **Dates:** ISO 8601 with offset, rendered in `Asia/Bangkok` (`2026-11-01T00:00:00+07:00`); date-only fields `YYYY-MM-DD`.\n- **IDs:** uuid only; business keys (`invoiceNumber`, `unitNo`, `deviceSerial`) are separate fields.\n- **Errors:** RFC 9457 `application/problem+json` with a stable `code`; `title`/`detail` localised by `Accept-Language` (`th` default, `en`). `compliance.*` refusals carry `legalRef` (D-020).\n- **Lists:** `?page&perPage(≤100)&sort&order&q` → `{ data, meta: { page, perPage, total } }`; feeds use `?cursor&limit` → `{ data, meta: { nextCursor } }`; series take `from`, `to`, `bucket` (`15m | 1h | 1d`).\n- **Idempotency:** irreversible POSTs require `Idempotency-Key` (uuid); replays within 24 h return the original response.\n- **Concurrency:** editable resources return `ETag`; updates send `If-Match` (412 `concurrency.stale`).\n- **Files:** presign → PUT to the returned URL → reference the `fileId`; downloads are short-lived signed URLs.",
     "title": "getproperty API",
     "version": "0.1.0"
   },
@@ -14046,6 +15040,11 @@
                     "fulfilledAt": null,
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "kind": "access",
+                    "nextActions": [
+                      "verify",
+                      "start",
+                      "reject"
+                    ],
                     "notes": null,
                     "receivedAt": "2026-11-01T00:15:00+07:00",
                     "state": "received",
@@ -18564,9 +19563,12 @@
     },
     "/v1/admin/push-subscriptions": {
       "post": {
-        "description": "Stores the browser PushSubscription of the signed-in user (endpoint + keys) for web push notifications; re-registering an endpoint updates it. Get the VAPID key from `auth.webPush.publicKey`.\n\nImplements: D-063, ADR-0003.",
+        "description": "Stores the browser PushSubscription of the signed-in user (endpoint + keys) for web push notifications; re-registering an endpoint updates it; an `Idempotency-Key` replays the first answer. Get the VAPID key from `auth.webPush.publicKey` (residents: the LIFF build carries it).\n\nImplements: D-063, ADR-0003.",
         "operationId": "admin.pushSubscriptions.create",
         "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
+          },
           {
             "$ref": "#/components/parameters/AcceptLanguage"
           }
@@ -18608,6 +19610,9 @@
             },
             "description": "Registered",
             "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"
               },
@@ -18628,6 +19633,9 @@
                 "examples": {
                   "http.bad_request": {
                     "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
                   }
                 },
                 "schema": {
@@ -18635,7 +19643,7 @@
                 }
               }
             },
-            "description": "Problem: `http.bad_request`",
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -18685,10 +19693,33 @@
               }
             }
           },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
           "422": {
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
                   }
@@ -18698,7 +19729,7 @@
                 }
               }
             },
-            "description": "Problem: `validation.failed`",
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -19674,6 +20705,9 @@
                     "approvedVia": "in_app",
                     "createdAt": "2026-11-01T00:15:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "nextActions": [
+                      "revoke"
+                    ],
                     "reason": "ตรวจสอบปัญหาการส่งบิลรอบ พ.ย.",
                     "state": "active",
                     "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
@@ -19871,6 +20905,9 @@
                   "approvedVia": "platform_admin_incident",
                   "createdAt": "2026-11-01T00:15:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "revoke"
+                  ],
                   "reason": "ตรวจสอบปัญหาการส่งบิลรอบ พ.ย.",
                   "state": "active",
                   "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
@@ -20106,6 +21143,9 @@
                   "approvedVia": "in_app",
                   "createdAt": "2026-11-01T00:15:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "revoke"
+                  ],
                   "reason": "ตรวจสอบปัญหาการส่งบิลรอบ พ.ย.",
                   "state": "revoked",
                   "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
@@ -20385,6 +21425,200 @@
         "summary": "Build and environment information",
         "tags": [
           "admin.system"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/telemetry/web-vitals": {
+      "post": {
+        "description": "Real-user Core Web Vitals (LCP, INP, CLS, FCP, TTFB) of the web zone, batched by its BFF; anonymous on public pages. Route patterns only — never URLs with ids or query strings. Accepted for aggregation, nothing to poll (D-179 performance budgets).\n\nImplements: D-179.",
+        "operationId": "admin.telemetry.webVitals",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "metrics": [
+                      {
+                        "id": "v4-a1b2c3d4-e5f6",
+                        "name": "LCP",
+                        "navigationType": "navigate",
+                        "rating": "good",
+                        "route": "/buildings/[buildingId]",
+                        "value": 1834.2
+                      }
+                    ]
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/WebVitalsReportDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. Nothing to poll.",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Report Web Vitals",
+        "tags": [
+          "admin.telemetry"
         ],
         "x-surface": "admin"
       }
@@ -20691,6 +21925,9 @@
                     "expiresAt": "2026-11-08T00:15:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "inviteUrl": "https://app.getproperty.invalid/join?code=ABCD-EFGH-JKLM-NPQR",
+                    "nextActions": [
+                      "revoke"
+                    ],
                     "phoneMasked": "+66•••••1234",
                     "role": "owner",
                     "state": "pending"
@@ -21958,6 +23195,9 @@
                   "approvedVia": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "revoke"
+                  ],
                   "reason": "ตรวจสอบปัญหาการส่งบิลรอบ พ.ย.",
                   "state": "requested",
                   "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
@@ -22176,6 +23416,9 @@
                         "enteredBy": "3b241101-e2bb-4255-8caf-4136c566a962",
                         "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                         "needsCheck": true,
+                        "nextActions": [
+                          "verify"
+                        ],
                         "notes": null,
                         "publishedAt": null,
                         "sourceUrl": "https://www.mea.or.th/",
@@ -22364,6 +23607,9 @@
                   "enteredBy": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "needsCheck": false,
+                  "nextActions": [
+                    "verify"
+                  ],
                   "notes": null,
                   "publishedAt": "2026-11-01T00:15:00+07:00",
                   "sourceUrl": "https://www.mea.or.th/",
@@ -22604,6 +23850,9 @@
                   "enteredBy": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "needsCheck": false,
+                  "nextActions": [
+                    "verify"
+                  ],
                   "notes": null,
                   "publishedAt": null,
                   "sourceUrl": "https://www.mea.or.th/",
@@ -22888,6 +24137,9 @@
                   "enteredBy": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "needsCheck": true,
+                  "nextActions": [
+                    "verify"
+                  ],
                   "notes": null,
                   "publishedAt": null,
                   "sourceUrl": "https://www.mea.or.th/",
@@ -25979,7 +27231,7 @@
     },
     "/v1/device/bootstrap": {
       "post": {
-        "description": "The gateway sends its serial, the one-time provisioning code from its QR and a CSR (`CN=gw-<deviceId>`); the platform CA signs a client certificate (12 months, clientAuth), the EMQX ACL rows are written (publish `gp/v1/<id>/+` and `…/cmd/ack`, subscribe `…/config` and `…/cmd`), and a device session starts (JWT `aud=device` + refresh token). A second bootstrap of the same gateway revokes the previous certificate, ACL and sessions. Not idempotent by key: the code is single-use; a lost response needs a new code (D-130, device protocol §1).\n\nImplements: D-033, D-130, ADR-0003.",
+        "description": "The gateway sends the one-time provisioning code from its QR (the serial is optional), a CSR (`CN=gw-provisioning` — the CA sets `CN=gw-<gatewayId>`), its agent version and hardware; the platform CA signs a client certificate (12 months, clientAuth), the EMQX ACL rows are written (publish `gp/v1/<id>/+` and `…/cmd/ack`, subscribe `…/config` and `…/cmd`), and a device session starts (JWT `aud=device` + refresh token, also as `deviceToken`). A second bootstrap of the same gateway revokes the previous certificate, ACL and sessions. Not idempotent by key: the code is single-use (second use → 401 `device.provisioning_code_invalid`); a lost response needs a new code (D-130, D-165, device protocol §1).\n\nImplements: D-033, D-130, ADR-0003.",
         "operationId": "device.bootstrap.create",
         "parameters": [
           {
@@ -25993,9 +27245,14 @@
                 "default": {
                   "summary": "Example",
                   "value": {
+                    "agentVersion": "0.1.0",
                     "csrPem": "-----BEGIN CERTIFICATE REQUEST-----\nMIIBCzCBsgIBADAuMSwwKgYDVQQDDCNndy0zYjI0MTEwMS1lMmJiLTQyNTUtOGNhZi00MTM2YzU2NmE5NjI=\n-----END CERTIFICATE REQUEST-----",
-                    "provisioningCode": "ABCD-EFGH-JKLM-NPQR",
-                    "serial": "GW-TEST-000001"
+                    "hardware": {
+                      "arch": "arm64",
+                      "hostname": "gw-pilot-01",
+                      "serial": "10000000abcdef01"
+                    },
+                    "provisioningCode": "ABCD-EFGH-JKLM-NPQR"
                   }
                 }
               },
@@ -26015,10 +27272,16 @@
                   "accessTokenExpiresAt": "2026-11-01T00:30:00+07:00",
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "caCertificatePem": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+                  "caChainPem": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
                   "certificateNotAfter": "2027-11-01T00:15:00+07:00",
                   "certificatePem": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
                   "certificateSerial": "01a1b2c3d4e5f60718293a4b5c6d7e8f",
                   "deviceId": "2f6c1d7e-9a3b-4c5d-8e7f-0a1b2c3d4e5f",
+                  "deviceToken": {
+                    "accessToken": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImtpZCI6ImdwLWRldi0xIn0.eyJzdWIiOiIuLi4ifQ.c2ln",
+                    "expiresAt": "2026-11-01T00:30:00+07:00"
+                  },
+                  "gatewayId": "2f6c1d7e-9a3b-4c5d-8e7f-0a1b2c3d4e5f",
                   "mqtt": {
                     "acl": [
                       {
@@ -26040,7 +27303,8 @@
                     ],
                     "clientId": "gw-2f6c1d7e-9a3b-4c5d-8e7f-0a1b2c3d4e5f",
                     "url": "mqtts://mqtt.getproperty.invalid:8883",
-                    "username": "gw-2f6c1d7e-9a3b-4c5d-8e7f-0a1b2c3d4e5f"
+                    "username": "gw-2f6c1d7e-9a3b-4c5d-8e7f-0a1b2c3d4e5f",
+                    "wsUrl": "wss://mqtt.getproperty.invalid/mqtt"
                   },
                   "refreshToken": "q2r8XoT1Vb9mJ0yPz4LkWnE6aGs3dHf5Q2r8XoT1Vb9",
                   "refreshTokenExpiresAt": "2026-12-01T00:15:00+07:00",
@@ -26194,6 +27458,413 @@
         "x-surface": "device"
       }
     },
+    "/v1/device/certificate/renew": {
+      "post": {
+        "description": "mTLS + device bearer: signs a CSR for a **new** key (`CN=gw-<gatewayId>`) with the platform CA; the old certificate stays valid until it expires and the agent reconnects MQTT with the new one. Due 11 months after `notBefore` or 30 days before `notAfter` (device protocol §1, CR-003). A certificate presented on the call must belong to the same gateway.\n\nImplements: D-130, D-165.",
+        "operationId": "device.certificate.renew",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "csrPem": "-----BEGIN CERTIFICATE REQUEST-----\nMIIBCzCBsgIBADAuMSwwKgYDVQQDDCNndy0zYjI0MTEwMS1lMmJiLTQyNTUtOGNhZi00MTM2YzU2NmE5NjI=\n-----END CERTIFICATE REQUEST-----"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DeviceCertificateRenewDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "caChainPem": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+                  "certificatePem": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+                  "notAfter": "2027-11-01T00:15:00+07:00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceCertificateDto"
+                }
+              }
+            },
+            "description": "New certificate",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  },
+                  "device.certificate_invalid": {
+                    "$ref": "#/components/examples/problem.device.certificate_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`, `device.certificate_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "device.csr_invalid": {
+                    "$ref": "#/components/examples/problem.device.csr_invalid"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `device.csr_invalid`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "deviceBearer": []
+          }
+        ],
+        "summary": "Renew the gateway certificate",
+        "tags": [
+          "device.identity"
+        ],
+        "x-surface": "device"
+      }
+    },
+    "/v1/device/logs/presign": {
+      "post": {
+        "description": "For the `upload_logs` command (device protocol §2): the gateway declares a gzip bundle (journal of the last hours + in-memory log ring, never secrets) with its size and SHA-256 and receives a short-lived PUT URL; the bundle becomes a `core.document` (kind `log_bundle`) of the gateway’s building, scanned like every upload. The agent then acks the command with `{ bytes, sha256 }` (CR-004, D-131).\n\nImplements: D-131, D-130.",
+        "operationId": "device.logs.presign",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "contentType": "application/gzip",
+                    "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+                    "sizeBytes": 18234
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DeviceLogPresignDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "expiresAt": "2026-11-01T00:30:00+07:00",
+                  "fileId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "headers": {
+                    "Content-Type": "application/gzip"
+                  },
+                  "method": "PUT",
+                  "uploadUrl": "https://storage.example.com/getproperty/t/x/log_bundle/2026/11/y?X-Amz-Signature=abc"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceLogUploadDto"
+                }
+              }
+            },
+            "description": "Upload URL",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  },
+                  "device.certificate_invalid": {
+                    "$ref": "#/components/examples/problem.device.certificate_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`, `device.certificate_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "deviceBearer": []
+          }
+        ],
+        "summary": "Presign a log bundle upload",
+        "tags": [
+          "device.logs"
+        ],
+        "x-surface": "device"
+      }
+    },
     "/v1/device/ping": {
       "get": {
         "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `device` surface until its real endpoints land. Anonymous or with an `device` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`).\n\nImplements: D-002, ADR-0002.",
@@ -26329,6 +28000,136 @@
         "summary": "Ping the device surface",
         "tags": [
           "device.system"
+        ],
+        "x-surface": "device"
+      }
+    },
+    "/v1/device/token": {
+      "post": {
+        "description": "Authenticated by the gateway’s client certificate alone (mTLS, no bearer): a certificate issued by the platform device CA, not revoked, within its validity, of a gateway that is not retired → a short-lived JWT (`aud=device`, `DEVICE_ACCESS_TOKEN_TTL_SECONDS`) in the gateway’s current session family. The agent refreshes one minute before `expiresAt` and never stores the token (CR-002, D-130, D-165).\n\nImplements: D-130, D-165.",
+        "operationId": "device.token.create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "accessToken": "eyJhbGciOiJFZERTQSJ9.eyJhdWQiOiJkZXZpY2UifQ.c2lnbmF0dXJl",
+                  "expiresAt": "2026-11-01T01:15:00+07:00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceAccessTokenDto"
+                }
+              }
+            },
+            "description": "Token",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "device.certificate_invalid": {
+                    "$ref": "#/components/examples/problem.device.certificate_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `device.certificate_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Mint a device JWT from the mTLS client certificate",
+        "tags": [
+          "device.identity"
         ],
         "x-surface": "device"
       }
@@ -27913,6 +29714,9 @@
                     "createdAt": "2026-11-01T00:15:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "isDefault": true,
+                    "nextActions": [
+                      "remove"
+                    ],
                     "paymentProvider": "none",
                     "state": "active"
                   }
@@ -28120,6 +29924,9 @@
                     "createdAt": "2026-11-01T00:15:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "isDefault": false,
+                    "nextActions": [
+                      "remove"
+                    ],
                     "paymentProvider": "none",
                     "state": "pending_otp"
                   },
@@ -28436,6 +30243,9 @@
                   "createdAt": "2026-11-01T00:15:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "isDefault": true,
+                  "nextActions": [
+                    "remove"
+                  ],
                   "paymentProvider": "none",
                   "state": "active"
                 },
@@ -28701,6 +30511,9 @@
                   "createdAt": "2026-11-01T00:15:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "isDefault": false,
+                  "nextActions": [
+                    "remove"
+                  ],
                   "paymentProvider": "none",
                   "state": "removed"
                 },
@@ -33460,6 +35273,9 @@
                     "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "floorLevel": 2,
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "nextActions": [
+                      "set-status"
+                    ],
                     "notes": null,
                     "ownershipRatio": null,
                     "propertyId": "7b9f1c2e-3d4a-4f5b-8c6d-9e0f1a2b3c4d",
@@ -35146,6 +36962,11 @@
                     "fulfilledAt": null,
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "kind": "access",
+                    "nextActions": [
+                      "verify",
+                      "start",
+                      "reject"
+                    ],
                     "notes": null,
                     "receivedAt": "2026-11-01T00:15:00+07:00",
                     "state": "received",
@@ -35380,6 +37201,11 @@
                   "fulfilledAt": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "kind": "access",
+                  "nextActions": [
+                    "verify",
+                    "start",
+                    "reject"
+                  ],
                   "notes": null,
                   "receivedAt": "2026-11-01T00:15:00+07:00",
                   "state": "verifying",
@@ -39932,6 +41758,9 @@
                         }
                       ],
                       "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "nextActions": [
+                        "complete"
+                      ],
                       "notes": null,
                       "reportNumber": null,
                       "residentSigned": false,
@@ -40201,6 +42030,9 @@
                     }
                   ],
                   "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "complete"
+                  ],
                   "notes": null,
                   "reportNumber": null,
                   "residentSigned": false,
@@ -40488,6 +42320,9 @@
                     }
                   ],
                   "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "complete"
+                  ],
                   "notes": null,
                   "reportNumber": null,
                   "residentSigned": false,
@@ -40771,6 +42606,9 @@
                     }
                   ],
                   "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "complete"
+                  ],
                   "notes": null,
                   "reportNumber": "INS-2026-00001",
                   "residentSigned": true,
@@ -41108,6 +42946,9 @@
                     }
                   ],
                   "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "complete"
+                  ],
                   "notes": null,
                   "reportNumber": null,
                   "residentSigned": false,
@@ -41648,6 +43489,9 @@
                     "email": null,
                     "expiresAt": "2026-11-08T00:15:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "nextActions": [
+                      "revoke"
+                    ],
                     "phoneMasked": "+66•••••1234",
                     "role": "staff",
                     "state": "pending"
@@ -41852,6 +43696,9 @@
                   "expiresAt": "2026-11-08T00:15:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "inviteUrl": "https://app.getproperty.invalid/join?code=ABCD-EFGH-JKLM-NPQR",
+                  "nextActions": [
+                    "revoke"
+                  ],
                   "phoneMasked": "+66•••••1234",
                   "role": "staff",
                   "state": "pending"
@@ -42123,6 +43970,9 @@
                   "email": null,
                   "expiresAt": "2026-11-08T00:15:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "revoke"
+                  ],
                   "phoneMasked": "+66•••••1234",
                   "role": "staff",
                   "state": "revoked"
@@ -47980,7 +49830,7 @@
                   "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "qrPngDataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
                   "state": "pending",
-                  "url": "https://liff.getproperty.invalid/invite?code=ABCD-EFGH-JKLM-NPQR"
+                  "url": "https://liff.getproperty.invalid/link?code=ABCD-EFGH-JKLM-NPQR"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/LeaseInvitationCreatedDto"
@@ -54352,9 +56202,12 @@
     },
     "/v1/owner/push-subscriptions": {
       "post": {
-        "description": "Stores the browser PushSubscription of the signed-in user (endpoint + keys) for web push notifications; re-registering an endpoint updates it. Get the VAPID key from `auth.webPush.publicKey`.\n\nImplements: D-063, ADR-0003.",
+        "description": "Stores the browser PushSubscription of the signed-in user (endpoint + keys) for web push notifications; re-registering an endpoint updates it; an `Idempotency-Key` replays the first answer. Get the VAPID key from `auth.webPush.publicKey` (residents: the LIFF build carries it).\n\nImplements: D-063, ADR-0003.",
         "operationId": "owner.pushSubscriptions.create",
         "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
+          },
           {
             "$ref": "#/components/parameters/TenantIdHeader"
           },
@@ -54399,6 +56252,9 @@
             },
             "description": "Registered",
             "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"
               },
@@ -54420,6 +56276,9 @@
                   "http.bad_request": {
                     "$ref": "#/components/examples/problem.http.bad_request"
                   },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
                   "tenant.context_invalid": {
                     "$ref": "#/components/examples/problem.tenant.context_invalid"
                   },
@@ -54432,7 +56291,7 @@
                 }
               }
             },
-            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `tenant.context_invalid`, `tenant.context_required`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -54485,10 +56344,33 @@
               }
             }
           },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
           "422": {
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
                   }
@@ -54498,7 +56380,7 @@
                 }
               }
             },
-            "description": "Problem: `validation.failed`",
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -55091,6 +56973,217 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/search": {
+      "get": {
+        "description": "Buildings, units, parties (display name only), leases and devices of the current tenant matching `q` (≥ 2 characters, case-insensitive), at most 20 hits with prefix matches first; Staff limited to buildings see those buildings only, a cross-tenant row never appears (D-152). Invoices join with B4.\n\nImplements: D-152, D-151.",
+        "operationId": "owner.search.query",
+        "parameters": [
+          {
+            "description": "At least 2 characters; matches names, numbers and serials.",
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "example": "A-20",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "label": "A-201",
+                      "sublabel": "อาคาร A",
+                      "type": "unit"
+                    },
+                    {
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "label": "CTR-2026-00001",
+                      "sublabel": "A-201",
+                      "type": "lease"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResultDto"
+                }
+              }
+            },
+            "description": "Hits",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Global search of the owner console",
+        "tags": [
+          "owner.search"
+        ],
+        "x-required-permissions": [
+          "property.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/settings": {
       "get": {
         "description": "Every setting that may have a tenant (or property) value, with the value in force at `at` and where it comes from (property → tenant → platform, ADR-0004), and whether I may change it (Owner: billing settings; Manager: operational settings, D-090).\n\nImplements: D-090, D-144, ADR-0004.",
@@ -55601,6 +57694,9 @@
                     "approvedVia": "in_app",
                     "createdAt": "2026-11-01T00:15:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "nextActions": [
+                      "revoke"
+                    ],
                     "reason": "ตรวจสอบปัญหาการส่งบิลรอบ พ.ย.",
                     "state": "active",
                     "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
@@ -55807,6 +57903,9 @@
                   "approvedVia": "in_app",
                   "createdAt": "2026-11-01T00:15:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "revoke"
+                  ],
                   "reason": "ตรวจสอบปัญหาการส่งบิลรอบ พ.ย.",
                   "state": "active",
                   "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
@@ -56051,6 +58150,9 @@
                   "approvedVia": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "revoke"
+                  ],
                   "reason": "ตรวจสอบปัญหาการส่งบิลรอบ พ.ย.",
                   "state": "denied",
                   "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
@@ -56295,6 +58397,9 @@
                   "approvedVia": "in_app",
                   "createdAt": "2026-11-01T00:15:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "revoke"
+                  ],
                   "reason": "ตรวจสอบปัญหาการส่งบิลรอบ พ.ย.",
                   "state": "revoked",
                   "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
@@ -56507,6 +58612,200 @@
         ],
         "x-required-permissions": [
           "tenant.support_grant.approve"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/telemetry/web-vitals": {
+      "post": {
+        "description": "Real-user Core Web Vitals (LCP, INP, CLS, FCP, TTFB) of the web zone, batched by its BFF; anonymous on public pages. Route patterns only — never URLs with ids or query strings. Accepted for aggregation, nothing to poll (D-179 performance budgets).\n\nImplements: D-179.",
+        "operationId": "owner.telemetry.webVitals",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "metrics": [
+                      {
+                        "id": "v4-a1b2c3d4-e5f6",
+                        "name": "LCP",
+                        "navigationType": "navigate",
+                        "rating": "good",
+                        "route": "/buildings/[buildingId]",
+                        "value": 1834.2
+                      }
+                    ]
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/WebVitalsReportDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. Nothing to poll.",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Report Web Vitals",
+        "tags": [
+          "owner.telemetry"
         ],
         "x-surface": "owner"
       }
@@ -57631,6 +59930,9 @@
                       "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "floorLevel": 2,
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "nextActions": [
+                        "set-status"
+                      ],
                       "notes": null,
                       "ownershipRatio": null,
                       "propertyId": "7b9f1c2e-3d4a-4f5b-8c6d-9e0f1a2b3c4d",
@@ -57901,6 +60203,9 @@
                   "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "floorLevel": 2,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "set-status"
+                  ],
                   "notes": null,
                   "ownershipRatio": null,
                   "propertyId": "7b9f1c2e-3d4a-4f5b-8c6d-9e0f1a2b3c4d",
@@ -58344,6 +60649,9 @@
                   "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "floorLevel": 2,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "set-status"
+                  ],
                   "notes": null,
                   "ownershipRatio": null,
                   "propertyId": "7b9f1c2e-3d4a-4f5b-8c6d-9e0f1a2b3c4d",
@@ -58604,6 +60912,9 @@
                   "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "floorLevel": 2,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "set-status"
+                  ],
                   "notes": null,
                   "ownershipRatio": null,
                   "propertyId": "7b9f1c2e-3d4a-4f5b-8c6d-9e0f1a2b3c4d",
@@ -58929,6 +61240,9 @@
                   "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "floorLevel": 2,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "set-status"
+                  ],
                   "notes": null,
                   "ownershipRatio": null,
                   "propertyId": "7b9f1c2e-3d4a-4f5b-8c6d-9e0f1a2b3c4d",
@@ -60950,6 +63264,370 @@
         "x-surface": "owner"
       }
     },
+    "/v1/public/ping": {
+      "get": {
+        "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `public` surface until its real endpoints land. Public: this surface has no token audience.\n\nImplements: D-002, ADR-0002.",
+        "operationId": "public.system.ping",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "serverTime": "2026-11-01T00:15:00+07:00",
+                  "surface": "public",
+                  "version": "0.1.0"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SystemPingDto"
+                }
+              }
+            },
+            "description": "The surface is up",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Ping the public surface",
+        "tags": [
+          "public.system"
+        ],
+        "x-surface": "public"
+      }
+    },
+    "/v1/public/plans": {
+      "get": {
+        "description": "The price plans in force, read from the platform setting `pricing.price_plans` (THB, VAT excluded). While D-156 is Proposed every plan says `status: proposed` and quoted ranges come as `priceFrom`/`priceTo`. Anonymous and cacheable (5 min).\n\nImplements: D-156.",
+        "operationId": "public.plans.list",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "currency": "THB",
+                      "features": [
+                        "A1",
+                        "A2",
+                        "A4",
+                        "resident_liff",
+                        "promptpay"
+                      ],
+                      "key": "apartment_starter",
+                      "kind": "plan",
+                      "minimumUnits": 20,
+                      "name": "Apartment Starter",
+                      "priceFrom": null,
+                      "pricePerUnit": "25.00",
+                      "priceTo": null,
+                      "priceUnit": "unit_month",
+                      "status": "proposed",
+                      "summary": "ออกบิล เก็บเงิน และแจ้งผู้เช่าผ่าน LINE สำหรับหอพักที่จดมิเตอร์เอง",
+                      "tenantType": "apartment",
+                      "vatIncluded": false
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPlansDto"
+                }
+              }
+            },
+            "description": "Plans",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Price plans for the pricing page",
+        "tags": [
+          "public.plans"
+        ],
+        "x-surface": "public"
+      }
+    },
+    "/v1/public/utility-tariffs/current": {
+      "get": {
+        "description": "The lawful ceiling per unit of the verified and published MEA/PEA/MWA/PWA tariff in force today (residential class 1.1 unless `tariffCode` is given) — the value the สคบ. 2568 notice compares a dormitory’s rate with (D-021a, D-140). For the landing-page loss calculator; anonymous and cacheable. 404 `tariff.not_found` while no version is published.\n\nImplements: D-021, D-140.",
+        "operationId": "public.utilityTariffs.current",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "utility",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Utility"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UtilityProvider"
+            }
+          },
+          {
+            "description": "Customer class; the residential class (1.1) by default.",
+            "in": "query",
+            "name": "tariffCode",
+            "required": false,
+            "schema": {
+              "example": "1.1",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "ceilingPerUnit": "4.6189",
+                  "effectiveFrom": "2026-09-01",
+                  "nameTh": "ประเภท 1.1 บ้านอยู่อาศัย",
+                  "provider": "mea",
+                  "sourceUrl": "https://www.mea.or.th/",
+                  "tariffCode": "1.1",
+                  "utility": "electric"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PublicTariffDto"
+                }
+              }
+            },
+            "description": "Ceiling in force",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tariff.not_found": {
+                    "$ref": "#/components/examples/problem.tariff.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tariff.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Published utility ceiling per unit",
+        "tags": [
+          "public.utilityTariffs"
+        ],
+        "x-surface": "public"
+      }
+    },
     "/v1/resident/consents": {
       "get": {
         "description": "Every resident consent purpose in my language with its current version and my answer (null when never answered or when the text changed since, D-025). Asked in the LIFF on first use.\n\nImplements: D-025, D-154.",
@@ -61369,6 +64047,11 @@
                     "fulfilledAt": null,
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "kind": "access",
+                    "nextActions": [
+                      "verify",
+                      "start",
+                      "reject"
+                    ],
                     "notes": null,
                     "receivedAt": "2026-11-01T00:15:00+07:00",
                     "state": "received",
@@ -61538,6 +64221,11 @@
                     "fulfilledAt": null,
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "kind": "access",
+                    "nextActions": [
+                      "verify",
+                      "start",
+                      "reject"
+                    ],
                     "notes": null,
                     "receivedAt": "2026-11-01T00:15:00+07:00",
                     "state": "received",
@@ -64778,6 +67466,273 @@
         "x-surface": "resident"
       }
     },
+    "/v1/resident/link": {
+      "post": {
+        "description": "Accepts the operator’s single-use invitation code from the invite QR / SMS deep link (`liff.state=/link?code=…`) and links my login to the invited party (D-061). The required PDPA consents must be granted first (409 `consent.required`, D-025). Returns the units I now occupy; refresh the token to receive the new scopes (`refreshRequired`).\n\nImplements: D-025, D-061.",
+        "operationId": "resident.link.create",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "accept-language",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "code": "ABCD-EFGH-JKLM-NPQR"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ResidentLinkDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "refreshRequired": true,
+                  "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                  "units": []
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ResidentLinkedDto"
+                }
+              }
+            },
+            "description": "Linked",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "invitation.not_found": {
+                    "$ref": "#/components/examples/problem.invitation.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `invitation.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "consent.required": {
+                    "$ref": "#/components/examples/problem.consent.required"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "invitation.not_pending": {
+                    "$ref": "#/components/examples/problem.invitation.not_pending"
+                  },
+                  "invitation.party_mismatch": {
+                    "$ref": "#/components/examples/problem.invitation.party_mismatch"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `consent.required`, `idempotency.in_progress`, `invitation.not_pending`, `invitation.party_mismatch`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Link me with an invitation code",
+        "tags": [
+          "resident.link"
+        ],
+        "x-surface": "resident"
+      }
+    },
     "/v1/resident/me": {
       "get": {
         "description": "The resident, the units of their current occupancies in every tenant (and leases from B2.3), their language and the state of the consent purposes (D-025: the LIFF asks for missing required consents on first use).\n\nImplements: D-025, D-061, D-063, D-154.",
@@ -64800,6 +67755,11 @@
                       "required": true,
                       "version": 1
                     }
+                  ],
+                  "entitlements": [
+                    "bills",
+                    "usage",
+                    "lease"
                   ],
                   "leaseIds": [
                     "3b241101-e2bb-4255-8caf-4136c566a962"
@@ -64978,6 +67938,269 @@
           "resident.me"
         ],
         "x-surface": "resident"
+      },
+      "patch": {
+        "description": "The language of my LINE messages and documents (th, en; my, km, lo, zh in R2 — D-064). Returns my updated profile.\n\nImplements: D-064, D-154.",
+        "operationId": "resident.me.update",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "language": "en"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ResidentMeUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "consentComplete": true,
+                  "consents": [
+                    {
+                      "granted": true,
+                      "purposeKey": "resident.service",
+                      "required": true,
+                      "version": 1
+                    }
+                  ],
+                  "entitlements": [
+                    "bills",
+                    "usage",
+                    "lease"
+                  ],
+                  "leaseIds": [
+                    "3b241101-e2bb-4255-8caf-4136c566a962"
+                  ],
+                  "leases": [
+                    {
+                      "buildingName": "อาคาร A",
+                      "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "number": "CTR-2026-00001",
+                      "role": "lessee",
+                      "status": "active",
+                      "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                      "tenantName": "หอพักตัวอย่าง",
+                      "unitNo": "A-201"
+                    }
+                  ],
+                  "scopes": [
+                    "unit:3b241101-e2bb-4255-8caf-4136c566a962"
+                  ],
+                  "units": [
+                    {
+                      "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                      "buildingName": "อาคาร A",
+                      "role": "tenant",
+                      "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                      "tenantName": "หอพักตัวอย่าง",
+                      "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "unitNo": "A-201",
+                      "validFrom": "2026-11-01"
+                    }
+                  ],
+                  "user": {
+                    "displayName": "ผู้เช่า ทดสอบ",
+                    "email": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "language": "th",
+                    "lineLinked": true,
+                    "phone": "+66810001234"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ResidentMeDto"
+                }
+              }
+            },
+            "description": "Updated",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Change my language",
+        "tags": [
+          "resident.me"
+        ],
+        "x-surface": "resident"
       }
     },
     "/v1/resident/me/privacy": {
@@ -65042,6 +68265,11 @@
                       "fulfilledAt": null,
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "kind": "access",
+                      "nextActions": [
+                        "verify",
+                        "start",
+                        "reject"
+                      ],
                       "notes": null,
                       "receivedAt": "2026-11-01T00:15:00+07:00",
                       "state": "received",
@@ -65725,6 +68953,411 @@
         "summary": "Ping the resident surface",
         "tags": [
           "resident.system"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/push-subscriptions": {
+      "post": {
+        "description": "Stores the browser PushSubscription of the signed-in user (endpoint + keys) for web push notifications; re-registering an endpoint updates it; an `Idempotency-Key` replays the first answer. Get the VAPID key from `auth.webPush.publicKey` (residents: the LIFF build carries it).\n\nImplements: D-063, ADR-0003.",
+        "operationId": "resident.pushSubscriptions.create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "endpoint": "https://push.example.com/send/abc123",
+                    "keys": {
+                      "auth": "tBHItJI5svbpez7KI4CCXg",
+                      "p256dh": "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM"
+                    }
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/PushSubscriptionCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PushSubscriptionDto"
+                }
+              }
+            },
+            "description": "Registered",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Register a web push subscription",
+        "tags": [
+          "resident.pushSubscriptions"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/push-subscriptions/{subscriptionId}": {
+      "delete": {
+        "description": "Removes one of my push subscriptions (on sign-out or when the browser revokes it).\n\nImplements: D-063, ADR-0003.",
+        "operationId": "resident.pushSubscriptions.delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subscriptionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Remove a web push subscription",
+        "tags": [
+          "resident.pushSubscriptions"
         ],
         "x-surface": "resident"
       }
@@ -66957,6 +70590,9 @@
                         }
                       ],
                       "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "nextActions": [
+                        "complete"
+                      ],
                       "notes": null,
                       "reportNumber": null,
                       "residentSigned": false,
@@ -67226,6 +70862,9 @@
                     }
                   ],
                   "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "complete"
+                  ],
                   "notes": null,
                   "reportNumber": null,
                   "residentSigned": false,
@@ -67513,6 +71152,9 @@
                     }
                   ],
                   "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "complete"
+                  ],
                   "notes": null,
                   "reportNumber": null,
                   "residentSigned": false,
@@ -67796,6 +71438,9 @@
                     }
                   ],
                   "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "complete"
+                  ],
                   "notes": null,
                   "reportNumber": "INS-2026-00001",
                   "residentSigned": true,
@@ -68133,6 +71778,9 @@
                     }
                   ],
                   "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "complete"
+                  ],
                   "notes": null,
                   "reportNumber": null,
                   "residentSigned": false,
@@ -68680,7 +72328,9 @@
                   "hasPassword": false,
                   "menu": [
                     "readings",
-                    "inspections"
+                    "reading_rounds",
+                    "inspections",
+                    "installs"
                   ],
                   "permissions": [
                     "invoice.read",
@@ -68717,7 +72367,7 @@
                   }
                 },
                 "schema": {
-                  "$ref": "#/components/schemas/OperatorMeDto"
+                  "$ref": "#/components/schemas/StaffMeDto"
                 }
               }
             },
@@ -70300,9 +73950,12 @@
     },
     "/v1/staff/push-subscriptions": {
       "post": {
-        "description": "Stores the browser PushSubscription of the signed-in user (endpoint + keys) for web push notifications; re-registering an endpoint updates it. Get the VAPID key from `auth.webPush.publicKey`.\n\nImplements: D-063, ADR-0003.",
+        "description": "Stores the browser PushSubscription of the signed-in user (endpoint + keys) for web push notifications; re-registering an endpoint updates it; an `Idempotency-Key` replays the first answer. Get the VAPID key from `auth.webPush.publicKey` (residents: the LIFF build carries it).\n\nImplements: D-063, ADR-0003.",
         "operationId": "staff.pushSubscriptions.create",
         "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
+          },
           {
             "$ref": "#/components/parameters/TenantIdHeader"
           },
@@ -70347,6 +74000,9 @@
             },
             "description": "Registered",
             "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"
               },
@@ -70368,6 +74024,9 @@
                   "http.bad_request": {
                     "$ref": "#/components/examples/problem.http.bad_request"
                   },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
                   "tenant.context_invalid": {
                     "$ref": "#/components/examples/problem.tenant.context_invalid"
                   },
@@ -70380,7 +74039,7 @@
                 }
               }
             },
-            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `tenant.context_invalid`, `tenant.context_required`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -70433,10 +74092,33 @@
               }
             }
           },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
           "422": {
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
                   }
@@ -70446,7 +74128,7 @@
                 }
               }
             },
-            "description": "Problem: `validation.failed`",
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -71035,6 +74717,200 @@
         "summary": "Realtime stream (server-sent events)",
         "tags": [
           "staff.realtime"
+        ],
+        "x-surface": "staff"
+      }
+    },
+    "/v1/staff/telemetry/web-vitals": {
+      "post": {
+        "description": "Real-user Core Web Vitals (LCP, INP, CLS, FCP, TTFB) of the web zone, batched by its BFF; anonymous on public pages. Route patterns only — never URLs with ids or query strings. Accepted for aggregation, nothing to poll (D-179 performance budgets).\n\nImplements: D-179.",
+        "operationId": "staff.telemetry.webVitals",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "metrics": [
+                      {
+                        "id": "v4-a1b2c3d4-e5f6",
+                        "name": "LCP",
+                        "navigationType": "navigate",
+                        "rating": "good",
+                        "route": "/buildings/[buildingId]",
+                        "value": 1834.2
+                      }
+                    ]
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/WebVitalsReportDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. Nothing to poll.",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Report Web Vitals",
+        "tags": [
+          "staff.telemetry"
         ],
         "x-surface": "staff"
       }
@@ -71950,6 +75826,10 @@
       "name": "admin.system"
     },
     {
+      "description": "Real-user Web Vitals of the admin zone, forwarded by its BFF (D-179).",
+      "name": "admin.telemetry"
+    },
+    {
       "description": "Tenant onboarding and administration; tenant data only under a support grant (D-090, D-161).",
       "name": "admin.tenants"
     },
@@ -71988,6 +75868,14 @@
     {
       "description": "Gateway first boot: provisioning code + CSR → certificate from the platform CA, device JWT and MQTT ACL (D-130).",
       "name": "device.bootstrap"
+    },
+    {
+      "description": "Device JWT from the mTLS client certificate and certificate renewal (D-130, D-165; edge CR-002/CR-003).",
+      "name": "device.identity"
+    },
+    {
+      "description": "Log bundle uploads for the `upload_logs` command (D-131; edge CR-004).",
+      "name": "device.logs"
     },
     {
       "description": "Gateways (`getproperty-edge`) over HTTPS: bootstrap, config, OTA manifests, uploads; telemetry goes over MQTT (`device` audience, D-130). System: ping.",
@@ -72094,6 +75982,10 @@
       "name": "owner.realtime"
     },
     {
+      "description": "Global search of the owner console top bar: buildings, units, parties, leases, devices (D-152).",
+      "name": "owner.search"
+    },
+    {
       "description": "Effective-dated tenant and property settings (ADR-0004, D-144).",
       "name": "owner.settings"
     },
@@ -72104,6 +75996,10 @@
     {
       "description": "Owner console of getproperty-web — Owner, Manager, Accountant and Staff roles of one tenant (`operator` audience, D-090, D-151). System: ping.",
       "name": "owner.system"
+    },
+    {
+      "description": "Real-user Web Vitals of the owner console, forwarded by its BFF (D-179).",
+      "name": "owner.telemetry"
     },
     {
       "description": "Company data of the current tenant (D-050, D-151).",
@@ -72134,6 +76030,18 @@
       "name": "owner.utilityTariffs"
     },
     {
+      "description": "Price plans of the platform for the public pricing page (D-156; Proposed until the pilot).",
+      "name": "public.plans"
+    },
+    {
+      "description": "Anonymous, cacheable reads for the marketing site of getproperty-web: price plans (D-156) and the published utility tariff ceiling (D-021a). No token, no personal data. System: ping.",
+      "name": "public.system"
+    },
+    {
+      "description": "The published utility ceiling per unit for the landing-page loss calculator (D-021a, D-140).",
+      "name": "public.utilityTariffs"
+    },
+    {
       "description": "PDPA consents of the resident (D-025).",
       "name": "resident.consents"
     },
@@ -72154,6 +76062,10 @@
       "name": "resident.leases"
     },
     {
+      "description": "Link my login to a party from an invitation code (QR/SMS deep link, D-061).",
+      "name": "resident.link"
+    },
+    {
       "description": "Who I am in the LINE Mini App: leases, units, language, consent state (D-060, D-154).",
       "name": "resident.me"
     },
@@ -72164,6 +76076,10 @@
     {
       "description": "What the controllers hold about me, my consents and PDPA requests (D-025).",
       "name": "resident.privacy"
+    },
+    {
+      "description": "Web push (VAPID) subscriptions of the resident app (D-063).",
+      "name": "resident.pushSubscriptions"
     },
     {
       "description": "Realtime auth and the server-sent events stream (contract §6).",
@@ -72204,6 +76120,10 @@
     {
       "description": "Staff PWA of getproperty-web — readings, inspections, installs, service requests, parcels (`operator` audience with the Staff role). System: ping.",
       "name": "staff.system"
+    },
+    {
+      "description": "Real-user Web Vitals of the staff PWA, forwarded by its BFF (D-179).",
+      "name": "staff.telemetry"
     },
     {
       "description": "Who I am as a technician (work orders arrive with B5, R2).",

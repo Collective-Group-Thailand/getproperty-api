@@ -25,12 +25,13 @@ export class DeviceBootstrapController {
     id: 'device.bootstrap.create',
     summary: 'Bootstrap a gateway: certificate, device JWT and broker ACL',
     description:
-      'The gateway sends its serial, the one-time provisioning code from its QR and a CSR (`CN=gw-<deviceId>`); the platform CA signs a client certificate (12 months, clientAuth), the EMQX ACL rows are written (publish `gp/v1/<id>/+` and `…/cmd/ack`, subscribe `…/config` and `…/cmd`), and a device session starts (JWT `aud=device` + refresh token). A second bootstrap of the same gateway revokes the previous certificate, ACL and sessions. Not idempotent by key: the code is single-use; a lost response needs a new code (D-130, device protocol §1).',
+      'The gateway sends the one-time provisioning code from its QR (the serial is optional), a CSR (`CN=gw-provisioning` — the CA sets `CN=gw-<gatewayId>`), its agent version and hardware; the platform CA signs a client certificate (12 months, clientAuth), the EMQX ACL rows are written (publish `gp/v1/<id>/+` and `…/cmd/ack`, subscribe `…/config` and `…/cmd`), and a device session starts (JWT `aud=device` + refresh token, also as `deviceToken`). A second bootstrap of the same gateway revokes the previous certificate, ACL and sessions. Not idempotent by key: the code is single-use (second use → 401 `device.provisioning_code_invalid`); a lost response needs a new code (D-130, D-165, device protocol §1).',
     implements: ['D-033', 'D-130', 'ADR-0003'],
   })
   @ApiJsonBody(DeviceBootstrapRequestDto, {
-    serial: 'GW-TEST-000001',
     provisioningCode: 'ABCD-EFGH-JKLM-NPQR',
+    agentVersion: '0.1.0',
+    hardware: { arch: 'arm64', hostname: 'gw-pilot-01', serial: '10000000abcdef01' },
     csrPem:
       '-----BEGIN CERTIFICATE REQUEST-----\nMIIBCzCBsgIBADAuMSwwKgYDVQQDDCNndy0zYjI0MTEwMS1lMmJiLTQyNTUtOGNhZi00MTM2YzU2NmE5NjI=\n-----END CERTIFICATE REQUEST-----',
   })
@@ -48,14 +49,21 @@ export class DeviceBootstrapController {
         scopes: [`device:${FAKE.gatewayId}`, `tenant:${FAKE.tenantId}`, `building:${FAKE.buildingId}`],
       },
       deviceId: FAKE.gatewayId,
+      gatewayId: FAKE.gatewayId,
       tenantId: FAKE.tenantId,
       buildingId: FAKE.buildingId,
+      caChainPem: '-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----',
+      deviceToken: {
+        accessToken: TOKEN_PAIR_EXAMPLE.accessToken,
+        expiresAt: TOKEN_PAIR_EXAMPLE.accessTokenExpiresAt,
+      },
       certificatePem: '-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----',
       caCertificatePem: '-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----',
       certificateSerial: '01a1b2c3d4e5f60718293a4b5c6d7e8f',
       certificateNotAfter: '2027-11-01T00:15:00+07:00',
       mqtt: {
         url: 'mqtts://mqtt.getproperty.invalid:8883',
+        wsUrl: 'wss://mqtt.getproperty.invalid/mqtt',
         clientId: `gw-${FAKE.gatewayId}`,
         username: `gw-${FAKE.gatewayId}`,
         acl: [
@@ -89,8 +97,11 @@ export class DeviceBootstrapController {
         scopes: r.subject.scopes,
       },
       deviceId: r.deviceId,
+      gatewayId: r.deviceId,
       tenantId: r.tenantId,
       buildingId: r.buildingId,
+      caChainPem: r.caChainPem,
+      deviceToken: { accessToken: r.accessToken, expiresAt: iso(r.accessTokenExpiresAt) },
       certificatePem: r.certificatePem,
       caCertificatePem: r.caCertificatePem,
       certificateSerial: r.certificateSerial,

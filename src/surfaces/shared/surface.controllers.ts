@@ -2,6 +2,7 @@ import { TenantScoped } from '@common/auth/auth.decorators';
 import { Public } from '@common/auth/auth.decorators';
 import { RequestContext } from '@common/context/request-context';
 import { DomainException } from '@common/errors/domain.exception';
+import { Idempotent } from '@common/idempotency/idempotent.decorator';
 import { isUuid } from '@common/ids/uuidv7';
 import { ApiEndpoint, ApiJsonBody, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { ApiCursor } from '@common/pagination/api-paginated.decorator';
@@ -132,12 +133,13 @@ export function pushSubscriptionsController(surface: Surface): Type<unknown> {
     constructor(private readonly db: TenantTx) {}
 
     @Post()
+    @Idempotent({ optional: true })
     @tenantDoc
     @ApiEndpoint({
       id: `${surface}.pushSubscriptions.create`,
       summary: 'Register a web push subscription',
       description:
-        'Stores the browser PushSubscription of the signed-in user (endpoint + keys) for web push notifications; re-registering an endpoint updates it. Get the VAPID key from `auth.webPush.publicKey`.',
+        'Stores the browser PushSubscription of the signed-in user (endpoint + keys) for web push notifications; re-registering an endpoint updates it; an `Idempotency-Key` replays the first answer. Get the VAPID key from `auth.webPush.publicKey` (residents: the LIFF build carries it).',
       implements: ['D-063', 'ADR-0003'],
     })
     @ApiJsonBody(PushSubscriptionCreateDto, {

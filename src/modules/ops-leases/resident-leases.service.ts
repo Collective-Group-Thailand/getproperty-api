@@ -380,7 +380,7 @@ export class ResidentLeasesService {
       });
       return { invitation, party, tenantName: tenant.displayName };
     });
-    const url = `${this.config.get('PUBLIC_RESIDENT_APP_URL')}/invite?code=${encodeURIComponent(code)}`;
+    const url = `${this.config.get('PUBLIC_RESIDENT_APP_URL')}/link?code=${encodeURIComponent(code)}`;
     const qrPng = await QRCode.toBuffer(url, {
       type: 'png',
       errorCorrectionLevel: 'M',

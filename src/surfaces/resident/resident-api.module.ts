@@ -3,10 +3,14 @@ import { Module } from '@nestjs/common';
 import { ResidentDepositsController } from '../owner/deposits.controller';
 import { ResidentInvitationsController, ResidentLeasesController } from '../owner/leases.controller';
 import { ResidentPrivacyController } from '../owner/parties.controller';
-import { ResidentMeController } from '../shared/me.controllers';
+import { ResidentLinkController, ResidentMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
 import { ResidentConsentsController, ResidentDsrController } from '../shared/privacy.controllers';
-import { notificationsController, realtimeController } from '../shared/surface.controllers';
+import {
+  notificationsController,
+  pushSubscriptionsController,
+  realtimeController,
+} from '../shared/surface.controllers';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 
@@ -15,6 +19,7 @@ import { systemPingController } from '../system-ping.controller';
   controllers: [
     systemPingController(SURFACES.resident),
     ResidentMeController,
+    ResidentLinkController,
     ResidentConsentsController,
     ResidentDsrController,
     ResidentPrivacyController,
@@ -23,6 +28,7 @@ import { systemPingController } from '../system-ping.controller';
     ResidentDepositsController,
     notificationsController(SURFACES.resident),
     realtimeController(SURFACES.resident),
+    pushSubscriptionsController(SURFACES.resident),
   ],
   providers: [MeService],
 })

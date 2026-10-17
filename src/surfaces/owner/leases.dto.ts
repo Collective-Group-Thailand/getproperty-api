@@ -23,28 +23,14 @@ import {
 } from 'class-validator';
 
 import { MoneyInput, MoneyOutput } from '../shared/fields';
+import { LeasePartyRoleName, LeaseStatusName } from '../shared/status.enums';
 import { LeaseLineKindName } from './assets.dto';
 import { InvitationChannelName, InvitationStateName } from './tenancy.dto';
 
-export enum LeaseStatusName {
-  Draft = 'draft',
-  PendingSignature = 'pending_signature',
-  Active = 'active',
-  NoticeGiven = 'notice_given',
-  Ending = 'ending',
-  Ended = 'ended',
-  Terminated = 'terminated',
-  Cancelled = 'cancelled',
-}
+export { LeasePartyRoleName, LeaseStatusName };
 export enum UtilityBillingModeName {
   Metered = 'metered',
   Included = 'included',
-}
-export enum LeasePartyRoleName {
-  Lessee = 'lessee',
-  CoTenant = 'co_tenant',
-  Guarantor = 'guarantor',
-  Occupant = 'occupant',
 }
 export enum LineRecurrenceName {
   Monthly = 'monthly',
@@ -959,7 +945,7 @@ export class LeaseInvitationCreatedDto extends LeaseInvitationDto {
   @ApiProperty({ example: 'ABCD-EFGH-JKLM-NPQR', description: 'Shown once; never stored in clear.' })
   code!: string;
 
-  @ApiProperty({ example: 'https://liff.getproperty.invalid/invite?code=ABCD-EFGH-JKLM-NPQR' })
+  @ApiProperty({ example: 'https://liff.getproperty.invalid/link?code=ABCD-EFGH-JKLM-NPQR' })
   url!: string;
 
   @ApiProperty({

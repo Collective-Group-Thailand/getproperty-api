@@ -32,13 +32,14 @@ export function gatewayAcl(deviceId: string): MqttAclEntry[] {
 
 export interface BootstrapResult extends TokenPair {
   deviceId: string;
+  caChainPem: string;
   tenantId: string;
   buildingId: string;
   certificatePem: string;
   caCertificatePem: string;
   certificateSerial: string;
   certificateNotAfter: Date;
-  mqtt: { url: string; clientId: string; username: string; acl: MqttAclEntry[] };
+  mqtt: { url: string; wsUrl: string; clientId: string; username: string; acl: MqttAclEntry[] };
 }
 
 /**
@@ -63,18 +64,21 @@ export class DeviceBootstrapService {
   ) {}
 
   async bootstrap(input: {
-    serial: string;
+    /** Optional (CR-001): the single-use code identifies the gateway; when given it must match. */
+    serial?: string;
     provisioningCode: string;
     csrPem: string;
+    agentVersion?: string;
+    hardware?: { arch?: string; hostname?: string; serial?: string };
   }): Promise<BootstrapResult> {
     const now = this.clock.now();
     const hash = this.registry.codeHash(input.provisioningCode);
     const revokedFamilies: string[] = [];
     const result = await this.db.platform(async (tx) => {
-      const device = await tx.device.findUnique({ where: { serial: input.serial } });
-      const code = device
-        ? await tx.provisioningCode.findFirst({ where: { codeHash: hash, deviceId: device.id } })
-        : null;
+      const code = await tx.provisioningCode.findUnique({ where: { codeHash: hash } });
+      const device = code ? await tx.device.findUnique({ where: { id: code.deviceId } }) : null;
+      if (device && input.serial && device.serial.toLowerCase() !== input.serial.trim().toLowerCase())
+        return { invalid: true as const, deviceId: device.id };
       if (
         !device ||
         !code ||
@@ -121,6 +125,7 @@ export class DeviceBootstrapService {
           certNotAfter: cert.notAfter,
           certSerial: cert.serialNumber,
           mqttClientId: clientId,
+          ...(input.agentVersion ? { firmwareVersion: input.agentVersion } : {}),
           version: { increment: 1 },
         },
       });
@@ -163,6 +168,8 @@ export class DeviceBootstrapService {
           deviceId: device.id,
           certificateSerial: cert.serialNumber,
           notAfter: cert.notAfter.toISOString(),
+          agentVersion: input.agentVersion ?? null,
+          arch: input.hardware?.arch ?? null,
         },
       });
       return {
@@ -172,11 +179,18 @@ export class DeviceBootstrapService {
           deviceId: device.id,
           tenantId: device.tenantId,
           buildingId: device.buildingId,
+          caChainPem: this.ca.caChainPem,
           certificatePem: cert.certificatePem,
           caCertificatePem: this.ca.caCertificatePem,
           certificateSerial: cert.serialNumber,
           certificateNotAfter: cert.notAfter,
-          mqtt: { url: this.config.get('MQTT_PUBLIC_URL'), clientId, username: clientId, acl },
+          mqtt: {
+            url: this.config.get('MQTT_PUBLIC_URL'),
+            wsUrl: this.config.get('MQTT_PUBLIC_WS_URL'),
+            clientId,
+            username: clientId,
+            acl,
+          },
         } satisfies BootstrapResult,
       };
     });

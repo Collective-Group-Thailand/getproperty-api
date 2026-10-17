@@ -13,6 +13,7 @@ import { ResidentPrivacyService } from './ops-parties/resident-privacy.service';
 import { BoardService } from './ops-units/board.service';
 import { AmenitiesService, MetersService } from './ops-units/meters-items.service';
 import { UnitProfilesService, UtilityAccountsService } from './ops-units/profiles-accounts.service';
+import { SearchService } from './ops-units/search.service';
 import { StructureService } from './ops-units/structure.service';
 import { UnitImportService } from './ops-units/unit-import.service';
 import { UnitsService } from './ops-units/units.service';
@@ -26,6 +27,7 @@ const SERVICES = [
   AmenitiesService,
   BoardService,
   UnitImportService,
+  SearchService,
   PartiesService,
   ResidentPrivacyService,
   ContractRenderer,

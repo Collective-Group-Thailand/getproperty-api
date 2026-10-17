@@ -22,6 +22,7 @@ import {
 } from 'class-validator';
 
 import { DecimalInput, MoneyInput, MoneyOutput } from '../shared/fields';
+import { LeaseStatusName } from '../shared/status.enums';
 import { AddressDto } from './tenancy.dto';
 
 /** `active | inactive` of properties and buildings (core.property_status, core.building_status). */
@@ -359,6 +360,13 @@ export class FloorUpdateDto {
 // ------------------------------------------------------------------------------------------- units
 
 export class UnitDto {
+  @ApiProperty({
+    type: [String],
+    example: ['set-status'],
+    description: 'Actions (`…/actions/{name}`) the caller may take now — never infer them from the status.',
+  })
+  nextActions!: string[];
+
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   id!: string;
 
@@ -1144,12 +1152,13 @@ export class BoardUnitDto {
   leaseId!: string | null;
 
   @ApiProperty({
-    type: String,
+    enum: LeaseStatusName,
+    enumName: 'LeaseStatus',
     nullable: true,
-    example: 'active',
-    description: 'LeaseStatus of the current lease.',
+    example: LeaseStatusName.Active,
+    description: 'Status of the current lease.',
   })
-  leaseStatus!: string | null;
+  leaseStatus!: LeaseStatusName | null;
 
   @ApiProperty({ type: String, format: 'date', nullable: true, example: '2027-10-31' })
   leaseEndDate!: string | null;

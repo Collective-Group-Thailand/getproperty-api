@@ -7,6 +7,8 @@ import { type ImportPreview } from '@modules/ops-units/unit-import.service';
 import { type UnitRow } from '@modules/ops-units/units.service';
 
 import { dateOnly, iso, isoOrNull } from '../shared/mappers';
+import { unitActions } from '../shared/next-actions';
+import { LeaseStatusName } from '../shared/status.enums';
 import {
   type ActiveStatusName,
   type AmenityCategoryName,
@@ -94,6 +96,7 @@ export const floorDto = (f: Floor, unitCount: number): FloorDto => ({
 });
 
 export const unitDto = (u: UnitRow): UnitDto => ({
+  nextActions: unitActions(u.status),
   id: u.id,
   buildingId: u.buildingId,
   propertyId: u.propertyId,
@@ -183,6 +186,7 @@ export const boardDto = (b: Board): BoardDto => ({
       ...u,
       type: u.type as UnitTypeName,
       status: u.status as UnitStatusName,
+      leaseStatus: u.leaseStatus as LeaseStatusName | null,
       meters: u.meters.map((m) => ({ ...m, utility: m.utility as UtilityName })),
     })),
   })),
@@ -231,6 +235,7 @@ export const FLOOR_EXAMPLE: FloorDto = {
 };
 
 export const UNIT_EXAMPLE: UnitDto = {
+  nextActions: ['set-status'],
   id: FAKE.uuid,
   buildingId: FAKE.buildingId,
   propertyId: FAKE.propertyId,
@@ -336,7 +341,7 @@ export const BOARD_EXAMPLE: BoardDto = {
           baseRent: '4500.00',
           lessee: { partyId: FAKE.uuid, displayName: FAKE.nameTh },
           leaseId: FAKE.uuid,
-          leaseStatus: 'active',
+          leaseStatus: LeaseStatusName.Active,
           leaseEndDate: '2027-10-31',
           balance: null,
           meters: [{ utility: 'electric' as UtilityName, code: 'A-201-E', health: null }],

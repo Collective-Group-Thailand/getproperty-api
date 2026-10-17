@@ -16,6 +16,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+import { DocumentKindName } from './status.enums';
+
 /** Uploadable kinds (server-produced PDFs and exports are not uploadable). */
 export enum UploadKindName {
   MeterPhoto = 'meter_photo',
@@ -111,8 +113,8 @@ export class FileDto {
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   id!: string;
 
-  @ApiProperty({ example: 'meter_photo' })
-  kind!: string;
+  @ApiProperty({ enum: DocumentKindName, enumName: 'DocumentKind', example: DocumentKindName.MeterPhoto })
+  kind!: DocumentKindName;
 
   @ApiProperty({ enum: DocumentScopeName, enumName: 'DocumentScope', example: DocumentScopeName.Unit })
   scopeType!: DocumentScopeName;

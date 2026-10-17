@@ -75,7 +75,9 @@ export class InvitationService extends TenantScopedRepository {
     const now = this.clock.now();
     const days = await this.settings.valueAt<number>('invitation.expiry_days', now);
     const code = readableCode(4);
-    const inviteUrl = `${this.config.get('PUBLIC_WEB_APP_URL')}/join?code=${encodeURIComponent(code)}`;
+    // Staff join the staff PWA (STAFF_HOST); every other role the owner console.
+    const origin = this.config.get(input.role === 'staff' ? 'PUBLIC_STAFF_APP_URL' : 'PUBLIC_WEB_APP_URL');
+    const inviteUrl = `${origin}/join?code=${encodeURIComponent(code)}`;
     const buildingIds = input.buildingIds?.length ? [...new Set(input.buildingIds)] : [];
     if (buildingIds.length) {
       const owned = await tx.building.count({

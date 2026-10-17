@@ -464,6 +464,13 @@ export class InspectionItemDto {
 }
 
 export class InspectionDto {
+  @ApiProperty({
+    type: [String],
+    example: ['complete'],
+    description: 'Actions (`…/actions/{name}`) the caller may take now — never infer them from the status.',
+  })
+  nextActions!: string[];
+
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   id!: string;
 

@@ -1,9 +1,11 @@
 import { TenantOptional, TenantScoped } from '@common/auth/auth.decorators';
 import { RequestContext } from '@common/context/request-context';
+import { resolveLanguage } from '@common/i18n/language';
+import { Idempotent } from '@common/idempotency/idempotent.decorator';
 import { ApiEndpoint, ApiJsonBody, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { FAKE } from '@common/openapi/examples';
 import { AuthService } from '@core/identity/auth.service';
-import { Body, Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Patch, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 import { ApiSurface, SURFACES } from '../surfaces';
@@ -11,8 +13,12 @@ import { TotpSecretDto } from './auth.dto';
 import {
   AdminMeDto,
   OperatorMeDto,
+  ResidentLinkDto,
+  ResidentLinkedDto,
   ResidentMeDto,
+  ResidentMeUpdateDto,
   SetPasswordDto,
+  StaffMeDto,
   TechnicianMeDto,
   TotpCodeDto,
 } from './me.dto';
@@ -24,7 +30,7 @@ const OPERATOR_ME_EXAMPLE: OperatorMeDto = {
     displayName: FAKE.nameTh,
     phone: '+66810001234',
     email: FAKE.email,
-    language: 'th',
+    language: 'th' as never,
     lineLinked: false,
   },
   hasPassword: false,
@@ -46,12 +52,52 @@ const OPERATOR_ME_EXAMPLE: OperatorMeDto = {
     role: 'owner' as never,
     buildingIds: null,
   },
-  roles: ['owner'],
+  roles: ['owner' as never],
   permissions: ['invoice.read', 'tenant.read'],
-  menu: ['dashboard', 'buildings', 'invoices'],
+  menu: ['dashboard', 'buildings', 'invoices'] as never[],
   featureFlags: { 'channel.web_push': true, 'module.service_requests': false },
   subscription: { plan: 'apartment_starter', state: null, readOnly: false },
   scopes: [`tenant:${FAKE.tenantId}`],
+};
+
+const RESIDENT_ME_EXAMPLE: ResidentMeDto = {
+  user: {
+    id: FAKE.uuid,
+    displayName: FAKE.nameTh,
+    phone: '+66810001234',
+    email: null,
+    language: 'th' as never,
+    lineLinked: true,
+  },
+  units: [
+    {
+      unitId: FAKE.uuid,
+      unitNo: FAKE.unitCode,
+      buildingId: FAKE.buildingId,
+      buildingName: 'อาคาร A',
+      tenantId: FAKE.tenantId,
+      tenantName: FAKE.propertyName,
+      role: 'tenant' as never,
+      validFrom: FAKE.date,
+    },
+  ],
+  leaseIds: [FAKE.uuid],
+  leases: [
+    {
+      leaseId: FAKE.uuid,
+      number: 'CTR-2026-00001',
+      status: 'active' as never,
+      tenantId: FAKE.tenantId,
+      tenantName: FAKE.propertyName,
+      unitNo: FAKE.unitCode,
+      buildingName: 'อาคาร A',
+      role: 'lessee' as never,
+    },
+  ],
+  consents: [{ purposeKey: 'resident.service', required: true, version: 1, granted: true }],
+  consentComplete: true,
+  entitlements: ['bills', 'usage', 'lease'] as never[],
+  scopes: [`unit:${FAKE.uuid}`],
 };
 
 const ME_ERRORS = ['tenant.context_invalid', 'tenant.not_in_scope'] as const;
@@ -174,12 +220,16 @@ export class StaffMeController {
   })
   @ApiSuccess(200, {
     description: 'The signed-in operator',
-    type: OperatorMeDto,
-    example: { ...OPERATOR_ME_EXAMPLE, roles: ['staff'], menu: ['readings', 'inspections'] },
+    type: StaffMeDto,
+    example: {
+      ...OPERATOR_ME_EXAMPLE,
+      roles: ['staff' as never],
+      menu: ['readings', 'reading_rounds', 'inspections', 'installs'] as never[],
+    } satisfies StaffMeDto,
   })
   @ApiStandardErrors(...ME_ERRORS)
-  get(): Promise<OperatorMeDto> {
-    return this.me.operator('staff');
+  get(): Promise<StaffMeDto> {
+    return this.me.operator('staff') as unknown as Promise<StaffMeDto>;
   }
 }
 
@@ -200,48 +250,71 @@ export class ResidentMeController {
   @ApiSuccess(200, {
     description: 'The signed-in resident',
     type: ResidentMeDto,
-    example: {
-      user: {
-        id: FAKE.uuid,
-        displayName: FAKE.nameTh,
-        phone: '+66810001234',
-        email: null,
-        language: 'th',
-        lineLinked: true,
-      },
-      units: [
-        {
-          unitId: FAKE.uuid,
-          unitNo: FAKE.unitCode,
-          buildingId: FAKE.buildingId,
-          buildingName: 'อาคาร A',
-          tenantId: FAKE.tenantId,
-          tenantName: FAKE.propertyName,
-          role: 'tenant',
-          validFrom: FAKE.date,
-        },
-      ],
-      leaseIds: [FAKE.uuid],
-      leases: [
-        {
-          leaseId: FAKE.uuid,
-          number: 'CTR-2026-00001',
-          status: 'active',
-          tenantId: FAKE.tenantId,
-          tenantName: FAKE.propertyName,
-          unitNo: FAKE.unitCode,
-          buildingName: 'อาคาร A',
-          role: 'lessee',
-        },
-      ],
-      consents: [{ purposeKey: 'resident.service', required: true, version: 1, granted: true }],
-      consentComplete: true,
-      scopes: [`unit:${FAKE.uuid}`],
-    } satisfies ResidentMeDto,
+    example: RESIDENT_ME_EXAMPLE,
   })
   @ApiStandardErrors('http.not_found')
   get(): Promise<ResidentMeDto> {
     return this.me.resident();
+  }
+
+  @Patch()
+  @ApiEndpoint({
+    id: 'resident.me.update',
+    summary: 'Change my language',
+    description:
+      'The language of my LINE messages and documents (th, en; my, km, lo, zh in R2 — D-064). Returns my updated profile.',
+    implements: ['D-064', 'D-154'],
+  })
+  @ApiJsonBody(ResidentMeUpdateDto, { language: 'en' })
+  @ApiSuccess(200, { description: 'Updated', type: ResidentMeDto, example: RESIDENT_ME_EXAMPLE })
+  @ApiStandardErrors('validation.failed', 'http.bad_request', 'http.not_found')
+  async update(@Body() body: ResidentMeUpdateDto): Promise<ResidentMeDto> {
+    await this.me.setResidentLanguage(body.language);
+    return this.me.resident();
+  }
+}
+
+@ApiTags('resident.link')
+@ApiSurface(SURFACES.resident)
+@Controller('resident/link')
+export class ResidentLinkController {
+  constructor(private readonly me: MeService) {}
+
+  @Post()
+  @HttpCode(200)
+  @Idempotent({ optional: true })
+  @ApiEndpoint({
+    id: 'resident.link.create',
+    summary: 'Link me with an invitation code',
+    description:
+      'Accepts the operator’s single-use invitation code from the invite QR / SMS deep link (`liff.state=/link?code=…`) and links my login to the invited party (D-061). The required PDPA consents must be granted first (409 `consent.required`, D-025). Returns the units I now occupy; refresh the token to receive the new scopes (`refreshRequired`).',
+    implements: ['D-025', 'D-061'],
+  })
+  @ApiJsonBody(ResidentLinkDto, { code: 'ABCD-EFGH-JKLM-NPQR' })
+  @ApiSuccess(200, {
+    description: 'Linked',
+    type: ResidentLinkedDto,
+    example: {
+      tenantId: FAKE.tenantId,
+      leaseId: FAKE.uuid,
+      partyId: FAKE.uuid,
+      units: [],
+      refreshRequired: true,
+    } satisfies ResidentLinkedDto,
+  })
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.bad_request',
+    'invitation.not_found',
+    'invitation.not_pending',
+    'invitation.party_mismatch',
+    'consent.required',
+  )
+  link(
+    @Body() body: ResidentLinkDto,
+    @Headers('accept-language') acceptLanguage?: string,
+  ): Promise<ResidentLinkedDto> {
+    return this.me.residentLink(body.code, resolveLanguage(acceptLanguage));
   }
 }
 
@@ -268,7 +341,7 @@ export class TechnicianMeController {
         displayName: FAKE.name,
         phone: null,
         email: null,
-        language: 'th',
+        language: 'th' as never,
         lineLinked: true,
       },
       workOrderIds: [],
@@ -304,12 +377,12 @@ export class AdminMeController {
         displayName: FAKE.name,
         phone: null,
         email: FAKE.email,
-        language: 'th',
+        language: 'th' as never,
         lineLinked: false,
       },
-      roles: ['platform_admin'],
+      roles: ['platform_admin' as never],
       permissions: ['admin.tenant.read', 'admin.tenant.manage'],
-      menu: ['tenants', 'utility_tariffs'],
+      menu: ['tenants', 'utility_tariffs'] as never[],
       featureFlags: { 'channel.web_push': true },
       totpEnabled: true,
     } satisfies AdminMeDto,

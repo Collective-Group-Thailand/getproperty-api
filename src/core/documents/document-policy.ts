@@ -29,6 +29,8 @@ export const DOCUMENT_POLICY: Partial<
   certificate: { mime: [...IMAGES, ...PDF], maxBytes: 20_000_000, retentionClass: 'other' },
   warranty: { mime: [...IMAGES, ...PDF], maxBytes: 20_000_000, retentionClass: 'other' },
   other: { mime: [...IMAGES, ...PDF, ...SHEETS], maxBytes: 50_000_000, retentionClass: 'other' },
+  // Uploaded by gateways only (`POST /v1/device/logs/presign`, `upload_logs`; never by operators).
+  log_bundle: { mime: ['application/gzip'], maxBytes: 50_000_000, retentionClass: 'log_bundle' },
 };
 
 /** Multipart above 50 MB (S3 parts 5 MB … 5 GB); single PUT below. */

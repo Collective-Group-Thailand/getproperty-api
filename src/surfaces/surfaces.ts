@@ -16,6 +16,7 @@ export const SURFACES = {
   admin: 'admin',
   device: 'device',
   webhooks: 'webhooks',
+  public: 'public',
 } as const;
 export type Surface = (typeof SURFACES)[keyof typeof SURFACES];
 
@@ -46,6 +47,7 @@ export const SURFACE_PREFIX: Record<Surface, string> = {
   admin: '/v1/admin/',
   device: '/v1/device/',
   webhooks: '/webhooks/',
+  public: '/v1/public/',
 };
 
 export const SURFACE_AUDIENCE: Record<Surface, Audience | null> = {
@@ -57,6 +59,7 @@ export const SURFACE_AUDIENCE: Record<Surface, Audience | null> = {
   admin: 'platform',
   device: 'device',
   webhooks: null,
+  public: null,
 };
 
 export const SURFACE_DESCRIPTIONS: Record<Surface, string> = {
@@ -75,6 +78,8 @@ export const SURFACE_DESCRIPTIONS: Record<Surface, string> = {
     'Gateways (`getproperty-edge`) over HTTPS: bootstrap, config, OTA manifests, uploads; telemetry goes over MQTT (`device` audience, D-130).',
   webhooks:
     'Inbound provider callbacks (payment gateways, slip verification, LINE, lock vendors, e-Tax), signature-verified, no token.',
+  public:
+    'Anonymous, cacheable reads for the marketing site of getproperty-web: price plans (D-156) and the published utility tariff ceiling (D-021a). No token, no personal data.',
 };
 
 export const SURFACE_EXTENSION = 'x-getproperty-surface';

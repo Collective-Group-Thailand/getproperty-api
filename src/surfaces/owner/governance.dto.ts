@@ -39,6 +39,13 @@ export enum SupportGrantApprovalViaName {
 }
 
 export class SupportGrantDto {
+  @ApiProperty({
+    type: [String],
+    example: ['revoke'],
+    description: 'Actions (`…/actions/{name}`) the caller may take now — never infer them from the status.',
+  })
+  nextActions!: string[];
+
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   id!: string;
 
@@ -327,6 +334,13 @@ export enum DsrActionName {
 }
 
 export class DsrDto {
+  @ApiProperty({
+    type: [String],
+    example: ['verify', 'reject'],
+    description: 'Actions (`…/actions/{name}`) the operator may take now; empty for the data subject.',
+  })
+  nextActions!: string[];
+
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   id!: string;
 

@@ -253,6 +253,10 @@
     "invalid_state": {
       "title": "Device cannot change",
       "detail": "The device is not in a state that allows this action."
+    },
+    "certificate_invalid": {
+      "title": "Invalid device certificate",
+      "detail": "The gateway certificate is unknown, revoked, expired or belongs to another device."
     }
   },
   "provider": {

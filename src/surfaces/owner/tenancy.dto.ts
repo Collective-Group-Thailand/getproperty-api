@@ -253,6 +253,13 @@ export class MemberUpdateDto {
 }
 
 export class InvitationDto {
+  @ApiProperty({
+    type: [String],
+    example: ['revoke'],
+    description: 'Actions (`…/actions/{name}`) the caller may take now — never infer them from the status.',
+  })
+  nextActions!: string[];
+
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   id!: string;
 

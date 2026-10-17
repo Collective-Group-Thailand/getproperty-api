@@ -9,6 +9,7 @@ import {
   pushSubscriptionsController,
   realtimeController,
 } from '../shared/surface.controllers';
+import { webVitalsController } from '../shared/web-vitals.controller';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import {
@@ -39,6 +40,7 @@ import {
   OwnerUtilityTariffsController,
 } from './money-settings.controller';
 import { OwnerPartyDetailsController, partiesController } from './parties.controller';
+import { OwnerSearchController } from './search.controller';
 import {
   OwnerInvitationsController,
   OwnerMembersController,
@@ -83,6 +85,8 @@ import {
     notificationsController(SURFACES.owner),
     pushSubscriptionsController(SURFACES.owner),
     realtimeController(SURFACES.owner),
+    OwnerSearchController,
+    webVitalsController('owner'),
   ],
   providers: [MeService],
 })

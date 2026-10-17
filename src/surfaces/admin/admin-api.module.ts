@@ -7,6 +7,7 @@ import {
   pushSubscriptionsController,
   realtimeController,
 } from '../shared/surface.controllers';
+import { webVitalsController } from '../shared/web-vitals.controller';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import {
@@ -49,6 +50,7 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
     notificationsController(SURFACES.admin),
     pushSubscriptionsController(SURFACES.admin),
     realtimeController(SURFACES.admin),
+    webVitalsController('admin'),
   ],
   providers: [MeService],
 })

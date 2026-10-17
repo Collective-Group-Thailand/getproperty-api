@@ -11,6 +11,7 @@ export enum SurfaceName {
   Admin = 'admin',
   Device = 'device',
   Webhooks = 'webhooks',
+  Public = 'public',
 }
 
 /** Answer of `GET /v1/{surface}/ping` — proves the surface, its versioning and its contract wiring. */

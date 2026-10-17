@@ -38,6 +38,7 @@ export const DOMAIN_EVENT_TYPES = {
   'dsr.received': 'A data subject request was received (D-025).',
   'dsr.transitioned': 'A data subject request changed state.',
   'device.bootstrapped': 'A gateway received its certificate and device JWT (D-130).',
+  'device.certificate_renewed': 'A gateway renewed its client certificate (device protocol §1, CR-003).',
   'notification.route_changed': 'A tenant changed a channel of the resident routing matrix.',
   'notification.template_published': 'A notification template version was published.',
   'notification.test_requested': 'A platform admin asked for a test send of a template.',

@@ -3,7 +3,7 @@ import { getMetadataStorage } from 'class-validator';
 import { validationMetadatasToSchemas } from 'class-validator-jsonschema';
 
 import { Command, CommandAck } from './command.dto';
-import { BusConfig, GatewayConfig, MeterConfig } from './config.dto';
+import { BusConfig, CustomRegisterMap, GatewayConfig, MeterConfig, RegisterDef } from './config.dto';
 import * as enums from './enums';
 import { DeviceEvent } from './events.dto';
 import { Health, MeterHealth } from './health.dto';
@@ -22,6 +22,8 @@ export const PROTOCOL_PAYLOADS = [
   GatewayConfig,
   BusConfig,
   MeterConfig,
+  CustomRegisterMap,
+  RegisterDef,
   Command,
   CommandAck,
 ] as const;

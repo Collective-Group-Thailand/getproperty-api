@@ -10,6 +10,7 @@ import {
   pushSubscriptionsController,
   realtimeController,
 } from '../shared/surface.controllers';
+import { webVitalsController } from '../shared/web-vitals.controller';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 
@@ -24,6 +25,7 @@ import { systemPingController } from '../system-ping.controller';
     notificationsController(SURFACES.staff),
     pushSubscriptionsController(SURFACES.staff),
     realtimeController(SURFACES.staff),
+    webVitalsController('staff'),
   ],
   providers: [MeService],
 })

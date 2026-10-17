@@ -33,6 +33,7 @@ import {
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { iso, isoOrNull } from '../shared/mappers';
+import { dsrActions, supportGrantActions } from '../shared/next-actions';
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
   AssetGrantCreateDto,
@@ -62,6 +63,7 @@ const TENANT_ERRORS = ['tenant.context_required', 'tenant.context_invalid', 'ten
 
 export function supportGrantDto(g: SupportGrant): SupportGrantDto {
   return {
+    nextActions: supportGrantActions(g.state),
     id: g.id,
     tenantId: g.tenantId,
     reason: g.reason,
@@ -75,6 +77,7 @@ export function supportGrantDto(g: SupportGrant): SupportGrantDto {
 }
 
 export const SUPPORT_GRANT_EXAMPLE = {
+  nextActions: ['revoke'],
   id: FAKE.uuid,
   tenantId: FAKE.tenantId,
   reason: 'ตรวจสอบปัญหาการส่งบิลรอบ พ.ย.',
@@ -177,6 +180,7 @@ export function auditQueryOf(q: AuditQueryDto, binding: string) {
 
 export function dsrDto(d: DataSubjectRequest): DsrDto {
   return {
+    nextActions: dsrActions(d.state),
     id: d.id,
     tenantId: d.tenantId,
     kind: d.kind as DsrKindName,
@@ -190,6 +194,7 @@ export function dsrDto(d: DataSubjectRequest): DsrDto {
 }
 
 export const DSR_EXAMPLE = {
+  nextActions: ['verify', 'start', 'reject'],
   id: FAKE.uuid,
   tenantId: FAKE.tenantId,
   kind: 'access',
