@@ -34,7 +34,7 @@ export const purposeDto = (p: PurposeView): ConsentPurposeDto => ({
   capturedAt: isoOrNull(p.capturedAt),
 });
 
-const PURPOSE_EXAMPLE = {
+export const PURPOSE_EXAMPLE = {
   key: 'resident.service',
   required: true,
   version: 1,

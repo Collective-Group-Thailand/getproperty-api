@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { ResidentPrivacyController } from '../owner/parties.controller';
 import { ResidentMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
 import { ResidentConsentsController, ResidentDsrController } from '../shared/privacy.controllers';
@@ -14,6 +15,7 @@ import { systemPingController } from '../system-ping.controller';
     ResidentMeController,
     ResidentConsentsController,
     ResidentDsrController,
+    ResidentPrivacyController,
     notificationsController(SURFACES.resident),
     realtimeController(SURFACES.resident),
   ],

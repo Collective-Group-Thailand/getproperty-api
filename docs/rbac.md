@@ -14,7 +14,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (72)
+## Permissions (74)
 | Permission | Surfaces | owner | manager | staff | accountant | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View the tenant profile and company data |
@@ -37,7 +37,9 @@
 | `unit.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Create/edit units, unit profiles |
 | `party.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View parties (lessees, owners, co-occupants) |
 | `party.manage` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  | Create/edit parties |
-| `party.pii.decrypt` | owner | ✓ |  |  |  |  |  |  |  | Reveal ID/passport numbers (audited, D-148) |
+| `party.pii.decrypt` | owner | ✓ | ✓ |  |  |  |  |  |  | Reveal ID/passport numbers and emergency-contact phones (audited, D-148, D-172) |
+| `party.id_document.read` | owner | ✓ | ✓ |  |  |  |  |  |  | List and download ID document images (every download audited, D-025, D-172) |
+| `party.link.manage` | owner | ✓ |  |  |  |  |  |  |  | Unlink a resident login (LINE/phone) from a party — the Owner approval of D-061/D-172 |
 | `asset_item.read` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  | View meters, gateways, locks and other asset items |
 | `asset_item.manage` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  | Create/edit asset items and meter assignments |
 | `document.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  | Download documents of the tenant |

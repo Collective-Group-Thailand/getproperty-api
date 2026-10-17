@@ -27,6 +27,8 @@ import {
 } from './document-policy';
 
 export const UPLOAD_URL_TTL_SECONDS = 900;
+/** Permission needed to see ID document images (B2.2). */
+export const ID_DOCUMENT_PERMISSION = 'party.id_document.read';
 export const DOWNLOAD_URL_TTL_SECONDS = 300;
 
 export interface PresignInput {
@@ -232,6 +234,9 @@ export class DocumentsService extends TenantScopedRepository {
   /** Metadata + a 5-minute signed download URL (clean files only); PDPA-sensitive kinds are audited. */
   async download(ctx: TenantContext, id: string, purpose: string | null) {
     const doc = await this.db.tenant(ctx, async (tx) => this.found(await this.findOwn(tx, ctx, id)));
+    // ID document images: Owner/Manager only (D-025, D-172), whatever surface the download comes from.
+    if (doc.kind === 'id_document' && !RequestContext.permissions().has(ID_DOCUMENT_PERMISSION))
+      throw new DomainException('auth.forbidden');
     if (doc.uploadState === 'presigned') throw new DomainException('document.not_uploaded');
     if (doc.scanStatus === 'pending') throw new DomainException('document.scan_pending');
     if (doc.scanStatus !== 'clean' && doc.scanStatus !== 'skipped')

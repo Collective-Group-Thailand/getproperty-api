@@ -1509,6 +1509,7 @@ verified in B3.2, owner-stamped rows via `acts_for`, platform-only `user_account
 | 23 | `ops.unit_detail` (B2.1) | RLS kind `unit` with module `ops.lease` (a landlord with a unit grant sees its unit's detail); `current_lease_id` without FK until B2.3 | §3.3.2 `RLS: U(ops.lease)` made concrete |
 | 24 | `ops.utility_account` (B2.1) | CHECK utility ↔ provider (`electric` → mea/pea, `water` → mwa/pwa) and customer number format | defence in depth |
 | 25 | `core` 0.3.0 (asset-core, B2) | `document_kind.signature`; partial index `occupancy_lease_id_idx` | e-signature evidence (D-062), occupancies per lease |
+| 26 | `ops.occupant_profile` (B2.2, migration 0012) | + `occupation text` (TM30 / tenant screening field kept with the resident, not on the party); CHECKs on country code and lengths | the TM30 data pack (D-052) and the contract annex use it |
 
 ---
 

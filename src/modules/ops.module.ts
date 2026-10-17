@@ -1,5 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 
+import { PartiesService } from './ops-parties/parties.service';
+import { ResidentPrivacyService } from './ops-parties/resident-privacy.service';
 import { BoardService } from './ops-units/board.service';
 import { AmenitiesService, MetersService } from './ops-units/meters-items.service';
 import { UnitProfilesService, UtilityAccountsService } from './ops-units/profiles-accounts.service';
@@ -16,6 +18,8 @@ const SERVICES = [
   AmenitiesService,
   BoardService,
   UnitImportService,
+  PartiesService,
+  ResidentPrivacyService,
 ];
 
 /**

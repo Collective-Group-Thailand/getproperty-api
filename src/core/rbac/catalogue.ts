@@ -156,7 +156,17 @@ export const PERMISSIONS: readonly PermissionDef[] = [
   { key: 'party.manage', description: 'Create/edit parties', surfaces: ['owner', 'staff'] },
   {
     key: 'party.pii.decrypt',
-    description: 'Reveal ID/passport numbers (audited, D-148)',
+    description: 'Reveal ID/passport numbers and emergency-contact phones (audited, D-148, D-172)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'party.id_document.read',
+    description: 'List and download ID document images (every download audited, D-025, D-172)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'party.link.manage',
+    description: 'Unlink a resident login (LINE/phone) from a party — the Owner approval of D-061/D-172',
     surfaces: ['owner'],
   },
   {
@@ -348,7 +358,7 @@ const MANAGER_EXCLUDED = new Set([
   'tenant.support_grant.approve',
   'tenant.grant.manage',
   'rate_plan.manage',
-  'party.pii.decrypt',
+  'party.link.manage',
   'privacy.manage',
 ]);
 

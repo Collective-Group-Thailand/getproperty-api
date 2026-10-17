@@ -96,6 +96,7 @@ export const ERROR_CODES = {
   'import.file_invalid': HttpStatus.UNPROCESSABLE_ENTITY,
   'import.invalid_rows': HttpStatus.UNPROCESSABLE_ENTITY,
   'import.preview_stale': HttpStatus.CONFLICT,
+  'party.link_not_active': HttpStatus.CONFLICT,
   'internal.unexpected': HttpStatus.INTERNAL_SERVER_ERROR,
 } as const satisfies Record<string, HttpStatus>;
 

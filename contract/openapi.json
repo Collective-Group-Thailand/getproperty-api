@@ -608,6 +608,17 @@
           "type": "https://errors.getproperty.co/pagination.cursor_invalid"
         }
       },
+      "problem.party.link_not_active": {
+        "summary": "party.link_not_active",
+        "value": {
+          "code": "party.link_not_active",
+          "detail": "บัญชีนี้ไม่ได้เชื่อมกับบุคคลนี้อยู่แล้ว",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ยกเลิกการเชื่อมไม่ได้",
+          "type": "https://errors.getproperty.co/party.link_not_active"
+        }
+      },
       "problem.provider.unavailable": {
         "summary": "provider.unavailable",
         "value": {
@@ -3201,6 +3212,52 @@
         ],
         "type": "string"
       },
+      "EmergencyContactDto": {
+        "properties": {
+          "name": {
+            "example": "ญาติ ทดสอบ",
+            "type": "string"
+          },
+          "phone": {
+            "description": "Sealed with the tenant data key (D-148).",
+            "example": "+66810001234",
+            "type": "string"
+          },
+          "relation": {
+            "example": "พี่สาว",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "relation",
+          "phone"
+        ],
+        "type": "object"
+      },
+      "EmergencyContactViewDto": {
+        "properties": {
+          "name": {
+            "example": "ญาติ ทดสอบ",
+            "type": "string"
+          },
+          "phoneOnFile": {
+            "description": "The phone is stored sealed; reveal it with `actions/reveal-pii`.",
+            "example": true,
+            "type": "boolean"
+          },
+          "relation": {
+            "example": "พี่สาว",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "relation",
+          "phoneOnFile"
+        ],
+        "type": "object"
+      },
       "EnvironmentBadge": {
         "enum": [
           "development",
@@ -3862,6 +3919,29 @@
           "ok",
           "error",
           "shutting_down"
+        ],
+        "type": "string"
+      },
+      "HeldField": {
+        "enum": [
+          "name",
+          "phone",
+          "email",
+          "line_id",
+          "id_number",
+          "id_document_image",
+          "date_of_birth",
+          "address",
+          "emergency_contact",
+          "tm30"
+        ],
+        "type": "string"
+      },
+      "IdDocumentType": {
+        "enum": [
+          "thai_national_id",
+          "passport",
+          "other"
         ],
         "type": "string"
       },
@@ -5095,6 +5175,55 @@
         ],
         "type": "object"
       },
+      "OccupantProfileDto": {
+        "properties": {
+          "arrivalDate": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entryPort": {
+            "example": "สุวรรณภูมิ",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occupation": {
+            "example": "พนักงานบริษัท",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "passportIssuedCountry": {
+            "example": "JP",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "visaType": {
+            "description": "TM30 (D-052).",
+            "example": "Non-B",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "OperatorChangeDto": {
         "properties": {
           "operatorTenantId": {
@@ -5509,6 +5638,589 @@
         ],
         "type": "object"
       },
+      "PartyCreateDto": {
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AddressDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyName": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dateOfBirth": {
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayName": {
+            "example": "ผู้เช่า ทดสอบ",
+            "type": "string"
+          },
+          "email": {
+            "example": "test@example.com",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emergencyContact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmergencyContactDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firstName": {
+            "example": "ผู้เช่า",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gender": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idDocumentCountry": {
+            "example": "TH",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idDocumentType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdDocumentType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idExpiresOn": {
+            "example": "2030-01-31",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idNumber": {
+            "description": "ID card or passport number — optional until the contract is signed (D-025); sealed with the tenant data key, never returned (D-148). Thai national ids must pass the checksum.",
+            "example": "0000000000002",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "language": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResidentLanguage"
+              }
+            ],
+            "default": "th"
+          },
+          "lastName": {
+            "example": "ทดสอบ",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nationality": {
+            "example": "TH",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occupantProfile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OccupantProfileDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phone": {
+            "description": "E.164 or Thai local form.",
+            "example": "+66810001234",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taxId": {
+            "example": "0000000000002",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PartyType"
+              }
+            ],
+            "example": "person"
+          }
+        },
+        "required": [
+          "type",
+          "displayName"
+        ],
+        "type": "object"
+      },
+      "PartyDto": {
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AddressDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "anonymised": {
+            "description": "PDPA erasure done (personal fields cleared).",
+            "example": false,
+            "type": "boolean"
+          },
+          "companyName": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "dateOfBirth": {
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayName": {
+            "example": "ผู้เช่า ทดสอบ",
+            "type": "string"
+          },
+          "email": {
+            "example": "test@example.com",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emergencyContact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmergencyContactViewDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firstName": {
+            "example": "ผู้เช่า",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gender": {
+            "description": "M, F or X (TM30).",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "idDocumentCountry": {
+            "example": "TH",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idDocumentType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdDocumentType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "example": "thai_national_id"
+          },
+          "idExpiresOn": {
+            "example": "2030-01-31",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idNumberOnFile": {
+            "description": "An ID/passport number is stored sealed (never returned here, D-148).",
+            "example": true,
+            "type": "boolean"
+          },
+          "language": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResidentLanguage"
+              }
+            ],
+            "example": "th"
+          },
+          "lastName": {
+            "example": "ทดสอบ",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lineLinked": {
+            "description": "A LINE user id is recorded on the party.",
+            "example": true,
+            "type": "boolean"
+          },
+          "linkedLogins": {
+            "description": "Active resident logins linked to the party.",
+            "example": 1,
+            "type": "integer"
+          },
+          "nationality": {
+            "example": "TH",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occupantProfile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OccupantProfileDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phone": {
+            "example": "+66810001234",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taxId": {
+            "description": "Companies only.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PartyType"
+              }
+            ],
+            "example": "person"
+          },
+          "version": {
+            "description": "Aggregate version (ETag).",
+            "example": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "displayName",
+          "firstName",
+          "lastName",
+          "companyName",
+          "taxId",
+          "phone",
+          "email",
+          "lineLinked",
+          "language",
+          "nationality",
+          "idDocumentType",
+          "idDocumentCountry",
+          "idNumberOnFile",
+          "idExpiresOn",
+          "dateOfBirth",
+          "gender",
+          "address",
+          "emergencyContact",
+          "occupantProfile",
+          "linkedLogins",
+          "notes",
+          "anonymised",
+          "version",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "PartyLinkDto": {
+        "properties": {
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "lineLinked": {
+            "example": true,
+            "type": "boolean"
+          },
+          "linkedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "linkedVia": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PartyLinkVia"
+              }
+            ],
+            "example": "invitation"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PartyLinkState"
+              }
+            ],
+            "example": "active"
+          },
+          "unlinkReason": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unlinkedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "userDisplayName": {
+            "example": "ผู้เช่า ทดสอบ",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "userId": {
+            "description": "core.user_account of the resident.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "userDisplayName",
+          "lineLinked",
+          "linkedVia",
+          "state",
+          "linkedAt",
+          "unlinkedAt",
+          "unlinkReason"
+        ],
+        "type": "object"
+      },
+      "PartyLinkState": {
+        "enum": [
+          "active",
+          "unlinked"
+        ],
+        "type": "string"
+      },
+      "PartyLinkVia": {
+        "enum": [
+          "invitation",
+          "line_match",
+          "phone_match",
+          "integration",
+          "admin"
+        ],
+        "type": "string"
+      },
+      "PartyType": {
+        "enum": [
+          "person",
+          "company"
+        ],
+        "type": "string"
+      },
+      "PartyUpdateDto": {
+        "properties": {
+          "displayName": {
+            "example": "ผู้เช่า ทดสอบ",
+            "type": "string"
+          },
+          "email": {
+            "example": "test@example.com",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emergencyContact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmergencyContactDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firstName": {
+            "example": "ผู้เช่า",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idDocumentCountry": {
+            "example": "TH",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idDocumentType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdDocumentType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idExpiresOn": {
+            "example": "2031-01-31",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idNumber": {
+            "description": "Sealed (D-148).",
+            "example": "0000000000002",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "language": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResidentLanguage"
+              }
+            ]
+          },
+          "lastName": {
+            "example": "ทดสอบ",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nationality": {
+            "example": "TH",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "example": "โทรหลัง 18:00",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occupantProfile": {
+            "$ref": "#/components/schemas/OccupantProfileDto"
+          },
+          "phone": {
+            "example": "+66810001235",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "PasswordLoginDto": {
         "properties": {
           "email": {
@@ -5661,6 +6373,85 @@
           "totpEnabled",
           "roles",
           "lastLoginAt"
+        ],
+        "type": "object"
+      },
+      "PrivacyControllerDto": {
+        "properties": {
+          "legalName": {
+            "description": "The data controller (D-025).",
+            "example": "บริษัท ตัวอย่าง จำกัด",
+            "type": "string"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/PrivacyPartyDto"
+            },
+            "type": "array"
+          },
+          "tenantId": {
+            "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+            "format": "uuid",
+            "type": "string"
+          },
+          "tenantName": {
+            "example": "หอพักตัวอย่าง",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId",
+          "tenantName",
+          "legalName",
+          "parties"
+        ],
+        "type": "object"
+      },
+      "PrivacyPartyDto": {
+        "properties": {
+          "displayName": {
+            "example": "ผู้เช่า ทดสอบ",
+            "type": "string"
+          },
+          "fieldsHeld": {
+            "example": [
+              "name",
+              "phone",
+              "id_number"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/HeldField"
+            },
+            "type": "array"
+          },
+          "partyId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "partyId",
+          "displayName",
+          "fieldsHeld"
+        ],
+        "type": "object"
+      },
+      "PrivacyUserDto": {
+        "properties": {
+          "displayName": {
+            "example": "ผู้เช่า ทดสอบ",
+            "type": "string"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName"
         ],
         "type": "object"
       },
@@ -6116,6 +6907,17 @@
         ],
         "type": "object"
       },
+      "ResidentLanguage": {
+        "enum": [
+          "th",
+          "en",
+          "my",
+          "km",
+          "lo",
+          "zh"
+        ],
+        "type": "string"
+      },
       "ResidentMeDto": {
         "properties": {
           "consentComplete": {
@@ -6163,6 +6965,46 @@
           "consents",
           "consentComplete",
           "scopes"
+        ],
+        "type": "object"
+      },
+      "ResidentPrivacyDto": {
+        "properties": {
+          "consentComplete": {
+            "description": "Every required purpose is granted in its current version.",
+            "example": true,
+            "type": "boolean"
+          },
+          "consents": {
+            "items": {
+              "$ref": "#/components/schemas/ConsentPurposeDto"
+            },
+            "type": "array"
+          },
+          "controllers": {
+            "description": "Each tenant that holds data about me as controller, with the categories held per party (D-025).",
+            "items": {
+              "$ref": "#/components/schemas/PrivacyControllerDto"
+            },
+            "type": "array"
+          },
+          "requests": {
+            "description": "My PDPA requests (file new ones at /v1/resident/data-subject-requests).",
+            "items": {
+              "$ref": "#/components/schemas/DsrDto"
+            },
+            "type": "array"
+          },
+          "user": {
+            "$ref": "#/components/schemas/PrivacyUserDto"
+          }
+        },
+        "required": [
+          "user",
+          "controllers",
+          "consents",
+          "consentComplete",
+          "requests"
         ],
         "type": "object"
       },
@@ -6215,6 +7057,59 @@
           "tenantName",
           "role",
           "validFrom"
+        ],
+        "type": "object"
+      },
+      "RevealField": {
+        "enum": [
+          "idNumber",
+          "emergencyContactPhone"
+        ],
+        "type": "string"
+      },
+      "RevealPiiDto": {
+        "properties": {
+          "fields": {
+            "example": [
+              "idNumber"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RevealField"
+            },
+            "type": "array"
+          },
+          "purpose": {
+            "description": "Recorded in the audit log (D-148).",
+            "example": "ตรวจสอบตัวตนก่อนทำสัญญา",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fields",
+          "purpose"
+        ],
+        "type": "object"
+      },
+      "RevealedPiiDto": {
+        "properties": {
+          "emergencyContactPhone": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idNumber": {
+            "example": "0000000000002",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "idNumber",
+          "emergencyContactPhone"
         ],
         "type": "object"
       },
@@ -8460,6 +9355,19 @@
             ]
           }
         },
+        "type": "object"
+      },
+      "UnlinkDto": {
+        "properties": {
+          "unlinkReason": {
+            "description": "Why the Owner approves the unlink (audited).",
+            "example": "ผู้เช่าเปลี่ยนบัญชี LINE",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unlinkReason"
+        ],
         "type": "object"
       },
       "UploadKind": {
@@ -34932,6 +35840,2370 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/parties": {
+      "get": {
+        "description": "Lessees, co-tenants, guarantors and owners (D-151). `q` matches the name, an exact phone or an exact ID number (through lookup hashes, D-148); ID numbers are never returned.\n\nImplements: D-148, D-151.",
+        "operationId": "owner.parties.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sort field; each endpoint validates it against its own allow-list.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "example": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "description": "Free-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PartyType"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "address": null,
+                      "anonymised": false,
+                      "companyName": null,
+                      "createdAt": "2026-11-01T00:15:00+07:00",
+                      "dateOfBirth": null,
+                      "displayName": "ผู้เช่า ทดสอบ",
+                      "email": "test@example.com",
+                      "emergencyContact": {
+                        "name": "ญาติ ทดสอบ",
+                        "phoneOnFile": true,
+                        "relation": "พี่สาว"
+                      },
+                      "firstName": "ผู้เช่า",
+                      "gender": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "idDocumentCountry": "TH",
+                      "idDocumentType": "thai_national_id",
+                      "idExpiresOn": "2030-01-31",
+                      "idNumberOnFile": true,
+                      "language": "th",
+                      "lastName": "ทดสอบ",
+                      "lineLinked": true,
+                      "linkedLogins": 1,
+                      "nationality": "TH",
+                      "notes": null,
+                      "occupantProfile": null,
+                      "phone": "+66810001234",
+                      "taxId": null,
+                      "type": "person",
+                      "version": 1
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "perPage": 25,
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/PartyDto"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "One page of results",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "People and companies of my tenant",
+        "tags": [
+          "owner.parties"
+        ],
+        "x-required-permissions": [
+          "party.read"
+        ],
+        "x-surface": "owner"
+      },
+      "post": {
+        "description": "Minimal fields first; ID documents and the ID number are optional until the contract is signed (D-025). The ID number and the emergency-contact phone are sealed with the tenant data key (D-148). TM30 fields go into `occupantProfile` (D-052).\n\nImplements: D-025, D-052, D-148, D-151.",
+        "operationId": "owner.parties.create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "displayName": "ผู้เช่า ทดสอบ",
+                    "firstName": "ผู้เช่า",
+                    "language": "th",
+                    "lastName": "ทดสอบ",
+                    "nationality": "TH",
+                    "phone": "081-000-1234",
+                    "type": "person"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/PartyCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "address": null,
+                  "anonymised": false,
+                  "companyName": null,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "dateOfBirth": null,
+                  "displayName": "ผู้เช่า ทดสอบ",
+                  "email": "test@example.com",
+                  "emergencyContact": {
+                    "name": "ญาติ ทดสอบ",
+                    "phoneOnFile": true,
+                    "relation": "พี่สาว"
+                  },
+                  "firstName": "ผู้เช่า",
+                  "gender": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "idDocumentCountry": "TH",
+                  "idDocumentType": "thai_national_id",
+                  "idExpiresOn": "2030-01-31",
+                  "idNumberOnFile": true,
+                  "language": "th",
+                  "lastName": "ทดสอบ",
+                  "lineLinked": true,
+                  "linkedLogins": 1,
+                  "nationality": "TH",
+                  "notes": null,
+                  "occupantProfile": null,
+                  "phone": "+66810001234",
+                  "taxId": null,
+                  "type": "person",
+                  "version": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PartyDto"
+                }
+              }
+            },
+            "description": "Created",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Add a person or company",
+        "tags": [
+          "owner.parties"
+        ],
+        "x-required-permissions": [
+          "party.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/parties/{partyId}": {
+      "get": {
+        "description": "A party of the tenant without sealed values (404 for another tenant’s party, contract §8).\n\nImplements: D-148, D-151.",
+        "operationId": "owner.parties.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "address": null,
+                  "anonymised": false,
+                  "companyName": null,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "dateOfBirth": null,
+                  "displayName": "ผู้เช่า ทดสอบ",
+                  "email": "test@example.com",
+                  "emergencyContact": {
+                    "name": "ญาติ ทดสอบ",
+                    "phoneOnFile": true,
+                    "relation": "พี่สาว"
+                  },
+                  "firstName": "ผู้เช่า",
+                  "gender": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "idDocumentCountry": "TH",
+                  "idDocumentType": "thai_national_id",
+                  "idExpiresOn": "2030-01-31",
+                  "idNumberOnFile": true,
+                  "language": "th",
+                  "lastName": "ทดสอบ",
+                  "lineLinked": true,
+                  "linkedLogins": 1,
+                  "nationality": "TH",
+                  "notes": null,
+                  "occupantProfile": null,
+                  "phone": "+66810001234",
+                  "taxId": null,
+                  "type": "person",
+                  "version": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PartyDto"
+                }
+              }
+            },
+            "description": "The party",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "One party",
+        "tags": [
+          "owner.parties"
+        ],
+        "x-required-permissions": [
+          "party.read"
+        ],
+        "x-surface": "owner"
+      },
+      "patch": {
+        "description": "Contact data, identity document (sealed again when changed, D-148), emergency contact, TM30 fields. Requires `If-Match`.\n\nImplements: D-052, D-148.",
+        "operationId": "owner.parties.update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "notes": "โทรหลัง 18:00",
+                    "phone": "081-000-1235"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/PartyUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "address": null,
+                  "anonymised": false,
+                  "companyName": null,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "dateOfBirth": null,
+                  "displayName": "ผู้เช่า ทดสอบ",
+                  "email": "test@example.com",
+                  "emergencyContact": {
+                    "name": "ญาติ ทดสอบ",
+                    "phoneOnFile": true,
+                    "relation": "พี่สาว"
+                  },
+                  "firstName": "ผู้เช่า",
+                  "gender": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "idDocumentCountry": "TH",
+                  "idDocumentType": "thai_national_id",
+                  "idExpiresOn": "2030-01-31",
+                  "idNumberOnFile": true,
+                  "language": "th",
+                  "lastName": "ทดสอบ",
+                  "lineLinked": true,
+                  "linkedLogins": 1,
+                  "nationality": "TH",
+                  "notes": null,
+                  "occupantProfile": null,
+                  "phone": "+66810001234",
+                  "taxId": null,
+                  "type": "person",
+                  "version": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PartyDto"
+                }
+              }
+            },
+            "description": "Updated",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "412": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "concurrency.stale": {
+                    "$ref": "#/components/examples/problem.concurrency.stale"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `concurrency.stale`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "concurrency.precondition_required": {
+                    "$ref": "#/components/examples/problem.concurrency.precondition_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `concurrency.precondition_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Update a party",
+        "tags": [
+          "owner.parties"
+        ],
+        "x-required-permissions": [
+          "party.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/parties/{partyId}/actions/reveal-pii": {
+      "post": {
+        "description": "Owner and Manager only (D-172). Every field revealed writes a `pii.decrypted` audit row with the purpose (D-148, D-025).\n\nImplements: D-025, D-148, D-172.",
+        "operationId": "owner.parties.revealPii",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "fields": [
+                      "idNumber"
+                    ],
+                    "purpose": "ตรวจสอบตัวตนก่อนทำสัญญา"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/RevealPiiDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "emergencyContactPhone": null,
+                  "idNumber": "0000000000002"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RevealedPiiDto"
+                }
+              }
+            },
+            "description": "Revealed values (null when not on file)",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Reveal a sealed ID number or emergency phone",
+        "tags": [
+          "owner.parties"
+        ],
+        "x-required-permissions": [
+          "party.pii.decrypt"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/parties/{partyId}/id-documents": {
+      "get": {
+        "description": "Files of kind `id_document` scoped to the party (upload through `files/presign` with `scopeType=party`). Owner and Manager only (D-172); retention class `id_document` (D-025).\n\nImplements: D-025, D-172.",
+        "operationId": "owner.parties.listIdDocuments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "height": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "kind": "id_document",
+                    "mimeType": "image/jpeg",
+                    "retentionClass": "id_document",
+                    "scanStatus": "clean",
+                    "scopeId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "scopeType": "party",
+                    "sizeBytes": 2345678,
+                    "title": "มิเตอร์ห้อง A-201",
+                    "uploadState": "verified",
+                    "width": null
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FileDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Files",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "ID document images of a party",
+        "tags": [
+          "owner.parties"
+        ],
+        "x-required-permissions": [
+          "party.id_document.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/parties/{partyId}/id-documents/{documentId}": {
+      "get": {
+        "description": "A 5-minute signed URL; every download is audited with its purpose (`document.downloaded`, D-025).\n\nImplements: D-025, D-172.",
+        "operationId": "owner.parties.downloadIdDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "documentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Why the file is opened (recorded for PDPA-sensitive kinds).",
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "schema": {
+              "example": "ตรวจสอบสลิป",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "expiresAt": "2026-11-01T00:20:00+07:00",
+                  "file": {
+                    "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "height": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "kind": "id_document",
+                    "mimeType": "image/jpeg",
+                    "retentionClass": "id_document",
+                    "scanStatus": "clean",
+                    "scopeId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "scopeType": "party",
+                    "sizeBytes": 2345678,
+                    "title": "มิเตอร์ห้อง A-201",
+                    "uploadState": "verified",
+                    "width": null
+                  },
+                  "thumbnailUrl": null,
+                  "url": "https://storage.example.com/file?X-Amz-Signature=abc"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/FileDownloadDto"
+                }
+              }
+            },
+            "description": "Download",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "document.infected": {
+                    "$ref": "#/components/examples/problem.document.infected"
+                  },
+                  "document.not_uploaded": {
+                    "$ref": "#/components/examples/problem.document.not_uploaded"
+                  },
+                  "document.scan_pending": {
+                    "$ref": "#/components/examples/problem.document.scan_pending"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `document.infected`, `document.not_uploaded`, `document.scan_pending`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Open an ID document image",
+        "tags": [
+          "owner.parties"
+        ],
+        "x-required-permissions": [
+          "party.id_document.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/parties/{partyId}/links": {
+      "get": {
+        "description": "LINE / phone logins linked by invitation or sign-in matching (D-061); one login may hold parties in several tenants.\n\nImplements: D-061.",
+        "operationId": "owner.parties.listLinks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "lineLinked": true,
+                    "linkedAt": "2026-11-01T00:15:00+07:00",
+                    "linkedVia": "invitation",
+                    "state": "active",
+                    "unlinkReason": null,
+                    "unlinkedAt": null,
+                    "userDisplayName": "ผู้เช่า ทดสอบ",
+                    "userId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PartyLinkDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Links",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Resident logins linked to a party",
+        "tags": [
+          "owner.parties"
+        ],
+        "x-required-permissions": [
+          "party.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/parties/{partyId}/links/{linkId}/actions/unlink": {
+      "post": {
+        "description": "The Owner approves an unlink requested by the resident or the office (D-061, D-172): the login loses this tenant’s leases at its next token refresh. Audited (`party.unlinked`).\n\nImplements: D-061, D-172.",
+        "operationId": "owner.parties.unlink",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "linkId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "unlinkReason": "ผู้เช่าเปลี่ยนบัญชี LINE"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/UnlinkDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Unlinked",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "party.link_not_active": {
+                    "$ref": "#/components/examples/problem.party.link_not_active"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `party.link_not_active`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Unlink a resident login (Owner approval)",
+        "tags": [
+          "owner.parties"
+        ],
+        "x-required-permissions": [
+          "party.link.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/ping": {
       "get": {
         "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `owner` surface until its real endpoints land. Anonymous or with an `operator` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`). An `X-Tenant-Id` header, when sent, must be a uuid (contract §8, D-151).\n\nImplements: D-002, D-151, ADR-0002.",
@@ -43955,6 +47227,199 @@
         "x-surface": "resident"
       }
     },
+    "/v1/resident/me/privacy": {
+      "get": {
+        "description": "Which tenants hold my data as controllers and which categories (never the values), my consents in their current versions (asked on first use, D-025) and my PDPA requests (filed at `/v1/resident/data-subject-requests`).\n\nImplements: D-025, D-154.",
+        "operationId": "resident.privacy.get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "accept-language",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "consentComplete": true,
+                  "consents": [
+                    {
+                      "bodyMarkdown": "เราใช้ข้อมูลของคุณเพื่อออกบิลและแจ้งเตือน",
+                      "capturedAt": "2026-11-01T00:15:00+07:00",
+                      "effectiveFrom": "2026-11-01T00:15:00+07:00",
+                      "granted": true,
+                      "grantedVersion": 1,
+                      "key": "resident.service",
+                      "language": "th",
+                      "required": true,
+                      "title": "การใช้ข้อมูลเพื่อให้บริการผู้พักอาศัย",
+                      "version": 1
+                    }
+                  ],
+                  "controllers": [
+                    {
+                      "legalName": "บริษัท ตัวอย่าง จำกัด",
+                      "parties": [
+                        {
+                          "displayName": "ผู้เช่า ทดสอบ",
+                          "fieldsHeld": [
+                            "name",
+                            "phone",
+                            "id_number"
+                          ],
+                          "partyId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                        }
+                      ],
+                      "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                      "tenantName": "หอพักตัวอย่าง"
+                    }
+                  ],
+                  "requests": [
+                    {
+                      "dueAt": "2026-12-01T00:15:00+07:00",
+                      "exportDocumentId": null,
+                      "fulfilledAt": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "kind": "access",
+                      "notes": null,
+                      "receivedAt": "2026-11-01T00:15:00+07:00",
+                      "state": "received",
+                      "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11"
+                    }
+                  ],
+                  "user": {
+                    "displayName": "ผู้เช่า ทดสอบ",
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ResidentPrivacyDto"
+                }
+              }
+            },
+            "description": "Privacy overview",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "My personal data and privacy choices",
+        "tags": [
+          "resident.privacy"
+        ],
+        "x-surface": "resident"
+      }
+    },
     "/v1/resident/notifications": {
       "get": {
         "description": "The in-app inbox of the signed-in user across tenants, newest first (cursor feed). Other channels (LINE, SMS, email, web push) are listed in the delivery log, not here. B1.3 notifications.\n\nImplements: D-063, ADR-0003.",
@@ -46281,6 +49746,816 @@
         "x-surface": "staff"
       }
     },
+    "/v1/staff/parties": {
+      "get": {
+        "description": "Lessees, co-tenants, guarantors and owners (D-151). `q` matches the name, an exact phone or an exact ID number (through lookup hashes, D-148); ID numbers are never returned.\n\nImplements: D-148, D-151.",
+        "operationId": "staff.parties.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sort field; each endpoint validates it against its own allow-list.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "example": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "description": "Free-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PartyType"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "address": null,
+                      "anonymised": false,
+                      "companyName": null,
+                      "createdAt": "2026-11-01T00:15:00+07:00",
+                      "dateOfBirth": null,
+                      "displayName": "ผู้เช่า ทดสอบ",
+                      "email": "test@example.com",
+                      "emergencyContact": {
+                        "name": "ญาติ ทดสอบ",
+                        "phoneOnFile": true,
+                        "relation": "พี่สาว"
+                      },
+                      "firstName": "ผู้เช่า",
+                      "gender": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "idDocumentCountry": "TH",
+                      "idDocumentType": "thai_national_id",
+                      "idExpiresOn": "2030-01-31",
+                      "idNumberOnFile": true,
+                      "language": "th",
+                      "lastName": "ทดสอบ",
+                      "lineLinked": true,
+                      "linkedLogins": 1,
+                      "nationality": "TH",
+                      "notes": null,
+                      "occupantProfile": null,
+                      "phone": "+66810001234",
+                      "taxId": null,
+                      "type": "person",
+                      "version": 1
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "perPage": 25,
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/PartyDto"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "One page of results",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "People and companies of my tenant",
+        "tags": [
+          "staff.parties"
+        ],
+        "x-required-permissions": [
+          "party.read"
+        ],
+        "x-surface": "staff"
+      },
+      "post": {
+        "description": "Minimal fields first; ID documents and the ID number are optional until the contract is signed (D-025). The ID number and the emergency-contact phone are sealed with the tenant data key (D-148). TM30 fields go into `occupantProfile` (D-052).\n\nImplements: D-025, D-052, D-148, D-151.",
+        "operationId": "staff.parties.create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "displayName": "ผู้เช่า ทดสอบ",
+                    "firstName": "ผู้เช่า",
+                    "language": "th",
+                    "lastName": "ทดสอบ",
+                    "nationality": "TH",
+                    "phone": "081-000-1234",
+                    "type": "person"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/PartyCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "address": null,
+                  "anonymised": false,
+                  "companyName": null,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "dateOfBirth": null,
+                  "displayName": "ผู้เช่า ทดสอบ",
+                  "email": "test@example.com",
+                  "emergencyContact": {
+                    "name": "ญาติ ทดสอบ",
+                    "phoneOnFile": true,
+                    "relation": "พี่สาว"
+                  },
+                  "firstName": "ผู้เช่า",
+                  "gender": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "idDocumentCountry": "TH",
+                  "idDocumentType": "thai_national_id",
+                  "idExpiresOn": "2030-01-31",
+                  "idNumberOnFile": true,
+                  "language": "th",
+                  "lastName": "ทดสอบ",
+                  "lineLinked": true,
+                  "linkedLogins": 1,
+                  "nationality": "TH",
+                  "notes": null,
+                  "occupantProfile": null,
+                  "phone": "+66810001234",
+                  "taxId": null,
+                  "type": "person",
+                  "version": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PartyDto"
+                }
+              }
+            },
+            "description": "Created",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Add a person or company",
+        "tags": [
+          "staff.parties"
+        ],
+        "x-required-permissions": [
+          "party.manage"
+        ],
+        "x-surface": "staff"
+      }
+    },
+    "/v1/staff/parties/{partyId}": {
+      "get": {
+        "description": "A party of the tenant without sealed values (404 for another tenant’s party, contract §8).\n\nImplements: D-148, D-151.",
+        "operationId": "staff.parties.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "address": null,
+                  "anonymised": false,
+                  "companyName": null,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "dateOfBirth": null,
+                  "displayName": "ผู้เช่า ทดสอบ",
+                  "email": "test@example.com",
+                  "emergencyContact": {
+                    "name": "ญาติ ทดสอบ",
+                    "phoneOnFile": true,
+                    "relation": "พี่สาว"
+                  },
+                  "firstName": "ผู้เช่า",
+                  "gender": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "idDocumentCountry": "TH",
+                  "idDocumentType": "thai_national_id",
+                  "idExpiresOn": "2030-01-31",
+                  "idNumberOnFile": true,
+                  "language": "th",
+                  "lastName": "ทดสอบ",
+                  "lineLinked": true,
+                  "linkedLogins": 1,
+                  "nationality": "TH",
+                  "notes": null,
+                  "occupantProfile": null,
+                  "phone": "+66810001234",
+                  "taxId": null,
+                  "type": "person",
+                  "version": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PartyDto"
+                }
+              }
+            },
+            "description": "The party",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "One party",
+        "tags": [
+          "staff.parties"
+        ],
+        "x-required-permissions": [
+          "party.read"
+        ],
+        "x-surface": "staff"
+      }
+    },
     "/v1/staff/ping": {
       "get": {
         "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `staff` surface until its real endpoints land. Anonymous or with an `operator` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`). An `X-Tenant-Id` header, when sent, must be a uuid (contract §8, D-151).\n\nImplements: D-002, D-151, ADR-0002.",
@@ -48213,6 +52488,10 @@
       "name": "owner.notifications"
     },
     {
+      "description": "People and companies: lessees, co-tenants, guarantors; sealed ID numbers, ID document images, resident login links (D-148, D-151, D-172).",
+      "name": "owner.parties"
+    },
+    {
       "description": "Properties: groups of buildings managed together (D-151).",
       "name": "owner.properties"
     },
@@ -48281,6 +52560,10 @@
       "name": "resident.notifications"
     },
     {
+      "description": "What the controllers hold about me, my consents and PDPA requests (D-025).",
+      "name": "resident.privacy"
+    },
+    {
       "description": "Realtime auth and the server-sent events stream (contract §6).",
       "name": "resident.realtime"
     },
@@ -48299,6 +52582,10 @@
     {
       "description": "In-app inbox of the signed-in staff member.",
       "name": "staff.notifications"
+    },
+    {
+      "description": "People and companies captured by staff at move-in (D-151).",
+      "name": "staff.parties"
     },
     {
       "description": "Web push (VAPID) subscriptions of the staff PWA.",

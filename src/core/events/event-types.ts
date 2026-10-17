@@ -47,6 +47,8 @@ export const DOMAIN_EVENT_TYPES = {
   'meter_assignment.changed':
     'A meter was bound to a unit or common area, or its assignment closed (B2.1, D-012).',
   'asset_item.changed': 'An appliance, furniture or other asset item of a unit changed (B2.1).',
+  // B2.2 parties
+  'party.link_changed': 'A resident login was linked to or unlinked from a party (D-061).',
 } as const;
 export type DomainEventType = keyof typeof DOMAIN_EVENT_TYPES;
 

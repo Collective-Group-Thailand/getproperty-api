@@ -36,6 +36,7 @@ import {
   OwnerSettingsController,
   OwnerUtilityTariffsController,
 } from './money-settings.controller';
+import { OwnerPartyDetailsController, partiesController } from './parties.controller';
 import {
   OwnerInvitationsController,
   OwnerMembersController,
@@ -70,6 +71,8 @@ import {
     OwnerMetersController,
     OwnerAssetItemsController,
     OwnerUnitImportsController,
+    partiesController(SURFACES.owner),
+    OwnerPartyDetailsController,
     filesController(SURFACES.owner),
     notificationsController(SURFACES.owner),
     pushSubscriptionsController(SURFACES.owner),
