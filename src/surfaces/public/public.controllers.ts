@@ -1,0 +1,123 @@
+import { Public } from '@common/auth/auth.decorators';
+import { ApiEndpoint, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
+import { bangkokDate } from '@common/time/bangkok';
+import { CLOCK, type Clock } from '@core/clock/clock';
+import { SettingsService } from '@core/settings/settings.service';
+import { UtilityTariffsService } from '@core/utility-tariffs/utility-tariffs.service';
+import { Controller, Get, Header, Inject, Query } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+
+import { type UtilityName, type UtilityProviderName } from '../owner/assets.dto';
+import { dateOnly } from '../shared/mappers';
+import { ApiSurface, SURFACES } from '../surfaces';
+import { publicPlans } from './plans';
+import { PublicPlansDto, PublicTariffDto, PublicTariffQuery } from './public.dto';
+
+const CACHE = 'public, max-age=300, stale-while-revalidate=600';
+
+@ApiTags('public.plans')
+@ApiSurface(SURFACES.public)
+@Controller('public/plans')
+export class PublicPlansController {
+  constructor(
+    private readonly settings: SettingsService,
+    @Inject(CLOCK) private readonly clock: Clock,
+  ) {}
+
+  @Get()
+  @Public()
+  @Header('Cache-Control', CACHE)
+  @ApiEndpoint({
+    id: 'public.plans.list',
+    summary: 'Price plans for the pricing page',
+    description:
+      'The price plans in force, read from the platform setting `pricing.price_plans` (THB, VAT excluded). While D-156 is Proposed every plan says `status: proposed` and quoted ranges come as `priceFrom`/`priceTo`. Anonymous and cacheable (5 min).',
+    implements: ['D-156'],
+  })
+  @ApiSuccess(200, {
+    description: 'Plans',
+    type: PublicPlansDto,
+    example: {
+      data: [
+        {
+          key: 'apartment_starter',
+          kind: 'plan',
+          tenantType: 'apartment',
+          name: 'Apartment Starter',
+          summary: 'ออกบิล เก็บเงิน และแจ้งผู้เช่าผ่าน LINE สำหรับหอพักที่จดมิเตอร์เอง',
+          pricePerUnit: '25.00',
+          priceFrom: null,
+          priceTo: null,
+          priceUnit: 'unit_month',
+          minimumUnits: 20,
+          currency: 'THB',
+          vatIncluded: false,
+          status: 'proposed',
+          features: ['A1', 'A2', 'A4', 'resident_liff', 'promptpay'],
+        },
+      ],
+    },
+  })
+  @ApiStandardErrors()
+  async list(): Promise<PublicPlansDto> {
+    const value = await this.settings.valueAt<unknown>('pricing.price_plans', this.clock.now());
+    return { data: publicPlans(value) };
+  }
+}
+
+@ApiTags('public.utilityTariffs')
+@ApiSurface(SURFACES.public)
+@Controller('public/utility-tariffs')
+export class PublicUtilityTariffsController {
+  constructor(
+    private readonly tariffs: UtilityTariffsService,
+    @Inject(CLOCK) private readonly clock: Clock,
+  ) {}
+
+  @Get('current')
+  @Public()
+  @Header('Cache-Control', CACHE)
+  @ApiEndpoint({
+    id: 'public.utilityTariffs.current',
+    summary: 'Published utility ceiling per unit',
+    description:
+      'The lawful ceiling per unit of the verified and published MEA/PEA/MWA/PWA tariff in force today (residential class 1.1 unless `tariffCode` is given) — the value the สคบ. 2568 notice compares a dormitory’s rate with (D-021a, D-140). For the landing-page loss calculator; anonymous and cacheable. 404 `tariff.not_found` while no version is published.',
+    implements: ['D-021', 'D-140'],
+  })
+  @ApiSuccess(200, {
+    description: 'Ceiling in force',
+    type: PublicTariffDto,
+    example: {
+      utility: 'electric',
+      provider: 'mea',
+      nameTh: 'ประเภท 1.1 บ้านอยู่อาศัย',
+      tariffCode: '1.1',
+      ceilingPerUnit: '4.6189',
+      effectiveFrom: '2026-09-01',
+      sourceUrl: 'https://www.mea.or.th/',
+    },
+  })
+  @ApiStandardErrors('validation.failed', 'tariff.not_found')
+  async current(@Query() q: PublicTariffQuery): Promise<PublicTariffDto> {
+    const day = new Date(`${bangkokDate(this.clock.now())}T00:00:00.000Z`);
+    const rows = await this.tariffs.current({
+      utility: q.utility,
+      provider: q.provider,
+      tariffCode: q.tariffCode,
+      date: day,
+    });
+    const pick =
+      rows.find((r) => r.tariff.tariffCode === (q.tariffCode ?? '1.1')) ??
+      rows.find((r) => r.tariff.tariffCode.startsWith(q.tariffCode ?? '1.1')) ??
+      rows[0]!;
+    return {
+      utility: pick.tariff.utility as UtilityName,
+      provider: pick.tariff.provider as UtilityProviderName,
+      nameTh: pick.tariff.nameTh,
+      tariffCode: pick.tariff.tariffCode,
+      ceilingPerUnit: pick.version.ceilingPerUnit.toFixed(4),
+      effectiveFrom: dateOnly(pick.version.effectiveFrom)!,
+      sourceUrl: pick.version.sourceUrl,
+    };
+  }
+}

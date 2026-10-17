@@ -60,6 +60,7 @@ export const AUDIT_ACTIONS = [
   'notification.test_sent',
   'device.registered',
   'device.provisioning_code_issued',
+  'device.certificate_renewed',
   'retention.executed',
   'unit.status_changed',
   'unit.bulk_created',

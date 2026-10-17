@@ -14,7 +14,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (74)
+## Permissions (77)
 | Permission | Surfaces | owner | manager | staff | accountant | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View the tenant profile and company data |
@@ -53,6 +53,9 @@
 | `reading.capture` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  | Capture manual/OCR readings with photos (D-035) |
 | `reading.review` | owner | ✓ | ✓ |  |  |  |  |  |  | Review readings in the review queue |
 | `device.install` | staff, owner | ✓ | ✓ | ✓ |  |  |  |  |  | Install and provision devices (staff PWA, D-033) |
+| `device.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View devices, gateways and their health (D-033) |
+| `device.command` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  | Send read_now / restart / identify / upload_logs to a gateway (D-131) |
+| `utility_invoice.manage` | owner | ✓ | ✓ |  | ✓ |  |  |  |  | Enter or import the utility (MEA/PEA/MWA/PWA) invoices of a building (D-032) |
 | `rate_plan.read` | owner | ✓ | ✓ |  | ✓ |  |  |  |  | View rate plans |
 | `rate_plan.manage` | owner | ✓ |  |  |  |  |  |  |  | Edit rate plans (tariff-cap warning, D-021a) |
 | `compliance.acknowledge` | owner | ✓ | ✓ |  |  |  |  |  |  | Acknowledge a compliance warning (D-021a) |

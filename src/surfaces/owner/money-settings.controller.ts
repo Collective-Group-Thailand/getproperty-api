@@ -28,6 +28,7 @@ import { ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { OtpChallengeDto, OtpVerifyDto } from '../shared/auth.dto';
 import { dateOnly, iso, isoOrNull, otpChallengeDto } from '../shared/mappers';
+import { bankAccountActions } from '../shared/next-actions';
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
   AcknowledgementCreateDto,
@@ -54,6 +55,7 @@ const TENANT_ERRORS = ['tenant.context_required', 'tenant.context_invalid', 'ten
 
 export function bankAccountDto(a: TenantBankAccount): BankAccountDto {
   return {
+    nextActions: bankAccountActions(a.state),
     id: a.id,
     bankCode: a.bankCode,
     bankNameTh: a.bankNameTh,
@@ -70,6 +72,7 @@ export function bankAccountDto(a: TenantBankAccount): BankAccountDto {
 }
 
 const BANK_EXAMPLE: BankAccountDto = {
+  nextActions: ['remove'],
   id: FAKE.uuid,
   bankCode: '004',
   bankNameTh: 'ธนาคารตัวอย่าง',

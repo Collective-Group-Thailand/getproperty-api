@@ -21,6 +21,7 @@ import { ComplianceAcknowledgementService } from './compliance/compliance-acknow
 import { ComplianceGate } from './compliance/compliance-gate.service';
 import { DeviceBootstrapService } from './devices/device-bootstrap.service';
 import { DeviceCaService } from './devices/device-ca.service';
+import { DeviceIdentityService } from './devices/device-identity.service';
 import { DeviceRegistryService } from './devices/device-registry.service';
 import { DocumentsService } from './documents/documents.service';
 import { DocumentNumbering } from './documents/numbering.service';
@@ -113,6 +114,7 @@ const SERVICES = [
   DeviceCaService,
   DeviceRegistryService,
   DeviceBootstrapService,
+  DeviceIdentityService,
   DocumentsService,
   NotificationService,
   NotificationRoutesService,

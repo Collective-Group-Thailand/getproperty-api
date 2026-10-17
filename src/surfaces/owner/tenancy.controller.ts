@@ -21,6 +21,7 @@ import { ApiTags } from '@nestjs/swagger';
 
 import { iso, isoOrNull } from '../shared/mappers';
 import { type TenantRoleName, type TenantStatusName, type TenantTypeName } from '../shared/me.dto';
+import { invitationActions } from '../shared/next-actions';
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
   type AddressDto,
@@ -59,6 +60,7 @@ export function tenantProfileDto(t: Tenant): TenantProfileDto {
 
 export function invitationDto(i: Invitation): InvitationDto {
   return {
+    nextActions: invitationActions(i.state, i.expiresAt, new Date()),
     id: i.id,
     role: i.role as TenantRoleName,
     buildingIds: i.buildingIds,
@@ -102,6 +104,7 @@ export const MEMBER_EXAMPLE: MemberDto = {
 };
 
 export const INVITATION_EXAMPLE: InvitationDto = {
+  nextActions: ['revoke'],
   id: FAKE.uuid,
   role: 'staff' as TenantRoleName,
   buildingIds: [],

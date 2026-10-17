@@ -109,7 +109,10 @@ export class OtpService {
       }),
     );
     const template = MESSAGES[input.purpose][input.language === 'en' ? 'en' : 'th'];
-    const text = Object.entries({ code, minutes: String(Math.round(ttl / 60_000)), ...input.vars }).reduce(
+    const vars = Object.fromEntries(
+      Object.entries(input.vars ?? {}).map(([k, v]) => [k, v.replaceAll('{challengeId}', id)]),
+    );
+    const text = Object.entries({ code, minutes: String(Math.round(ttl / 60_000)), ...vars }).reduce(
       (t, [k, v]) => t.replaceAll(`{${k}}`, v),
       template,
     );

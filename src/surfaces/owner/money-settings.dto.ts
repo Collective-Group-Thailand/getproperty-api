@@ -90,6 +90,13 @@ export enum TariffVersionStateName {
 }
 
 export class BankAccountDto {
+  @ApiProperty({
+    type: [String],
+    example: ['remove'],
+    description: 'Actions (`…/actions/{name}`) the caller may take now — never infer them from the status.',
+  })
+  nextActions!: string[];
+
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   id!: string;
 

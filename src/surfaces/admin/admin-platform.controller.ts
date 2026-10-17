@@ -33,6 +33,7 @@ import { AUDIT_EXAMPLE, auditPage, auditQueryOf, DSR_EXAMPLE, dsrDto } from '../
 import { AuditEntryDto, AuditQueryDto, DsrDto, DsrListQuery } from '../owner/governance.dto';
 import { type SettingScopeName, SettingUpdateDto, SettingVersionDto } from '../owner/money-settings.dto';
 import { iso, isoOrNull } from '../shared/mappers';
+import { UserStatusName } from '../shared/status.enums';
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
   FeatureFlagChangeDto,
@@ -59,7 +60,7 @@ const platformUserDto = (u: PlatformUserRow): PlatformUserDto => ({
   id: u.id,
   email: u.email,
   displayName: u.displayName,
-  status: u.status,
+  status: u.status as UserStatusName,
   totpEnabled: Boolean(u.userCredentialUser?.totpEnabledAt),
   roles: u.platformRoleAssignmentUser.map((a) => ({
     role: a.role.key as PlatformRoleName,
@@ -129,7 +130,7 @@ export class AdminPlatformUsersController {
           id: user.id,
           email: user.email,
           displayName: user.displayName,
-          status: user.status,
+          status: user.status as UserStatusName,
           totpEnabled: false,
           roles: [],
           lastLoginAt: null,

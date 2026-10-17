@@ -22,6 +22,7 @@ export const OWNER_MENU: readonly MenuEntry[] = [
   { key: 'leases', anyOf: ['lease.read'] },
   { key: 'deposits', anyOf: ['deposit.read'] },
   { key: 'readings', anyOf: ['reading.read'] },
+  { key: 'devices', anyOf: ['device.read'] },
   { key: 'rate_plans', anyOf: ['rate_plan.read'] },
   { key: 'invoices', anyOf: ['invoice.read'] },
   { key: 'payments', anyOf: ['payment.read'] },
@@ -43,6 +44,7 @@ export const OWNER_MENU: readonly MenuEntry[] = [
 
 export const STAFF_MENU: readonly MenuEntry[] = [
   { key: 'readings', anyOf: ['reading.capture'] },
+  { key: 'reading_rounds', anyOf: ['reading.capture'] },
   { key: 'inspections', anyOf: ['inspection.perform'] },
   { key: 'installs', anyOf: ['device.install'] },
   { key: 'service_requests', anyOf: ['service_request.handle'], flag: 'module.service_requests' },
@@ -56,10 +58,12 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'settings', anyOf: ['admin.setting.manage', 'admin.compliance.manage'] },
   { key: 'feature_flags', anyOf: ['admin.feature_flag.manage'] },
   { key: 'devices', anyOf: ['admin.device.manage'] },
+  { key: 'ota_releases', anyOf: ['admin.device.manage'] },
   { key: 'support_grants', anyOf: ['admin.support_grant.request', 'admin.support_grant.approve_incident'] },
   { key: 'subscriptions', anyOf: ['admin.subscription.manage'] },
   { key: 'notification_templates', anyOf: ['admin.notification_template.manage'] },
   { key: 'outbox', anyOf: ['admin.outbox.manage'] },
+  { key: 'ingest_dead_letters', anyOf: ['admin.device.manage'] },
   { key: 'data_subject_requests', anyOf: ['admin.dsr.manage'] },
   { key: 'integration_events', anyOf: ['admin.integration_event.read'] },
   { key: 'audit_log', anyOf: ['admin.audit.read'] },

@@ -41,6 +41,7 @@ import {
 import { ToE164 } from '../shared/auth.dto';
 import { LanguageName, NotificationChannelName } from '../shared/common.dto';
 import { TenantTypeName } from '../shared/me.dto';
+import { PlatformRoleName, UserStatusName } from '../shared/status.enums';
 
 export class AdminTenantListQuery extends PageQuery {}
 
@@ -127,12 +128,7 @@ export class TenantCreatedDto {
   invitation!: InvitationCreatedDto;
 }
 
-export enum PlatformRoleName {
-  PlatformAdmin = 'platform_admin',
-  Support = 'support',
-  FieldEngineer = 'field_engineer',
-  Finance = 'finance',
-}
+export { PlatformRoleName };
 
 export class PlatformRoleDto {
   @ApiProperty({ enum: PlatformRoleName, enumName: 'PlatformRole', example: PlatformRoleName.Support })
@@ -152,8 +148,8 @@ export class PlatformUserDto {
   @ApiProperty({ example: FAKE.name })
   displayName!: string;
 
-  @ApiProperty({ example: 'active' })
-  status!: string;
+  @ApiProperty({ enum: UserStatusName, enumName: 'UserStatus', example: UserStatusName.Active })
+  status!: UserStatusName;
 
   @ApiProperty({ example: true })
   totpEnabled!: boolean;
@@ -317,6 +313,13 @@ export class FeatureFlagChangeDto {
 }
 
 export class TariffVersionDto {
+  @ApiProperty({
+    type: [String],
+    example: ['verify'],
+    description: 'Actions (`…/actions/{name}`) the caller may take now — never infer them from the status.',
+  })
+  nextActions!: string[];
+
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   id!: string;
 

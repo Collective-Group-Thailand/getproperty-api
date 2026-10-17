@@ -461,6 +461,26 @@ export class EnvironmentVariables {
   @Matches(/^(mqtts?|wss?):\/\//, { message: 'MQTT_PUBLIC_URL must be an mqtt(s):// or ws(s):// URL' })
   MQTT_PUBLIC_URL = 'mqtts://mqtt.getproperty.invalid:8883';
 
+  /** WebSocket broker URL for buildings whose network blocks 8883 (device protocol §1: WSS on 443). */
+  @IsString()
+  @Matches(/^wss?:\/\//, { message: 'MQTT_PUBLIC_WS_URL must be a ws(s):// URL' })
+  MQTT_PUBLIC_WS_URL = 'wss://mqtt.getproperty.invalid/mqtt';
+
+  /**
+   * Where the gateway's mTLS client certificate comes from on `/v1/device/*` (CR-002): `socket` = this process
+   * terminates TLS and requests client certificates; `pem_header` = a trusted proxy forwards the URL-encoded PEM in
+   * DEVICE_MTLS_HEADER (nginx `$ssl_client_escaped_cert`, Envoy); `sha256_header` = the proxy forwards the
+   * certificate's SHA-256 fingerprint (hex or base64; e.g. the GCP load balancer's `X-Client-Cert-Hash`). Header
+   * modes trust the header: the API must only be reachable through that proxy.
+   */
+  @IsIn(['socket', 'pem_header', 'sha256_header'])
+  DEVICE_MTLS_SOURCE: 'socket' | 'pem_header' | 'sha256_header' = 'socket';
+
+  /** Request header carrying the forwarded client certificate (pem_header / sha256_header). */
+  @IsString()
+  @Matches(/^[a-z0-9-]+$/, { message: 'DEVICE_MTLS_HEADER must be a lower-case header name' })
+  DEVICE_MTLS_HEADER = 'x-client-cert';
+
   // --- Files ----------------------------------------------------------------------------------------------
 
   /** ClamAV daemon (INSTREAM) for the virus-scan port; empty with INTEGRATIONS_MODE=real = scans fail closed. */
@@ -479,10 +499,17 @@ export class EnvironmentVariables {
   @Matches(/^https?:\/\/[^/]+$/, { message: 'PUBLIC_WEB_APP_URL must be an origin without a trailing slash' })
   PUBLIC_WEB_APP_URL = 'http://localhost:3001';
 
+  /** Staff PWA origin of getproperty-web (`STAFF_HOST`): invitations of the Staff role link here. */
+  @Matches(/^https?:\/\/[^/]+$/, {
+    message: 'PUBLIC_STAFF_APP_URL must be an origin without a trailing slash',
+  })
+  PUBLIC_STAFF_APP_URL = 'http://staff.localhost:3001';
+
+  /** getproperty-liff origin (its dev server listens on 3300). */
   @Matches(/^https?:\/\/[^/]+$/, {
     message: 'PUBLIC_RESIDENT_APP_URL must be an origin without a trailing slash',
   })
-  PUBLIC_RESIDENT_APP_URL = 'http://localhost:3002';
+  PUBLIC_RESIDENT_APP_URL = 'http://localhost:3300';
 
   /** Git commit of the running build (set by the image build); shown by `admin.system.info`. */
   @IsOptional()

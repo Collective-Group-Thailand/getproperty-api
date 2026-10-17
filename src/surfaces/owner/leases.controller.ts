@@ -586,7 +586,7 @@ export class OwnerLeasesController {
     example: {
       ...INVITATION_EXAMPLE,
       code: 'ABCD-EFGH-JKLM-NPQR',
-      url: 'https://liff.getproperty.invalid/invite?code=ABCD-EFGH-JKLM-NPQR',
+      url: 'https://liff.getproperty.invalid/link?code=ABCD-EFGH-JKLM-NPQR',
       qrPngDataUrl: `data:image/png;base64,${PNG_EXAMPLE}`,
     },
   })

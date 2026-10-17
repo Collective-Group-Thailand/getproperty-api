@@ -58,7 +58,7 @@ const AUDIENCE_DESCRIPTIONS: Record<Audience, string> = {
 const INFO_DESCRIPTION = `getproperty — บิลทำเอง เก็บเงินเอง ถูกกฎหมาย, operated by Collective Group (Thailand) (D-001).
 Rules: \`docs/contract/api-conventions.md\` (shared with getproperty-web and getproperty-edge); MQTT payloads: \`docs/contract/device-protocol.md\` / \`contract/device-protocol.json\` (D-130).
 
-- **Surfaces:** \`/v1/auth\`, \`/v1/owner\` (operator), \`/v1/staff\` (operator, Staff role), \`/v1/resident\` (resident), \`/v1/technician\` (technician, R2), \`/v1/admin\` (platform), \`/v1/device\` (device), \`/webhooks\`. A token is accepted only on its own audience's prefix.
+- **Surfaces:** \`/v1/auth\`, \`/v1/owner\` (operator), \`/v1/staff\` (operator, Staff role), \`/v1/resident\` (resident), \`/v1/technician\` (technician, R2), \`/v1/admin\` (platform), \`/v1/device\` (device), \`/webhooks\`, \`/v1/public\` (anonymous marketing reads). A token is accepted only on its own audience's prefix.
 - **Tenancy:** a *tenant* is the SaaS customer organisation (D-151). Every owner/staff request runs in one tenant (\`tenant:<uuid>\` scope or \`X-Tenant-Id\`); a cross-tenant id is a 404 (contract §8, D-152).
 - **Money:** decimal strings with exactly 2 decimals (\`"1234.50"\`) plus \`currency: "THB"\` on the object; never JSON numbers. Clients never compute prices (D-046).
 - **Meter quantities:** \`register\` and \`units\` are decimal strings with up to 3 decimals (\`"12345.678"\`), \`unit\` is \`kwh | m3\`; tariff \`pricePerUnit\` has up to 4 decimals.

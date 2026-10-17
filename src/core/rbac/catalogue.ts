@@ -208,6 +208,21 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     description: 'Install and provision devices (staff PWA, D-033)',
     surfaces: ['staff', 'owner'],
   },
+  {
+    key: 'device.read',
+    description: 'View devices, gateways and their health (D-033)',
+    surfaces: ['owner', 'staff'],
+  },
+  {
+    key: 'device.command',
+    description: 'Send read_now / restart / identify / upload_logs to a gateway (D-131)',
+    surfaces: ['owner', 'staff'],
+  },
+  {
+    key: 'utility_invoice.manage',
+    description: 'Enter or import the utility (MEA/PEA/MWA/PWA) invoices of a building (D-032)',
+    surfaces: ['owner'],
+  },
   // A2 billing & money
   { key: 'rate_plan.read', description: 'View rate plans', surfaces: ['owner'] },
   {
@@ -382,6 +397,8 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'reading.read',
     'reading.capture',
     'device.install',
+    'device.read',
+    'device.command',
     'service_request.read',
     'service_request.handle',
     'parcel.manage',
@@ -396,6 +413,8 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'lease.read',
     'deposit.read',
     'reading.read',
+    'device.read',
+    'utility_invoice.manage',
     'rate_plan.read',
     'invoice.read',
     'invoice.issue',

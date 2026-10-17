@@ -35,6 +35,7 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 
 import { iso, isoOrNull } from '../shared/mappers';
+import { inspectionActions } from '../shared/next-actions';
 import { ApiSurface, type Surface, SURFACES } from '../surfaces';
 import { ifMatchVersion } from './assets.mappers';
 import {
@@ -597,6 +598,7 @@ export class OwnerDepositsController {
 
 export function inspectionDto(i: InspectionRow): InspectionDto {
   return {
+    nextActions: inspectionActions(i.status),
     id: i.id,
     type: i.type as InspectionTypeName,
     status: i.status as InspectionStatusName,
@@ -625,6 +627,7 @@ export function inspectionDto(i: InspectionRow): InspectionDto {
 }
 
 const INSPECTION_EXAMPLE: InspectionDto = {
+  nextActions: ['complete'],
   id: FAKE.uuid,
   type: 'move_out' as InspectionTypeName,
   status: 'in_progress' as InspectionStatusName,

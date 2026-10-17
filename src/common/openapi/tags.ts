@@ -15,6 +15,11 @@ export const API_TAGS: Record<string, string> = {
   'admin.system': `${SURFACE_DESCRIPTIONS[SURFACES.admin]} System: ping and build information.`,
   'device.system': `${SURFACE_DESCRIPTIONS[SURFACES.device]} System: ping.`,
   'webhooks.system': `${SURFACE_DESCRIPTIONS[SURFACES.webhooks]} Placeholder until B4 (ping only).`,
+  'public.system': `${SURFACE_DESCRIPTIONS[SURFACES.public]} System: ping.`,
+  'public.plans':
+    'Price plans of the platform for the public pricing page (D-156; Proposed until the pilot).',
+  'public.utilityTariffs':
+    'The published utility ceiling per unit for the landing-page loss calculator (D-021a, D-140).',
   'auth.operator':
     'Operator sign-in (owner console, staff PWA): SMS OTP with invitation acceptance, email + password (+ TOTP when enabled) — contract §4, D-090.',
   'auth.resident':
@@ -24,6 +29,9 @@ export const API_TAGS: Record<string, string> = {
     'Collective staff sign-in: email + password + mandatory TOTP, enrolment on first sign-in (D-161).',
   'auth.sessions':
     'Refresh-token rotation with reuse detection, logout, JWKS (EdDSA) and the web-push public key (contract §4).',
+  'device.identity':
+    'Device JWT from the mTLS client certificate and certificate renewal (D-130, D-165; edge CR-002/CR-003).',
+  'device.logs': 'Log bundle uploads for the `upload_logs` command (D-131; edge CR-004).',
   'device.bootstrap':
     'Gateway first boot: provisioning code + CSR → certificate from the platform CA, device JWT and MQTT ACL (D-130).',
   'owner.me':
@@ -47,6 +55,13 @@ export const API_TAGS: Record<string, string> = {
   'owner.files': 'Uploads and signed downloads (contract §3 Files).',
   'owner.notifications': 'In-app inbox of the signed-in operator.',
   'owner.pushSubscriptions': 'Web push (VAPID) subscriptions of the browser.',
+  'owner.search':
+    'Global search of the owner console top bar: buildings, units, parties, leases, devices (D-152).',
+  'owner.telemetry': 'Real-user Web Vitals of the owner console, forwarded by its BFF (D-179).',
+  'staff.telemetry': 'Real-user Web Vitals of the staff PWA, forwarded by its BFF (D-179).',
+  'admin.telemetry': 'Real-user Web Vitals of the admin zone, forwarded by its BFF (D-179).',
+  'resident.pushSubscriptions': 'Web push (VAPID) subscriptions of the resident app (D-063).',
+  'resident.link': 'Link my login to a party from an invitation code (QR/SMS deep link, D-061).',
   'owner.realtime': 'Realtime auth and the server-sent events stream (contract §6).',
   'owner.properties': 'Properties: groups of buildings managed together (D-151).',
   'owner.buildings': 'Buildings the tenant owns, operates or holds a grant for (D-151, D-152).',

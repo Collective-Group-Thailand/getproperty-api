@@ -14,6 +14,9 @@ x509.cryptoProvider.set(webcrypto as unknown as Parameters<typeof x509.cryptoPro
 
 const EC_SIGN = { name: 'ECDSA', hash: 'SHA-256' } as const;
 
+/** Placeholder subject of the agent's first CSR (getproperty-edge CR-001); the CA replaces it. */
+export const PROVISIONING_CN = 'gw-provisioning';
+
 export interface IssuedCertificate {
   certificatePem: string;
   serialNumber: string;
@@ -81,6 +84,17 @@ export class DeviceCaService implements OnModuleInit {
     return this.caCert.toString('pem');
   }
 
+  /** Trust chain handed to gateways (also the anchor of the broker's server certificate): the platform CA. */
+  get caChainPem(): string {
+    return this.caCertificatePem;
+  }
+
+  /** SHA-256 of a PEM certificate's DER (the `smart.device_certificate.fingerprint_sha256` key). */
+  fingerprintOf(certificatePem: string): Buffer {
+    const cert = new x509.X509Certificate(certificatePem);
+    return createHash('sha256').update(Buffer.from(cert.rawData)).digest();
+  }
+
   async sign(csrPem: string, deviceId: string, now: Date): Promise<IssuedCertificate> {
     let csr: x509.Pkcs10CertificateRequest;
     try {
@@ -89,9 +103,11 @@ export class DeviceCaService implements OnModuleInit {
       throw this.invalid('not a PEM PKCS#10 certificate request');
     }
     if (!(await csr.verify())) throw this.invalid('the CSR signature does not verify');
+    // The CA sets the subject: the CSR carries either the final CN or the agent's placeholder (CR-001).
     const expectedCn = `gw-${deviceId}`;
     const cn = csr.subjectName.getField('CN')[0];
-    if (cn !== expectedCn) throw this.invalid(`the CSR subject CN must be ${expectedCn}`);
+    if (cn !== expectedCn && cn !== PROVISIONING_CN)
+      throw this.invalid(`the CSR subject CN must be ${expectedCn} or ${PROVISIONING_CN}`);
     const alg = csr.publicKey.algorithm as { name: string; namedCurve?: string; modulusLength?: number };
     const rsa = alg.name === 'RSASSA-PKCS1-v1_5' || alg.name === 'RSA-PSS';
     const okKey =

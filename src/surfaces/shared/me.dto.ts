@@ -1,6 +1,27 @@
 import { FAKE } from '@common/openapi/examples';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, Length, Matches } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
+import { IsEmail, IsEnum, IsIn, IsOptional, IsString, Length, Matches } from 'class-validator';
+
+import {
+  AdminMenuKey,
+  LeasePartyRoleName,
+  LeaseStatusName,
+  OccupancyRoleName,
+  OwnerMenuKey,
+  PlatformRoleName,
+  ResidentEntitlement,
+  StaffMenuKey,
+} from './status.enums';
+
+/** `core.user_account.language` values (th, en; residents also my, km, lo, zh — D-064). */
+export enum UserLanguageName {
+  Th = 'th',
+  En = 'en',
+  My = 'my',
+  Km = 'km',
+  Lo = 'lo',
+  Zh = 'zh',
+}
 
 export enum TenantTypeName {
   Apartment = 'apartment',
@@ -43,8 +64,13 @@ export class MeUserDto {
   @ApiProperty({ type: String, nullable: true, example: FAKE.email })
   email!: string | null;
 
-  @ApiProperty({ example: 'th', description: 'th | en (resident surface also my, km, lo, zh in R2, D-064)' })
-  language!: string;
+  @ApiProperty({
+    enum: UserLanguageName,
+    enumName: 'ResidentLanguage',
+    example: UserLanguageName.Th,
+    description: 'th | en (resident surface also my, km, lo, zh in R2, D-064)',
+  })
+  language!: UserLanguageName;
 
   @ApiProperty({ example: true, description: 'A LINE identity is linked.' })
   lineLinked!: boolean;
@@ -120,18 +146,25 @@ export class OperatorMeDto {
   })
   currentTenant!: CurrentTenantDto | null;
 
-  @ApiProperty({ type: [String], example: ['owner'] })
-  roles!: string[];
+  @ApiProperty({
+    enum: TenantRoleName,
+    enumName: 'TenantRole',
+    isArray: true,
+    example: [TenantRoleName.Owner],
+  })
+  roles!: TenantRoleName[];
 
   @ApiProperty({ type: [String], example: ['tenant.read', 'invoice.read'] })
   permissions!: string[];
 
   @ApiProperty({
-    type: [String],
-    example: ['dashboard', 'buildings', 'invoices'],
-    description: 'Menu entitlements (keys).',
+    enum: OwnerMenuKey,
+    enumName: 'OwnerMenuKey',
+    isArray: true,
+    example: [OwnerMenuKey.Dashboard, OwnerMenuKey.Buildings, OwnerMenuKey.Invoices],
+    description: 'Menu entitlements of the owner console (keys of the web routes).',
   })
-  menu!: string[];
+  menu!: OwnerMenuKey[];
 
   @ApiProperty({
     type: 'object',
@@ -145,6 +178,18 @@ export class OperatorMeDto {
 
   @ApiProperty({ type: [String], example: [`tenant:${FAKE.tenantId}`] })
   scopes!: string[];
+}
+
+/** `GET /v1/staff/me`: the operator view with the staff PWA's menu keys. */
+export class StaffMeDto extends OmitType(OperatorMeDto, ['menu'] as const) {
+  @ApiProperty({
+    enum: StaffMenuKey,
+    enumName: 'StaffMenuKey',
+    isArray: true,
+    example: [StaffMenuKey.Readings, StaffMenuKey.ReadingRounds, StaffMenuKey.Installs],
+    description: 'Menu entitlements of the staff PWA.',
+  })
+  menu!: StaffMenuKey[];
 }
 
 export class ResidentUnitDto {
@@ -167,10 +212,12 @@ export class ResidentUnitDto {
   tenantName!: string;
 
   @ApiProperty({
-    example: 'tenant',
+    enum: OccupancyRoleName,
+    enumName: 'OccupancyRole',
+    example: OccupancyRoleName.Tenant,
     description: 'Occupancy role (tenant = lessee, co_tenant, owner_occupier, family, staff).',
   })
-  role!: string;
+  role!: OccupancyRoleName;
 
   @ApiProperty({ format: 'date', example: FAKE.date })
   validFrom!: string;
@@ -202,8 +249,8 @@ export class ResidentLeaseSummaryDto {
   @ApiProperty({ type: String, nullable: true, example: 'CTR-2026-00001' })
   number!: string | null;
 
-  @ApiProperty({ example: 'active', description: 'LeaseStatus.' })
-  status!: string;
+  @ApiProperty({ enum: LeaseStatusName, enumName: 'LeaseStatus', example: LeaseStatusName.Active })
+  status!: LeaseStatusName;
 
   @ApiProperty({ format: 'uuid', example: FAKE.tenantId })
   tenantId!: string;
@@ -217,8 +264,13 @@ export class ResidentLeaseSummaryDto {
   @ApiProperty({ example: 'อาคาร A' })
   buildingName!: string;
 
-  @ApiProperty({ example: 'lessee', description: 'My role on the lease (LeasePartyRole).' })
-  role!: string;
+  @ApiProperty({
+    enum: LeasePartyRoleName,
+    enumName: 'LeasePartyRole',
+    example: LeasePartyRoleName.Lessee,
+    description: 'My role on the lease.',
+  })
+  role!: LeasePartyRoleName;
 }
 
 export class ResidentMeDto {
@@ -240,8 +292,72 @@ export class ResidentMeDto {
   @ApiProperty({ example: true, description: 'Every required consent purpose is granted (D-025).' })
   consentComplete!: boolean;
 
+  @ApiProperty({
+    enum: ResidentEntitlement,
+    enumName: 'ResidentEntitlement',
+    isArray: true,
+    example: [ResidentEntitlement.Bills, ResidentEntitlement.Usage, ResidentEntitlement.Lease],
+    description:
+      'Bottom navigation and home tiles (D-063): `bills` and `lease` with a lease, `usage` where an IoT meter serves one of my units, `service_requests` / `announcements` / `parcels` where the tenant has the module (feature flags).',
+  })
+  entitlements!: ResidentEntitlement[];
+
   @ApiProperty({ type: [String], example: ['unit:3b241101-e2bb-4255-8caf-4136c566a962'] })
   scopes!: string[];
+}
+
+export class ResidentMeUpdateDto {
+  @ApiProperty({
+    enum: UserLanguageName,
+    enumName: 'ResidentLanguage',
+    example: UserLanguageName.Th,
+    description: 'Language of LINE messages and documents for me (D-064).',
+  })
+  @IsEnum(UserLanguageName)
+  language!: UserLanguageName;
+}
+
+export class ResidentLinkDto {
+  @ApiProperty({
+    example: 'ABCD-EFGH-JKLM-NPQR',
+    description: 'The invitation code from the invite QR / SMS deep link (`liff.state=/link?code=…`).',
+  })
+  @IsString()
+  @Length(8, 40)
+  code!: string;
+
+  @ApiPropertyOptional({
+    enum: ['line_qr', 'sms', 'link'],
+    enumName: 'LeaseInvitationChannel',
+    example: 'line_qr',
+    description: 'How the code reached me (analytics only).',
+  })
+  @IsOptional()
+  @IsIn(['line_qr', 'sms', 'link'])
+  via?: 'line_qr' | 'sms' | 'link';
+}
+
+export class ResidentLinkedDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.tenantId })
+  tenantId!: string;
+
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  leaseId!: string;
+
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  partyId!: string;
+
+  @ApiProperty({
+    type: () => [ResidentUnitDto],
+    description: 'The units I now occupy (empty until the lease starts).',
+  })
+  units!: ResidentUnitDto[];
+
+  @ApiProperty({
+    example: true,
+    description: 'Refresh the token to receive the new `lease:`/`unit:` scopes (the BFF rotates on refresh).',
+  })
+  refreshRequired!: boolean;
 }
 
 export class TechnicianMeDto {
@@ -259,14 +375,24 @@ export class AdminMeDto {
   @ApiProperty({ type: () => MeUserDto })
   user!: MeUserDto;
 
-  @ApiProperty({ type: [String], example: ['platform_admin'] })
-  roles!: string[];
+  @ApiProperty({
+    enum: PlatformRoleName,
+    enumName: 'PlatformRole',
+    isArray: true,
+    example: [PlatformRoleName.PlatformAdmin],
+  })
+  roles!: PlatformRoleName[];
 
   @ApiProperty({ type: [String], example: ['admin.tenant.read'] })
   permissions!: string[];
 
-  @ApiProperty({ type: [String], example: ['tenants', 'utility_tariffs'] })
-  menu!: string[];
+  @ApiProperty({
+    enum: AdminMenuKey,
+    enumName: 'AdminMenuKey',
+    isArray: true,
+    example: [AdminMenuKey.Tenants, AdminMenuKey.UtilityTariffs],
+  })
+  menu!: AdminMenuKey[];
 
   @ApiProperty({
     type: 'object',

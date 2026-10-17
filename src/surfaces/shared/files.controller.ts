@@ -31,11 +31,12 @@ import {
   FilePresignedDto,
 } from './files.dto';
 import { iso } from './mappers';
+import { DocumentKindName } from './status.enums';
 
 export function fileDto(d: Document): FileDto {
   return {
     id: d.id,
-    kind: d.kind,
+    kind: d.kind as DocumentKindName,
     scopeType: d.scopeType as DocumentScopeName,
     scopeId: d.scopeId,
     buildingId: d.buildingId,

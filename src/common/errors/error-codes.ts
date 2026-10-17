@@ -83,6 +83,7 @@ export const ERROR_CODES = {
   'device.provisioning_code_invalid': HttpStatus.UNAUTHORIZED,
   'device.csr_invalid': HttpStatus.UNPROCESSABLE_ENTITY,
   'device.invalid_state': HttpStatus.CONFLICT,
+  'device.certificate_invalid': HttpStatus.UNAUTHORIZED,
   'pagination.cursor_invalid': HttpStatus.BAD_REQUEST,
   'realtime.token_invalid': HttpStatus.UNAUTHORIZED,
   'tenant.read_only': HttpStatus.FORBIDDEN,

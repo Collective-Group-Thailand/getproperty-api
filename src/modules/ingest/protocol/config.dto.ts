@@ -12,11 +12,20 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { JSONSchema } from 'class-validator-jsonschema';
 
-import { BusParity, BusType, MeterUnit, RegisterMap } from './enums';
+import {
+  BusParity,
+  BusType,
+  MeterUnit,
+  ModbusFunction,
+  RegisterDataType,
+  RegisterMap,
+  WordOrder,
+} from './enums';
 import {
   BUS_ID_PATTERN,
   BUS_ID_PATTERN_SOURCE,
@@ -59,6 +68,62 @@ export class BusConfig {
   @IsOptional()
   @IsEnum(BusParity)
   parity?: BusParity;
+}
+
+/** One Modbus register of a custom register map (CR-005). */
+@JSONSchema({ description: 'A Modbus register: address, function, data type, word order and decimal scale.' })
+export class RegisterDef {
+  @JSONSchema({ description: 'Register address (0-based protocol address)' })
+  @IsInt()
+  @Min(0)
+  @Max(65_535)
+  address!: number;
+
+  @IsEnum(ModbusFunction)
+  function!: ModbusFunction;
+
+  @IsEnum(RegisterDataType)
+  dataType!: RegisterDataType;
+
+  @IsEnum(WordOrder)
+  wordOrder!: WordOrder;
+
+  @JSONSchema({
+    description: 'Decimal factor applied to the raw value',
+    examples: ['0.01'],
+    pattern: SCALE_PATTERN_SOURCE,
+  })
+  @Matches(SCALE_PATTERN)
+  scale!: string;
+}
+
+/**
+ * Register map of a meter model without a built-in driver map (`registerMap = custom`, CR-005). Only `energy` (the
+ * cumulative register, D-030) is required; the instant values feed `extra` and are never billed.
+ */
+@JSONSchema({
+  description:
+    'Custom Modbus register map (CR-005): `energy` = the cumulative register in kWh after scale; the others are optional instant values for `extra`.',
+})
+export class CustomRegisterMap {
+  @ValidateNested()
+  @Type(() => RegisterDef)
+  energy!: RegisterDef;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RegisterDef)
+  voltage?: RegisterDef;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RegisterDef)
+  current?: RegisterDef;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RegisterDef)
+  power?: RegisterDef;
 }
 
 /** The binding of one meter to a bus and a driver (D-013, D-033, D-131). */
@@ -111,6 +176,12 @@ export class MeterConfig {
   @IsOptional()
   @IsEnum(RegisterMap)
   registerMap?: RegisterMap;
+
+  @JSONSchema({ description: 'Present exactly when `registerMap` is `custom` (CR-005)' })
+  @ValidateIf((o: MeterConfig) => o.registerMap === RegisterMap.Custom || o.customRegisterMap !== undefined)
+  @ValidateNested()
+  @Type(() => CustomRegisterMap)
+  customRegisterMap?: CustomRegisterMap;
 
   @JSONSchema({
     description: 'Decimal scale applied to the raw register value',

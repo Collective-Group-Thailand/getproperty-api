@@ -452,7 +452,8 @@ export class AuthService {
       phone,
       send: eligible,
       language,
-      vars: { link: `${residentUrl}/auth/otp` },
+      // The challenge id lets the link complete the sign-in in another browser; the code stays in the SMS text.
+      vars: { link: `${residentUrl}/auth/otp?c={challengeId}` },
     });
   }
 
