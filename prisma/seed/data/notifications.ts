@@ -1,6 +1,7 @@
 /**
- * Notification template skeletons (B1.3 builds the renderer): three LINE templates for residents, th + en,
- * version 1, published. Handlebars text; LINE Flex layouts replace them in B4.
+ * Notification templates (B1.3): three LINE templates for residents (Handlebars text; LINE Flex layouts replace
+ * them in B4) and the operator templates of the B1.3 notifiable events (in-app + LINE, th + en). Version 1,
+ * published. Later versions are made in the admin zone (never by re-seeding).
  */
 export interface TemplateSeed {
   key: string;
@@ -9,6 +10,100 @@ export interface TemplateSeed {
   description: string;
   versions: { language: 'th' | 'en'; subject: string | null; body: string }[];
 }
+
+/** Operator events of B1.3 (`src/core/notifications/notifiable-events.ts`): th/en text per channel. */
+const OPERATOR_EVENTS: { key: string; description: string; th: [string, string]; en: [string, string] }[] = [
+  {
+    key: 'tenant.bank_account.changed',
+    description: 'Owner: receiving bank account changed (D-091)',
+    th: [
+      'บัญชีรับเงินถูกเปลี่ยน',
+      'บัญชีรับเงินของ {{tenant.name}} ถูกเปลี่ยนเป็นบัญชี {{account.masked}} แล้ว หากไม่ได้ทำรายการนี้ โปรดติดต่อทีมงานทันที',
+    ],
+    en: [
+      'Receiving bank account changed',
+      'The receiving bank account of {{tenant.name}} is now {{account.masked}}. If this was not you, contact us at once.',
+    ],
+  },
+  {
+    key: 'support_grant.requested',
+    description: 'Owner: Collective support asks for temporary access (D-090)',
+    th: [
+      'ทีมซัพพอร์ตขอสิทธิ์เข้าถึงชั่วคราว',
+      'ทีมซัพพอร์ตขอสิทธิ์เข้าถึงข้อมูลของ {{tenant.name}} ชั่วคราว เหตุผล: {{reason}} — อนุมัติหรือปฏิเสธได้ในหน้าตั้งค่า',
+    ],
+    en: [
+      'Support asks for temporary access',
+      'Support asks for temporary access to {{tenant.name}}. Reason: {{reason}} — approve or deny in settings.',
+    ],
+  },
+  {
+    key: 'workflow.sla_breached',
+    description: 'Owner/Manager: a workflow passed its SLA (D-159)',
+    th: [
+      'งานเกินกำหนดเวลา',
+      'งาน {{workflow.definitionKey}} ของ {{tenant.name}} เกินกำหนดเวลาแล้ว (สถานะ {{workflow.state}})',
+    ],
+    en: [
+      'Task overdue',
+      'A {{workflow.definitionKey}} task of {{tenant.name}} is past its due time (state {{workflow.state}}).',
+    ],
+  },
+  {
+    key: 'dsr.received',
+    description: 'Owner: a PDPA data subject request arrived (D-025)',
+    th: [
+      'มีคำขอใช้สิทธิ์ข้อมูลส่วนบุคคล',
+      'มีคำขอ {{dsr.kind}} ตาม PDPA ถึง {{tenant.name}} ต้องดำเนินการภายใน {{dsr.dueAt}}',
+    ],
+    en: [
+      'PDPA request received',
+      'A PDPA {{dsr.kind}} request for {{tenant.name}} must be handled by {{dsr.dueAt}}.',
+    ],
+  },
+];
+
+const operatorTemplates = (): TemplateSeed[] =>
+  OPERATOR_EVENTS.flatMap((e) =>
+    (['in_app', 'line'] as const).map((channel) => ({
+      key: e.key,
+      channel,
+      audience: 'owner' as const,
+      description: e.description,
+      versions: [
+        { language: 'th' as const, subject: e.th[0], body: e.th[1] },
+        { language: 'en' as const, subject: e.en[0], body: e.en[1] },
+      ],
+    })),
+  );
+
+/**
+ * Platform default routing matrix (event × audience × channel). Operator events go in-app and by LINE (urgent ones
+ * ignore quiet hours); resident billing messages go by LINE. Tenants override resident routes (B1.3).
+ */
+export const NOTIFICATION_ROUTES: {
+  eventType: string;
+  audience: string;
+  channel: string;
+  urgent: boolean;
+}[] = [
+  ...OPERATOR_EVENTS.flatMap((e) =>
+    (e.key === 'workflow.sla_breached' ? ['owner', 'manager'] : ['owner']).flatMap((audience) =>
+      (['in_app', 'line'] as const).map((channel) => ({
+        eventType: e.key,
+        audience,
+        channel,
+        urgent: e.key === 'tenant.bank_account.changed' || e.key === 'support_grant.requested',
+      })),
+    ),
+  ),
+  ...['invoice.issued', 'invoice.reminder', 'receipt.issued'].map((eventType) => ({
+    eventType,
+    audience: 'resident',
+    channel: 'line',
+    urgent: false,
+  })),
+];
 
 export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
   {
@@ -65,4 +160,5 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
       },
     ],
   },
+  ...operatorTemplates(),
 ];

@@ -23,7 +23,6 @@ const shared = {
     '^@common/(.*)$': '<rootDir>/src/common/$1',
     '^@config/(.*)$': '<rootDir>/src/config/$1',
     '^@database/(.*)$': '<rootDir>/src/database/$1',
-    '^@platform/(.*)$': '<rootDir>/src/platform/$1',
     '^@modules/(.*)$': '<rootDir>/src/modules/$1',
     '^@core/(.*)$': '<rootDir>/src/core/$1',
     '^@integrations/(.*)$': '<rootDir>/src/integrations/$1',

@@ -29,7 +29,6 @@
       "@common/*": ["./src/common/*"],
       "@config/*": ["./src/config/*"],
       "@database/*": ["./src/database/*"],
-      "@platform/*": ["./src/platform/*"],
       "@modules/*": ["./src/modules/*"],
       "@core/*": ["./src/core/*"],
       "@integrations/*": ["./src/integrations/*"],

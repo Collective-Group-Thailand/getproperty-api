@@ -8,6 +8,7 @@ import { applyDecorators, createParamDecorator, SetMetadata } from '@nestjs/comm
 import { type Audience } from '../../surfaces/surfaces';
 
 export const IS_PUBLIC = 'getproperty:public';
+export const TENANT_OPTIONAL = 'getproperty:tenant-optional';
 export const OPTIONAL_AUTH = 'getproperty:optional-auth';
 
 /** No token required on a protected surface (documented as `security: []`). */
@@ -45,3 +46,9 @@ export const CurrentTenant = createParamDecorator((_data: unknown): TenantContex
 
 /** Documents the optional `X-Tenant-Id` header and its problems on a tenant-scoped operation. */
 export const TenantScoped = () => ApiTenantContext();
+
+/**
+ * Operator route that also answers without a tenant context when the operator belongs to several tenants and sent no
+ * `X-Tenant-Id` (e.g. `/me`, which lists the tenants to choose from).
+ */
+export const TenantOptional = () => SetMetadata(TENANT_OPTIONAL, true);

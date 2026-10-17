@@ -17,6 +17,8 @@ import {
   type Audience,
   AUDIENCES,
   SECURITY_SCHEMES,
+  type Surface,
+  SURFACE_AUDIENCE,
   SURFACE_EXTENSION,
   SURFACE_PREFIX,
   SURFACES,
@@ -148,6 +150,11 @@ export function enrichDocument(document: OpenAPIObject): OpenAPIObject {
       if (isPublic) operation.security = [];
       if (optionalAudience) operation.security = [{}, { [SECURITY_SCHEMES[optionalAudience]]: [] }];
       if (throttled) errors.add('http.too_many_requests');
+      // Every operation of an authenticated surface can answer 401 (no/invalid token) and 403 (wrong audience,
+      // missing permission) — B1.3 guards (contract §4, §8).
+      if (!isPublic && surface && SURFACE_AUDIENCE[surface as Surface])
+        for (const code of ['auth.unauthenticated', 'auth.forbidden', 'auth.wrong_audience'] as const)
+          errors.add(code);
       if (compliance?.length) operation[PUBLISHED_EXT.complianceRules] = [...compliance].sort();
 
       operation.parameters = [

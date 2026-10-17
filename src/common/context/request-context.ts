@@ -18,8 +18,10 @@ export interface RequestContextStore {
   ip?: string;
   userAgent?: string;
   actor?: Actor;
-  /** Set by `TenantContextMiddleware` on the owner and staff surfaces (contract §8). */
+  /** Set by the auth guard on the owner and staff surfaces (contract §8), or by services from the path. */
   tenant?: TenantContext;
+  /** Effective permission keys of the actor in this request (set by the permission guard, D-091). */
+  permissions?: ReadonlySet<string>;
 }
 
 const storage = new AsyncLocalStorage<RequestContextStore>();
@@ -45,6 +47,15 @@ export const RequestContext = {
   setActor(actor: Actor): void {
     const store = storage.getStore();
     if (store) store.actor = actor;
+  },
+
+  permissions(): ReadonlySet<string> {
+    return storage.getStore()?.permissions ?? new Set<string>();
+  },
+
+  setPermissions(permissions: ReadonlySet<string>): void {
+    const store = storage.getStore();
+    if (store) store.permissions = permissions;
   },
 
   setTenant(tenant: TenantContext | undefined): void {

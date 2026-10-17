@@ -4,8 +4,14 @@
       "title": "Bad request",
       "detail": "The request is invalid. Check the data and try again."
     },
-    "malformed_json": { "title": "Malformed JSON", "detail": "The request body is not valid JSON." },
-    "not_found": { "title": "Not found", "detail": "The requested resource or route was not found." },
+    "malformed_json": {
+      "title": "Malformed JSON",
+      "detail": "The request body is not valid JSON."
+    },
+    "not_found": {
+      "title": "Not found",
+      "detail": "The requested resource or route was not found."
+    },
     "method_not_allowed": {
       "title": "Method not allowed",
       "detail": "This route does not support the requested method."
@@ -26,11 +32,20 @@
       "title": "Too many requests",
       "detail": "Too many requests. Please wait a moment and try again."
     },
-    "error": { "title": "Request failed", "detail": "The request could not be completed." }
+    "error": {
+      "title": "Request failed",
+      "detail": "The request could not be completed."
+    }
   },
   "auth": {
-    "unauthenticated": { "title": "Authentication required", "detail": "Please sign in to continue." },
-    "forbidden": { "title": "Forbidden", "detail": "You do not have permission to perform this action." },
+    "unauthenticated": {
+      "title": "Authentication required",
+      "detail": "Please sign in to continue."
+    },
+    "forbidden": {
+      "title": "Forbidden",
+      "detail": "You do not have permission to perform this action."
+    },
     "wrong_audience": {
       "title": "Wrong token audience",
       "detail": "This token cannot be used on this part of the API."
@@ -38,20 +53,90 @@
     "scope_unavailable": {
       "title": "Scope unavailable",
       "detail": "The token has no scope for the requested organisation, building, unit or lease."
+    },
+    "invalid_credentials": {
+      "title": "Sign-in failed",
+      "detail": "The email, password or code is not correct."
+    },
+    "account_locked": {
+      "title": "Account temporarily locked",
+      "detail": "Too many failed attempts. Try again later."
+    },
+    "account_disabled": {
+      "title": "Account disabled",
+      "detail": "This account is disabled. Contact your administrator."
+    },
+    "otp_invalid": {
+      "title": "Incorrect code",
+      "detail": "The code is not correct. Check the SMS and try again."
+    },
+    "otp_expired": {
+      "title": "Code expired",
+      "detail": "This code has expired or was already used. Request a new one."
+    },
+    "otp_attempts_exceeded": {
+      "title": "Too many wrong codes",
+      "detail": "Too many wrong codes for this request. Request a new code."
+    },
+    "otp_rate_limited": {
+      "title": "Please wait before requesting another code",
+      "detail": "A code was sent recently. Wait before requesting another one."
+    },
+    "totp_required": {
+      "title": "Authenticator code required",
+      "detail": "Enter the 6-digit code from your authenticator app."
+    },
+    "totp_invalid": {
+      "title": "Incorrect authenticator code",
+      "detail": "The authenticator code is not correct."
+    },
+    "totp_enrollment_required": {
+      "title": "Set up two-factor authentication",
+      "detail": "Platform accounts must enrol an authenticator app before signing in. Use the enrolment token."
+    },
+    "refresh_invalid": {
+      "title": "Session expired",
+      "detail": "Your session has expired. Please sign in again."
+    },
+    "refresh_reused": {
+      "title": "Session ended for security",
+      "detail": "This refresh token was already used; every session of this sign-in was ended. Please sign in again."
+    },
+    "line_token_invalid": {
+      "title": "LINE sign-in failed",
+      "detail": "The LINE token could not be verified. Open the app from LINE again."
+    },
+    "no_access": {
+      "title": "No access",
+      "detail": "This account has no access to this part of getproperty yet."
+    },
+    "weak_password": {
+      "title": "Password too weak",
+      "detail": "Use 12 to 128 characters."
     }
   },
   "validation": {
-    "failed": { "title": "Validation failed", "detail": "Some fields are invalid. See errors for details." }
+    "failed": {
+      "title": "Validation failed",
+      "detail": "Some fields are invalid. See errors for details."
+    }
   },
   "tenant": {
     "context_required": {
       "title": "Organisation required",
       "detail": "Choose the organisation with the X-Tenant-Id header."
     },
-    "context_invalid": { "title": "Invalid organisation id", "detail": "X-Tenant-Id must be a uuid." },
+    "context_invalid": {
+      "title": "Invalid organisation id",
+      "detail": "X-Tenant-Id must be a uuid."
+    },
     "not_in_scope": {
       "title": "Organisation not accessible",
       "detail": "Your account has no access to this organisation."
+    },
+    "read_only": {
+      "title": "Tenant is read-only",
+      "detail": "The subscription is suspended: data can be viewed and exported but not changed (D-082)."
     }
   },
   "idempotency": {
@@ -59,7 +144,10 @@
       "title": "Idempotency-Key required",
       "detail": "This operation requires an Idempotency-Key header (uuid)."
     },
-    "key_invalid": { "title": "Invalid Idempotency-Key", "detail": "Idempotency-Key must be a uuid." },
+    "key_invalid": {
+      "title": "Invalid Idempotency-Key",
+      "detail": "Idempotency-Key must be a uuid."
+    },
     "key_reused": {
       "title": "Idempotency-Key reused",
       "detail": "This Idempotency-Key was already used with a different request body."
@@ -95,12 +183,28 @@
     "no_power_cutoff": {
       "title": "Power cut-off not allowed",
       "detail": "The platform never cuts power or access for arrears (D-024)."
+    },
+    "acknowledgement_required": {
+      "title": "Acknowledgement required",
+      "detail": "The value exceeds a legal reference. Read the warning and acknowledge it to continue."
     }
   },
   "device": {
     "invalid_payload": {
       "title": "Invalid device payload",
       "detail": "The gateway payload does not match the device protocol."
+    },
+    "provisioning_code_invalid": {
+      "title": "Invalid provisioning code",
+      "detail": "The provisioning code is wrong, expired or already used."
+    },
+    "csr_invalid": {
+      "title": "Invalid certificate request",
+      "detail": "The certificate signing request is not valid for this gateway."
+    },
+    "invalid_state": {
+      "title": "Device cannot change",
+      "detail": "The device is not in a state that allows this action."
     }
   },
   "provider": {
@@ -119,6 +223,150 @@
     "unexpected": {
       "title": "Unexpected error",
       "detail": "Something went wrong on our side. The request id helps us find it."
+    }
+  },
+  "invitation": {
+    "not_found": {
+      "title": "Invitation not found",
+      "detail": "The invitation code is not valid."
+    },
+    "not_pending": {
+      "title": "Invitation no longer valid",
+      "detail": "This invitation was already used, revoked or has expired."
+    }
+  },
+  "membership": {
+    "last_owner": {
+      "title": "The last owner cannot leave",
+      "detail": "A tenant must keep at least one active owner."
+    },
+    "already_member": {
+      "title": "Already a member",
+      "detail": "This person is already a member of the tenant."
+    }
+  },
+  "support": {
+    "grant_required": {
+      "title": "Support grant required",
+      "detail": "Support staff need an active, time-boxed support grant approved for this tenant."
+    },
+    "invalid_transition": {
+      "title": "Support grant cannot change",
+      "detail": "The support grant is not in a state that allows this action."
+    }
+  },
+  "bank_account": {
+    "invalid_state": {
+      "title": "Bank account cannot change",
+      "detail": "The bank account is not waiting for OTP confirmation."
+    },
+    "owner_phone_missing": {
+      "title": "Owner phone required",
+      "detail": "Add a verified phone number to your account to confirm bank account changes by OTP."
+    }
+  },
+  "settings": {
+    "unknown_key": {
+      "title": "Unknown setting",
+      "detail": "This setting does not exist."
+    },
+    "not_editable": {
+      "title": "Setting not editable here",
+      "detail": "This setting cannot be changed at this scope or by this role."
+    },
+    "invalid_value": {
+      "title": "Invalid setting value",
+      "detail": "The value does not match the type of the setting."
+    },
+    "backdated": {
+      "title": "Settings cannot be backdated",
+      "detail": "A new value takes effect now or in the future, never in the past (ADR-0004)."
+    }
+  },
+  "tariff": {
+    "not_found": {
+      "title": "No published utility tariff",
+      "detail": "No verified and published utility tariff is in force on that date."
+    },
+    "invalid_state": {
+      "title": "Tariff version cannot change",
+      "detail": "The tariff version is not in a state that allows this action."
+    },
+    "same_verifier": {
+      "title": "A second person must verify",
+      "detail": "The person who entered a tariff version cannot verify it (maker-checker)."
+    },
+    "invalid_structure": {
+      "title": "Invalid tariff structure",
+      "detail": "The tariff structure is not valid."
+    }
+  },
+  "workflow": {
+    "invalid_transition": {
+      "title": "Action not allowed in this state",
+      "detail": "This action is not allowed in the current state."
+    },
+    "guard_failed": {
+      "title": "Action conditions not met",
+      "detail": "The conditions for this action are not met yet."
+    }
+  },
+  "document": {
+    "not_uploaded": {
+      "title": "File not uploaded yet",
+      "detail": "The file has not been uploaded to storage yet."
+    },
+    "size_mismatch": {
+      "title": "File does not match",
+      "detail": "The uploaded file does not match the declared size or checksum."
+    },
+    "scan_pending": {
+      "title": "File is being checked",
+      "detail": "The file is still being scanned for viruses. Try again shortly."
+    },
+    "infected": {
+      "title": "File blocked",
+      "detail": "The file failed the virus scan and cannot be downloaded."
+    },
+    "type_not_allowed": {
+      "title": "File type not allowed",
+      "detail": "This file type is not allowed for this kind of document."
+    }
+  },
+  "grant": {
+    "not_allowed": {
+      "title": "Grant not allowed",
+      "detail": "Only the owner or operator tenant of a building can grant access to it."
+    }
+  },
+  "consent": {
+    "unknown_purpose": {
+      "title": "Unknown consent purpose",
+      "detail": "The consent purpose or version does not exist."
+    }
+  },
+  "outbox": {
+    "not_replayable": {
+      "title": "Cannot replay",
+      "detail": "Only failed or dead messages can be replayed."
+    }
+  },
+  "notification": {
+    "template_invalid": {
+      "title": "Template cannot be rendered",
+      "detail": "The template does not compile or render with its sample data."
+    }
+  },
+  "pagination": {
+    "cursor_invalid": {
+      "title": "Invalid cursor",
+      "detail": "The cursor is malformed or expired."
+    }
+  },
+  "realtime": {
+    "token_invalid": {
+      "title": "Realtime token invalid",
+      "detail": "The realtime token is invalid or expired."
     }
   }
 }

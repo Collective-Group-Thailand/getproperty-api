@@ -21,6 +21,10 @@ export interface UserActor {
    * `lease:<uuid>` / `unit:<uuid>` (residents), `work_order:<uuid>` (technicians).
    */
   scopes: readonly string[];
+  /** Platform Support reading into a tenant under a support grant (D-090); audited with every read. */
+  supportGrantId?: string;
+  /** Authentication methods of the session (`otp`, `pwd`, `totp`, `line`). */
+  amr?: readonly string[];
 }
 
 /** A gateway authenticated by its client certificate / device JWT (contract §7, D-130). */
@@ -60,4 +64,47 @@ export function actorKey(actor: Actor | undefined): string {
     case 'webhook':
       return `webhook:${actor.provider}`;
   }
+}
+
+/** The actor as stored in `platform.audit_log.actor` / `platform.domain_event.actor` (schema-design §4.8). */
+export type ActorEnvelope =
+  | {
+      type: 'user';
+      id: string;
+      audience: UserActor['audience'];
+      sessionId: string | null;
+      supportGrantId: string | null;
+    }
+  | { type: 'device'; id: string; tenantId: string; buildingId: string }
+  | { type: 'system'; name: string }
+  | { type: 'webhook'; provider: string };
+
+export function actorEnvelope(actor: Actor | undefined): ActorEnvelope {
+  if (!actor) return { type: 'system', name: 'anonymous' };
+  switch (actor.type) {
+    case 'user':
+      return {
+        type: 'user',
+        id: actor.publicId,
+        audience: actor.audience,
+        sessionId: actor.sessionId ?? null,
+        supportGrantId: actor.supportGrantId ?? null,
+      };
+    case 'device':
+      return { type: 'device', id: actor.publicId, tenantId: actor.tenantId, buildingId: actor.buildingId };
+    case 'system':
+      return { type: 'system', name: actor.name };
+    case 'webhook':
+      return { type: 'webhook', provider: actor.provider };
+  }
+}
+
+/** The uuid of a user or device actor (`audit_log.actor_id`, `created_by`); null for system/webhook actors. */
+export function actorIdOf(actor: Actor | undefined): string | null {
+  return actor?.type === 'user' || actor?.type === 'device' ? actor.publicId : null;
+}
+
+/** The user id of a user actor, else null (`created_by` columns reference core.user_account logically). */
+export function userIdOf(actor: Actor | undefined): string | null {
+  return actor?.type === 'user' ? actor.publicId : null;
 }

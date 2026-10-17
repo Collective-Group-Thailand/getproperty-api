@@ -24,11 +24,12 @@ export function validateEnv(raw: Record<string, unknown>): EnvironmentVariables 
     Object.keys(error.constraints ?? {}).map((rule) => `${error.property}: failed "${rule}"`),
   );
 
-  if (env.DATA_STORES_MODE === DataStoresMode.Real) {
-    for (const key of ['DATABASE_URL', 'REDIS_URL', 'MQTT_URL'] as const) {
-      if (!env[key]) problems.push(`${key}: required when DATA_STORES_MODE=real`);
-    }
-  }
+  if (env.DATA_STORES_MODE === DataStoresMode.Real && !env.DATABASE_URL)
+    problems.push('DATABASE_URL: required when DATA_STORES_MODE=real');
+  if ((env.REDIS_MODE ?? env.DATA_STORES_MODE) === DataStoresMode.Real && !env.REDIS_URL)
+    problems.push('REDIS_URL: required when Redis is real (DATA_STORES_MODE / REDIS_MODE)');
+  if ((env.MQTT_MODE ?? env.DATA_STORES_MODE) === DataStoresMode.Real && !env.MQTT_URL)
+    problems.push('MQTT_URL: required when the broker is real (DATA_STORES_MODE / MQTT_MODE)');
 
   if (env.NODE_ENV === NodeEnv.Production) {
     if (env.INTEGRATIONS_MODE === IntegrationsMode.Fake)
@@ -39,6 +40,25 @@ export function validateEnv(raw: Record<string, unknown>): EnvironmentVariables 
       problems.push('FIELD_ENCRYPTION_KEY: 32 bytes base64 required when NODE_ENV=production');
     if (env.PUBLIC_API_BASE_URL.includes('localhost'))
       problems.push('PUBLIC_API_BASE_URL: set the real origin when NODE_ENV=production');
+    if (env.REDIS_MODE === DataStoresMode.Fake)
+      problems.push('REDIS_MODE: must not be "fake" when NODE_ENV=production');
+    if (env.MQTT_MODE === DataStoresMode.Fake)
+      problems.push('MQTT_MODE: must not be "fake" when NODE_ENV=production');
+    for (const key of [
+      'FIELD_HASH_KEY',
+      'AUTH_JWT_PRIVATE_KEY',
+      'DEVICE_CA_CERT',
+      'DEVICE_CA_KEY',
+      'LINE_LOGIN_CHANNEL_IDS',
+      'LINE_MESSAGING_ACCESS_TOKEN',
+      'SMS_API_URL',
+      'SMS_API_KEY',
+      'WEB_PUSH_VAPID_PUBLIC_KEY',
+      'WEB_PUSH_VAPID_PRIVATE_KEY',
+      'CLAMAV_HOST',
+    ] as const) {
+      if (!env[key]) problems.push(`${key}: required when NODE_ENV=production`);
+    }
   }
 
   if (problems.length > 0) throw new InvalidEnvironmentError(problems);
