@@ -18,6 +18,8 @@ export class TemplateRenderError extends Error {
 }
 
 const hb = Handlebars.create();
+/** `{{json value}}` — a JSON literal (Flex templates embed objects built by the modules, B4.3). */
+hb.registerHelper('json', (v: unknown) => JSON.stringify(v ?? null));
 hb.registerHelper('money', (v: unknown) =>
   typeof v === 'string' || typeof v === 'number'
     ? Number(v).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })

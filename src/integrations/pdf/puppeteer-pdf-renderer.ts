@@ -51,15 +51,33 @@ export class PuppeteerPdfRenderer implements PdfRendererPort {
         if (req.url().startsWith('data:')) void req.continue();
         else void req.abort();
       });
+      const thermal = options.paper === 'thermal_80mm';
+      // 80 mm at 96 dpi less the margins: the layout width of the roll
+      if (thermal) await page.setViewport({ width: 280, height: 800 });
       await page.setContent(html, { waitUntil: 'load', timeout: this.options.timeoutMs });
+      // the content height through the DevTools protocol (page scripts stay disabled)
+      const contentPx = thermal
+        ? ((await (await page.createCDPSession()).send('Page.getLayoutMetrics')).cssContentSize.height ??
+          1100)
+        : 0;
       const pdf = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        displayHeaderFooter: true,
-        headerTemplate: '<span></span>',
-        footerTemplate: `<div style="width:100%;font-size:7px;padding:0 12mm;color:#555;display:flex;justify-content:space-between">
+        // the 80 mm roll: fixed width, the height of the content (one long page, no footer)
+        ...(thermal
+          ? {
+              width: '80mm',
+              height: `${Math.ceil(contentPx * 0.2646 + 8)}mm`,
+              displayHeaderFooter: false,
+              margin: { top: '3mm', bottom: '3mm', left: '3mm', right: '3mm' },
+            }
+          : {
+              format: 'A4' as const,
+              displayHeaderFooter: true,
+              headerTemplate: '<span></span>',
+              footerTemplate: `<div style="width:100%;font-size:7px;padding:0 12mm;color:#555;display:flex;justify-content:space-between">
           <span>${escape(options.footer)}</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>`,
-        margin: { top: '16mm', bottom: '18mm', left: '16mm', right: '16mm' },
+              margin: { top: '16mm', bottom: '18mm', left: '16mm', right: '16mm' },
+            }),
+        printBackground: true,
         timeout: this.options.timeoutMs,
       });
       return Buffer.from(pdf);

@@ -11,6 +11,12 @@ import { DepositsService } from './ops-deposits/deposits.service';
 import { DepositDeadlineSubscriber } from './ops-deposits/deposits.subscriber';
 import { InspectionsService } from './ops-deposits/inspections.service';
 import { ResidentDepositsService } from './ops-deposits/resident-deposits.service';
+import { BillingDocuments } from './ops-documents/billing-documents.service';
+import { BillingNotifications } from './ops-documents/billing-notifications';
+import { DocumentArchiveBuilder } from './ops-documents/document-archive.builder';
+import { BillingDocumentsSubscriber } from './ops-documents/documents.subscriber';
+import { ExportsService } from './ops-documents/exports.service';
+import { InvoiceDocumentsService } from './ops-documents/invoice-documents.service';
 import { ContractRenderer } from './ops-leases/contract-renderer';
 import { LeasesService } from './ops-leases/leases.service';
 import { ResidentLeasesService } from './ops-leases/resident-leases.service';
@@ -50,11 +56,17 @@ const SERVICES = [
   BillingCyclesService,
   InvoiceScoreSource,
   ResidentInvoicesService,
+  BillingDocuments,
+  BillingDocumentsSubscriber,
+  BillingNotifications,
+  ExportsService,
+  DocumentArchiveBuilder,
+  InvoiceDocumentsService,
 ];
 
 /**
  * Group A business modules (master plan §4: `modules/ops-*`), shared by the HTTP and worker processes so their
- * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4); B4: rate plans, billing cycles, invoices (4.2).
+ * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4); B4: rate plans, billing cycles, invoices (4.2); documents, Flex, exports (4.3).
  */
 @Global()
 @Module({ providers: SERVICES, exports: SERVICES })

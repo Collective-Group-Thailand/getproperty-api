@@ -114,6 +114,11 @@ export const API_TAGS: Record<string, string> = {
     'Rate plans, billing cycles, invoices, credit/debit notes and one-off charges: readings → invoices at my rates with the utility-cap warning (D-011, D-021a, D-031, D-040, D-041).',
   'resident.invoices':
     'My invoices as issued, with registers, reading sources and what is still due (D-011, D-022).',
+  'owner.documents':
+    'Invoice, note and receipt PDFs (A4 and 80 mm), sending an invoice again, the documents of a month (D-050).',
+  'owner.exports':
+    'Exports built by the worker: document archives (B4.3), Excel and accounting formats (B4.5), D-051.',
+  'admin.documentTemplates': 'Preview of the billing document templates with sample data (D-050).',
   'admin.featureFlags': 'Feature flags and tenant overrides.',
   'admin.auditLog': 'Platform-wide audit log (D-161).',
   'admin.dataSubjectRequests': 'PDPA requests across tenants (D-025).',

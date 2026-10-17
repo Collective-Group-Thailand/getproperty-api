@@ -291,11 +291,26 @@ async function seedNotificationTemplates(db: ClientBase): Promise<void> {
       [t.key, t.channel, t.audience, t.description],
     );
     for (const v of t.versions) {
+      const version = v.version ?? 1;
+      // a seeded later version retires the published earlier one of its language (one published per language);
+      // it never overrides a version the platform admin published since (only versions below it are retired)
+      if (version > 1)
+        await db.query(
+          `UPDATE platform.notification_template_version SET state = 'retired'
+            WHERE template_id = $1 AND language = $2 AND state = 'published' AND version < $3
+              AND NOT EXISTS (SELECT 1 FROM platform.notification_template_version x
+                               WHERE x.template_id = $1 AND x.language = $2 AND x.version >= $3)`,
+          [rows[0]!.id, v.language, version],
+        );
       await db.query(
         `INSERT INTO platform.notification_template_version (template_id, version, language, subject, body, format, state, published_at)
-         VALUES ($1, 1, $2, $3, $4, 'handlebars_text', 'published', now())
+         SELECT $1, $5, $2, $3, $4, $6::platform.template_format,
+                CASE WHEN EXISTS (SELECT 1 FROM platform.notification_template_version x
+                                   WHERE x.template_id = $1 AND x.language = $2 AND x.state = 'published')
+                     THEN 'retired'::platform.template_version_state ELSE 'published' END,
+                now()
          ON CONFLICT (template_id, language, version) DO NOTHING`,
-        [rows[0]!.id, v.language, v.subject, v.body],
+        [rows[0]!.id, v.language, v.subject, v.body, version, v.format ?? 'handlebars_text'],
       );
     }
   }

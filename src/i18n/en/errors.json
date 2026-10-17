@@ -678,5 +678,11 @@
       "title": "Billing cycle in the wrong state",
       "detail": "The billing cycle is not in a state that allows this action"
     }
+  },
+  "export": {
+    "not_ready": {
+      "title": "Export not ready",
+      "detail": "The export file is still being built, or building it failed"
+    }
   }
 }

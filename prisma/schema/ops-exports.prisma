@@ -1,0 +1,63 @@
+// ops — B4.3 export jobs (schema-design v2 §3.3.7; migration 0021; D-051).
+
+enum ExportKind {
+  invoices_xlsx
+  payments_xlsx
+  arrears_xlsx
+  flowaccount_csv
+  peak_csv
+  vat_pp30
+  income_expense
+  document_archive_zip
+  readings_csv
+  tm30
+  units_xlsx
+  tax_annual_summary
+
+  @@map("export_kind")
+  @@schema("ops")
+}
+
+enum JobStatus {
+  queued
+  running
+  done
+  failed
+
+  @@map("job_status")
+  @@schema("ops")
+}
+
+/// Exports requested by operators and built by the worker (D-051).
+model ExportJob {
+  id             String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String     @map("tenant_id") @db.Uuid
+  buildingId     String?    @map("building_id") @db.Uuid
+  kind           ExportKind
+  params         Json       @default("{}")
+  status         JobStatus  @default(queued)
+  fileDocumentId String?    @map("file_document_id") @db.Uuid
+  rowCount       Int?       @map("row_count")
+  requestedBy    String?    @map("requested_by") @db.Uuid
+  startedAt      DateTime?  @map("started_at") @db.Timestamptz(6)
+  finishedAt     DateTime?  @map("finished_at") @db.Timestamptz(6)
+  error          String?
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?    @map("created_by") @db.Uuid
+  updatedAt      DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy      String?    @map("updated_by") @db.Uuid
+  version        Int        @default(1)
+
+  tenant       Tenant       @relation("ExportJobTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "export_job_tenant_id_fkey")
+  building     Building?    @relation("ExportJobBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "export_job_building_id_fkey")
+  fileDocument Document?    @relation("ExportJobFile", fields: [fileDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "export_job_file_document_id_fkey")
+  requester    UserAccount? @relation("ExportJobRequester", fields: [requestedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "export_job_requested_by_fkey")
+
+  @@index([tenantId, status], map: "export_job_tenant_id_status_idx")
+  @@index([tenantId, createdAt(sort: Desc)], map: "export_job_tenant_id_created_at_idx")
+  @@index([buildingId], map: "export_job_building_id_idx")
+  @@index([fileDocumentId], map: "export_job_file_document_id_idx")
+  @@index([requestedBy], map: "export_job_requested_by_idx")
+  @@map("export_job")
+  @@schema("ops")
+}

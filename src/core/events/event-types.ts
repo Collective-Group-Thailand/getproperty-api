@@ -138,6 +138,8 @@ export const DOMAIN_EVENT_TYPES = {
   // B4.3 documents
   'document.generated':
     'A financial document PDF (invoice, receipt, note, tax invoice) was rendered and stored (D-050).',
+  'invoice.resent': 'The owner sent an issued invoice to the payer again (LINE Flex, D-011).',
+  'export.requested': 'An operator requested an export (document archive, Excel, accounting formats, D-051).',
   // B4.4 payments
   'payment.confirmed':
     'A payment was confirmed (webhook, settlement file, slip or manual) and allocated (D-042).',

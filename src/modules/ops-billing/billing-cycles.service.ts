@@ -35,7 +35,13 @@ import {
 } from './engine/invoice-draft';
 import { addDays, maxDate, minDate } from './engine/periods';
 import { estimateRegister, type MeterSegment, segmentUnits } from './engine/readings';
-import { type DraftTarget, INVOICE_INCLUDE, InvoicesService } from './invoices.service';
+import {
+  type DraftTarget,
+  INVOICE_INCLUDE,
+  InvoicesService,
+  ISSUE_SLOTS,
+  ISSUE_TX,
+} from './invoices.service';
 
 const by = () => userIdOf(RequestContext.actor());
 const day = (d: Date) => d.toISOString().slice(0, 10);
@@ -737,10 +743,12 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
     const skipped: { invoiceId: string; reason: string }[] = [];
     let issued = 0;
     for (const d of drafts) {
-      const ok = await this.db.tenant(
-        ctx,
-        (tx) => this.invoices.issueInTx(tx, ctx, d.id, { ackId, throwOnRefusal: false, skipped }),
-        { timeout: 60_000 },
+      const ok = await ISSUE_SLOTS.run(() =>
+        this.db.tenant(
+          ctx,
+          (tx) => this.invoices.issueInTx(tx, ctx, d.id, { ackId, throwOnRefusal: false, skipped }),
+          ISSUE_TX,
+        ),
       );
       if (ok) issued += 1;
     }

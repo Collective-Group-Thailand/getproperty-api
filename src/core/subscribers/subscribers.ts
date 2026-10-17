@@ -18,7 +18,10 @@ import { TARIFFS_TOPIC } from '../utility-tariffs/utility-tariffs.service';
 @Injectable()
 export class NotificationsSubscriber implements EventSubscriber, OnModuleInit {
   readonly name = 'notifications';
-  readonly eventTypes = Object.keys(NOTIFIABLE_EVENTS);
+  /** Read at dispatch time: modules register resolvers when they load (`registerNotifiable`). */
+  get eventTypes(): string[] {
+    return Object.keys(NOTIFIABLE_EVENTS);
+  }
   private readonly pending = new Map<string, string[]>();
 
   constructor(

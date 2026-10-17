@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # One image, three processes (master plan §2): PROCESS=main (default) | worker | ingest.
-# Debian slim (not Alpine): Chromium + Thai fonts for server-side PDFs are added in B4.3 (documents).
+# Debian slim (not Alpine): Chromium + Thai fonts for the server-side PDFs (B4.3 documents; master plan §3).
 
 ARG NODE_IMAGE=node:24-bookworm-slim
 
@@ -37,11 +37,14 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # --- runtime -----------------------------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS runtime
+# Chromium renders the PDFs (puppeteer-core drives the system binary); the documents embed Sarabun as data URLs,
+# Thai TLWG + Noto fonts are the fallback for any glyph outside it.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends tini ca-certificates \
+  && apt-get install -y --no-install-recommends tini ca-certificates chromium fonts-thai-tlwg fonts-noto-core \
   && rm -rf /var/lib/apt/lists/*
 ARG GIT_COMMIT=
-ENV NODE_ENV=production PROCESS=main GIT_COMMIT=${GIT_COMMIT}
+ENV NODE_ENV=production PROCESS=main GIT_COMMIT=${GIT_COMMIT} \
+    PDF_RENDERER_MODE=real PDF_CHROMIUM_EXECUTABLE=/usr/bin/chromium
 WORKDIR /app
 COPY --from=asset-core --chown=node:node /collective-asset-core /collective-asset-core
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
