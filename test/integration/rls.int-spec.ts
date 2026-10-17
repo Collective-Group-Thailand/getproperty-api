@@ -164,9 +164,12 @@ describe('RLS on platform / ops / bridge tables', () => {
 
   it('notification routes: platform defaults (tenant_id null) are readable, only own rows writable', async () => {
     await db.admin.query(
-      `INSERT INTO platform.notification_route (tenant_id, event_type, audience, channel) VALUES (NULL, 'invoice.issued', 'resident', 'line')`,
+      `INSERT INTO platform.notification_route (tenant_id, event_type, audience, channel) VALUES (NULL, 'test.rls_probe', 'resident', 'line')`,
     );
-    expect(await count(DEV.tenantId, 'platform.notification_route')).toBe(1);
+    const defaults = await db.admin.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM platform.notification_route WHERE tenant_id IS NULL`,
+    );
+    expect(await count(DEV.tenantId, 'platform.notification_route')).toBe(defaults.rows[0]!.n);
     await expect(
       db
         .prisma()
@@ -180,7 +183,7 @@ describe('RLS on platform / ops / bridge tables', () => {
 
   it('workflow instances are visible to the building owner/operator and invisible to others', async () => {
     const def = await db.admin.query<{ id: string }>(
-      `INSERT INTO ops.workflow_definition (key, version, states, transitions) VALUES ('deposit_settlement', 1, '[]', '[]') RETURNING id`,
+      `INSERT INTO ops.workflow_definition (key, version, states, transitions) VALUES ('rls_probe', 1, '[]', '[]') RETURNING id`,
     );
     await db.admin.query(
       `INSERT INTO ops.workflow_instance (tenant_id, building_id, definition_id, subject_type, subject_id, state)
@@ -189,7 +192,11 @@ describe('RLS on platform / ops / bridge tables', () => {
     );
     expect(await count(DEV.tenantId, 'ops.workflow_instance')).toBe(1);
     expect(await count(OTHER.tenantId, 'ops.workflow_instance')).toBe(0);
-    expect(await count(OTHER.tenantId, 'ops.workflow_definition')).toBe(1); // platform definition (tenant_id null)
+    // platform definitions (tenant_id null): the seeded ones + the probe
+    const defs = await db.admin.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM ops.workflow_definition WHERE tenant_id IS NULL`,
+    );
+    expect(await count(OTHER.tenantId, 'ops.workflow_definition')).toBe(defs.rows[0]!.n);
   });
 
   it('a user sees its own notification preferences and web push subscriptions only', async () => {

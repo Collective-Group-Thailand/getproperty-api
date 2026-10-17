@@ -1,3 +1,7 @@
+import { FEATURE_FLAGS } from '@core/feature-flags/catalogue';
+import { WORKFLOW_DEFINITIONS } from '@core/workflow/definitions';
+
+import { NOTIFICATION_ROUTES, NOTIFICATION_TEMPLATES } from '../../prisma/seed/data/notifications';
 import { countRows, DEV, runSeed } from '../../prisma/seed/run';
 import { COMPLIANCE_RULES } from '../../src/core/compliance/rules';
 import { SETTINGS } from '../../src/core/settings/catalogue';
@@ -30,8 +34,12 @@ describe('seeds (reference + dev)', () => {
       'platform.utility_tariff_version': 20,
       'platform.business_calendar': 46,
       'platform.consent_purpose': 5,
-      'platform.notification_template': 3,
-      'platform.notification_template_version': 6,
+      'platform.notification_template': NOTIFICATION_TEMPLATES.length,
+      'platform.notification_template_version': NOTIFICATION_TEMPLATES.length * 2,
+      'platform.notification_route': NOTIFICATION_ROUTES.length,
+      'platform.feature_flag': FEATURE_FLAGS.length,
+      'ops.workflow_definition': WORKFLOW_DEFINITIONS.length,
+      'platform.user_credential': 5,
       'core.tenant': 1,
       'core.user_account': 5,
       'core.membership': 3,
