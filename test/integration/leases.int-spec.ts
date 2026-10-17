@@ -286,7 +286,9 @@ describe('B2.3 leases, e-signature, notices (real PostgreSQL)', () => {
       expect(mine.body[0]).toMatchObject({
         id: ids.lease,
         signatureRequired: true,
-        nextActions: ['view-contract', 'sign'],
+        // the addendum has a `pets` rule: the resident may acknowledge the building rules (LIFF #8, D-203)
+        nextActions: ['view-contract', 'sign', 'acknowledge-rules'],
+        rulesAcknowledgedAt: null,
       });
       const contract = await t.http.get(`/v1/resident/leases/${ids.lease}/contract`).set(R).expect(200);
       expect(contract.body).toMatchObject({ sha256: ids.contractSha, signed: false });

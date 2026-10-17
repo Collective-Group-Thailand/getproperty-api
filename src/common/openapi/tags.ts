@@ -170,4 +170,13 @@ export const API_TAGS: Record<string, string> = {
     'PLACEHOLDER provider callback shape (payload, signature header, expected response); the real providers (payment QR, slip verification, LINE) arrive in B4.',
   'webhooks.payments':
     'Signed payment confirmations from KBank, SCB and Opn (O-001) for each landlord’s own merchant account (D-042, ADR-0008).',
+  // contract requests before B6 (D-203)
+  'staff.field':
+    'Staff PWA field views: the buildings of my scope, the meter points of a building with their gateway channel, the edge meter drivers (D-013, D-090).',
+  'resident.uploads':
+    'Photos I upload to object storage for a deposit dispute (presigned PUT, scanned like every upload; D-023).',
+  'resident.documents':
+    'Documents on file for me, view only: lease contracts, notices, deposit statements, receipts (D-063).',
+  'resident.notificationPreferences':
+    'My notification topics per channel; billing and lease notices are locked on (D-025, D-063).',
 };

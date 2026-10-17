@@ -64,6 +64,8 @@ import {
   ResidentDepositDto,
   ResidentDisputeDto,
   type ResidentResponseName,
+  ResidentUploadDto,
+  ResidentUploadedDto,
   type SettlementDto,
   type SettlementStatusName,
 } from './deposits.dto';
@@ -107,6 +109,7 @@ function settlementDto(s: NonNullable<DepositRow['settlement']>): SettlementDto 
     agreedRefund: money(s.agreedRefund),
     residentResponse: s.residentResponse as ResidentResponseName | null,
     disputeReason: s.disputeReason,
+    disputeDocumentIds: s.disputeDocumentIds,
     refundedAt: isoOrNull(s.refundedAt),
     refundAmount: money(s.refundAmount),
     refundMethod: s.refundMethod as RefundMethodName | null,
@@ -151,6 +154,7 @@ const SETTLEMENT_EXAMPLE: SettlementDto = {
   agreedRefund: null,
   residentResponse: null,
   disputeReason: null,
+  disputeDocumentIds: [],
   refundedAt: null,
   refundAmount: null,
   refundMethod: null,
@@ -845,7 +849,11 @@ export function inspectionsController(surface: Extract<Surface, 'owner' | 'staff
 
 // ------------------------------------------------------------------------------------------- resident
 
-function residentDepositDto(d: DepositRow, evidence: Map<string, string[]>): ResidentDepositDto {
+function residentDepositDto(
+  d: DepositRow,
+  evidence: Map<string, string[]>,
+  before: Map<string, string[]> = new Map(),
+): ResidentDepositDto {
   const s = d.settlement;
   return {
     id: d.id,
@@ -857,7 +865,11 @@ function residentDepositDto(d: DepositRow, evidence: Map<string, string[]>): Res
     currency: 'THB',
     receiptNumber: d.receiptNumber,
     settlement: s ? settlementDto(s) : null,
-    deductions: (s?.items ?? []).map((i) => ({ ...deductionDto(i), evidenceUrls: evidence.get(i.id) ?? [] })),
+    deductions: (s?.items ?? []).map((i) => ({
+      ...deductionDto(i),
+      evidenceUrls: evidence.get(i.id) ?? [],
+      beforeEvidenceUrls: before.get(i.id) ?? [],
+    })),
     nextActions: s?.status === 'proposed' ? ['accept', 'dispute'] : [],
   };
 }
@@ -875,6 +887,7 @@ const RESIDENT_DEPOSIT_EXAMPLE: ResidentDepositDto = {
   deductions: SETTLEMENT_EXAMPLE.items.map((i) => ({
     ...i,
     evidenceUrls: ['https://storage.example.com/photo.jpg?X-Amz-Signature=abc'],
+    beforeEvidenceUrls: ['https://storage.example.com/move-in.jpg?X-Amz-Signature=abc'],
   })),
   nextActions: ['accept', 'dispute'],
 };
@@ -907,8 +920,8 @@ export class ResidentDepositsController {
     id: 'resident.deposits.get',
     summary: 'One of my deposits',
     description:
-      'The settlement with each deduction and 5-minute links to its evidence photos (D-023); 404 outside my lease scopes.',
-    implements: ['D-023', 'D-154'],
+      'The settlement with each deduction, 5-minute links to its evidence photos and to the move-in photos of the same checklist item (before / after, D-023); 404 outside my lease scopes.',
+    implements: ['D-023', 'D-154', 'D-203'],
   })
   @ApiSuccess(200, {
     description: 'The deposit',
@@ -918,7 +931,7 @@ export class ResidentDepositsController {
   @ApiStandardErrors('http.not_found', 'validation.failed')
   async get(@Param('depositId', ParseUUIDPipe) id: string): Promise<ResidentDepositDto> {
     const r = await this.deposits.get(id);
-    return residentDepositDto(r.deposit, r.evidence);
+    return residentDepositDto(r.deposit, r.evidence, r.before);
   }
 
   @Post(':depositId/actions/accept')
@@ -954,7 +967,7 @@ export class ResidentDepositsController {
   )
   async accept(@Param('depositId', ParseUUIDPipe) id: string): Promise<ResidentDepositDto> {
     const r = await this.deposits.respond(id, { accept: true });
-    return residentDepositDto(r.deposit, r.evidence);
+    return residentDepositDto(r.deposit, r.evidence, r.before);
   }
 
   @Post(':depositId/actions/dispute')
@@ -964,10 +977,13 @@ export class ResidentDepositsController {
     id: 'resident.deposits.dispute',
     summary: 'Dispute the proposed settlement',
     description:
-      'With a reason; the owner revises the deductions or pays the undisputed refund (D-023). Lessee or co-tenant.',
-    implements: ['D-023'],
+      'With a reason and up to 6 photos I uploaded for this deposit (`POST /v1/resident/uploads`, purpose `deposit_dispute`; anything else is 422 `validation.failed`); the owner revises the deductions or pays the undisputed refund (D-023). Lessee or co-tenant.',
+    implements: ['D-023', 'D-203'],
   })
-  @ApiJsonBody(ResidentDisputeDto, { reason: 'รูบนผนังมีอยู่ก่อนเข้าอยู่ ดูภาพตอนตรวจรับห้อง' })
+  @ApiJsonBody(ResidentDisputeDto, {
+    reason: 'รูบนผนังมีอยู่ก่อนเข้าอยู่ ดูภาพตอนตรวจรับห้อง',
+    photoDocumentIds: [FAKE.uuid],
+  })
   @ApiSuccess(200, {
     description: 'Disputed',
     type: ResidentDepositDto,
@@ -979,6 +995,7 @@ export class ResidentDepositsController {
         status: 'disputed',
         residentResponse: 'disputed',
         disputeReason: 'รูบนผนังมีอยู่ก่อนเข้าอยู่',
+        disputeDocumentIds: [FAKE.uuid],
       },
       nextActions: [],
     },
@@ -995,7 +1012,65 @@ export class ResidentDepositsController {
     @Param('depositId', ParseUUIDPipe) id: string,
     @Body() body: ResidentDisputeDto,
   ): Promise<ResidentDepositDto> {
-    const r = await this.deposits.respond(id, { accept: false, reason: body.reason });
-    return residentDepositDto(r.deposit, r.evidence);
+    const r = await this.deposits.respond(id, {
+      accept: false,
+      reason: body.reason,
+      photoDocumentIds: body.photoDocumentIds,
+    });
+    return residentDepositDto(r.deposit, r.evidence, r.before);
+  }
+}
+
+@ApiTags('resident.uploads')
+@ApiSurface(SURFACES.resident)
+@Controller('resident/uploads')
+export class ResidentUploadsController {
+  constructor(private readonly deposits: ResidentDepositsService) {}
+
+  @Post()
+  @ApiEndpoint({
+    id: 'resident.uploads.presign',
+    summary: 'Upload a photo',
+    description:
+      'Purpose `deposit_dispute`: a photo for my dispute of a proposed deposit settlement (JPEG / PNG / WebP ≤ 10 MB, with its SHA-256). Answers a 15-minute PUT URL; upload the bytes there, then send the `fileId` in `photoDocumentIds` of the dispute. The file is a photo of my unit, scanned like every upload (D-023, D-203). 409 `deposit.invalid_state` when the settlement is not waiting for my answer.',
+    implements: ['D-023', 'D-203'],
+  })
+  @ApiJsonBody(ResidentUploadDto, {
+    purpose: 'deposit_dispute',
+    depositId: FAKE.uuid,
+    contentType: 'image/jpeg',
+    sizeBytes: 2345678,
+    sha256: 'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9',
+  })
+  @ApiSuccess(201, {
+    description: 'Upload URL',
+    type: ResidentUploadedDto,
+    example: {
+      fileId: FAKE.uuid,
+      purpose: 'deposit_dispute',
+      uploadUrl: 'https://storage.example.com/upload?X-Amz-Signature=abc',
+      method: 'PUT',
+      headers: { 'Content-Type': 'image/jpeg' },
+      expiresAt: '2026-11-01T00:30:00+07:00',
+    },
+  })
+  @ApiStandardErrors(
+    'http.not_found',
+    'http.bad_request',
+    'validation.failed',
+    'deposit.invalid_state',
+    'lease.not_signer',
+    'document.type_not_allowed',
+  )
+  async presign(@Body() body: ResidentUploadDto): Promise<ResidentUploadedDto> {
+    const r = await this.deposits.presignDisputePhoto(body.depositId, body);
+    return {
+      fileId: r.document.id,
+      purpose: body.purpose,
+      uploadUrl: r.uploadUrl ?? '',
+      method: 'PUT',
+      headers: r.headers,
+      expiresAt: iso(r.expiresAt),
+    };
   }
 }

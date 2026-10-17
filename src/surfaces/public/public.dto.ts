@@ -18,6 +18,30 @@ export enum PriceUnit {
   Report = 'report',
 }
 
+/**
+ * Modules a plan includes (D-150 module map, D-156 plans): group A operations (A1 lease & occupant, A2 billing &
+ * accounting, A3 smart meter & utility billing, A4 service & maintenance), B condo juristic (B1 AGM & e-voting, B2
+ * AI juristic assistant, B3 assets & funds), C smart building (C1 access, C2 energy, C3 PM portfolio), D bridges
+ * (D1 post-sale portal, D2 landlord), plus the resident LINE Mini App and PromptPay collection. A named enum so a
+ * new module fails the consumers' build instead of being hidden (web contract request, D-203).
+ */
+export enum PlanModuleKey {
+  A1 = 'A1',
+  A2 = 'A2',
+  A3 = 'A3',
+  A4 = 'A4',
+  B1 = 'B1',
+  B2 = 'B2',
+  B3 = 'B3',
+  C1 = 'C1',
+  C2 = 'C2',
+  C3 = 'C3',
+  D1 = 'D1',
+  D2 = 'D2',
+  ResidentLiff = 'resident_liff',
+  Promptpay = 'promptpay',
+}
+
 export enum PricePlanStatus {
   Proposed = 'proposed',
   Confirmed = 'confirmed',
@@ -79,8 +103,14 @@ export class PublicPlanDto {
   })
   status!: PricePlanStatus;
 
-  @ApiProperty({ type: [String], example: ['A1', 'A2', 'A4', 'resident_liff', 'promptpay'] })
-  features!: string[];
+  @ApiProperty({
+    enum: PlanModuleKey,
+    enumName: 'PlanModuleKey',
+    isArray: true,
+    example: ['A1', 'A2', 'A4', 'resident_liff', 'promptpay'],
+    description: 'Modules included in the plan (D-150, D-156).',
+  })
+  features!: PlanModuleKey[];
 }
 
 export class PublicPlansDto {

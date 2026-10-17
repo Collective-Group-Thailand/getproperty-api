@@ -9,11 +9,15 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
   Length,
+  Matches,
+  Max,
   MaxLength,
+  Min,
   ValidateNested,
 } from 'class-validator';
 
@@ -165,6 +169,14 @@ export class SettlementDto {
 
   @ApiProperty({ type: String, nullable: true, example: null })
   disputeReason!: string | null;
+
+  @ApiProperty({
+    type: [String],
+    format: 'uuid',
+    example: [],
+    description: 'Photos the resident attached to the dispute (core.document ids, D-203).',
+  })
+  disputeDocumentIds!: string[];
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
   refundedAt!: string | null;
@@ -712,6 +724,14 @@ export class ResidentDeductionDto extends DeductionDto {
     description: '5-minute links to the evidence photos.',
   })
   evidenceUrls!: string[];
+
+  @ApiProperty({
+    type: [String],
+    example: ['https://storage.example.com/move-in.jpg?X-Amz-Signature=abc'],
+    description:
+      '5-minute links to the move-in inspection photos of the same checklist item (`inspectionItemId` → item key → move-in inspection), for a before/after view; empty when there is none (D-023, D-203).',
+  })
+  beforeEvidenceUrls!: string[];
 }
 
 export class ResidentDepositDto {
@@ -754,4 +774,95 @@ export class ResidentDisputeDto {
   @IsString()
   @Length(3, 1000)
   reason!: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    example: [FAKE.uuid],
+    description:
+      'Up to 6 photos uploaded with `POST /v1/resident/uploads` (purpose `deposit_dispute`) for this deposit by me (D-203).',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @IsUUID('all', { each: true })
+  photoDocumentIds?: string[];
+}
+
+export enum ResidentUploadPurposeName {
+  DepositDispute = 'deposit_dispute',
+}
+
+export enum ResidentUploadContentTypeName {
+  Jpeg = 'image/jpeg',
+  Png = 'image/png',
+  Webp = 'image/webp',
+}
+
+export class ResidentUploadDto {
+  @ApiProperty({
+    enum: ResidentUploadPurposeName,
+    enumName: 'ResidentUploadPurpose',
+    example: ResidentUploadPurposeName.DepositDispute,
+  })
+  @IsEnum(ResidentUploadPurposeName)
+  purpose!: ResidentUploadPurposeName;
+
+  @ApiProperty({
+    format: 'uuid',
+    example: FAKE.uuid,
+    description:
+      'The deposit whose proposal I dispute (`deposit_dispute`); it must be waiting for my answer.',
+  })
+  @IsUUID()
+  depositId!: string;
+
+  @ApiProperty({
+    enum: ResidentUploadContentTypeName,
+    enumName: 'ResidentUploadContentType',
+    example: ResidentUploadContentTypeName.Jpeg,
+  })
+  @IsEnum(ResidentUploadContentTypeName)
+  contentType!: ResidentUploadContentTypeName;
+
+  @ApiProperty({ type: 'integer', example: 2345678, description: 'At most 10 MB.' })
+  @IsInt()
+  @Min(1)
+  @Max(10_000_000)
+  sizeBytes!: number;
+
+  @ApiProperty({
+    example: 'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9',
+    description: 'Hex SHA-256 of the file (checked by the virus scan after the upload).',
+  })
+  @Matches(/^[0-9a-fA-F]{64}$/)
+  sha256!: string;
+}
+
+export class ResidentUploadedDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid, description: 'Send it in `photoDocumentIds`.' })
+  fileId!: string;
+
+  @ApiProperty({
+    enum: ResidentUploadPurposeName,
+    enumName: 'ResidentUploadPurpose',
+    example: ResidentUploadPurposeName.DepositDispute,
+  })
+  purpose!: ResidentUploadPurposeName;
+
+  @ApiProperty({ example: 'https://storage.example.com/upload?X-Amz-Signature=abc' })
+  uploadUrl!: string;
+
+  @ApiProperty({ example: 'PUT' })
+  method!: string;
+
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { type: 'string' },
+    example: { 'Content-Type': 'image/jpeg' },
+  })
+  headers!: Record<string, string>;
+
+  @ApiProperty({ format: 'date-time', example: '2026-11-01T00:30:00+07:00' })
+  expiresAt!: string;
 }

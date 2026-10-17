@@ -36,6 +36,10 @@ export interface RoundBuilding {
   batchId: string | null;
   floors: { floorId: string | null; floorName: string | null; level: number | null; items: RoundItem[] }[];
   remaining: number;
+  /** Meters in the round (read manually: no channel, or IoT not healthy) — web contract request, D-203. */
+  total: number;
+  /** Of those, read in the window (accepted or pending review), by anyone. */
+  read: number;
 }
 
 /**
@@ -121,11 +125,18 @@ export class ReadingRoundsService extends TenantScopedRepository {
           (await tx.floor.findMany({ where: { buildingId: b.id, deletedAt: null } })).map((f) => [f.id, f]),
         );
         const items: RoundItem[] = [];
+        let total = 0;
+        let read = 0;
         for (const a of assignments) {
           const iot = channels.has(a.assetItemId);
           const health = statuses.get(a.assetItemId) ?? null;
           const iotHealthy = iot && (health === 'ok' || health === 'unknown' || health === null);
-          if (iotHealthy || recent.has(a.id)) continue;
+          if (iotHealthy) continue;
+          total += 1;
+          if (recent.has(a.id)) {
+            read += 1;
+            continue;
+          }
           const last = await tx.meterReading.findFirst({
             where: { meterAssignmentId: a.id, reviewState: 'accepted', supersededByReadingId: null },
             orderBy: { readAt: 'desc' },
@@ -165,6 +176,8 @@ export class ReadingRoundsService extends TenantScopedRepository {
           windowStart,
           batchId: batch?.id ?? null,
           remaining: items.length,
+          total,
+          read,
           floors: [...byFloor.entries()]
             .map(([floorId, list]) => {
               const f = floorId ? floors.get(floorId) : undefined;

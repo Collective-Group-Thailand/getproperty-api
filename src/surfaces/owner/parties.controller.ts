@@ -3,7 +3,7 @@ import { Can } from '@common/auth/can.decorator';
 import { type TenantContext } from '@common/context/tenant-context';
 import { etagOf } from '@common/etag/etag';
 import { IfMatch, UseEtag } from '@common/etag/etag.interceptor';
-import { resolveLanguage } from '@common/i18n/language';
+import { AcceptLanguage, resolveLanguage } from '@common/i18n/language';
 import {
   ApiConcurrency,
   ApiEndpoint,
@@ -21,7 +21,6 @@ import {
   Body,
   Controller,
   Get,
-  Headers,
   HttpCode,
   Param,
   ParseUUIDPipe,
@@ -470,7 +469,7 @@ export class ResidentPrivacyController {
     },
   })
   @ApiStandardErrors('auth.unauthenticated')
-  async get(@Headers('accept-language') acceptLanguage?: string): Promise<ResidentPrivacyDto> {
+  async get(@AcceptLanguage() acceptLanguage?: string): Promise<ResidentPrivacyDto> {
     const o = await this.privacy.overview(currentUserId(), resolveLanguage(acceptLanguage));
     const consents = o.purposes.map(purposeDto);
     return {

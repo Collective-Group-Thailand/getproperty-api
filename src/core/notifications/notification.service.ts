@@ -17,6 +17,7 @@ import { SettingsService } from '../settings/settings.service';
 import { type NotificationPlanInput, type Recipient } from './notifiable-events';
 import { type QuietHours, quietUntil } from './quiet-hours';
 import { renderTemplate, TemplateRenderError } from './renderer';
+import { LOCKED_TOPICS, TOPIC_CHANNELS, topicOf } from './topic-preferences';
 
 export interface DeliveryJob {
   notificationId: string;
@@ -99,6 +100,36 @@ export class NotificationService {
     return fallback;
   }
 
+  /**
+   * LIFF #10 (D-203): a resident who switched a topic off on a channel does not get it there. The choice belongs to
+   * the login(s) linked to the party; the message is skipped only when every linked login switched it off. Locked
+   * topics (billing, lease) and other channels are never skipped.
+   */
+  private async topicDisabled(
+    tx: Tx,
+    recipient: Recipient,
+    channel: NotificationChannel,
+    templateKey: string,
+  ): Promise<boolean> {
+    if (!RESIDENT_AUDIENCES.includes(recipient.audience) || !TOPIC_CHANNELS.includes(channel)) return false;
+    const topic = topicOf(templateKey);
+    if (!topic || LOCKED_TOPICS.includes(topic)) return false;
+    const userIds =
+      recipient.type === 'user'
+        ? [recipient.id]
+        : (
+            await tx.partyUserLink.findMany({
+              where: { partyId: recipient.id, state: 'active' },
+              select: { userId: true },
+            })
+          ).map((l) => l.userId);
+    if (!userIds.length) return false;
+    const off = await tx.notificationTopicPreference.count({
+      where: { userId: { in: userIds }, topic, channel, enabled: false },
+    });
+    return off === userIds.length;
+  }
+
   private address(recipient: Recipient, channel: NotificationChannel): string | null | undefined {
     switch (channel) {
       case 'line':
@@ -136,6 +167,9 @@ export class NotificationService {
         if (pref && !pref.enabled) {
           state = 'cancelled';
           failedReason = 'channel disabled by the recipient';
+        } else if (await this.topicDisabled(tx, recipient, channel, templateKey)) {
+          state = 'cancelled';
+          failedReason = 'topic disabled by the recipient';
         } else if (address === null) {
           state = 'cancelled';
           failedReason = `no ${channel} address`;
@@ -163,8 +197,11 @@ export class NotificationService {
         );
         let rendered: Prisma.InputJsonValue | undefined;
         if (!version) {
-          state = 'failed';
-          failedReason = `no published template ${templateKey}/${channel}/${recipient.audience}`;
+          // a cancelled message keeps the reason it was cancelled; otherwise the missing template is the failure
+          if (state !== 'cancelled') {
+            state = 'failed';
+            failedReason = `no published template ${templateKey}/${channel}/${recipient.audience}`;
+          }
         } else {
           try {
             rendered = (await renderTemplate(version, {

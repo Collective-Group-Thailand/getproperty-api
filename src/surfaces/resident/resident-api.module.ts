@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { ResidentInvoicesController } from '../owner/billing.controller';
-import { ResidentDepositsController } from '../owner/deposits.controller';
+import { ResidentDepositsController, ResidentUploadsController } from '../owner/deposits.controller';
 import { ResidentInvoiceDocumentsController } from '../owner/documents.controller';
 import { ResidentInvitationsController, ResidentLeasesController } from '../owner/leases.controller';
 import { ResidentPrivacyController } from '../owner/parties.controller';
@@ -17,6 +17,10 @@ import {
 } from '../shared/surface.controllers';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
+import {
+  ResidentDocumentsController,
+  ResidentNotificationPreferencesController,
+} from './resident-profile.controller';
 
 /** `/v1/resident/*` (contract §2): LIFF — me, consents, PDPA requests, inbox, realtime (B1.3); privacy (B2.2); leases, e-signature, notice, invitations (B2.3); deposits (B2.4); invoices (B4.2); payments, slips, receipts (B4.4). */
 @Module({
@@ -30,10 +34,13 @@ import { systemPingController } from '../system-ping.controller';
     ResidentLeasesController,
     ResidentInvitationsController,
     ResidentDepositsController,
+    ResidentUploadsController,
     ResidentInvoicesController,
     ResidentInvoiceDocumentsController,
     ResidentPaymentsController,
     ResidentUsageController,
+    ResidentDocumentsController,
+    ResidentNotificationPreferencesController,
     notificationsController(SURFACES.resident),
     realtimeController(SURFACES.resident),
     pushSubscriptionsController(SURFACES.resident),

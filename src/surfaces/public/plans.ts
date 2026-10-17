@@ -1,5 +1,11 @@
 import { TenantTypeName } from '../shared/me.dto';
-import { PricePlanKind, PricePlanStatus, PriceUnit, type PublicPlanDto } from './public.dto';
+import { PlanModuleKey, PricePlanKind, PricePlanStatus, PriceUnit, type PublicPlanDto } from './public.dto';
+
+const MODULE_KEYS = new Set<string>(Object.values(PlanModuleKey));
+
+/** Module keys of a plan as the named enum (unknown keys are a catalogue error, caught by the plans unit test). */
+export const planModules = (modules: unknown): PlanModuleKey[] =>
+  Array.isArray(modules) ? modules.map(String).filter((m): m is PlanModuleKey => MODULE_KEYS.has(m)) : [];
 
 /** The `pricing.price_plans` setting value (D-156, seeded by the settings catalogue). */
 interface PricePlansSetting {
@@ -127,7 +133,7 @@ export function publicPlans(setting: unknown): PublicPlanDto[] {
       currency: s.currency ?? 'THB',
       vatIncluded: s.vatIncluded ?? false,
       status,
-      features: Array.isArray(plan.modules) ? (plan.modules as unknown[]).map(String) : [],
+      features: planModules(plan.modules),
     });
   }
   return out;

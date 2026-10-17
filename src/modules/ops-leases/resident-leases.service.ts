@@ -20,6 +20,7 @@ import { SMS, type SmsPort } from '@integrations/sms/sms.port';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import QRCode from 'qrcode';
 
+import { hasRuleClauses, RULE_CLAUSE_TYPES, RULES_ACK_STATES } from './lease-rules';
 import { LEASE_INCLUDE, type LeaseRow, LeasesService } from './leases.service';
 
 /** Leases a resident may open: everything after the draft (history included), never drafts or cancelled leases. */
@@ -70,6 +71,11 @@ export class ResidentLeasesService {
     const actor = RequestContext.actor();
     if (actor?.type !== 'user') throw new DomainException('auth.unauthenticated');
     return actor.publicId;
+  }
+
+  /** The signed-in resident's login (`core.user_account` id). */
+  currentUserId(): string {
+    return this.userId();
   }
 
   private scopes(): readonly string[] {
@@ -276,6 +282,56 @@ export class ResidentLeasesService {
       );
       return { lease: await this.leases.load(tx, leaseId), signature };
     });
+  }
+
+  /** The Bangkok date of now (resident views compute nothing on the client, LIFF #7). */
+  today(): string {
+    return bangkokDate(this.clock.now());
+  }
+
+  /**
+   * LIFF #8 (D-203): I confirm that I read the building rules of the lease's addendum (`house_rules`, `pets`, …).
+   * Recorded on my lease-party rows (who and when), audited and evented; repeating it changes nothing. Ended,
+   * cancelled or rule-less leases answer 409 `lease.invalid_state`.
+   */
+  async acknowledgeRules(leaseId: string) {
+    const access = await this.access(leaseId);
+    const { lease, partyIds } = access;
+    if (!(RULES_ACK_STATES as readonly string[]).includes(lease.status) || !hasRuleClauses(lease))
+      throw new DomainException('lease.invalid_state', {
+        params: { status: hasRuleClauses(lease) ? lease.status : 'no_rules' },
+      });
+    const userId = this.userId();
+    const pending = lease.parties.filter((p) => partyIds.includes(p.partyId) && !p.rulesAcknowledgedAt);
+    if (pending.length) {
+      const now = this.clock.now();
+      // the lessor may be a unit grantee (D-152): the rows are written in the lease's own tenant
+      await this.db.tenant(access.ctx, async (tx) => {
+        await tx.leaseParty.updateMany({
+          where: { leaseId, partyId: { in: pending.map((p) => p.partyId) }, rulesAcknowledgedAt: null },
+          data: { rulesAcknowledgedAt: now, rulesAcknowledgedBy: userId, updatedBy: userId },
+        });
+        const clauses = ((Array.isArray(lease.addendum) ? lease.addendum : []) as { type?: string }[])
+          .map((c) => c.type ?? '')
+          .filter((t) => (RULE_CLAUSE_TYPES as readonly string[]).includes(t));
+        await this.audit.record(tx, {
+          action: 'lease.rules_acknowledged',
+          tenantId: lease.tenantId,
+          buildingId: lease.buildingId,
+          subjectType: 'ops.lease',
+          subjectId: lease.id,
+          after: { partyIds: pending.map((p) => p.partyId), clauses },
+        });
+        await this.leases.history(
+          tx,
+          lease,
+          'rules_acknowledged',
+          { partyIds: pending.map((p) => p.partyId), clauses },
+          'lease.rules_acknowledged',
+        );
+      });
+    }
+    return (await this.access(leaseId)).lease;
   }
 
   /** The lessee's 30-day notice from the LIFF (D-063, legal-reference ข้อ 4 (11)); shorter is refused (no acknowledgement). */

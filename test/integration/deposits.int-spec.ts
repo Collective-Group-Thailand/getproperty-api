@@ -1,5 +1,9 @@
+import { createHash } from 'node:crypto';
+
 import { bangkokDate } from '@common/time/bangkok';
 import { fakeLineIdToken } from '@integrations/line/fake-line-login';
+import { type FakeObjectStorage } from '@integrations/s3/fake-object-storage';
+import { OBJECT_STORAGE } from '@integrations/s3/object-storage.port';
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';
@@ -397,9 +401,22 @@ describe('B2.4 deposits, inspections, 7-day settlement (real PostgreSQL)', () =>
 
       const mine = await t.http.get('/v1/resident/deposits').set(R).expect(200);
       expect((mine.body as { id: string }[]).map((d) => d.id)).toContain(ids.deposit1);
+      // LIFF #9 (D-203): the move-in photo of the same checklist item is shown beside the move-out evidence
+      ids.wallBefore = await photo();
+      await db.admin.query(
+        `UPDATE ops.inspection_item i SET photo_document_ids = ARRAY[$1::uuid]
+           FROM ops.deposit_settlement s
+          WHERE s.deposit_id = $2 AND i.inspection_id = s.move_in_inspection_id AND i.item_key = 'walls'`,
+        [ids.wallBefore, ids.deposit1],
+      );
       const view = await t.http.get(`/v1/resident/deposits/${ids.deposit1}`).set(R).expect(200);
       expect(view.body.nextActions).toEqual(['accept', 'dispute']);
       expect(view.body.deductions[0].evidenceUrls).toHaveLength(1);
+      const wall = (
+        view.body.deductions as { inspectionItemId: string | null; beforeEvidenceUrls: string[] }[]
+      ).find((x) => x.inspectionItemId === ids.wallItem)!;
+      expect(wall.beforeEvidenceUrls).toHaveLength(1);
+      expect(wall.beforeEvidenceUrls[0]).not.toEqual(view.body.deductions[0].evidenceUrls[0]);
       const accepted = await t.http
         .post(`/v1/resident/deposits/${ids.deposit1}/actions/accept`)
         .set(R)
@@ -573,11 +590,69 @@ describe('B2.4 deposits, inspections, 7-day settlement (real PostgreSQL)', () =>
         .send({ reason: '  ' })
         .expect(422);
       expect(empty.body.code).toBe('validation.failed');
+      // LIFF #9 (D-203): dispute photos — presigned for this deposit, uploaded, attached; someone else's file refused
+      const presigned = await t.http
+        .post('/v1/resident/uploads')
+        .set(R)
+        .send({
+          purpose: 'deposit_dispute',
+          depositId: ids.deposit2,
+          contentType: 'image/png',
+          sizeBytes: PNG.length,
+          sha256: createHash('sha256').update(PNG).digest('hex'),
+        })
+        .expect(201);
+      expect(presigned.body).toMatchObject({ method: 'PUT', headers: { 'Content-Type': 'image/png' } });
+      const key = (
+        await db.admin.query<{ storage_key: string; kind: string; created_by: string | null }>(
+          'SELECT storage_key, kind::text, created_by FROM core.document WHERE id = $1',
+          [presigned.body.fileId],
+        )
+      ).rows[0]!;
+      expect(key.kind).toBe('inspection_photo');
+      t.app.get<FakeObjectStorage>(OBJECT_STORAGE).putDirect(key.storage_key, PNG, 'image/png');
+      const tooBig = await t.http
+        .post('/v1/resident/uploads')
+        .set(R)
+        .send({
+          purpose: 'deposit_dispute',
+          depositId: ids.deposit2,
+          contentType: 'image/png',
+          sizeBytes: 10_000_001,
+          sha256: createHash('sha256').update(PNG).digest('hex'),
+        })
+        .expect(422);
+      expect(tooBig.body.code).toBe('validation.failed');
+      const notMine = await t.http
+        .post(`/v1/resident/deposits/${ids.deposit2}/actions/dispute`)
+        .set(R)
+        .send({ reason: 'แอร์สะอาด', photoDocumentIds: [ids.wallPhoto] })
+        .expect(422);
+      expect(notMine.body.code).toBe('validation.failed');
       const disputed = await t.http
         .post(`/v1/resident/deposits/${ids.deposit2}/actions/dispute`)
         .set(R)
-        .send({ reason: 'แอร์สะอาดตอนคืนห้อง ดูภาพตรวจคืนห้อง' })
+        .send({ reason: 'แอร์สะอาดตอนคืนห้อง ดูภาพตรวจคืนห้อง', photoDocumentIds: [presigned.body.fileId] })
         .expect(200);
+      expect(disputed.body.settlement.disputeDocumentIds).toEqual([presigned.body.fileId]);
+      const uploaded = await db.admin.query<{ upload_state: string }>(
+        'SELECT upload_state::text FROM core.document WHERE id = $1',
+        [presigned.body.fileId],
+      );
+      expect(uploaded.rows[0]!.upload_state).not.toBe('presigned');
+      const ownerView = await t.http.get(`/v1/owner/deposits/${ids.deposit2}`).set(O).expect(200);
+      expect(ownerView.body.settlement.disputeDocumentIds).toEqual([presigned.body.fileId]);
+      await t.http
+        .post('/v1/resident/uploads')
+        .set(R)
+        .send({
+          purpose: 'deposit_dispute',
+          depositId: ids.deposit2,
+          contentType: 'image/png',
+          sizeBytes: PNG.length,
+          sha256: createHash('sha256').update(PNG).digest('hex'),
+        })
+        .expect(409);
       const seeded = (
         await db.admin.query<{ id: string }>('SELECT id FROM ops.deposit WHERE lease_id = $1', [DEV.leaseId])
       ).rows[0]!.id;

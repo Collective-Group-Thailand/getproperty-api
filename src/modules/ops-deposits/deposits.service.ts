@@ -651,7 +651,7 @@ export class DepositsService extends TenantScopedRepository implements OnModuleI
   async respond(
     ctx: TenantContext,
     id: string,
-    input: { accept: boolean; reason?: string | null; partyId: string },
+    input: { accept: boolean; reason?: string | null; partyId: string; documentIds?: string[] },
   ) {
     return this.db.tenant(ctx, async (tx) => {
       const d = await this.load(tx, ctx, id);
@@ -668,6 +668,7 @@ export class DepositsService extends TenantScopedRepository implements OnModuleI
           residentResponse: input.accept ? 'accepted' : 'disputed',
           residentRespondedAt: now,
           disputeReason: input.accept ? null : (input.reason ?? null),
+          disputeDocumentIds: input.accept ? [] : (input.documentIds ?? []),
           agreedRefund: input.accept ? s.proposedRefund : null,
           version: { increment: 1 },
         },
@@ -687,7 +688,11 @@ export class DepositsService extends TenantScopedRepository implements OnModuleI
         buildingId: d.buildingId,
         subjectType: 'ops.deposit_settlement',
         subjectId: s.id,
-        metadata: { partyId: input.partyId, reason: input.reason ?? null },
+        metadata: {
+          partyId: input.partyId,
+          reason: input.reason ?? null,
+          documentIds: input.accept ? [] : (input.documentIds ?? []),
+        },
       });
       await this.event(tx, d, input.accept ? 'deposit.settlement_accepted' : 'deposit.settlement_disputed', {
         settlementId: s.id,
