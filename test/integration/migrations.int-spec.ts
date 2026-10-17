@@ -20,15 +20,15 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
     await db.drop();
   });
 
-  it('applies the package migrations (0.2.1: nine), then all ten app migrations', async () => {
+  it('applies the package migrations (0.3.0: ten), then every app migration', async () => {
     const core = await assetCoreMigrate({ client: db.admin });
-    expect(core.applied).toHaveLength(9);
+    expect(core.applied).toHaveLength(10);
     const applied = await applyPrismaMigrations(db.admin);
     expect(applied).toEqual(listMigrations().map((m) => m.name));
-    expect(applied).toHaveLength(10);
+    expect(applied).toHaveLength(11);
   });
 
-  it('creates exactly the tables of schema-design §7.1/§7.2 (+ B1.3 §7.5 rows 17–20): core 18, platform 40, ops 5, bridge 1, smart 4, juristic empty', async () => {
+  it('creates exactly the tables of schema-design §7.1/§7.2 (+ B1.3 §7.5 rows 17–20): core 18, platform 40, ops 8 (B2.1), bridge 1, smart 4, juristic empty', async () => {
     const { rows } = await db.admin.query<{ schema: string; n: number }>(
       `SELECT n.nspname AS schema, count(c.oid)::int AS n
          FROM pg_namespace n LEFT JOIN pg_class c ON c.relnamespace = n.oid AND c.relkind = 'r' AND c.relname NOT LIKE '\\_%'
@@ -38,7 +38,7 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
       bridge: 1,
       core: 18,
       juristic: 0,
-      ops: 5,
+      ops: 8,
       platform: 40,
       smart: 4,
     });

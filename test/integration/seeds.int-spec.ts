@@ -44,6 +44,13 @@ describe('seeds (reference + dev)', () => {
       'core.user_account': 5,
       'core.membership': 3,
       'core.building': 1,
+      'core.floor': 2,
+      'core.unit': 12,
+      'core.unit_ownership': 12,
+      'core.asset_item': 24,
+      'core.meter_assignment': 24,
+      'ops.unit_profile': 2,
+      'ops.unit_detail': 12,
     });
   });
 

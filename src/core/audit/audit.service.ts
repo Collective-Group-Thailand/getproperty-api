@@ -61,6 +61,9 @@ export const AUDIT_ACTIONS = [
   'device.registered',
   'device.provisioning_code_issued',
   'retention.executed',
+  'unit.status_changed',
+  'unit.bulk_created',
+  'unit.imported',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

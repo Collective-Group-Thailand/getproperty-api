@@ -1505,6 +1505,10 @@ verified in B3.2, owner-stamped rows via `acts_for`, platform-only `user_account
 | 19 | `platform.event_consumption` (new, B1.3) | inbox per `(event_id, subscriber)` UQ: `state processed|failed|dead`, `attempts`, `last_error`, `first_attempt_at`, `processed_at`, `replayed_at/by` | D-166 exactly-once subscribers |
 | 20 | `platform.auth_session.device_id` | FK to `smart.device` + index (device sessions) | D-165 |
 | 21 | `core` 0.2.0 / 0.2.1 (asset-core) | `party_link_via.phone_match` + cross-tenant party lookup indexes (0008); fix of the `access` argument of `core.accessible_building_ids/unit_ids` shadowed by the grant column (0009) | D-061, D-152 |
+| 22 | `ops.unit_profile` (B2.1, migration 0011) | + `default_advance_rent_months numeric(3,1) default 1` next to `default_deposit_months`; CHECKs on name length, rent rounding, months ≥ 0, `default_lease_lines` is an array; `inspection_template_id` without FK until B2.4 | new leases propose deposit **and** advance rent from the room type (both are capped together, D-023) |
+| 23 | `ops.unit_detail` (B2.1) | RLS kind `unit` with module `ops.lease` (a landlord with a unit grant sees its unit's detail); `current_lease_id` without FK until B2.3 | §3.3.2 `RLS: U(ops.lease)` made concrete |
+| 24 | `ops.utility_account` (B2.1) | CHECK utility ↔ provider (`electric` → mea/pea, `water` → mwa/pwa) and customer number format | defence in depth |
+| 25 | `core` 0.3.0 (asset-core, B2) | `document_kind.signature`; partial index `occupancy_lease_id_idx` | e-signature evidence (D-062), occupancies per lease |
 
 ---
 

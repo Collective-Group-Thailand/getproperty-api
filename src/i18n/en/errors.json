@@ -368,5 +368,41 @@
       "title": "Realtime token invalid",
       "detail": "The realtime token is invalid or expired."
     }
+  },
+  "asset": {
+    "duplicate": {
+      "title": "Already exists",
+      "detail": "A record with this key already exists (e.g. unit number, floor level or code)."
+    },
+    "read_only": {
+      "title": "Read-only access",
+      "detail": "You see this building or unit through a grant; only its owner or operator can change it."
+    }
+  },
+  "unit": {
+    "invalid_status_transition": {
+      "title": "Status change not allowed",
+      "detail": "Only vacant ↔ inactive or maintenance can be set manually; other statuses follow leases and service work."
+    }
+  },
+  "meter": {
+    "already_assigned": {
+      "title": "Meter already assigned",
+      "detail": "The unit already has an active meter for this utility, or the meter code is taken."
+    }
+  },
+  "import": {
+    "file_invalid": {
+      "title": "Invalid import file",
+      "detail": "The Excel file could not be read; use the template downloaded from getproperty."
+    },
+    "invalid_rows": {
+      "title": "Some rows are invalid",
+      "detail": "Fix the rows with errors and preview again before importing."
+    },
+    "preview_stale": {
+      "title": "Preview out of date",
+      "detail": "The building or the file changed since the preview; preview again."
+    }
   }
 }

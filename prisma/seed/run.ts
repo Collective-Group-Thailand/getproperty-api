@@ -367,7 +367,7 @@ async function seedDev(db: ClientBase): Promise<void> {
       }),
     ],
   );
-  // apartment: owner = operator = the tenant (§4.6); floors and units arrive with B2.1
+  // apartment: owner = operator = the tenant (§4.6)
   await db.query(
     `INSERT INTO core.building (id, tenant_id, property_id, code, name, type, floors_count, owner_tenant_id, operator_tenant_id)
      VALUES ($1, $2, $3, 'A', 'อาคาร A', 'apartment', 2, $2, $2) ON CONFLICT (id) DO NOTHING`,
@@ -379,6 +379,7 @@ async function seedDev(db: ClientBase): Promise<void> {
       WHERE NOT EXISTS (SELECT 1 FROM core.building_operator_period WHERE building_id = $2)`,
     [DEV.tenantId, DEV.buildingId],
   );
+  await seedDevUnits(db);
   for (const [user, role] of [
     [DEV.users.platformAdmin, 'platform_admin'],
     [DEV.users.support, 'support'],
@@ -388,6 +389,93 @@ async function seedDev(db: ClientBase): Promise<void> {
        SELECT $1, r.id FROM platform.role r WHERE r.key = $2
        ON CONFLICT (user_id, role_id) WHERE revoked_at IS NULL DO NOTHING`,
       [user, role],
+    );
+  }
+}
+
+/**
+ * B2.1 development data in the dev building: two room types, floors 1–2 with six units each (A-101 … A-206), the
+ * tenant's legal party as owner of every unit (apartment rule), and one manual electric and water meter per unit.
+ */
+async function seedDevUnits(db: ClientBase): Promise<void> {
+  const profiles: [string, string, string, string][] = [
+    [
+      'ห้องสตูดิโอ',
+      '24.00',
+      '4500.00',
+      JSON.stringify([{ kind: 'internet', description: 'อินเทอร์เน็ต', amount: '300.00' }]),
+    ],
+    [
+      'ห้องใหญ่',
+      '32.00',
+      '6500.00',
+      JSON.stringify([
+        { kind: 'internet', description: 'อินเทอร์เน็ต', amount: '300.00' },
+        { kind: 'parking', description: 'ที่จอดรถ 1 คัน', amount: '500.00' },
+      ]),
+    ],
+  ];
+  for (const [name, area, rent, lines] of profiles)
+    await db.query(
+      `INSERT INTO ops.unit_profile (tenant_id, building_id, name, area_sqm, default_rent, default_deposit_months,
+                                    default_advance_rent_months, default_lease_lines)
+       VALUES ($1, $2, $3, $4, $5, 1, 1, $6::jsonb)
+       ON CONFLICT (building_id, name) WHERE deleted_at IS NULL DO NOTHING`,
+      [DEV.tenantId, DEV.buildingId, name, area, rent, lines],
+    );
+  for (const level of [1, 2]) {
+    await db.query(
+      `INSERT INTO core.floor (tenant_id, building_id, level, name, sort_order) VALUES ($1, $2, $3, $4, $3)
+       ON CONFLICT (building_id, level) WHERE deleted_at IS NULL DO NOTHING`,
+      [DEV.tenantId, DEV.buildingId, level, `ชั้น ${level}`],
+    );
+    for (let n = 1; n <= 6; n += 1) {
+      const unitNo = `A-${level}${String(n).padStart(2, '0')}`;
+      const profile = n <= 4 ? 'ห้องสตูดิโอ' : 'ห้องใหญ่';
+      await db.query(
+        `INSERT INTO core.unit (tenant_id, building_id, property_id, floor_id, unit_no, type, area_sqm, base_rent, status_changed_at)
+         SELECT $1, $2, $3, f.id, $5, 'room', p.area_sqm, p.default_rent, now()
+           FROM core.floor f, ops.unit_profile p
+          WHERE f.building_id = $2 AND f.level = $4 AND f.deleted_at IS NULL
+            AND p.building_id = $2 AND p.name = $6 AND p.deleted_at IS NULL
+         ON CONFLICT (building_id, unit_no) WHERE deleted_at IS NULL DO NOTHING`,
+        [DEV.tenantId, DEV.buildingId, DEV.propertyId, level, unitNo, profile],
+      );
+      await db.query(
+        `INSERT INTO ops.unit_detail (unit_id, tenant_id, building_id, unit_profile_id)
+         SELECT u.id, u.tenant_id, u.building_id, p.id FROM core.unit u, ops.unit_profile p
+          WHERE u.building_id = $1 AND u.unit_no = $2 AND u.deleted_at IS NULL AND p.building_id = $1 AND p.name = $3
+         ON CONFLICT (unit_id) DO NOTHING`,
+        [DEV.buildingId, unitNo, profile],
+      );
+    }
+  }
+  await db.query(
+    `INSERT INTO core.unit_ownership (tenant_id, building_id, unit_id, party_id, share_pct, valid_from, source)
+     SELECT u.tenant_id, u.building_id, u.id, $2, 100, '2026-10-01', 'manual' FROM core.unit u
+      WHERE u.building_id = $1 AND u.deleted_at IS NULL
+        AND NOT EXISTS (SELECT 1 FROM core.unit_ownership o WHERE o.unit_id = u.id)`,
+    [DEV.buildingId, DEV.legalPartyId],
+  );
+  for (const [utility, category, suffix, label] of [
+    ['electric', 'meter_electric', 'E', 'มิเตอร์ไฟฟ้า'],
+    ['water', 'meter_water', 'W', 'มิเตอร์น้ำ'],
+  ] as const) {
+    await db.query(
+      `INSERT INTO core.asset_item (tenant_id, building_id, floor_id, unit_id, category, name, meta)
+       SELECT u.tenant_id, u.building_id, u.floor_id, u.id, $2::core.asset_category, $3 || ' ' || u.unit_no, '{"reading":"manual"}'
+         FROM core.unit u
+        WHERE u.building_id = $1 AND u.deleted_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM core.asset_item a WHERE a.unit_id = u.id AND a.category = $2::core.asset_category)`,
+      [DEV.buildingId, category, label],
+    );
+    await db.query(
+      `INSERT INTO core.meter_assignment (tenant_id, building_id, asset_item_id, unit_id, purpose, utility, code, valid_from, initial_reading)
+       SELECT a.tenant_id, a.building_id, a.id, a.unit_id, 'unit', $2::core.utility, u.unit_no || '-' || $3, '2026-10-01T00:00:00+07:00', 0
+         FROM core.asset_item a JOIN core.unit u ON u.id = a.unit_id
+        WHERE a.building_id = $1 AND a.category = $4::core.asset_category
+          AND NOT EXISTS (SELECT 1 FROM core.meter_assignment m WHERE m.asset_item_id = a.id)`,
+      [DEV.buildingId, utility, suffix, category],
     );
   }
 }
@@ -419,6 +507,13 @@ const COUNTED_TABLES = [
   'core.property',
   'core.building',
   'core.building_operator_period',
+  'core.floor',
+  'core.unit',
+  'core.unit_ownership',
+  'core.asset_item',
+  'core.meter_assignment',
+  'ops.unit_profile',
+  'ops.unit_detail',
 ];
 
 export async function countRows(db: ClientBase): Promise<Record<string, number>> {

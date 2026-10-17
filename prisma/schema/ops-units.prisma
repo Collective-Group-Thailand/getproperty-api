@@ -1,0 +1,81 @@
+// ops — A1 units: unit profiles (room types), unit details, utility accounts (B2.1; schema-design v2 §3.3.2).
+
+/// Room types (v1): defaults for a group of units.
+model UnitProfile {
+  id                       String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                 String    @map("tenant_id") @db.Uuid
+  buildingId               String    @map("building_id") @db.Uuid
+  name                     String
+  areaSqm                  Decimal?  @map("area_sqm") @db.Decimal(9, 2)
+  defaultRent              Decimal   @map("default_rent") @db.Decimal(14, 2)
+  defaultDepositMonths     Decimal   @default(1) @map("default_deposit_months") @db.Decimal(3, 1)
+  defaultAdvanceRentMonths Decimal   @default(1) @map("default_advance_rent_months") @db.Decimal(3, 1)
+  defaultLeaseLines        Json      @default("[]") @map("default_lease_lines")
+  inspectionTemplateId     String?   @map("inspection_template_id") @db.Uuid
+  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                String?   @map("created_by") @db.Uuid
+  updatedAt                DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy                String?   @map("updated_by") @db.Uuid
+  deletedAt                DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy                String?   @map("deleted_by") @db.Uuid
+  version                  Int       @default(1)
+
+  tenant   Tenant       @relation("UnitProfileTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "unit_profile_tenant_id_fkey")
+  building Building     @relation("UnitProfileBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "unit_profile_building_id_fkey")
+  details  UnitDetail[]
+
+  @@unique([buildingId, name], map: "unit_profile_building_id_name_key", where: raw("(deleted_at IS NULL)"))
+  @@index([tenantId, buildingId], map: "unit_profile_tenant_id_building_id_idx")
+  @@map("unit_profile")
+  @@schema("ops")
+}
+
+/// 1:1 operational extension of core.unit.
+model UnitDetail {
+  unitId         String   @id @map("unit_id") @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  buildingId     String   @map("building_id") @db.Uuid
+  unitProfileId  String?  @map("unit_profile_id") @db.Uuid
+  currentLeaseId String?  @map("current_lease_id") @db.Uuid
+  statusReason   String?  @map("status_reason")
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?  @map("created_by") @db.Uuid
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy      String?  @map("updated_by") @db.Uuid
+  version        Int      @default(1)
+
+  unit     Unit         @relation("UnitDetailUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "unit_detail_unit_id_fkey")
+  tenant   Tenant       @relation("UnitDetailTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "unit_detail_tenant_id_fkey")
+  building Building     @relation("UnitDetailBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "unit_detail_building_id_fkey")
+  profile  UnitProfile? @relation(fields: [unitProfileId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "unit_detail_unit_profile_id_fkey")
+
+  @@index([tenantId, buildingId], map: "unit_detail_tenant_id_building_id_idx")
+  @@index([unitProfileId], map: "unit_detail_unit_profile_id_idx")
+  @@map("unit_detail")
+  @@schema("ops")
+}
+
+/// The building's accounts with MEA/PEA/MWA/PWA (D-032).
+model UtilityAccount {
+  id         String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String          @map("tenant_id") @db.Uuid
+  buildingId String          @map("building_id") @db.Uuid
+  utility    Utility
+  provider   UtilityProvider
+  customerNo String          @map("customer_no")
+  meterNo    String?         @map("meter_no")
+  label      String
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?         @map("created_by") @db.Uuid
+  updatedAt  DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy  String?         @map("updated_by") @db.Uuid
+
+  tenant   Tenant   @relation("UtilityAccountTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "utility_account_tenant_id_fkey")
+  building Building @relation("UtilityAccountBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "utility_account_building_id_fkey")
+
+  @@unique([buildingId, utility, customerNo], map: "utility_account_building_id_utility_customer_no_key")
+  @@index([tenantId, buildingId], map: "utility_account_tenant_id_building_id_idx")
+  @@map("utility_account")
+  @@schema("ops")
+}

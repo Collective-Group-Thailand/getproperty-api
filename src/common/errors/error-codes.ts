@@ -89,6 +89,13 @@ export const ERROR_CODES = {
   'device.invalid_payload': HttpStatus.UNPROCESSABLE_ENTITY,
   'provider.unavailable': HttpStatus.SERVICE_UNAVAILABLE,
   'service.unavailable': HttpStatus.SERVICE_UNAVAILABLE,
+  'asset.duplicate': HttpStatus.CONFLICT,
+  'asset.read_only': HttpStatus.FORBIDDEN,
+  'unit.invalid_status_transition': HttpStatus.CONFLICT,
+  'meter.already_assigned': HttpStatus.CONFLICT,
+  'import.file_invalid': HttpStatus.UNPROCESSABLE_ENTITY,
+  'import.invalid_rows': HttpStatus.UNPROCESSABLE_ENTITY,
+  'import.preview_stale': HttpStatus.CONFLICT,
   'internal.unexpected': HttpStatus.INTERNAL_SERVER_ERROR,
 } as const satisfies Record<string, HttpStatus>;
 
