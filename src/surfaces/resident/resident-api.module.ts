@@ -1,13 +1,22 @@
 import { Module } from '@nestjs/common';
 
+import { ResidentMeController } from '../shared/me.controllers';
+import { MeService } from '../shared/me.service';
+import { ResidentConsentsController, ResidentDsrController } from '../shared/privacy.controllers';
+import { notificationsController, realtimeController } from '../shared/surface.controllers';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 
-/**
- * `/v1/resident/*` (contract §2; D-151, D-154) — consumed by the separate `getproperty-liff` repo.
- * Business controllers of this surface are added by their deliverables.
- */
+/** `/v1/resident/*` (contract §2): LIFF — me, consents, PDPA requests, inbox, realtime (B1.3). */
 @Module({
-  controllers: [systemPingController(SURFACES.resident)],
+  controllers: [
+    systemPingController(SURFACES.resident),
+    ResidentMeController,
+    ResidentConsentsController,
+    ResidentDsrController,
+    notificationsController(SURFACES.resident),
+    realtimeController(SURFACES.resident),
+  ],
+  providers: [MeService],
 })
 export class ResidentApiModule {}

@@ -53,7 +53,7 @@ export function personalDataIssues(text) {
     ids.add(digits);
     if (!digits.startsWith('0000')) issues.push(`13-digit id "${match[0]}" must start with 0000 (fake)`);
     else if (thaiIdChecksumValid(digits) && digits !== '0000000000000')
-      issues.push(`13-digit id "${match[0]}" passes the Thai id checksum: use 0000000000001`);
+      issues.push(`13-digit id "${match[0]}" passes the Thai id checksum: use 0000000000002`);
   }
   for (const match of text.matchAll(THAI_PLATE)) {
     const digits = match[0].replace(/\D/g, '');

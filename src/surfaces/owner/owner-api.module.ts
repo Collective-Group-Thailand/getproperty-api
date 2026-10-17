@@ -1,10 +1,58 @@
 import { Module } from '@nestjs/common';
 
+import { filesController } from '../shared/files.controller';
+import { OwnerMeController } from '../shared/me.controllers';
+import { MeService } from '../shared/me.service';
+import { OwnerConsentsController } from '../shared/privacy.controllers';
+import {
+  notificationsController,
+  pushSubscriptionsController,
+  realtimeController,
+} from '../shared/surface.controllers';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
+import {
+  OwnerAssetGrantsController,
+  OwnerAuditLogController,
+  OwnerDsrController,
+  OwnerNotificationRoutesController,
+  OwnerSupportGrantsController,
+} from './governance.controller';
+import {
+  OwnerBankAccountsController,
+  OwnerComplianceAcknowledgementsController,
+  OwnerSettingsController,
+  OwnerUtilityTariffsController,
+} from './money-settings.controller';
+import {
+  OwnerInvitationsController,
+  OwnerMembersController,
+  OwnerTenantController,
+} from './tenancy.controller';
 
-/** `/v1/owner/*` (contract §2). Business controllers of this surface are added by their deliverables. */
+/** `/v1/owner/*` (contract §2): owner console — B1.3 identity, tenancy, settings, tariffs, governance, files. */
 @Module({
-  controllers: [systemPingController(SURFACES.owner)],
+  controllers: [
+    systemPingController(SURFACES.owner),
+    OwnerMeController,
+    OwnerTenantController,
+    OwnerMembersController,
+    OwnerInvitationsController,
+    OwnerBankAccountsController,
+    OwnerSettingsController,
+    OwnerUtilityTariffsController,
+    OwnerComplianceAcknowledgementsController,
+    OwnerSupportGrantsController,
+    OwnerAssetGrantsController,
+    OwnerAuditLogController,
+    OwnerDsrController,
+    OwnerNotificationRoutesController,
+    OwnerConsentsController,
+    filesController(SURFACES.owner),
+    notificationsController(SURFACES.owner),
+    pushSubscriptionsController(SURFACES.owner),
+    realtimeController(SURFACES.owner),
+  ],
+  providers: [MeService],
 })
 export class OwnerApiModule {}

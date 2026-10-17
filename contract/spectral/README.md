@@ -25,7 +25,7 @@ generated `contract/openapi.json`. Any warning fails CI. The rules implement
 ## Fake data in examples (PDPA, D-025)
 - **Email:** only reserved domains: `example.com`, `example.org`, `example.net`, `*.example`, `*.test`, `*.invalid`.
 - **Thai phone:** the fake forms `08x-000-xxxx` (mobile) and `02-000-xxxx` (landline), e.g. `081-000-1234`.
-- **13-digit ids (national id / tax id):** must start with `0000` and must not pass the Thai id checksum, e.g. `0000000000001`.
+- **13-digit ids (national id / tax id):** must start with `0000` and must not pass the Thai id checksum, e.g. `0000000000002`.
 - **Licence plates:** Thai letters + digits are flagged unless the digits are all zero (`กข 0000`).
 - **Card numbers:** never. Any 13–19 digit string that passes the Luhn check is rejected.
 - **Names and addresses:** obviously fictional (e.g. `ผู้เช่า ทดสอบ`, `หอพักตัวอย่าง`, `99/9 ถนนตัวอย่าง`).
