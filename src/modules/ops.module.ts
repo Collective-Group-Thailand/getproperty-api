@@ -1,5 +1,11 @@
 import { Global, Module } from '@nestjs/common';
 
+import { BillingCyclesService } from './ops-billing/billing-cycles.service';
+import { BillingInputs } from './ops-billing/billing-inputs';
+import { InvoiceScoreSource } from './ops-billing/invoice-score.source';
+import { InvoicesService } from './ops-billing/invoices.service';
+import { RatePlansService } from './ops-billing/rate-plans.service';
+import { ResidentInvoicesService } from './ops-billing/resident-invoices.service';
 import { DepositDocuments } from './ops-deposits/deposit-documents';
 import { DepositsService } from './ops-deposits/deposits.service';
 import { DepositDeadlineSubscriber } from './ops-deposits/deposits.subscriber';
@@ -38,11 +44,17 @@ const SERVICES = [
   DepositsService,
   DepositDeadlineSubscriber,
   ResidentDepositsService,
+  RatePlansService,
+  BillingInputs,
+  InvoicesService,
+  BillingCyclesService,
+  InvoiceScoreSource,
+  ResidentInvoicesService,
 ];
 
 /**
  * Group A business modules (master plan §4: `modules/ops-*`), shared by the HTTP and worker processes so their
- * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4).
+ * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4); B4: rate plans, billing cycles, invoices (4.2).
  */
 @Global()
 @Module({ providers: SERVICES, exports: SERVICES })

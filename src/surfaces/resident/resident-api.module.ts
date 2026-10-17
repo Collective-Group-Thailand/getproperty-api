@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { ResidentInvoicesController } from '../owner/billing.controller';
 import { ResidentDepositsController } from '../owner/deposits.controller';
 import { ResidentInvitationsController, ResidentLeasesController } from '../owner/leases.controller';
 import { ResidentPrivacyController } from '../owner/parties.controller';
@@ -15,7 +16,7 @@ import {
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 
-/** `/v1/resident/*` (contract §2): LIFF — me, consents, PDPA requests, inbox, realtime (B1.3); privacy (B2.2); leases, e-signature, notice, invitations (B2.3); deposits (B2.4). */
+/** `/v1/resident/*` (contract §2): LIFF — me, consents, PDPA requests, inbox, realtime (B1.3); privacy (B2.2); leases, e-signature, notice, invitations (B2.3); deposits (B2.4); invoices (B4.2). */
 @Module({
   controllers: [
     systemPingController(SURFACES.resident),
@@ -27,6 +28,7 @@ import { systemPingController } from '../system-ping.controller';
     ResidentLeasesController,
     ResidentInvitationsController,
     ResidentDepositsController,
+    ResidentInvoicesController,
     ResidentUsageController,
     notificationsController(SURFACES.resident),
     realtimeController(SURFACES.resident),

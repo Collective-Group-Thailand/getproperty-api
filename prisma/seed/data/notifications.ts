@@ -109,13 +109,38 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
       'Gateway {{device.serial}} of {{tenant.name}} has been offline since {{device.since}}; its meters will not report until it is back.',
     ],
   },
+  {
+    key: 'billing_cycle.readings_requested',
+    description:
+      'Owner/Manager/Staff: readings missing at the cut-off — read the meters before the grace deadline (D-031)',
+    th: [
+      'ขอให้จดเลขมิเตอร์',
+      'รอบบิล {{cycle.periodKey}} ของ {{property.name}} ยังขาดค่ามิเตอร์ {{cycle.missing}} รายการ — โปรดจดเลขมิเตอร์ก่อน {{cycle.graceDeadlineAt}}',
+    ],
+    en: [
+      'Meter readings needed',
+      'Billing cycle {{cycle.periodKey}} of {{property.name}} is missing {{cycle.missing}} reading(s) — please read the meters before {{cycle.graceDeadlineAt}}.',
+    ],
+  },
+  {
+    key: 'billing_cycle.computed',
+    description: 'Owner/Manager: the cycle drafts are computed and ready to review and issue (D-011)',
+    th: [
+      'ร่างใบแจ้งหนี้พร้อมตรวจ',
+      'รอบบิล {{cycle.periodKey}} ของ {{property.name}}: ร่างใบแจ้งหนี้ {{cycle.drafts}} ใบ พร้อมตรวจและออก ({{cycle.needsReview}} ใบต้องตรวจสอบ)',
+    ],
+    en: [
+      'Invoice drafts ready',
+      'Billing cycle {{cycle.periodKey}} of {{property.name}}: {{cycle.drafts}} invoice draft(s) ready to review and issue ({{cycle.needsReview}} need review).',
+    ],
+  },
 ];
 
 /** Operator audiences per event: workflow → owner + manager; device/meter health → owner + manager + staff. */
 const operatorAudiences = (key: string): string[] =>
-  key.startsWith('workflow.')
+  key.startsWith('workflow.') || key === 'billing_cycle.computed'
     ? ['owner', 'manager']
-    : key.startsWith('meter.') || key.startsWith('device.')
+    : key.startsWith('meter.') || key.startsWith('device.') || key === 'billing_cycle.readings_requested'
       ? ['owner', 'manager', 'staff']
       : ['owner'];
 

@@ -1,0 +1,90 @@
+{
+  "lines": [
+    {
+      "lineNo": 1,
+      "sourceType": "common_fee",
+      "quantity": "0.012",
+      "unit": "ratio",
+      "unitPrice": "100000.0000",
+      "periodFrom": "2026-11-01",
+      "periodTo": "2026-11-30",
+      "sourceId": "rpv-cf",
+      "leaseLineId": null,
+      "chargeId": null,
+      "estimateSettlementId": null,
+      "meter": null,
+      "ratePlanVersionId": "rpv-cf",
+      "utilityTariffVersionId": null,
+      "capPerUnit": null,
+      "aboveCap": false,
+      "acknowledgementId": null,
+      "tierBreakdown": [
+        {
+          "label": "ownership_ratio",
+          "units": "0.012345",
+          "pricePerUnit": "100000.00",
+          "amount": "1234.5"
+        }
+      ],
+      "proRata": {
+        "days": 30,
+        "daysInPeriod": 30,
+        "factor": "1.000000",
+        "from": "2026-11-01",
+        "to": "2026-11-30"
+      },
+      "vatApplicable": false,
+      "complianceRuleIds": ["compliance.bill_disclosure"],
+      "lineKind": "common_fee",
+      "description": "ค่าส่วนกลาง",
+      "amount": "1234.50"
+    },
+    {
+      "lineNo": 2,
+      "sourceType": "fund",
+      "quantity": "24.000",
+      "unit": "sqm",
+      "unitPrice": "35.0000",
+      "periodFrom": "2026-11-01",
+      "periodTo": "2026-11-30",
+      "sourceId": "rpv-fund",
+      "leaseLineId": null,
+      "chargeId": null,
+      "estimateSettlementId": null,
+      "meter": null,
+      "ratePlanVersionId": "rpv-fund",
+      "utilityTariffVersionId": null,
+      "capPerUnit": null,
+      "aboveCap": false,
+      "acknowledgementId": null,
+      "tierBreakdown": [
+        {
+          "label": "per_sqm",
+          "units": "24.000",
+          "pricePerUnit": "35.0000",
+          "amount": "840"
+        }
+      ],
+      "proRata": {
+        "days": 30,
+        "daysInPeriod": 30,
+        "factor": "1.000000",
+        "from": "2026-11-01",
+        "to": "2026-11-30"
+      },
+      "vatApplicable": false,
+      "complianceRuleIds": ["compliance.bill_disclosure"],
+      "lineKind": "fund",
+      "description": "เงินกองทุน",
+      "amount": "840.00"
+    }
+  ],
+  "subtotal": "2074.50",
+  "vatAmount": "0.00",
+  "total": "2074.50",
+  "hasEstimate": false,
+  "hasAboveCapLine": false,
+  "reviewFlags": [],
+  "complianceFlags": [],
+  "advanceRent": null
+}

@@ -107,6 +107,33 @@ const meterHealth: NotifiableResolver = async (tx, e) =>
       }
     : null;
 
+/** A billed party as a resident recipient (its LINE, or the LINE of its linked login). */
+async function billedParty(tx: Tx, partyId: string): Promise<Recipient[]> {
+  const party = await tx.party.findUnique({ where: { id: partyId } });
+  if (!party) return [];
+  const link = await tx.partyUserLink.findFirst({
+    where: { partyId, state: 'active' },
+    include: { user: true },
+  });
+  return [
+    {
+      audience: 'resident',
+      type: 'party',
+      id: party.id,
+      tenantId: party.tenantId,
+      language: party.language,
+      line: party.lineUserId ?? link?.user.lineUserId ?? null,
+      phone: party.phoneE164,
+      email: party.email,
+    },
+  ];
+}
+
+async function propertyName(tx: Tx, propertyId: unknown): Promise<string> {
+  if (typeof propertyId !== 'string') return '';
+  return (await tx.property.findUnique({ where: { id: propertyId }, select: { name: true } }))?.name ?? '';
+}
+
 export const NOTIFIABLE_EVENTS: Record<string, NotifiableResolver> = {
   /** B3.4 (D-034): meter health and gateway offline reach the operators of the building's tenant. */
   'meter.stale': meterHealth,
@@ -159,6 +186,46 @@ export const NOTIFIABLE_EVENTS: Record<string, NotifiableResolver> = {
     },
     consentPurpose: 'resident.service',
   }),
+  /** B4.2: the billed party receives the issued invoice by LINE (D-011, D-022); 4.3 adds the Flex card and QR. */
+  'invoice.issued': async (tx, e) => {
+    const p = e.payload as { billedPartyId?: string; unitId?: string | null };
+    if (!p.billedPartyId || !e.tenantId) return null;
+    const unit = p.unitId
+      ? await tx.unit.findUnique({ where: { id: p.unitId }, select: { unitNo: true } })
+      : null;
+    return {
+      recipients: await billedParty(tx, p.billedPartyId),
+      data: {
+        tenant: { name: await tenantName(tx, e.tenantId) },
+        invoice: e.payload,
+        unit: { unitNo: unit?.unitNo ?? '' },
+      },
+      consentPurpose: 'resident.service',
+    };
+  },
+  /** B4.2 (D-031): staff are asked for the readings the cut-off did not bring. */
+  'billing_cycle.readings_requested': async (tx, e) =>
+    e.tenantId
+      ? {
+          recipients: await operators(tx, e.tenantId, ['owner', 'manager', 'staff'], 'owner'),
+          data: {
+            tenant: { name: await tenantName(tx, e.tenantId) },
+            property: { name: await propertyName(tx, e.payload.propertyId) },
+            cycle: e.payload,
+          },
+        }
+      : null,
+  'billing_cycle.computed': async (tx, e) =>
+    e.tenantId && e.payload.firstComputed === true
+      ? {
+          recipients: await operators(tx, e.tenantId, ['owner', 'manager'], 'owner'),
+          data: {
+            tenant: { name: await tenantName(tx, e.tenantId) },
+            property: { name: await propertyName(tx, e.payload.propertyId) },
+            cycle: e.payload,
+          },
+        }
+      : null,
   'dsr.received': async (tx, e) =>
     e.tenantId
       ? {

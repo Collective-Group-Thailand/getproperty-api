@@ -150,6 +150,14 @@ export const ERROR_CODES = {
   'compliance.entry_notice': HttpStatus.UNPROCESSABLE_ENTITY,
   'compliance.no_cutoff': HttpStatus.UNPROCESSABLE_ENTITY,
   'compliance.invoice_immutable': HttpStatus.CONFLICT,
+  'invoice.invalid_state': HttpStatus.CONFLICT,
+  'invoice.not_ready': HttpStatus.CONFLICT,
+  'invoice.has_payments': HttpStatus.CONFLICT,
+  'invoice.credit_exceeds': HttpStatus.UNPROCESSABLE_ENTITY,
+  'rate_plan.backdated': HttpStatus.UNPROCESSABLE_ENTITY,
+  'rate_plan.version_in_force': HttpStatus.CONFLICT,
+  'rate_plan.in_use': HttpStatus.CONFLICT,
+  'billing_cycle.invalid_state': HttpStatus.CONFLICT,
   'internal.unexpected': HttpStatus.INTERNAL_SERVER_ERROR,
 } as const satisfies Record<string, HttpStatus>;
 

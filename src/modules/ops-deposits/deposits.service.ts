@@ -556,7 +556,10 @@ export class DepositsService extends TenantScopedRepository implements OnModuleI
     });
   }
 
-  /** The owner proposes: refund = deposit − deductions − final utilities; the resident is notified (LIFF). */
+  /**
+   * The owner proposes: refund = deposit + unused advance rent − deductions − final utilities (the final invoice,
+   * B4.2); the resident is notified (LIFF).
+   */
   async propose(ctx: TenantContext, id: string, input: { utilitiesFinal?: string }) {
     return this.db.tenant(ctx, async (tx) => {
       const d = await this.ownDeposit(tx, ctx, id);
@@ -574,7 +577,12 @@ export class DepositsService extends TenantScopedRepository implements OnModuleI
         items: s.items.length,
       });
       const utilities = new Decimal(input.utilitiesFinal ?? s.utilitiesFinal.toString()).toFixed(2);
-      const refund = proposedRefund(s.depositHeld.toString(), s.deductionsTotal.toString(), utilities);
+      const refund = proposedRefund(
+        s.depositHeld.toString(),
+        s.deductionsTotal.toString(),
+        utilities,
+        s.advanceRentUnused.toString(),
+      );
       const now = this.clock.now();
       await tx.depositSettlement.update({
         where: { id: s.id },
@@ -758,6 +766,7 @@ export class DepositsService extends TenantScopedRepository implements OnModuleI
           items: st.items.map((i) => ({ description: i.description, amount: i.amount.toFixed(2) })),
           deductionsTotal: st.deductionsTotal.toFixed(2),
           utilitiesFinal: st.utilitiesFinal.toFixed(2),
+          advanceRentUnused: st.advanceRentUnused.toFixed(2),
           refundAmount: amount,
           refundMethod: input.method,
           refundReference: input.reference ?? null,

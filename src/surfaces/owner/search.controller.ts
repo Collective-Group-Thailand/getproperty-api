@@ -16,6 +16,7 @@ export enum SearchHitTypeName {
   Party = 'party',
   Lease = 'lease',
   Device = 'device',
+  Invoice = 'invoice',
 }
 
 export class SearchQuery {
@@ -57,7 +58,7 @@ export class OwnerSearchController {
     id: 'owner.search.query',
     summary: 'Global search of the owner console',
     description:
-      'Buildings, units, parties (display name only), leases and devices of the current tenant matching `q` (≥ 2 characters, case-insensitive), at most 20 hits with prefix matches first; Staff limited to buildings see those buildings only, a cross-tenant row never appears (D-152). Invoices join with B4.',
+      'Buildings, units, parties (display name only), leases, devices and invoices (by number) of the current tenant matching `q` (≥ 2 characters, case-insensitive), at most 20 hits with prefix matches first; Staff limited to buildings see those buildings only, a cross-tenant row never appears (D-152).',
     implements: ['D-152', 'D-151'],
   })
   @ApiSuccess(200, {

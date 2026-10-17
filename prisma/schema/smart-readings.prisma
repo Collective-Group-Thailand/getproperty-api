@@ -88,9 +88,11 @@ model ReadingBatch {
   tenant   Tenant         @relation("ReadingBatchTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "reading_batch_tenant_id_fkey")
   building Building       @relation("ReadingBatchBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "reading_batch_building_id_fkey")
   readings MeterReading[]
+  billingCycle BillingCycle? @relation(fields: [billingCycleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "reading_batch_billing_cycle_id_fkey")
 
   @@unique([buildingId, kind, periodKey], map: "reading_batch_building_id_kind_period_key_key", where: raw("(kind = 'staff_round'::smart.reading_batch_kind)"))
   @@index([tenantId, buildingId], map: "reading_batch_tenant_id_building_id_idx")
+  @@index([billingCycleId], map: "reading_batch_billing_cycle_id_idx")
   @@map("reading_batch")
   @@schema("smart")
 }
@@ -155,6 +157,10 @@ model MeterReading {
   swapsAsOldLast   MeterSwap[]         @relation("MeterSwapOldLastReading")
   swapsAsNewFirst  MeterSwap[]         @relation("MeterSwapNewFirstReading")
   statusOf         MeterStatus[]       @relation("MeterStatusLastReading")
+  invoiceLinesFrom         InvoiceLine[]        @relation("InvoiceLineReadingFrom")
+  invoiceLinesTo           InvoiceLine[]        @relation("InvoiceLineReadingTo")
+  estimateSettlementsAsEst EstimateSettlement[] @relation("EstimateSettlementEstimatedReading")
+  estimateSettlementsAsAct EstimateSettlement[] @relation("EstimateSettlementActualReading")
 
   @@unique([assetItemId, readAt, source], map: "meter_reading_asset_item_id_read_at_source_key", where: raw("(review_state = ANY (ARRAY['accepted'::smart.reading_review_state, 'pending_review'::smart.reading_review_state]))"))
   @@unique([deviceId, seq], map: "meter_reading_device_id_seq_key", where: raw("(seq IS NOT NULL)"))

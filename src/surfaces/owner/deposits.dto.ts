@@ -147,6 +147,13 @@ export class SettlementDto {
   @MoneyOutput({ example: '350.50', description: 'Final utilities not yet invoiced.' })
   utilitiesFinal!: string;
 
+  @MoneyOutput({
+    example: '0.00',
+    description:
+      'Advance rent the final invoice did not use (D-177): paid back with the deposit, never forfeited (compliance.no_forfeiture).',
+  })
+  advanceRentUnused!: string;
+
   @MoneyOutput({ example: '3349.50', description: 'Proposed refund.', nullable: true })
   proposedRefund!: string | null;
 

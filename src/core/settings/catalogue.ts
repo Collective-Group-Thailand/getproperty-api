@@ -133,6 +133,56 @@ export const SETTINGS: readonly SettingDef[] = [
     allowedValues: ['allow', 'block'],
   },
   {
+    key: 'billing.reading_grace_hours',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-031 / D-191: hours after the cut-off during which staff/OCR readings still close the period; after it the cycle bills an estimate (estimate_policy allow) or waits for a reading (block).',
+    editableBy: OWNER_BILLING,
+    value: 24,
+    reason: 'seed: D-191 founder pre-approved recommendation',
+  },
+  {
+    key: 'billing.default_due_day',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-191: day of the month invoices fall due when the lease names none (the standard contract default "ภายในวันที่ 5"); never inside invoice.min_lead_days of the issue.',
+    editableBy: OWNER_BILLING,
+    value: 5,
+    reason: 'seed: B2.3 standard contract default due day (D-191)',
+  },
+  {
+    key: 'billing.auto_issue',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-011 / B4.2: issue a computed billing cycle automatically after `afterHours` hours without owner action ({"enabled": false, "afterHours": 24}); off by default.',
+    editableBy: OWNER_BILLING,
+    value: { enabled: false, afterHours: 24 },
+    reason: 'seed: B4.2 prompt default off',
+  },
+  {
+    key: 'compliance.tariff_cap.representative_units',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-021a / D-194 (schema-design §4.2.2): the monthly consumption a new power/water rate plan version is compared at with the utility effective average rate ({"electric": "150", "water": "10"}).',
+    editableBy: ADMIN_COMPLIANCE,
+    value: { electric: '150', water: '10' },
+    reason: 'seed: D-194 founder pre-approved recommendation',
+  },
+  {
+    key: 'tax.vat',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-050 / O-004 / O-007 ⚖: VAT on invoices of VAT-registered tenants — the rate and the invoice line kinds it applies to ({"rate": "0.07", "applicableLineKinds": []}); empty until tax counsel confirms which charges are taxable.',
+    editableBy: OWNER_BILLING,
+    value: { rate: '0.07', applicableLineKinds: [] },
+    reason: 'seed: O-007 conservative default (no line kind taxed until confirmed)',
+  },
+  {
     key: 'reminders.schedule',
     valueType: 'json',
     scopeAllowed: ['platform', 'tenant'],

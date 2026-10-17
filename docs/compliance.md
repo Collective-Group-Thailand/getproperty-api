@@ -10,10 +10,10 @@
 | Rule | Legal reference | Default severity | Applies to | Settings | Covered operations |
 |---|---|---|---|---|---|
 | `compliance.scope` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 3 (≥ 3 หน่วย); legal-reference §1 ขอบเขต; D-158 | warn | tenant | `tenant.subject_to_ocpb_2568` | — (engine/worker only) |
-| `compliance.tariff_cap` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (6); legal-reference §1 ค่าน้ำ/ค่าไฟ, §4; D-021a, D-140 | warn | rate_plan, invoice | `compliance.tariff_cap.severity` | — (engine/worker only) |
-| `compliance.bill_disclosure` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (8); legal-reference §1 ใบแจ้งหนี้; D-022 | block | invoice | — | `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
-| `compliance.invoice_lead_time` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (8); legal-reference §1 ใบแจ้งหนี้ | block | invoice | `invoice.min_lead_days` | — (engine/worker only) |
-| `compliance.water_minimum` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (6); D-141 | warn | lease, rate_plan | `compliance.tariff_cap.severity` | `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
+| `compliance.tariff_cap` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (6); legal-reference §1 ค่าน้ำ/ค่าไฟ, §4; D-021a, D-140 | warn | rate_plan, invoice | `compliance.tariff_cap.severity` | `owner.billingCycles.issue`, `owner.invoices.issue`, `owner.ratePlans.saveVersion` |
+| `compliance.bill_disclosure` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (8); legal-reference §1 ใบแจ้งหนี้; D-022 | block | invoice | — | `owner.billingCycles.issue`, `owner.invoices.issue`, `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
+| `compliance.invoice_lead_time` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (8); legal-reference §1 ใบแจ้งหนี้ | block | invoice | `invoice.min_lead_days` | `owner.billingCycles.issue`, `owner.invoices.issue` |
+| `compliance.water_minimum` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (6); D-141 | warn | lease, rate_plan | `compliance.tariff_cap.severity` | `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update`, `owner.ratePlans.saveVersion` |
 | `compliance.deposit_cap` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (2); legal-reference §1 เงินประกัน + ค่าเช่าล่วงหน้า; D-023 | block | lease, deposit | `deposit.max_months_short`, `deposit.max_years_long` | `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
 | `compliance.deposit_deadline` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (10); legal-reference §1 คืนเงินประกัน; D-023 | warn | deposit | `deposit.refund_days` | — (engine/worker only) |
 | `compliance.deposit_evidence` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (10); legal-reference §1 คืนเงินประกัน; D-023 | block | deposit | — | `owner.deposits.addDeduction` |
@@ -22,10 +22,10 @@
 | `compliance.notice_period` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (11); legal-reference §1 ผู้เช่าบอกเลิก | warn | lease, notice | — | `owner.leases.recordNotice`, `resident.leases.giveNotice` |
 | `compliance.termination_notice` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (12); legal-reference §1 ผู้ให้เช่าบอกเลิก | warn | lease, notice | — | `owner.leases.recordNotice`, `owner.leases.terminate` |
 | `compliance.no_midterm_increase` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (3); legal-reference §1 ขึ้นค่าเช่า | block | lease, rate_plan | — | `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
-| `compliance.no_renewal_fee` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (11); legal-reference §1 ค่าต่อสัญญา | block | lease, invoice | — | `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
+| `compliance.no_renewal_fee` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (11); legal-reference §1 ค่าต่อสัญญา | block | lease, invoice | — | `owner.billingCycles.issue`, `owner.invoiceCharges.create`, `owner.invoices.debitNote`, `owner.invoices.issue`, `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
 | `compliance.entry_notice` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (5); legal-reference §1 เข้าห้อง | warn | access | — | — (engine/worker only) |
 | `compliance.no_cutoff` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (10); legal-reference §1 ตัดน้ำ/ไฟ; D-024, D-157 | block | access, invoice | — | — (engine/worker only) |
 | `compliance.forbidden_clause` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (1)–(12); legal-reference §1 ข้อสัญญาที่ขัดประกาศ | block | lease | — | `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
-| `compliance.late_fee_policy` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (5); legal-reference §1 ค่าปรับล่าช้า; D-045, O-002 | block | invoice, lease | `late_fee.enabled` | `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
+| `compliance.late_fee_policy` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (5); legal-reference §1 ค่าปรับล่าช้า; D-045, O-002 | block | invoice, lease | `late_fee.enabled` | `owner.invoices.issue`, `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
 
 18 rules.

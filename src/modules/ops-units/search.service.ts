@@ -3,7 +3,7 @@ import { DomainException } from '@common/errors/domain.exception';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
 import { Injectable } from '@nestjs/common';
 
-export type SearchHitType = 'building' | 'unit' | 'party' | 'lease' | 'device';
+export type SearchHitType = 'building' | 'unit' | 'party' | 'lease' | 'device' | 'invoice';
 
 export interface SearchHit {
   type: SearchHitType;
@@ -19,7 +19,7 @@ export const SEARCH_MAX_HITS = 20;
  * The owner console's global search (top bar): buildings, units, parties, leases and devices of the current tenant
  * whose name, number or serial contains the query (case-insensitive, trigram indexes). Runs in the tenant
  * transaction, so RLS and the Staff building limit apply; party hits show the display name only (never PII). At
- * most 20 hits, exact-prefix matches first. Invoices join when B4 lands.
+ * most 20 hits, exact-prefix matches first. Issued invoices by number (B4.2).
  */
 @Injectable()
 export class SearchService extends TenantScopedRepository {
@@ -74,6 +74,15 @@ export class SearchService extends TenantScopedRepository {
         select: { id: true, serial: true, kind: true, model: true },
         take,
       });
+      const invoices = await tx.invoice.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          number: contains,
+          ...(buildingScope ? { buildingId: buildingScope } : {}),
+        },
+        select: { id: true, number: true, unit: { select: { unitNo: true } } },
+        take,
+      });
       const hits: SearchHit[] = [
         ...buildings.map((b) => ({ type: 'building' as const, id: b.id, label: b.name, sublabel: b.code })),
         ...units.map((u) => ({
@@ -90,6 +99,12 @@ export class SearchService extends TenantScopedRepository {
           sublabel: l.unit.unitNo,
         })),
         ...devices.map((d) => ({ type: 'device' as const, id: d.id, label: d.serial, sublabel: d.model })),
+        ...invoices.map((i) => ({
+          type: 'invoice' as const,
+          id: i.id,
+          label: i.number ?? '',
+          sublabel: i.unit?.unitNo ?? null,
+        })),
       ];
       const lower = q.toLowerCase();
       const rank = (h: SearchHit) => (h.label.toLowerCase().startsWith(lower) ? 0 : 1);

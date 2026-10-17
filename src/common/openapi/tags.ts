@@ -110,6 +110,10 @@ export const API_TAGS: Record<string, string> = {
     'The compliance rule registry with legal references, verification status and platform severities (ADR-0007, D-021a, D-149).',
   'owner.compliance':
     'Compliance rules in force for the tenant and its monthly compliance score (ADR-0007, D-020, D-021a, D-158).',
+  'owner.billing':
+    'Rate plans, billing cycles, invoices, credit/debit notes and one-off charges: readings → invoices at my rates with the utility-cap warning (D-011, D-021a, D-031, D-040, D-041).',
+  'resident.invoices':
+    'My invoices as issued, with registers, reading sources and what is still due (D-011, D-022).',
   'admin.featureFlags': 'Feature flags and tenant overrides.',
   'admin.auditLog': 'Platform-wide audit log (D-161).',
   'admin.dataSubjectRequests': 'PDPA requests across tenants (D-025).',

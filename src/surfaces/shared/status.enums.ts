@@ -142,3 +142,109 @@ export enum ResidentEntitlement {
   Announcements = 'announcements',
   Parcels = 'parcels',
 }
+
+// ------------------------------------------------------------------------------------------- B4 billing & payments
+
+/** `ops.invoice_status` (D-040, D-044): draft → issued → partially_paid / overdue → paid; void before any payment. */
+export enum InvoiceStatusName {
+  Draft = 'draft',
+  Issued = 'issued',
+  PartiallyPaid = 'partially_paid',
+  Paid = 'paid',
+  Overdue = 'overdue',
+  Void = 'void',
+}
+
+/** `ops.payment_status` (schema-design §4.2.4; payments arrive in B4.4). */
+export enum PaymentStatusName {
+  Pending = 'pending',
+  Confirmed = 'confirmed',
+  Failed = 'failed',
+  Refunded = 'refunded',
+  Reversed = 'reversed',
+}
+
+/** `ops.invoice_line_source_type` (D-151). */
+export enum InvoiceLineSourceTypeName {
+  Rent = 'rent',
+  Meter = 'meter',
+  CommonFee = 'common_fee',
+  Fund = 'fund',
+  Penalty = 'penalty',
+  Service = 'service',
+  Deposit = 'deposit',
+  Adjustment = 'adjustment',
+}
+
+/** `ops.invoice_line_kind` (D-041; catalogue `ops.invoice_line_kind_rule`). */
+export enum InvoiceLineKindName {
+  Rent = 'rent',
+  Electricity = 'electricity',
+  Water = 'water',
+  Internet = 'internet',
+  Parking = 'parking',
+  Cleaning = 'cleaning',
+  Furniture = 'furniture',
+  CommonFee = 'common_fee',
+  Fund = 'fund',
+  WaterMinimum = 'water_minimum',
+  OtherFixed = 'other_fixed',
+  OneOff = 'one_off',
+  LateFee = 'late_fee',
+  EstimateSettlement = 'estimate_settlement',
+  PriorBalance = 'prior_balance',
+  Discount = 'discount',
+  DepositOffset = 'deposit_offset',
+  ServiceChargeWork = 'service_charge_work',
+}
+
+/** `ops.billing_cycle_status` (D-031). */
+export enum BillingCycleStatusName {
+  Open = 'open',
+  ReadingsPending = 'readings_pending',
+  Computed = 'computed',
+  Issued = 'issued',
+  Closed = 'closed',
+  Cancelled = 'cancelled',
+}
+
+/** `ops.rate_plan_kind` (D-151). */
+export enum RatePlanKindName {
+  Power = 'power',
+  Water = 'water',
+  CommonFee = 'common_fee',
+  Fund = 'fund',
+  Rent = 'rent',
+  Service = 'service',
+}
+
+/** `ops.rate_basis`. */
+export enum RateBasisName {
+  PerUnit = 'per_unit',
+  PerSqm = 'per_sqm',
+  PerOwnershipRatio = 'per_ownership_ratio',
+  Fixed = 'fixed',
+}
+
+/** `ops.note_reason` (credit / debit notes, D-040). */
+export enum NoteReasonName {
+  ReadingCorrection = 'reading_correction',
+  TariffCorrection = 'tariff_correction',
+  Goodwill = 'goodwill',
+  Duplicate = 'duplicate',
+  EstimateSettlement = 'estimate_settlement',
+  Other = 'other',
+}
+
+/** `ops.invoice_charge_status` (one-off charges queued for the next invoice). */
+export enum InvoiceChargeStatusName {
+  Pending = 'pending',
+  Applied = 'applied',
+  Cancelled = 'cancelled',
+}
+
+/** `ops.estimate_policy` (D-031). */
+export enum EstimatePolicyName {
+  Allow = 'allow',
+  Block = 'block',
+}

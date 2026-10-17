@@ -13,8 +13,9 @@ const GOLDEN = join(__dirname, '..', 'golden', 'loss-report-fixture.json');
 
 /**
  * B3.4 acceptance: the golden loss report of the fixture building (the 12 units of the development building, A-206
- * vacant with usage, A-205's meter stale) from a stubbed billed-units provider (accepted readings) until B4.2 —
- * plus the utility invoice flows (manual entry, OCR prefill, e-bill import, If-Match correction → recompute).
+ * vacant with usage, A-205's meter stale) — billed units from the issued October invoices of the 11 occupied units
+ * (B4.2 replaced the readings stub), metered units from the readings — plus the utility invoice flows (manual entry,
+ * OCR prefill, e-bill import, If-Match correction → recompute).
  */
 describe('utility invoices & loss (B3.4, real PostgreSQL)', () => {
   let db: IntDatabase;
@@ -71,6 +72,37 @@ describe('utility invoices & loss (B3.4, real PostgreSQL)', () => {
            FROM core.meter_assignment m WHERE m.asset_item_id = $1`,
         [meters[unitNo], kwh],
       );
+    // the issued October invoices of the occupied units (B4.2): one electricity line each, billed units = the readings
+    const tariff = (
+      await db.admin.query<{ id: string }>(
+        `SELECT v.id FROM platform.utility_tariff_version v JOIN platform.utility_tariff t ON t.id = v.utility_tariff_id
+          WHERE t.utility = 'electric' ORDER BY v.effective_from LIMIT 1`,
+      )
+    ).rows[0]!.id;
+    let n = 0;
+    for (const [unitNo, kwh] of Object.entries(KWH)) {
+      if (unitNo === 'A-206') continue;
+      n += 1;
+      const amount = (kwh * 4).toFixed(2);
+      const inv = (
+        await db.admin.query<{ id: string }>(
+          `INSERT INTO ops.invoice (tenant_id, building_id, unit_id, billed_party_id, period_start, period_end, subtotal, total, balance)
+           VALUES ($1, $2, $3, $4, '2026-10-01', '2026-10-31', $5, $5, $5) RETURNING id`,
+          [DEV.tenantId, DEV.buildingId, units[unitNo], DEV.residentPartyId, amount],
+        )
+      ).rows[0]!.id;
+      await db.admin.query(
+        `INSERT INTO ops.invoice_line (tenant_id, invoice_id, line_no, source_type, line_kind, description, quantity, unit,
+                                       unit_price, amount, period_from, period_to, units, utility_tariff_version_id, cap_per_unit)
+         VALUES ($1, $2, 1, 'meter', 'electricity', 'ค่าไฟฟ้า', $3, 'kwh', 4, $4, '2026-10-01', '2026-10-31', $3, $5, 4.5)`,
+        [DEV.tenantId, inv, kwh, amount, tariff],
+      );
+      await db.admin.query(
+        `UPDATE ops.invoice SET status = 'issued', number = $2, snapshot = '{}'::jsonb, issued_at = '2026-11-01T09:00:00+07:00',
+                due_date = '2026-11-05' WHERE id = $1`,
+        [inv, `INV-2026-${String(n).padStart(5, '0')}`],
+      );
+    }
     // A-205's meter is stale (health job, D-034)
     await db.admin.query(
       `INSERT INTO smart.meter_status (asset_item_id, tenant_id, building_id, health, health_changed_at)
@@ -122,7 +154,7 @@ describe('utility invoices & loss (B3.4, real PostgreSQL)', () => {
     expect(dup.body.code).toBe('utility_invoice.duplicate');
   });
 
-  it('golden loss report: 12 units, A-206 vacant with usage, A-205 stale (stubbed billed units until B4.2)', async () => {
+  it('golden loss report: 12 units, A-206 vacant with usage (never invoiced), A-205 stale; billed units from invoices', async () => {
     const res = await t.http
       .get(`/v1/owner/buildings/${DEV.buildingId}/loss?utility=electric&cycle=2026-10`)
       .set(bearer(owner))
@@ -149,13 +181,13 @@ describe('utility invoices & loss (B3.4, real PostgreSQL)', () => {
     // the headline numbers, independent of the file
     expect(res.body.report).toMatchObject({
       invoiceUnits: '1400.000',
-      unitBilledUnits: '1325.000',
+      unitBilledUnits: '1280.000', // 1325 metered − A-206's 45 kWh used while vacant and never invoiced
       commonAreaUnits: '0.000',
-      lossUnits: '75.000',
-      lossPct: '5.3571',
-      lossThb: '321.43', // 75 × 6000.00 / 1400 (no published MEA tariff in force → invoice average price)
+      lossUnits: '120.000',
+      lossPct: '8.5714',
+      lossThb: '514.29', // 120 × 6000.00 / 1400 (no published MEA tariff in force → invoice average price)
       priceBasis: 'invoice_average',
-      billedUnitsSource: 'meter_readings_stub',
+      billedUnitsSource: 'invoices',
     });
     expect(
       (res.body.report.suspects as { kind: string; unitId: string }[]).map((s) => [s.kind, s.unitId]),
@@ -168,7 +200,7 @@ describe('utility invoices & loss (B3.4, real PostgreSQL)', () => {
       expect.objectContaining({
         buildingId: DEV.buildingId,
         utility: 'electric',
-        lossUnits: '75.000',
+        lossUnits: '120.000',
         suspects: 2,
       }),
     ]);
@@ -201,7 +233,7 @@ describe('utility invoices & loss (B3.4, real PostgreSQL)', () => {
       .get(`/v1/owner/buildings/${DEV.buildingId}/loss?utility=electric&cycle=2026-10`)
       .set(bearer(owner))
       .expect(200);
-    expect(after.body.report.lossUnits).toBe('100.000');
+    expect(after.body.report.lossUnits).toBe('145.000');
 
     await db.admin.query(
       `UPDATE platform.utility_tariff_version v

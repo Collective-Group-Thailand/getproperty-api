@@ -9,7 +9,10 @@ export interface PositionUnits {
   unitId: string | null;
   code: string;
   purpose: 'unit' | 'common_area' | 'main';
+  /** Billed units (invoices) — or, for the readings provider, the consumption the readings prove. */
   units: Decimal;
+  /** What the meters measured in the period (readings), when `units` are billed units (B4.2). */
+  meteredUnits?: Decimal;
   estimated: boolean;
 }
 
@@ -28,7 +31,8 @@ export interface BilledUnitsProvider {
 export const BILLED_UNITS = Symbol('BILLED_UNITS');
 
 /**
- * STUB until B4.2 lands invoices: "billed" units are the consumption the accepted `smart.meter_reading`s prove for
+ * The readings-based provider (the B3.4 stub, superseded by `InvoiceBilledUnits` in B4.2, which still uses it for
+ * metered units and common-area / main positions): "billed" units are the consumption the accepted `smart.meter_reading`s prove for
  * each position in the window (per unit and utility, or per common-area / main meter code), summed over every
  * assignment of the position (swaps), rollover-aware — the same numbers the billing engine will invoice from (D-030).
  * B4.2 replaces it with Σ of issued `invoice_line` units (`source = 'invoices'`).

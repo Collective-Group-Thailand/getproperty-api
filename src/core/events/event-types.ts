@@ -117,6 +117,47 @@ export const DOMAIN_EVENT_TYPES = {
   'utility_invoice.changed':
     'A utility (MEA/PEA/MWA/PWA) invoice of a building was entered or changed (D-032).',
   'loss_report.computed': 'A utility loss report was computed for a building and period (D-032).',
+  // B4.2 rate plans, cycles, invoices
+  'rate_plan.changed': 'A rate plan or one of its versions was created, changed or deleted (D-021a, D-151).',
+  'billing_cycle.opened': 'A billing cycle of a property was opened for a period (D-031).',
+  'billing_cycle.readings_requested':
+    'The cut-off passed with meters still unread: staff are asked for the reading round (D-031).',
+  'billing_cycle.computed': 'Draft invoices of a billing cycle were computed (D-031, D-041).',
+  'billing_cycle.issued': 'The draft invoices of a billing cycle were issued (D-011).',
+  'billing_cycle.closed': 'A billing cycle was closed.',
+  'invoice.issued': 'An invoice was numbered, snapshotted and issued; it is immutable from now on (D-040).',
+  'invoice.voided': 'An unpaid invoice was voided (a replacement may be issued for the same period, D-040).',
+  'invoice.balance_changed':
+    'The balance of an issued invoice changed (payment, credit or debit note, D-044).',
+  'invoice.paid': 'An invoice was paid in full (D-044): the receipt follows.',
+  'invoice.partially_paid': 'A partial payment was applied to an invoice (payments.allow_partial, D-044).',
+  'invoice.overdue': 'An invoice passed its due date with a balance (D-045).',
+  'invoice_charge.queued': 'A one-off item was queued for the next invoice of a billed party × unit (D-041).',
+  'credit_note.issued': 'A credit note was issued against an invoice (D-040).',
+  'debit_note.issued': 'A debit note was issued against an invoice (D-040).',
+  // B4.3 documents
+  'document.generated':
+    'A financial document PDF (invoice, receipt, note, tax invoice) was rendered and stored (D-050).',
+  // B4.4 payments
+  'payment.confirmed':
+    'A payment was confirmed (webhook, settlement file, slip or manual) and allocated (D-042).',
+  'payment.failed': 'A provider reported a failed payment.',
+  'payment.reversed': 'A confirmed payment was reversed (chargeback or owner correction).',
+  'payment.refunded': 'An overpayment or credit was refunded to the payer with evidence (D-044).',
+  'receipt.issued': 'A receipt (payment, deposit or advance) was numbered and issued (D-044).',
+  'tax_invoice.issued':
+    'A tax invoice / receipt-tax invoice was issued for a VAT-registered tenant (D-050, O-004).',
+  'slip.uploaded': 'A resident uploaded a transfer slip for an invoice (D-043).',
+  'slip.review_requested': 'A slip could not be auto-confirmed and waits in the owner review queue (D-043).',
+  'slip.reviewed': 'The owner approved or rejected a slip (D-043).',
+  'settlement_file.processed':
+    'A provider settlement file was reconciled: payments created for missed webhooks, discrepancies flagged (D-042).',
+  // B4.5 receivables, dunning, exports
+  'receivable.changed': 'The receivable balance of a billed party × unit changed (B4.5).',
+  'invoice.reminder_due': 'A dunning reminder of an overdue invoice is due (D-045, workflow timer).',
+  'invoice.reminder_sent': 'A payment reminder was sent to the payer (D-045).',
+  'penalty.assessed': 'A late fee was assessed for the next invoice (D-045, ⚖ O-002).',
+  'export.completed': 'An export file (Excel, FlowAccount, PEAK, VAT working figures) is ready (D-051).',
 } as const;
 export type DomainEventType = keyof typeof DOMAIN_EVENT_TYPES;
 

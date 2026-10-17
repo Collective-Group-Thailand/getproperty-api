@@ -11,6 +11,10 @@ export const SERIES_PREFIX: Partial<Record<DocumentType, string>> = {
   inspection_report: 'INS',
   invoice: 'INV',
   receipt: 'RCP',
+  tax_invoice: 'TIV',
+  receipt_tax_invoice: 'RTI',
+  credit_note: 'CRN',
+  debit_note: 'DBN',
 };
 
 /**

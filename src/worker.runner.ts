@@ -10,6 +10,7 @@ import { QUEUE, QUEUE_NAMES, type QueueJob, type QueuePort } from '@core/queue/q
 import { SupportGrantService } from '@core/tenancy/support-grant.service';
 import { WorkflowTimers } from '@core/workflow/workflow-timers.service';
 import { BULLMQ_REDIS, type RedisClient } from '@database/redis.module';
+import { BillingCyclesService } from '@modules/ops-billing/billing-cycles.service';
 import { LeasesService } from '@modules/ops-leases/leases.service';
 import { DeviceCommandsService } from '@modules/smart-devices/commands.service';
 import { GatewayConfigService } from '@modules/smart-devices/gateway-config.service';
@@ -40,6 +41,7 @@ export const MAINTENANCE_JOBS = {
   'device-commands': 30_000,
   // B4 billing & compliance
   'compliance-score': 86_400_000,
+  'billing-cycles': 900_000,
 } as const;
 type MaintenanceJob = keyof typeof MAINTENANCE_JOBS;
 
@@ -72,6 +74,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly configs: GatewayConfigService,
     private readonly commands: DeviceCommandsService,
     private readonly complianceScores: ComplianceScoreService,
+    private readonly billingCycles: BillingCyclesService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -138,6 +141,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'compliance-score':
         await this.complianceScores.runAll();
+        break;
+      case 'billing-cycles':
+        await this.billingCycles.sweep();
         break;
       default:
         this.logger.warn(`unknown maintenance job ${job.name}`);

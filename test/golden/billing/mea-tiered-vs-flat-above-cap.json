@@ -1,0 +1,116 @@
+{
+  "lines": [
+    {
+      "lineNo": 1,
+      "sourceType": "rent",
+      "quantity": "1.000",
+      "unit": "month",
+      "unitPrice": "4500.0000",
+      "periodFrom": "2026-11-01",
+      "periodTo": "2026-11-30",
+      "sourceId": "lease-1",
+      "leaseLineId": null,
+      "chargeId": null,
+      "estimateSettlementId": null,
+      "meter": null,
+      "ratePlanVersionId": null,
+      "utilityTariffVersionId": null,
+      "capPerUnit": null,
+      "aboveCap": false,
+      "acknowledgementId": null,
+      "tierBreakdown": null,
+      "proRata": {
+        "days": 30,
+        "daysInPeriod": 30,
+        "factor": "1.000000",
+        "from": "2026-11-01",
+        "to": "2026-11-30"
+      },
+      "vatApplicable": false,
+      "complianceRuleIds": ["compliance.no_midterm_increase"],
+      "lineKind": "rent",
+      "description": "ค่าเช่า A-201",
+      "amount": "4500.00"
+    },
+    {
+      "lineNo": 2,
+      "sourceType": "meter",
+      "quantity": "400.000",
+      "unit": "kwh",
+      "unitPrice": "4.0000",
+      "periodFrom": "2026-11-01",
+      "periodTo": "2026-11-30",
+      "sourceId": null,
+      "leaseLineId": null,
+      "chargeId": null,
+      "estimateSettlementId": null,
+      "meter": {
+        "utility": "electric",
+        "assetItemId": "asg-e-meter",
+        "meterAssignmentId": "asg-e",
+        "readingFromId": "r-e0",
+        "readingToId": "r-e1",
+        "registerFrom": "5000.000",
+        "registerTo": "5400.000",
+        "units": "400.000",
+        "multiplier": "1",
+        "readingSource": "iot",
+        "isEstimated": false,
+        "segments": [
+          {
+            "assignmentId": "asg-e",
+            "assetItemId": "asg-e-meter",
+            "code": "A-201e",
+            "multiplier": "1",
+            "rolloverAt": "99999.999",
+            "from": {
+              "readingId": "r-e0",
+              "register": "5000.000",
+              "readAt": "2026-10-31T16:59:00Z",
+              "source": "iot",
+              "confidence": "1.000",
+              "isEstimated": false,
+              "evidenceDocumentId": null
+            },
+            "to": {
+              "readingId": "r-e1",
+              "register": "5400.000",
+              "readAt": "2026-11-30T16:59:00Z",
+              "source": "iot",
+              "confidence": "1.000",
+              "isEstimated": false,
+              "evidenceDocumentId": null
+            }
+          }
+        ]
+      },
+      "ratePlanVersionId": "rpv-e",
+      "utilityTariffVersionId": "utv-mea-1.1.1",
+      "capPerUnit": "3.7620",
+      "aboveCap": true,
+      "acknowledgementId": "ack-1",
+      "tierBreakdown": [
+        {
+          "label": "flat",
+          "units": "400.000",
+          "pricePerUnit": "4.0000",
+          "amount": "1600"
+        }
+      ],
+      "proRata": null,
+      "vatApplicable": false,
+      "complianceRuleIds": ["compliance.tariff_cap", "compliance.bill_disclosure"],
+      "lineKind": "electricity",
+      "description": "ค่าไฟฟ้า 400.000 หน่วย",
+      "amount": "1600.00"
+    }
+  ],
+  "subtotal": "6100.00",
+  "vatAmount": "0.00",
+  "total": "6100.00",
+  "hasEstimate": false,
+  "hasAboveCapLine": true,
+  "reviewFlags": [],
+  "complianceFlags": ["above_cap:electric"],
+  "advanceRent": null
+}

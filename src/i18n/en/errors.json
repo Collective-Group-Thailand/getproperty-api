@@ -640,5 +640,43 @@
       "title": "No utility invoice",
       "detail": "Enter the utility invoice for this period first."
     }
+  },
+  "invoice": {
+    "invalid_state": {
+      "title": "Invoice in the wrong state",
+      "detail": "The invoice is not in a state that allows this action"
+    },
+    "not_ready": {
+      "title": "Invoice not ready to issue",
+      "detail": "The invoice still has items to review (such as a missing reading) and cannot be issued yet"
+    },
+    "has_payments": {
+      "title": "Invoice has payments",
+      "detail": "An invoice with payments cannot be voided; issue a credit note instead"
+    },
+    "credit_exceeds": {
+      "title": "Credit exceeds the invoice",
+      "detail": "The credit note exceeds the line amount or the invoice's outstanding balance"
+    }
+  },
+  "rate_plan": {
+    "backdated": {
+      "title": "Rate cannot be backdated",
+      "detail": "A new rate must take effect today or later and never inside a billed period"
+    },
+    "version_in_force": {
+      "title": "Rate version in force",
+      "detail": "A rate version already in force cannot be changed; save a new version"
+    },
+    "in_use": {
+      "title": "Rate plan in use",
+      "detail": "A rate plan used by leases or invoices cannot be deleted"
+    }
+  },
+  "billing_cycle": {
+    "invalid_state": {
+      "title": "Billing cycle in the wrong state",
+      "detail": "The billing cycle is not in a state that allows this action"
+    }
   }
 }
