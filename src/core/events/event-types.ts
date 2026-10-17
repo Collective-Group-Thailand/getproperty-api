@@ -49,6 +49,21 @@ export const DOMAIN_EVENT_TYPES = {
   'asset_item.changed': 'An appliance, furniture or other asset item of a unit changed (B2.1).',
   // B2.2 parties
   'party.link_changed': 'A resident login was linked to or unlinked from a party (D-061).',
+  // B2.3 leases
+  'lease.drafted': 'A lease draft was created (or renewed into a new draft).',
+  'lease.updated': 'A lease draft changed.',
+  'lease.sent_for_signature': 'A lease got its number and contract PDF and waits for signatures (D-062).',
+  'lease.signed': 'A lessee or co-tenant e-signed the lease (OTP + LINE, D-062).',
+  'lease.activated':
+    'The lessor countersigned; the lease is in force, occupancy created, unit occupied/reserved.',
+  'lease.moved_in': 'The start date of an activated lease arrived: the reserved unit is occupied.',
+  'lease.notice_given': 'A 30-day notice (lessee) or a lessor notice was recorded (D-020).',
+  'lease.move_out_started': 'The lease entered its move-out phase (ending).',
+  'lease.ended': 'Move-out completed; occupancy closed, unit vacant.',
+  'lease.terminated': 'The lease was terminated with a reason and evidence.',
+  'lease.cancelled': 'A draft or unsigned lease was cancelled.',
+  'lease.invitation_created': 'A resident was invited to a lease (LINE QR / SMS / link, D-061).',
+  'lease.invitation_accepted': 'A resident accepted a lease invitation and linked their login (D-061).',
 } as const;
 export type DomainEventType = keyof typeof DOMAIN_EVENT_TYPES;
 

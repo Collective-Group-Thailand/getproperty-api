@@ -61,6 +61,11 @@ export const API_TAGS: Record<string, string> = {
   'owner.unitImports': 'Excel template, preview and import of units; Excel export (D-014).',
   'owner.parties':
     'People and companies: lessees, co-tenants, guarantors; sealed ID numbers, ID document images, resident login links (D-148, D-151, D-172).',
+  'owner.leases':
+    'Leases on the สคบ. 2568 standard contract: drafts with compliance checks, contract PDF, e-signature and countersignature, activation, notices, move-out, termination, renewal, resident invitations (D-020, D-023, D-061, D-062).',
+  'owner.leaseTemplates': 'The standard contract templates and the addendum clause types they allow (D-020).',
+  'resident.leases': 'My leases: contract, e-signature with OTP + LINE, 30-day notice (D-020, D-062).',
+  'resident.invitations': 'Lease invitations: preview and accept after the PDPA consents (D-025, D-061).',
   'staff.parties': 'People and companies captured by staff at move-in (D-151).',
   'resident.privacy': 'What the controllers hold about me, my consents and PDPA requests (D-025).',
   'staff.me': 'Who I am in the staff PWA: tenant, role, building limits, permissions, menu.',

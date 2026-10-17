@@ -44,7 +44,8 @@ export interface BoardLease {
   leaseId: string;
   status: string;
   endDate: Date;
-  lessee: BoardLessee;
+  /** null when the lessee is a party of another tenant (a unit grantee's lease, D-152). */
+  lessee: BoardLessee | null;
 }
 
 export interface BoardLeaseSource {

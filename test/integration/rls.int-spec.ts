@@ -75,7 +75,15 @@ describe('RLS on platform / ops / bridge tables', () => {
     'bridge.integration_event',
     'ops.document_series',
   ])('%s: each tenant sees only its own rows', async (table) => {
-    expect(await count(DEV.tenantId, table)).toBe(1);
+    // the dev seed may add rows of its own (e.g. the contract series of the B2.3 sample lease)
+    const own = async (tenantId: string) =>
+      (
+        await db.admin.query<{ n: number }>(`SELECT count(*)::int AS n FROM ${table} WHERE tenant_id = $1`, [
+          tenantId,
+        ])
+      ).rows[0]!.n;
+    expect(await own(OTHER.tenantId)).toBe(1);
+    expect(await count(DEV.tenantId, table)).toBe(await own(DEV.tenantId));
     expect(await count(OTHER.tenantId, table)).toBe(1);
   });
 

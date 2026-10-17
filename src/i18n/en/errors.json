@@ -187,6 +187,54 @@
     "acknowledgement_required": {
       "title": "Acknowledgement required",
       "detail": "The value exceeds a legal reference. Read the warning and acknowledge it to continue."
+    },
+    "forbidden_clause": {
+      "title": "Forbidden clause",
+      "detail": "This addendum clause is of a type the announcement forbids."
+    },
+    "no_renewal_fee": {
+      "title": "No renewal fee",
+      "detail": "A renewal fee may not be charged to an existing lessee."
+    },
+    "no_midterm_increase": {
+      "title": "No mid-term increase",
+      "detail": "Rent and service charges cannot change during the term unless agreed at signing."
+    },
+    "notice_period": {
+      "title": "Notice period too short",
+      "detail": "A lessee's notice must be given at least 30 days in advance."
+    },
+    "termination_notice": {
+      "title": "Lessor termination not compliant",
+      "detail": "A lessor termination needs a contractual ground, written notice and 30 days to remedy (7 days when others are affected)."
+    },
+    "bill_disclosure": {
+      "title": "Units and rates must be shown",
+      "detail": "Electricity and water are billed by units used at a per-unit rate, never as a fixed charge."
+    },
+    "water_minimum": {
+      "title": "Water minimum above the utility's",
+      "detail": "A water minimum charge may not exceed the utility's own minimum charge."
+    },
+    "late_fee_policy": {
+      "title": "Late fees not enabled",
+      "detail": "Late fees are allowed only when enabled and proportionate per the contract."
+    },
+    "deposit_wear": {
+      "title": "Normal wear cannot be deducted",
+      "detail": "Normal wear and tear may not be deducted from the deposit."
+    },
+    "deposit_evidence": {
+      "title": "Evidence required",
+      "detail": "A deposit deduction needs a damage item with evidence (photos)."
+    },
+    "deposit_deadline": {
+      "title": "Deposit refund overdue",
+      "detail": "The deposit must be refunded within 7 days of the lease end and hand-back."
+    },
+    "no_forfeiture": {
+      "title": "No forfeiture",
+      "detail": "The deposit or advance rent may not be forfeited without a breach by the lessee."
     }
   },
   "device": {
@@ -233,6 +281,10 @@
     "not_pending": {
       "title": "Invitation no longer valid",
       "detail": "This invitation was already used, revoked or has expired."
+    },
+    "party_mismatch": {
+      "title": "Invitation already used",
+      "detail": "This invitation belongs to another account, or the party is linked to another login."
     }
   },
   "membership": {
@@ -343,6 +395,10 @@
     "unknown_purpose": {
       "title": "Unknown consent purpose",
       "detail": "The consent purpose or version does not exist."
+    },
+    "required": {
+      "title": "Consent required",
+      "detail": "Read and accept the privacy consents before continuing."
     }
   },
   "outbox": {
@@ -409,6 +465,44 @@
     "link_not_active": {
       "title": "Link not active",
       "detail": "This login is not linked to the party any more."
+    }
+  },
+  "lease": {
+    "invalid_state": {
+      "title": "Not allowed in this lease state",
+      "detail": "This action is not allowed in the lease's current state."
+    },
+    "overlap": {
+      "title": "Overlapping lease",
+      "detail": "The term overlaps another lease in force on this unit."
+    },
+    "unit_unavailable": {
+      "title": "Unit not available",
+      "detail": "The unit is inactive or under maintenance."
+    },
+    "lessee_identity_missing": {
+      "title": "Lessee identity missing",
+      "detail": "Record the lessee's ID document type and number before sending for signature."
+    },
+    "contract_changed": {
+      "title": "Contract changed",
+      "detail": "The contract you viewed is not the current one; open it again before signing."
+    },
+    "not_signer": {
+      "title": "Not a signer",
+      "detail": "This account is not linked to a signer of this lease."
+    },
+    "already_signed": {
+      "title": "Already signed",
+      "detail": "This signer has already signed the lease."
+    },
+    "signatures_missing": {
+      "title": "Signatures missing",
+      "detail": "Every lessee signer must sign before the lessor countersigns."
+    },
+    "signature_invalid": {
+      "title": "Invalid signature image",
+      "detail": "The signature must be a PNG image of at most 200 KB."
     }
   }
 }

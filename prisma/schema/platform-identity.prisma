@@ -203,6 +203,8 @@ model OtpChallenge {
   confirmedBankAccounts TenantBankAccount[]
   bankAccountHistory    TenantBankAccountHistory[]
 
+  leaseSignatures LeaseSignature[]
+
   @@index([phoneHash, purpose, createdAt(sort: Desc)], map: "otp_challenge_phone_hash_purpose_created_at_idx")
   @@index([expiresAt], map: "otp_challenge_expires_at_idx")
   @@map("otp_challenge")
@@ -338,6 +340,7 @@ model Invitation {
   tenant         Tenant       @relation("InvitationTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invitation_tenant_id_fkey")
   party          Party?       @relation("InvitationParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invitation_party_id_fkey")
   acceptedByUser UserAccount? @relation("InvitationAcceptedByUser", fields: [acceptedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invitation_accepted_by_user_id_fkey")
+  lease          Lease?       @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invitation_lease_id_fkey")
 
   @@index([tenantId, state], map: "invitation_tenant_id_state_idx")
   @@index([leaseId], map: "invitation_lease_id_idx")

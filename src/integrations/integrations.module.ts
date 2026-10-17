@@ -16,6 +16,9 @@ import { LINE_MESSAGING, type LineMessagingPort } from './line/line-messaging.po
 import { FakeMqttClient } from './mqtt/fake-mqtt-client';
 import { EmqxMqttClient } from './mqtt/mqtt-client';
 import { MQTT_CLIENT, type MqttClientPort } from './mqtt/mqtt-client.port';
+import { FakePdfRenderer } from './pdf/fake-pdf-renderer';
+import { PDF_RENDERER, type PdfRendererPort } from './pdf/pdf-renderer.port';
+import { PuppeteerPdfRenderer } from './pdf/puppeteer-pdf-renderer';
 import { FakeObjectStorage } from './s3/fake-object-storage';
 import { OBJECT_STORAGE, type ObjectStorage } from './s3/object-storage.port';
 import { S3ObjectStorage } from './s3/s3-object-storage';
@@ -34,10 +37,15 @@ import { WEB_PUSH, type WebPushPort } from './web-push/web-push.port';
 
 @Injectable()
 class MqttShutdown implements OnApplicationShutdown {
-  constructor(@Inject(MQTT_CLIENT) private readonly mqtt: MqttClientPort) {}
+  constructor(
+    @Inject(MQTT_CLIENT) private readonly mqtt: MqttClientPort,
+    @Inject(PDF_RENDERER) private readonly pdf: PdfRendererPort,
+  ) {}
 
   async onApplicationShutdown(): Promise<void> {
     await this.mqtt.end().catch(() => undefined);
+    // the headless browser of the real PDF renderer
+    if (this.pdf instanceof PuppeteerPdfRenderer) await this.pdf.close().catch(() => undefined);
   }
 }
 
@@ -97,6 +105,17 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
               tlsCaPath: config.get('MQTT_TLS_CA'),
               tlsCertPath: config.get('MQTT_TLS_CERT'),
               tlsKeyPath: config.get('MQTT_TLS_KEY'),
+            }),
+    },
+    {
+      provide: PDF_RENDERER,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig): PdfRendererPort =>
+        config.useFakePdfRenderer
+          ? new FakePdfRenderer()
+          : new PuppeteerPdfRenderer({
+              executablePath: required(config, 'PDF_CHROMIUM_EXECUTABLE'),
+              timeoutMs: config.get('PDF_RENDER_TIMEOUT_MS'),
             }),
     },
     {
@@ -174,6 +193,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
   ],
   exports: [
     OBJECT_STORAGE,
+    PDF_RENDERER,
     SECRETS_PROVIDER,
     MQTT_CLIENT,
     SMS,

@@ -95,6 +95,11 @@ export class EnvironmentVariables {
   @IsEnum(IntegrationsMode)
   OBJECT_STORAGE_MODE?: IntegrationsMode;
 
+  /** Per-provider override for the PDF renderer (Puppeteer); defaults to `INTEGRATIONS_MODE` when unset. */
+  @IsOptional()
+  @IsEnum(IntegrationsMode)
+  PDF_RENDERER_MODE?: IntegrationsMode;
+
   @IsEnum(DataStoresMode)
   DATA_STORES_MODE: DataStoresMode = DataStoresMode.Fake;
 
@@ -401,6 +406,19 @@ export class EnvironmentVariables {
   @IsString()
   @Matches(/^[A-Za-z0-9 .-]{1,11}$/, { message: 'SMS_SENDER: up to 11 letters/digits' })
   SMS_SENDER = 'getproperty';
+
+  // --- PDF rendering (Puppeteer, contracts and statements; master plan §3) ---------------------------------
+
+  /** Chromium/Chrome binary for puppeteer-core; required when the PDF renderer is real. */
+  @IsOptional()
+  @IsString()
+  PDF_CHROMIUM_EXECUTABLE?: string;
+
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1_000)
+  @Max(120_000)
+  PDF_RENDER_TIMEOUT_MS = 30_000;
 
   // --- Email (SES v2) -----------------------------------------------------------------------------------
 

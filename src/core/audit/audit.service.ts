@@ -65,6 +65,17 @@ export const AUDIT_ACTIONS = [
   'unit.bulk_created',
   'unit.imported',
   'party.unlinked',
+  'lease.created',
+  'lease.sent_for_signature',
+  'lease.signed',
+  'lease.countersigned',
+  'lease.notice_given',
+  'lease.ended',
+  'lease.terminated',
+  'lease.cancelled',
+  'lease.renewed',
+  'lease.invitation_created',
+  'lease.invitation_accepted',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
