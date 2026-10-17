@@ -1077,7 +1077,27 @@ export class ResidentLeaseDto {
   @ApiProperty({ example: true, description: 'A contract PDF is available.' })
   contractAvailable!: boolean;
 
-  @ApiProperty({ type: [String], example: ['view-contract', 'sign'] })
+  @ApiProperty({
+    type: String,
+    format: 'date',
+    nullable: true,
+    example: '2026-12-01',
+    description:
+      'Earliest move-out date the notice form may offer: today (Asia/Bangkok) + the lessee notice period of ข้อ 4 (11) (`compliance.notice_period`, 30 days) while `give-notice` is offered; null otherwise. The client never computes it.',
+  })
+  noticeEarliestDate!: string | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    example: null,
+    description:
+      'When one of my parties acknowledged the building rules of the addendum (`house_rules`, `pets`, `smoking`, `guests`, `quiet_hours`, `parking_rules`, `waste`); null until then. `acknowledge-rules` is offered while it is null and the lease has rule clauses.',
+  })
+  rulesAcknowledgedAt!: string | null;
+
+  @ApiProperty({ type: [String], example: ['view-contract', 'sign', 'acknowledge-rules'] })
   nextActions!: string[];
 }
 

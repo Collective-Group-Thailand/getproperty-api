@@ -57,6 +57,8 @@ export const DOMAIN_EVENT_TYPES = {
   'lease.updated': 'A lease draft changed.',
   'lease.sent_for_signature': 'A lease got its number and contract PDF and waits for signatures (D-062).',
   'lease.signed': 'A lessee or co-tenant e-signed the lease (OTP + LINE, D-062).',
+  'lease.rules_acknowledged':
+    'A resident confirmed reading the building rules of the lease addendum in the LIFF (D-203).',
   'lease.activated':
     'The lessor countersigned; the lease is in force, occupancy created, unit occupied/reserved.',
   'lease.moved_in': 'The start date of an activated lease arrived: the reserved unit is occupied.',

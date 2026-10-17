@@ -1,13 +1,13 @@
 import { CurrentTenant, TenantScoped } from '@common/auth/auth.decorators';
 import { type TenantContext } from '@common/context/tenant-context';
-import { resolveLanguage } from '@common/i18n/language';
+import { AcceptLanguage, resolveLanguage } from '@common/i18n/language';
 import { Idempotent } from '@common/idempotency/idempotent.decorator';
 import { ApiEndpoint, ApiJsonBody, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { FAKE } from '@common/openapi/examples';
 import { ConsentService, type PurposeView } from '@core/privacy/consent.service';
 import { DsrService } from '@core/privacy/dsr.service';
 import { type NotificationAudience } from '@generated/prisma/client';
-import { Body, Controller, Get, Headers, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 import { DSR_EXAMPLE, dsrDto } from '../owner/governance.controller';
@@ -69,7 +69,7 @@ export class ResidentConsentsController {
   })
   @ApiSuccess(200, { description: 'Purposes', type: [ConsentPurposeDto], example: [PURPOSE_EXAMPLE] })
   @ApiStandardErrors('auth.unauthenticated')
-  async list(@Headers('accept-language') acceptLanguage?: string): Promise<ConsentPurposeDto[]> {
+  async list(@AcceptLanguage() acceptLanguage?: string): Promise<ConsentPurposeDto[]> {
     return (
       await this.consents.purposes(
         ['resident'],
@@ -102,7 +102,7 @@ export class ResidentConsentsController {
   )
   async capture(
     @Body() body: ConsentCaptureDto,
-    @Headers('accept-language') acceptLanguage?: string,
+    @AcceptLanguage() acceptLanguage?: string,
   ): Promise<ConsentCapturedDto> {
     const userId = currentUserId();
     const lang = body.language ?? language(acceptLanguage);
@@ -182,7 +182,7 @@ export class OwnerConsentsController {
   @ApiStandardErrors('tenant.context_required', 'tenant.context_invalid', 'tenant.not_in_scope')
   async list(
     @CurrentTenant() ctx: TenantContext,
-    @Headers('accept-language') acceptLanguage?: string,
+    @AcceptLanguage() acceptLanguage?: string,
   ): Promise<ConsentPurposeDto[]> {
     return (
       await this.consents.purposes(
@@ -225,7 +225,7 @@ export class OwnerConsentsController {
   async capture(
     @CurrentTenant() ctx: TenantContext,
     @Body() body: ConsentCaptureDto,
-    @Headers('accept-language') acceptLanguage?: string,
+    @AcceptLanguage() acceptLanguage?: string,
   ): Promise<ConsentCapturedDto> {
     const userId = currentUserId();
     const lang = body.language ?? language(acceptLanguage);

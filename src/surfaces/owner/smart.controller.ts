@@ -270,6 +270,8 @@ const ROUND_EXAMPLE: RoundBuildingDto = {
   windowStart: '2026-10-18T00:00:00+07:00',
   batchId: null,
   remaining: 1,
+  total: 2,
+  read: 1,
   floors: [
     {
       floorId: FAKE.uuid,
@@ -744,6 +746,8 @@ export function meterReadingsController(surface: Extract<Surface, 'owner' | 'sta
         windowStart: iso(b.windowStart),
         batchId: b.batchId,
         remaining: b.remaining,
+        total: b.total,
+        read: b.read,
         floors: b.floors.map((f) => ({
           floorId: f.floorId,
           floorName: f.floorName,
@@ -1271,8 +1275,8 @@ export class ResidentUsageController {
     id: 'resident.usage.get',
     summary: 'My usage',
     description:
-      'Daily (or hourly) electricity and water use of the unit of my lease, summed over the meters that served it during the lease (swaps included), from the telemetry rollups; empty for meters read manually (D-063, D-162).',
-    implements: ['D-063', 'D-162'],
+      'Daily (or hourly) electricity and water use of the unit of my lease, summed over the meters that served it during the lease (swaps included), from the telemetry rollups; empty for meters read manually (D-063, D-162). `summary` carries the totals computed here — the window, the previous window and the current billing period so far (estimated from telemetry, never the bill) (D-203).',
+    implements: ['D-063', 'D-162', 'D-203'],
   })
   @ApiSuccess(200, {
     description: 'Usage',
@@ -1288,6 +1292,15 @@ export class ResidentUsageController {
           utility: 'electric',
           unit: 'kwh',
           points: [{ bucket: '2026-10-01T00:00:00+07:00', usage: '6.250' }],
+        },
+      ],
+      summary: [
+        {
+          utility: 'electric',
+          unit: 'kwh',
+          total: '187.500',
+          previousTotal: '172.000',
+          cycleToDate: { from: '2026-10-01T00:00:00+07:00', usage: '84.250', estimated: true },
         },
       ],
     },
@@ -1314,6 +1327,19 @@ export class ResidentUsageController {
         utility: s.utility as UtilityName,
         unit: s.unit as MeterUnitName,
         points: s.points.map((p) => ({ bucket: iso(p.bucket), usage: p.usage.toFixed(3) })),
+      })),
+      summary: u.summary.map((s) => ({
+        utility: s.utility as UtilityName,
+        unit: s.unit as MeterUnitName,
+        total: s.total.toFixed(3),
+        previousTotal: s.previousTotal?.toFixed(3) ?? null,
+        cycleToDate: s.cycleToDate
+          ? {
+              from: iso(s.cycleToDate.from),
+              usage: s.cycleToDate.usage.toFixed(3),
+              estimated: s.cycleToDate.estimated,
+            }
+          : null,
       })),
     };
   }

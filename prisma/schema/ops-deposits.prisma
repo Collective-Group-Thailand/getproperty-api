@@ -255,6 +255,8 @@ model DepositSettlement {
   residentResponse         ResidentResponse? @map("resident_response")
   residentRespondedAt      DateTime?         @map("resident_responded_at") @db.Timestamptz(6)
   disputeReason            String?           @map("dispute_reason")
+  /// LIFF #9: photos attached to a dispute (≤ 6, uploads of the resident).
+  disputeDocumentIds       String[]          @default([]) @map("dispute_document_ids") @db.Uuid
   refundedAt               DateTime?         @map("refunded_at") @db.Timestamptz(6)
   refundAmount             Decimal?          @map("refund_amount") @db.Decimal(14, 2)
   refundMethod             RefundMethod?     @map("refund_method")

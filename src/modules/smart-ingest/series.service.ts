@@ -1,9 +1,11 @@
 import { type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
 import { CLOCK, type Clock } from '@core/clock/clock';
+import { SettingsService } from '@core/settings/settings.service';
 import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
 import { ResidentLeasesService } from '@modules/ops-leases/resident-leases.service';
+import { type CutoffSetting, periodOf } from '@modules/smart-readings/cutoff';
 import { Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
@@ -51,9 +53,21 @@ export class SeriesService extends TenantScopedRepository {
   constructor(
     private readonly db: TenantTx,
     private readonly leases: ResidentLeasesService,
+    private readonly settings: SettingsService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
     super();
+  }
+
+  /** Σ usage of meters over [from, to) from the hourly rollup (null when nothing was measured). */
+  private async total(tx: Tx, assetItemIds: string[], from: Date, to: Date): Promise<Decimal | null> {
+    if (!(from.getTime() < to.getTime())) return null;
+    const r = await tx.telemetry1h.aggregate({
+      where: { assetItemId: { in: assetItemIds }, bucket: { gte: from, lt: to } },
+      _sum: { usage: true },
+      _count: { _all: true },
+    });
+    return r._count._all > 0 ? new Decimal((r._sum.usage ?? 0).toString()) : null;
   }
 
   private async rows(
@@ -133,6 +147,24 @@ export class SeriesService extends TenantScopedRepository {
         unit: 'kwh' | 'm3';
         points: { bucket: Date; usage: Decimal }[];
       }[] = [];
+      const summary: {
+        utility: 'electric' | 'water';
+        unit: 'kwh' | 'm3';
+        total: Decimal;
+        previousTotal: Decimal | null;
+        cycleToDate: { from: Date; usage: Decimal; estimated: boolean } | null;
+      }[] = [];
+      const unit = await tx.unit.findUniqueOrThrow({
+        where: { id: lease.unitId },
+        select: { propertyId: true },
+      });
+      const cutoff = await this.settings.valueAt<CutoffSetting>('billing.cutoff', now, {
+        tenantId: lease.tenantId,
+        propertyId: unit.propertyId,
+      });
+      const period = periodOf(cutoff, now);
+      const span = end.getTime() - windowStart.getTime();
+      const previousFrom = new Date(windowStart.getTime() - span);
       for (const utility of ['electric', 'water'] as const) {
         const ids = assignments.filter((x) => x.utility === utility).map((x) => x.assetItemId);
         if (!ids.length) continue;
@@ -147,8 +179,24 @@ export class SeriesService extends TenantScopedRepository {
             .sort((x, y) => x[0] - y[0])
             .map(([t, usage]) => ({ bucket: new Date(t), usage })),
         });
+        // LIFF #12 (D-203): totals computed here so the app never adds meter quantities up
+        const total = await this.total(tx, ids, windowStart, end);
+        if (total === null) continue;
+        const previousTotal =
+          previousFrom.getTime() >= leaseStart.getTime()
+            ? await this.total(tx, ids, previousFrom, windowStart)
+            : null;
+        const cycleFrom = period.start.getTime() < leaseStart.getTime() ? leaseStart : period.start;
+        const cycleUsage = await this.total(tx, ids, cycleFrom, now);
+        summary.push({
+          utility,
+          unit: utility === 'electric' ? 'kwh' : 'm3',
+          total,
+          previousTotal,
+          cycleToDate: cycleUsage === null ? null : { from: cycleFrom, usage: cycleUsage, estimated: true },
+        });
       }
-      return { leaseId, unitId: lease.unitId, from: windowStart, to: end, series: out };
+      return { leaseId, unitId: lease.unitId, from: windowStart, to: end, series: out, summary };
     });
   }
 }

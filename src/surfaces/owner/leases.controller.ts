@@ -4,7 +4,7 @@ import { type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
 import { etagOf } from '@common/etag/etag';
 import { IfMatch, UseEtag } from '@common/etag/etag.interceptor';
-import { resolveLanguage } from '@common/i18n/language';
+import { AcceptLanguage, resolveLanguage } from '@common/i18n/language';
 import { Idempotent } from '@common/idempotency/idempotent.decorator';
 import {
   ApiCompliance,
@@ -25,7 +25,6 @@ import {
   Body,
   Controller,
   Get,
-  Headers,
   HttpCode,
   Param,
   ParseUUIDPipe,
@@ -702,7 +701,8 @@ export class ResidentLeasesController {
   @ApiStandardErrors('auth.unauthenticated')
   async list(): Promise<ResidentLeaseDto[]> {
     const { rows, partyIds } = await this.residents.listWithParties();
-    return rows.map((l) => residentLeaseDto(l, partyIds));
+    const today = this.residents.today();
+    return rows.map((l) => residentLeaseDto(l, partyIds, today));
   }
 
   @Get(':leaseId')
@@ -718,7 +718,7 @@ export class ResidentLeasesController {
   async get(@Param('leaseId', ParseUUIDPipe) id: string): Promise<ResidentLeaseDto> {
     const a = await this.residents.access(id);
     const tenant = await this.residents.tenantOf(a.ctx.tenantId);
-    return residentLeaseDto({ ...a.lease, tenant }, a.partyIds);
+    return residentLeaseDto({ ...a.lease, tenant }, a.partyIds, this.residents.today());
   }
 
   @Get(':leaseId/contract')
@@ -788,7 +788,7 @@ export class ResidentLeasesController {
   async otp(
     @Param('leaseId', ParseUUIDPipe) id: string,
     @Body() body: ResidentSignatureOtpRequestDto,
-    @Headers('accept-language') acceptLanguage?: string,
+    @AcceptLanguage() acceptLanguage?: string,
   ): Promise<ResidentSignatureOtpDto> {
     const r = await this.residents.requestSignatureOtp(id, body.language ?? resolveLanguage(acceptLanguage));
     return {
@@ -844,7 +844,7 @@ export class ResidentLeasesController {
     });
     const a = await this.residents.access(id);
     const tenant = await this.residents.tenantOf(r.lease.tenantId);
-    return residentLeaseDto({ ...r.lease, tenant }, a.partyIds);
+    return residentLeaseDto({ ...r.lease, tenant }, a.partyIds, this.residents.today());
   }
 
   @Post(':leaseId/notice')
@@ -882,7 +882,34 @@ export class ResidentLeasesController {
     const lease = await this.residents.notice(id, body);
     const a = await this.residents.access(id);
     const tenant = await this.residents.tenantOf(lease.tenantId);
-    return residentLeaseDto({ ...lease, tenant }, a.partyIds);
+    return residentLeaseDto({ ...lease, tenant }, a.partyIds, this.residents.today());
+  }
+
+  @Post(':leaseId/rules/acknowledge')
+  @HttpCode(200)
+  @Idempotent({ optional: true })
+  @ApiEndpoint({
+    id: 'resident.leases.acknowledgeRules',
+    summary: 'Acknowledge the building rules',
+    description:
+      'I confirm that I read the building rules of my lease’s addendum (`house_rules`, `pets`, `smoking`, `guests`, `quiet_hours`, `parking_rules`, `waste`). Recorded on my lease-party rows with who and when, audited (`lease.rules_acknowledged`); repeating it changes nothing. 409 `lease.invalid_state` for an ended or cancelled lease or a lease without rule clauses (D-063, D-203).',
+    implements: ['D-063', 'D-203'],
+  })
+  @ApiSuccess(200, {
+    description: 'Acknowledged',
+    type: ResidentLeaseDto,
+    example: {
+      ...RESIDENT_LEASE_EXAMPLE,
+      rulesAcknowledgedAt: FAKE.dateTime,
+      nextActions: ['view-contract', 'sign'],
+    },
+  })
+  @ApiStandardErrors('http.not_found', 'validation.failed', 'lease.invalid_state')
+  async acknowledgeRules(@Param('leaseId', ParseUUIDPipe) id: string): Promise<ResidentLeaseDto> {
+    const lease = await this.residents.acknowledgeRules(id);
+    const a = await this.residents.access(id);
+    const tenant = await this.residents.tenantOf(lease.tenantId);
+    return residentLeaseDto({ ...lease, tenant }, a.partyIds, this.residents.today());
   }
 }
 
@@ -953,7 +980,7 @@ export class ResidentInvitationsController {
   )
   async accept(
     @Param('code') code: string,
-    @Headers('accept-language') acceptLanguage?: string,
+    @AcceptLanguage() acceptLanguage?: string,
   ): Promise<InvitationAcceptedDto> {
     return this.residents.acceptInvitation(code, resolveLanguage(acceptLanguage));
   }

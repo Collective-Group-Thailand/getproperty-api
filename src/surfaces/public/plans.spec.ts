@@ -1,7 +1,7 @@
 import { SETTINGS } from '@core/settings/catalogue';
 
 import { publicPlans } from './plans';
-import { PricePlanStatus } from './public.dto';
+import { PlanModuleKey, PricePlanStatus } from './public.dto';
 
 describe('publicPlans (D-156 → GET /v1/public/plans)', () => {
   const setting = SETTINGS.find((s) => s.key === 'pricing.price_plans')!.value;
@@ -45,5 +45,14 @@ describe('publicPlans (D-156 → GET /v1/public/plans)', () => {
       expect.objectContaining({ key: 'apartment_starter', status: 'confirmed', pricePerUnit: '30.00' }),
     ]);
     expect(publicPlans(null)).toEqual([]);
+  });
+
+  it('publishes every seeded module key as a PlanModuleKey (none silently dropped)', () => {
+    const seeded = Object.values(
+      (setting as { plans: Record<string, { modules?: string[] }> }).plans,
+    ).flatMap((p) => p.modules ?? []);
+    expect(seeded.length).toBeGreaterThan(0);
+    for (const m of seeded) expect(Object.values(PlanModuleKey)).toContain(m);
+    expect(byKey.apartment_smart!.features).toEqual(['A1', 'A2', 'A3', 'A4', 'C2']);
   });
 });

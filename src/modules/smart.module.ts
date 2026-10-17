@@ -15,6 +15,7 @@ import { DeviceFleetService } from './smart-devices/fleet.service';
 import { GatewayConfigService } from './smart-devices/gateway-config.service';
 import { DeviceInstallsService } from './smart-devices/installs.service';
 import { OtaService } from './smart-devices/ota.service';
+import { StaffFieldService } from './smart-devices/staff-field.service';
 import { BILLED_UNITS } from './smart-health/billed-units.provider';
 import { MeterHealthService } from './smart-health/meter-health.service';
 import { UtilityLossService } from './smart-health/utility-loss.service';
@@ -34,6 +35,7 @@ const SERVICES = [
   GatewayConfigService,
   DeviceCommandsService,
   OtaService,
+  StaffFieldService,
   MeterReadingsService,
   ReadingRoundsService,
   MeterHealthService,

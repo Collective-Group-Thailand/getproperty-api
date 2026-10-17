@@ -1,11 +1,11 @@
 import { TenantOptional, TenantScoped } from '@common/auth/auth.decorators';
 import { RequestContext } from '@common/context/request-context';
-import { resolveLanguage } from '@common/i18n/language';
+import { AcceptLanguage, resolveLanguage } from '@common/i18n/language';
 import { Idempotent } from '@common/idempotency/idempotent.decorator';
 import { ApiEndpoint, ApiJsonBody, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { FAKE } from '@common/openapi/examples';
 import { AuthService } from '@core/identity/auth.service';
-import { Body, Controller, Get, Headers, HttpCode, Patch, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Patch, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 import { ApiSurface, SURFACES } from '../surfaces';
@@ -310,10 +310,7 @@ export class ResidentLinkController {
     'invitation.party_mismatch',
     'consent.required',
   )
-  link(
-    @Body() body: ResidentLinkDto,
-    @Headers('accept-language') acceptLanguage?: string,
-  ): Promise<ResidentLinkedDto> {
+  link(@Body() body: ResidentLinkDto, @AcceptLanguage() acceptLanguage?: string): Promise<ResidentLinkedDto> {
     return this.me.residentLink(body.code, resolveLanguage(acceptLanguage));
   }
 }

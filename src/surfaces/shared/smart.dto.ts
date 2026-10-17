@@ -1341,6 +1341,51 @@ export class UtilityUsageDto {
   points!: UsagePointDto[];
 }
 
+export class CycleToDateDto {
+  @ApiProperty({
+    format: 'date-time',
+    example: '2026-10-01T00:00:00+07:00',
+    description: 'Start of the current billing period (after the last `billing.cutoff`) or of the lease.',
+  })
+  from!: string;
+
+  @ApiProperty({ example: '84.250', description: 'Usage since `from` (kWh or m³), decimal string.' })
+  usage!: string;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Always true: measured by the meters’ telemetry, not billed — the invoice uses the cumulative registers at the cut-off (D-030).',
+  })
+  estimated!: boolean;
+}
+
+export class UsageSummaryDto {
+  @ApiProperty({ enum: UtilityName, enumName: 'Utility', example: UtilityName.Electric })
+  utility!: UtilityName;
+
+  @ApiProperty({ enum: MeterUnitName, enumName: 'MeterUnit', example: MeterUnitName.Kwh })
+  unit!: MeterUnitName;
+
+  @ApiProperty({
+    example: '187.500',
+    description: 'Usage in the requested window (`from`–`to`), decimal string.',
+  })
+  total!: string;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '172.000',
+    description:
+      'Usage in the same-length window right before `from`; null when that window precedes the lease.',
+  })
+  previousTotal!: string | null;
+
+  @ApiProperty({ type: () => CycleToDateDto, nullable: true })
+  cycleToDate!: CycleToDateDto | null;
+}
+
 export class ResidentUsageDto {
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   leaseId!: string;
@@ -1362,6 +1407,13 @@ export class ResidentUsageDto {
     description: 'Empty for meters read manually (no telemetry).',
   })
   series!: UtilityUsageDto[];
+
+  @ApiProperty({
+    type: () => [UsageSummaryDto],
+    description:
+      'Totals per utility computed by the API (LIFF #12, D-203): the window, the previous window of the same length and the usage so far in the current billing period; only utilities with telemetry.',
+  })
+  summary!: UsageSummaryDto[];
 }
 
 // ------------------------------------------------------------------------------------------------ readings
@@ -1795,8 +1847,24 @@ export class RoundBuildingDto {
   })
   batchId!: string | null;
 
-  @ApiProperty({ type: 'integer', example: 12 })
+  @ApiProperty({ type: 'integer', example: 12, description: 'Meters still to read (listed in `floors`).' })
   remaining!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    example: 30,
+    description:
+      'Meters in the round: read manually (no gateway channel) or IoT meters that are stale / silent / without a device.',
+  })
+  total!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    example: 18,
+    description:
+      'Of `total`, meters with an accepted or pending-review reading in the window, by anyone (`total = read + remaining`).',
+  })
+  read!: number;
 
   @ApiProperty({ type: () => [RoundFloorDto] })
   floors!: RoundFloorDto[];

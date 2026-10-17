@@ -1,5 +1,8 @@
 import { FAKE } from '@common/openapi/examples';
+import { addCalendarDays } from '@common/time/bangkok';
+import { LESSEE_NOTICE_DAYS } from '@core/compliance/evaluators';
 import { type LeaseEvent } from '@generated/prisma/client';
+import { hasRuleClauses, RULES_ACK_STATES } from '@modules/ops-leases/lease-rules';
 import { type LeaseRow, LeasesService, nextActions } from '@modules/ops-leases/leases.service';
 
 import { dateOnly, iso, isoOrNull } from '../shared/mappers';
@@ -134,9 +137,14 @@ export function leaseDto(l: LeaseRow): LeaseDto {
   };
 }
 
+/**
+ * `today` is the Bangkok date of the request: `noticeEarliestDate` = today + the lessee notice period of ข้อ 4 (11)
+ * (`compliance.notice_period`) whenever `give-notice` is offered (LIFF #7).
+ */
 export function residentLeaseDto(
   l: LeaseRow & { tenant: { id: string; displayName: string } },
   myPartyIds: string[],
+  today: string,
 ): ResidentLeaseDto {
   const signed = new Set(l.signatures.map((s) => s.partyId));
   const signatureRequired =
@@ -144,10 +152,22 @@ export function residentLeaseDto(
     l.parties.some((p) => p.isSigner && myPartyIds.includes(p.partyId) && !signed.has(p.partyId));
   const isLessee = l.parties.some((p) => p.role === 'lessee' && myPartyIds.includes(p.partyId));
   const contractAvailable = Boolean(l.signedDocumentId ?? l.contractDocumentId);
+  const canGiveNotice = l.status === 'active' && isLessee;
+  const mine = l.parties.filter((p) => myPartyIds.includes(p.partyId));
+  const acknowledged = mine
+    .map((p) => p.rulesAcknowledgedAt)
+    .filter((d): d is Date => d instanceof Date)
+    .sort((a, b) => b.getTime() - a.getTime())[0];
+  const canAcknowledge =
+    !acknowledged &&
+    mine.length > 0 &&
+    hasRuleClauses(l) &&
+    (RULES_ACK_STATES as readonly string[]).includes(l.status);
   const actions = [
     ...(contractAvailable ? ['view-contract'] : []),
     ...(signatureRequired ? ['sign'] : []),
-    ...(l.status === 'active' && isLessee ? ['give-notice'] : []),
+    ...(canGiveNotice ? ['give-notice'] : []),
+    ...(canAcknowledge ? ['acknowledge-rules'] : []),
   ];
   return {
     id: l.id,
@@ -171,6 +191,8 @@ export function residentLeaseDto(
     notice: notice(l),
     signatureRequired,
     contractAvailable,
+    noticeEarliestDate: canGiveNotice ? addCalendarDays(today, LESSEE_NOTICE_DAYS) : null,
+    rulesAcknowledgedAt: isoOrNull(acknowledged),
     nextActions: actions,
   };
 }
@@ -283,7 +305,9 @@ export const RESIDENT_LEASE_EXAMPLE: ResidentLeaseDto = {
   notice: null,
   signatureRequired: true,
   contractAvailable: true,
-  nextActions: ['view-contract', 'sign'],
+  noticeEarliestDate: null,
+  rulesAcknowledgedAt: null,
+  nextActions: ['view-contract', 'sign', 'acknowledge-rules'],
 };
 
 export const CONTRACT_SHA_EXAMPLE = SHA;

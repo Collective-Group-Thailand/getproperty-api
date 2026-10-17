@@ -18,12 +18,14 @@ import {
 import { webVitalsController } from '../shared/web-vitals.controller';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
+import { StaffFieldController } from './staff-field.controller';
 
 /** `/v1/staff/*` (contract §2): staff PWA — me, files, inbox, web push, realtime (B1.3). */
 @Module({
   controllers: [
     systemPingController(SURFACES.staff),
     StaffMeController,
+    StaffFieldController,
     filesController(SURFACES.staff),
     partiesController(SURFACES.staff),
     inspectionsController(SURFACES.staff),

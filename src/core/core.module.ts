@@ -43,6 +43,7 @@ import { NotificationService } from './notifications/notification.service';
 import { NotificationDelivery } from './notifications/notification-delivery.service';
 import { NotificationRoutesService } from './notifications/notification-routes.service';
 import { NotificationTemplatesService } from './notifications/notification-templates.service';
+import { TopicPreferencesService } from './notifications/topic-preferences.service';
 import { ConsentService } from './privacy/consent.service';
 import { DsrService } from './privacy/dsr.service';
 import { RetentionService } from './privacy/retention.service';
@@ -123,6 +124,7 @@ const SERVICES = [
   NotificationService,
   NotificationRoutesService,
   NotificationTemplatesService,
+  TopicPreferencesService,
   NotificationDelivery,
   RealtimeHub,
   ConsentService,
