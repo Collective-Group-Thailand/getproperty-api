@@ -308,6 +308,18 @@ describe('B4.2 billing cycles & invoices (real PostgreSQL)', () => {
       aboveCap: true,
       complianceAcknowledgementId: null,
     });
+    const segments = (
+      draft.lines.find((l) => l.lineKind === 'electricity') as unknown as {
+        meterSegments: { code: string; units: string; from: { source: string }; to: { register: string } }[];
+      }
+    ).meterSegments;
+    expect(segments).toEqual([
+      expect.objectContaining({
+        code: 'A-101-E',
+        units: '300.000',
+        from: expect.objectContaining({ source: 'assignment' }),
+      }),
+    ]);
     // water above the cap carries the rate version's acknowledgement
     expect(line(draft.lines, 'water')).toMatchObject({ units: '12.000', amount: '216.00', aboveCap: true });
     expect(line(draft.lines, 'water').complianceAcknowledgementId).not.toBeNull();

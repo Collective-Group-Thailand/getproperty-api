@@ -81,7 +81,7 @@ async function lessee(tx: Tx, leaseId: string): Promise<Recipient[]> {
   ];
 }
 
-async function tenantName(tx: Tx, tenantId: string): Promise<string> {
+export async function tenantName(tx: Tx, tenantId: string): Promise<string> {
   return (
     (await tx.tenant.findUnique({ where: { id: tenantId }, select: { displayName: true } }))?.displayName ??
     ''
@@ -108,7 +108,7 @@ const meterHealth: NotifiableResolver = async (tx, e) =>
     : null;
 
 /** A billed party as a resident recipient (its LINE, or the LINE of its linked login). */
-async function billedParty(tx: Tx, partyId: string): Promise<Recipient[]> {
+export async function billedParty(tx: Tx, partyId: string): Promise<Recipient[]> {
   const party = await tx.party.findUnique({ where: { id: partyId } });
   if (!party) return [];
   const link = await tx.partyUserLink.findFirst({
@@ -132,6 +132,14 @@ async function billedParty(tx: Tx, partyId: string): Promise<Recipient[]> {
 async function propertyName(tx: Tx, propertyId: unknown): Promise<string> {
   if (typeof propertyId !== 'string') return '';
   return (await tx.property.findUnique({ where: { id: propertyId }, select: { name: true } }))?.name ?? '';
+}
+
+/**
+ * Modules add (or refine) resolvers when their module loads (B4.3 billing documents: invoice Flex messages). The
+ * notifications subscriber reads the map at dispatch time.
+ */
+export function registerNotifiable(eventType: string, resolver: NotifiableResolver): void {
+  NOTIFIABLE_EVENTS[eventType] = resolver;
 }
 
 export const NOTIFIABLE_EVENTS: Record<string, NotifiableResolver> = {

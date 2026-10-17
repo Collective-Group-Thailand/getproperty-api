@@ -5,7 +5,11 @@ export interface PdfRenderOptions {
   title: string;
   /** Text printed in the footer of every page, e.g. the contract number and the content hash. */
   footer: string;
+  /** Paper: A4 (default) or the 80 mm thermal roll of receipt printers (invoices and receipts, B4.3). */
+  paper?: PdfPaper;
 }
+
+export type PdfPaper = 'a4' | 'thermal_80mm';
 
 /**
  * HTML → PDF (master plan §3: Puppeteer with embedded Thai fonts). The real adapter drives a headless Chromium; the

@@ -77,7 +77,7 @@ footer.notes { margin-top: 8mm; font-size: 9pt; color: #555; }
 let fontCss: string | null = null;
 
 /** Sarabun (OFL, Thai + Latin, regular and bold) embedded as data URLs: rendering never touches the network. */
-function fonts(): string {
+export function fonts(): string {
   if (fontCss !== null) return fontCss;
   const dir = join(dirname(require.resolve('@fontsource/sarabun/package.json')), 'files');
   const face = (subset: string, weight: number, range: string) => {

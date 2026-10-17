@@ -1540,6 +1540,7 @@ verified in B3.2, owner-stamped rows via `acts_for`, platform-only `user_account
 | 54 | `ops.credit_note`, `ops.debit_note` (+ lines) (0020) | + `voided_at`; content immutable (trigger), lines append-only; series prefixes `CRN` / `DBN` | D-040, D-193 |
 | 55 | `ops.estimate_settlement` (0020) | + `unit_id`, `meter_assignment_id`, `settled_at` (CK settled ⇒ actual reading + delta); status `pending → settled_on_invoice` at the next invoice of the meter; `smart.meter_reading_monotonic` replaced so `estimated` rows never constrain real ones (D-192) | D-192 |
 | 56 | FKs closed in 0020 | `ops.lease.power_rate_plan_id / water_rate_plan_id → ops.rate_plan`, `ops.loss_report.billing_cycle_id`, `smart.reading_batch.billing_cycle_id → ops.billing_cycle`; `ops.deposit_settlement` + `final_invoice_id → ops.invoice`, `advance_rent_unused numeric(14,2)`; `ops.loss_report.billed_units_source` is now `invoices` (B4.2) | D-177, D-193, D-032 |
+| 57 | `ops.export_job` (B4.3, migration 0021) | + `building_id` (Staff limited to buildings see and request their buildings' exports), `row_count`, `created_by/updated_by/version`; CHECKs done ⇒ file + finished_at, failed ⇒ error + finished_at; built by the `export.requested` subscriber; RLS `tenant` | D-051, D-195 |
 
 ---
 

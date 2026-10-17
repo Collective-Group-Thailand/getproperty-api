@@ -37,7 +37,10 @@ describe('seeds (reference + dev)', () => {
       'platform.business_calendar': 46,
       'platform.consent_purpose': 5,
       'platform.notification_template': NOTIFICATION_TEMPLATES.length,
-      'platform.notification_template_version': NOTIFICATION_TEMPLATES.length * 2,
+      'platform.notification_template_version': NOTIFICATION_TEMPLATES.reduce(
+        (n, t) => n + t.versions.length,
+        0,
+      ),
       'platform.notification_route': NOTIFICATION_ROUTES.length,
       'platform.feature_flag': FEATURE_FLAGS.length,
       'ops.workflow_definition': WORKFLOW_DEFINITIONS.length,

@@ -32,6 +32,7 @@ import {
 } from './billing.controller';
 import { OwnerComplianceController } from './compliance.controller';
 import { inspectionsController, OwnerDepositsController } from './deposits.controller';
+import { OwnerBillingDocumentsController, OwnerExportsController } from './documents.controller';
 import {
   OwnerAssetGrantsController,
   OwnerAuditLogController,
@@ -100,6 +101,8 @@ import {
     OwnerBillingCyclesController,
     OwnerInvoicesController,
     OwnerInvoiceChargesController,
+    OwnerBillingDocumentsController,
+    OwnerExportsController,
     inspectionsController(SURFACES.owner),
     filesController(SURFACES.owner),
     notificationsController(SURFACES.owner),

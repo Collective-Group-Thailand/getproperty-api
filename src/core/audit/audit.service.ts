@@ -133,7 +133,6 @@ export const AUDIT_ACTIONS = [
   'dunning.reminder_sent',
   'penalty.assessed',
   'penalty.waived',
-  'export.created',
   'document.resent',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

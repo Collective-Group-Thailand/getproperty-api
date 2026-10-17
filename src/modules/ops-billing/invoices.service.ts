@@ -1,3 +1,4 @@
+import { Semaphore } from '@common/concurrency/semaphore';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { systemTenantContext, type TenantContext } from '@common/context/tenant-context';
@@ -43,6 +44,10 @@ const asDate = (s: string) => new Date(`${s}T00:00:00Z`);
 const D = (v: Decimal.Value) => new Decimal(v);
 
 export const ENGINE_VERSION = 'billing-engine@1.0.0';
+/** Transaction options of an issue: concurrent issues of a tenant queue on its series row (§4.4). */
+export const ISSUE_TX = { maxWait: 30_000, timeout: 60_000 } as const;
+/** At most 3 issue transactions of this process at once (the pool keeps room for their setting reads). */
+export const ISSUE_SLOTS = new Semaphore(3);
 
 export const INVOICE_INCLUDE = {
   lines: { orderBy: { lineNo: 'asc' } },
@@ -427,10 +432,17 @@ export class InvoicesService extends TenantScopedRepository {
       });
       ackId = r.checks[0]?.acknowledgementId ?? null;
     }
-    return this.db.tenant(ctx, async (tx) => {
-      const issued = await this.issueInTx(tx, ctx, id, { ackId, throwOnRefusal: true });
-      return this.load(tx, ctx, issued!.id);
-    });
+    // issues queue on the series row lock (gapless numbering) while holding a connection: a few at a time
+    return ISSUE_SLOTS.run(() =>
+      this.db.tenant(
+        ctx,
+        async (tx) => {
+          const issued = await this.issueInTx(tx, ctx, id, { ackId, throwOnRefusal: true });
+          return this.load(tx, ctx, issued!.id);
+        },
+        ISSUE_TX,
+      ),
+    );
   }
 
   /**
@@ -497,7 +509,6 @@ export class InvoicesService extends TenantScopedRepository {
       }
       return skip(failed.map((c) => c.ruleId).join(','));
     }
-    const number = await this.numbering.next(tx, inv.tenantId, 'invoice', now);
     const prior = await tx.invoice.findMany({
       where: {
         tenantId: inv.tenantId,
@@ -515,10 +526,13 @@ export class InvoicesService extends TenantScopedRepository {
     const snapshot = await this.snapshot(tx, fresh, {
       issuedAt: now,
       dueDate,
-      number,
+      number: '',
       prior: prior.map((p) => ({ id: p.id, number: p.number, balance: p.balance.toFixed(2) })),
       priorBalance: priorBalance.toFixed(2),
     });
+    // the gapless number is taken last (§4.4): the series row stays locked only for the final writes
+    const number = await this.numbering.next(tx, inv.tenantId, 'invoice', now);
+    snapshot.number = number;
     await tx.invoice.update({
       where: { id },
       data: {

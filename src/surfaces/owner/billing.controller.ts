@@ -23,6 +23,7 @@ import {
   cycleNextActions,
   type CycleRow,
 } from '@modules/ops-billing/billing-cycles.service';
+import { type MeterSegment, type SegmentReading, segmentUnits } from '@modules/ops-billing/engine/readings';
 import { type InvoiceRow, InvoicesService } from '@modules/ops-billing/invoices.service';
 import { type RatePlanRow, RatePlansService } from '@modules/ops-billing/rate-plans.service';
 import { ResidentInvoicesService } from '@modules/ops-billing/resident-invoices.service';
@@ -191,25 +192,12 @@ function lineDto(l: InvoiceRow['lines'][number]): InvoiceLineDto {
     units: l.units?.toFixed(3) ?? null,
     readingSource: l.readingSource,
     isEstimated: l.isEstimated,
-    meterSegments: ((l.meterSegments ?? []) as unknown as MeterSegmentDto[]).map((s) => ({
-      meterAssignmentId: s.meterAssignmentId,
-      from: s.from
-        ? {
-            readingId: s.from.readingId,
-            register: s.from.register,
-            readAt: segmentAt(s.from.readAt),
-            source: s.from.source,
-          }
-        : null,
-      to: s.to
-        ? {
-            readingId: s.to.readingId,
-            register: s.to.register,
-            readAt: segmentAt(s.to.readAt),
-            source: s.to.source,
-          }
-        : null,
-      units: s.units,
+    meterSegments: ((l.meterSegments ?? []) as unknown as MeterSegment[]).map((s): MeterSegmentDto => ({
+      meterAssignmentId: s.assignmentId,
+      code: s.code,
+      from: segmentEnd(s.from),
+      to: s.to ? segmentEnd(s.to) : null,
+      units: segmentUnits(s)?.toFixed(3) ?? null,
     })),
     capPerUnit: l.capPerUnit?.toFixed(4) ?? null,
     aboveCap: l.aboveCap,
@@ -220,6 +208,10 @@ function lineDto(l: InvoiceRow['lines'][number]): InvoiceLineDto {
     tierBreakdown: (l.tierBreakdown as Record<string, unknown>[] | null) ?? null,
     vatApplicable: l.vatApplicable,
   };
+}
+
+function segmentEnd(r: SegmentReading) {
+  return { readingId: r.readingId, register: r.register, readAt: segmentAt(r.readAt), source: r.source };
 }
 
 /** Segment instants are stored as ISO strings; the wire shows them in Asia/Bangkok (contract §3). */
@@ -464,6 +456,7 @@ const LINE_EXAMPLE: InvoiceLineDto = {
   meterSegments: [
     {
       meterAssignmentId: FAKE.uuid,
+      code: 'A-101-E',
       from: {
         readingId: FAKE.uuid,
         register: '1114.500',

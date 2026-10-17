@@ -149,6 +149,14 @@ describe('events, workflow and notifications (B1.3 acceptance, real PostgreSQL)'
           const data = {
             invoice: { number: 'INV-1', total: '1,000.00', dueDate: '2026-11-05' },
             unit: { unitNo: 'A-201' },
+            // B4.3: the published invoice.issued template is LINE Flex built by the billing module
+            flex: {
+              altText: 'ใบแจ้งหนี้ INV-1',
+              contents: {
+                type: 'bubble',
+                body: { type: 'box', layout: 'vertical', contents: [{ type: 'text', text: 'INV-1' }] },
+              },
+            },
           };
           const input = {
             recipients: [recipient],

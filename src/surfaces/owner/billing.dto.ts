@@ -249,7 +249,10 @@ export class MeterSegmentEndDto {
   @ApiProperty({ format: 'date-time', example: '2026-10-25T23:59:00+07:00' })
   readAt!: string;
 
-  @ApiProperty({ example: 'iot', description: 'Reading source (D-012).' })
+  @ApiProperty({
+    example: 'iot',
+    description: 'Reading source (D-012); `assignment` = the register recorded when the meter was assigned.',
+  })
   source!: string;
 }
 
@@ -257,14 +260,22 @@ export class MeterSegmentDto {
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   meterAssignmentId!: string;
 
+  @ApiProperty({ example: 'A-101-E', description: 'Meter code of the assignment.' })
+  code!: string;
+
   @ApiProperty({ type: MeterSegmentEndDto, nullable: true })
   from!: MeterSegmentEndDto | null;
 
   @ApiProperty({ type: MeterSegmentEndDto, nullable: true })
   to!: MeterSegmentEndDto | null;
 
-  @ApiProperty({ example: '120.000', description: 'Units of the segment (multiplier and rollover applied).' })
-  units!: string;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '120.000',
+    description: 'Units of the segment (multiplier and rollover applied); null without a closing reading.',
+  })
+  units!: string | null;
 }
 
 export class InvoiceLineDto {

@@ -158,6 +158,7 @@ export const ERROR_CODES = {
   'rate_plan.version_in_force': HttpStatus.CONFLICT,
   'rate_plan.in_use': HttpStatus.CONFLICT,
   'billing_cycle.invalid_state': HttpStatus.CONFLICT,
+  'export.not_ready': HttpStatus.CONFLICT,
   'internal.unexpected': HttpStatus.INTERNAL_SERVER_ERROR,
 } as const satisfies Record<string, HttpStatus>;
 

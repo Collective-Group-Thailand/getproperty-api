@@ -9,18 +9,19 @@ import { type PdfRendererPort, type PdfRenderOptions } from './pdf-renderer.port
  */
 export class FakePdfRenderer implements PdfRendererPort {
   readonly mode = 'fake' as const;
-  readonly rendered: { title: string; footer: string; text: string }[] = [];
+  readonly rendered: { title: string; footer: string; text: string; paper: string }[] = [];
 
   render(html: string, options: PdfRenderOptions): Promise<Buffer> {
     const text = htmlToText(html);
-    this.rendered.push({ title: options.title, footer: options.footer, text });
+    const paper = options.paper ?? 'a4';
+    this.rendered.push({ title: options.title, footer: options.footer, text, paper });
     const hex = (s: string) => Buffer.from(`\uFEFF${s}`, 'utf16le').swap16().toString('hex').toUpperCase();
     const lines = [...text.split('\n'), '', options.footer];
     const content = lines.map((l, i) => `BT /F1 9 Tf 40 ${800 - i * 11} Td <${hex(l)}> Tj ET`).join('\n');
     const objects = [
       '<< /Type /Catalog /Pages 2 0 R >>',
       '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-      '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${paper === 'thermal_80mm' ? '227 842' : '595 842'}] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>`,
       `<< /Length ${Buffer.byteLength(content, 'latin1')} >>\nstream\n${content}\nendstream`,
       '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
       `<< /Title <${hex(options.title)}> /Subject <${hex(options.footer)}> /Producer (getproperty fake renderer) >>`,

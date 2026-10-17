@@ -1,15 +1,34 @@
 /**
- * Notification templates (B1.3): three LINE templates for residents (Handlebars text; LINE Flex layouts replace
- * them in B4) and the operator templates of the B1.3 notifiable events (in-app + LINE, th + en). Version 1,
- * published. Later versions are made in the admin zone (never by re-seeding).
+ * Notification templates (B1.3): the LINE templates for residents (Handlebars text, version 1; B4.3 publishes
+ * version 2 as LINE Flex for `invoice.issued` and `deposit.refunded`) and the operator templates of the notifiable
+ * events (in-app + LINE, th + en). Later versions are made in the admin zone (never by re-seeding).
  */
 export interface TemplateSeed {
   key: string;
   channel: 'line' | 'sms' | 'email' | 'in_app' | 'web_push';
   audience: 'resident' | 'owner';
   description: string;
-  versions: { language: 'th' | 'en'; subject: string | null; body: string }[];
+  versions: {
+    language: 'th' | 'en';
+    subject: string | null;
+    body: string;
+    /** Default 1 / handlebars_text; B4.3 adds version 2 (LINE Flex) of the billing messages. */
+    version?: number;
+    format?: 'handlebars_text' | 'line_flex_json';
+  }[];
 }
+
+/** The LINE Flex body of the billing messages: the modules build `flex` (B4.3, `src/modules/ops-documents/flex.ts`). */
+// (the space before the last brace keeps Handlebars from reading `}}}` as a triple-stash close)
+const FLEX_BODY = '{"altText": {{json flex.altText}}, "contents": {{json flex.contents}} }';
+const flexVersions = (): TemplateSeed['versions'] =>
+  (['th', 'en'] as const).map((language) => ({
+    language,
+    subject: null,
+    body: FLEX_BODY,
+    version: 2,
+    format: 'line_flex_json' as const,
+  }));
 
 /** Operator events of B1.3 (`src/core/notifications/notifiable-events.ts`): th/en text per channel. */
 const OPERATOR_EVENTS: { key: string; description: string; th: [string, string]; en: [string, string] }[] = [
@@ -209,6 +228,7 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         subject: null,
         body: 'Invoice {{invoice.number}} for unit {{unit.unitNo}}: {{invoice.total}} THB due {{invoice.dueDate}} — tap to view and pay by QR.',
       },
+      ...flexVersions(),
     ],
   },
   {
@@ -281,6 +301,7 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         subject: null,
         body: '{{tenant.name}} refunded {{settlement.refundAmount}} THB of your deposit — statement {{settlement.statementNumber}}.',
       },
+      ...flexVersions(),
     ],
   },
   ...operatorTemplates(),

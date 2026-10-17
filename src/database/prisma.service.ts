@@ -8,8 +8,10 @@ export type Tx = Prisma.TransactionClient;
 
 export interface TxOptions {
   isolationLevel?: Prisma.TransactionIsolationLevel;
-  /** ms; Prisma's default is 5 000 — raised only by bulk operations (imports, seeds). */
+  /** ms; Prisma's default is 5 000 — raised only by bulk operations (imports, seeds, issues). */
   timeout?: number;
+  /** ms to wait for a pooled connection (default here 10 000, see `withDefaults`). */
+  maxWait?: number;
 }
 
 /** Who a tenant-scoped transaction runs for (schema-design §4.5 "Session variables"). */
@@ -94,7 +96,7 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
         options?.actorId ?? '',
       );
       return work(tx);
-    }, options);
+    }, withDefaults(options));
   }
 
   /** One transaction scoped to a tenant: every statement inside is subject to its RLS policies. */
@@ -110,6 +112,14 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
         else await tx.$queryRawUnsafe(s.text, ...s.values);
       }
       return work(tx);
-    }, options);
+    }, withDefaults(options));
   }
+}
+
+/**
+ * Waiting for a pooled connection: Prisma's 2 s default fails requests under bursts (B4.3: issues queue on the
+ * gapless series row while holding their connection); 10 s stays well inside the request budget.
+ */
+function withDefaults(options?: TxOptions): TxOptions {
+  return { maxWait: 10_000, ...options };
 }

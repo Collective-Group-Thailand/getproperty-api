@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { ResidentInvoicesController } from '../owner/billing.controller';
 import { ResidentDepositsController } from '../owner/deposits.controller';
+import { ResidentInvoiceDocumentsController } from '../owner/documents.controller';
 import { ResidentInvitationsController, ResidentLeasesController } from '../owner/leases.controller';
 import { ResidentPrivacyController } from '../owner/parties.controller';
 import { ResidentUsageController } from '../owner/smart.controller';
@@ -29,6 +30,7 @@ import { systemPingController } from '../system-ping.controller';
     ResidentInvitationsController,
     ResidentDepositsController,
     ResidentInvoicesController,
+    ResidentInvoiceDocumentsController,
     ResidentUsageController,
     notificationsController(SURFACES.resident),
     realtimeController(SURFACES.resident),
