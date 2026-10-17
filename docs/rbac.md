@@ -14,7 +14,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (66)
+## Permissions (72)
 | Permission | Surfaces | owner | manager | staff | accountant | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View the tenant profile and company data |
@@ -66,6 +66,8 @@
 | `service_request.handle` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  | Triage, assign and close repair requests |
 | `parcel.manage` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  | Record parcels and pick-ups |
 | `announcement.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Post announcements |
+| `notification.route.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Configure which resident-facing events notify through which channels (B1.3 routing matrix) |
+| `privacy.manage` | owner | ✓ |  |  |  |  |  |  |  | Handle data subject requests as controller and record paper consents (D-025) |
 | `admin.tenant.read` | admin |  |  |  |  | ✓ | ✓ | ✓ | ✓ | List and view tenants |
 | `admin.tenant.manage` | admin |  |  |  |  | ✓ |  |  |  | Create, onboard, deactivate tenants (D-161) |
 | `admin.user.manage` | admin |  |  |  |  | ✓ |  |  |  | Manage platform users and role assignments |
@@ -83,3 +85,7 @@
 | `admin.platform_credit_note.approve` | admin |  |  |  |  | ✓ |  |  | ✓ | Approve platform credit notes (maker-checker, D-091) |
 | `admin.integration_event.read` | admin |  |  |  |  | ✓ | ✓ |  |  | List integration events and overdue acks (D-153) |
 | `admin.ai_usage.read` | admin |  |  |  |  | ✓ |  |  | ✓ | AI usage cost per tenant (D-161) |
+| `admin.outbox.manage` | admin |  |  |  |  | ✓ |  |  |  | List dead letters of the outbox and its subscribers, replay them (B1.3) |
+| `admin.notification_template.manage` | admin |  |  |  |  | ✓ |  |  |  | Edit, preview, test-send and publish notification templates (B1.3) |
+| `admin.feature_flag.manage` | admin |  |  |  |  | ✓ |  |  |  | Change feature flag defaults and per-tenant overrides |
+| `admin.building.manage` | admin |  |  |  |  | ✓ |  |  |  | Change the operator of a building between tenants (schema-design §4.6) |
