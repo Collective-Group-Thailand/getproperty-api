@@ -5,6 +5,13 @@ import { ADMIN_MENU, OWNER_MENU, STAFF_MENU } from '@core/rbac/menu';
 
 import { ExportKindName, ExportStatusName } from '../owner/documents.dto';
 import {
+  PaymentConfirmationName,
+  PaymentMethodName,
+  ReceiptKindName,
+  SettlementFileStatusName,
+  SlipStatusName,
+} from '../owner/payments.dto';
+import {
   AdminMenuKey,
   BillingCycleStatusName,
   EstimatePolicyName,
@@ -14,6 +21,7 @@ import {
   InvoiceStatusName,
   NoteReasonName,
   OwnerMenuKey,
+  PaymentStatusName,
   RateBasisName,
   RatePlanKindName,
   StaffMenuKey,
@@ -67,6 +75,28 @@ describe('B4.3 export enums equal the database enums of migration 0021', () => {
   it.each([
     ['export_kind', ExportKindName],
     ['job_status', ExportStatusName],
+  ] as const)('%s', (name, e) => {
+    expect(Object.values(e).sort()).toEqual(pgEnum(name));
+  });
+});
+
+describe('B4.4 payment enums equal the database enums of migration 0022', () => {
+  const sql = readFileSync(
+    join(__dirname, '../../../prisma/migrations/20261017000022_0022_ops_payments/migration.sql'),
+    'utf8',
+  );
+  const pgEnum = (name: string): string[] => {
+    const m = new RegExp(`CREATE TYPE ops\\.${name} AS ENUM \\(([^;]+)\\);`).exec(sql);
+    if (!m) throw new Error(`enum ${name} not found`);
+    return [...m[1]!.matchAll(/'([a-z0-9_]+)'/g)].map((x) => x[1]!).sort();
+  };
+  it.each([
+    ['payment_status', PaymentStatusName],
+    ['payment_method', PaymentMethodName],
+    ['payment_confirmation', PaymentConfirmationName],
+    ['slip_status', SlipStatusName],
+    ['receipt_kind', ReceiptKindName],
+    ['settlement_file_status', SettlementFileStatusName],
   ] as const)('%s', (name, e) => {
     expect(Object.values(e).sort()).toEqual(pgEnum(name));
   });

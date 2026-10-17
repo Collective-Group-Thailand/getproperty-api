@@ -117,7 +117,7 @@ describe('B4.3 documents, series, Flex, archive (real PostgreSQL)', () => {
     expect(generated[0]!.n).toBe(45);
     const rendered = await q<{ rendered: { format: string; flex: { type: string }; text: string } }>(
       `SELECT n.rendered FROM platform.notification n JOIN platform.domain_event e ON e.id = n.event_id
-        WHERE e.type = 'invoice.issued' AND e.aggregate_id = $1`,
+        WHERE e.type = 'invoice.payment_ready' AND e.aggregate_id = $1`,
       [issued[0]],
     );
     expect(rendered).toHaveLength(1);

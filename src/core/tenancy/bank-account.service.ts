@@ -24,9 +24,15 @@ export interface BankAccountInput {
   promptpayIdType?: PromptpayIdType | null;
   promptpayId?: string | null;
   paymentProvider?: PaymentProvider;
+  /** Merchant / biller id at the payment provider (B4.4, D-042): sealed, plus a lookup hash for callbacks. */
+  providerMerchantRef?: string | null;
   buildingIds?: string[] | null;
   isDefault: boolean;
 }
+
+/** Lookup hash of a provider merchant reference: payment callbacks find their bank account by it (B4.4). */
+export const merchantRefHash = (hasher: LookupHasher, provider: string, merchantRef: string) =>
+  hasher.secret('payments.merchant', `${provider}|${merchantRef.trim()}`);
 
 export const maskAccountNo = (digits: string): string =>
   digits.length <= 4 ? digits : `${'x'.repeat(digits.length - 4)}${digits.slice(-4)}`;
@@ -143,6 +149,20 @@ export class BankAccountService extends TenantScopedRepository {
             ? await this.keys.encrypt(tx, field('promptpay_id'), input.promptpayId)
             : null,
           paymentProvider: input.paymentProvider ?? 'none',
+          ...(input.providerMerchantRef && (input.paymentProvider ?? 'none') !== 'none'
+            ? {
+                providerMerchantRefEnc: await this.keys.encrypt(
+                  tx,
+                  field('provider_merchant_ref'),
+                  input.providerMerchantRef,
+                ),
+                providerMerchantRefHash: merchantRefHash(
+                  this.hasher,
+                  input.paymentProvider!,
+                  input.providerMerchantRef,
+                ),
+              }
+            : {}),
           buildingIds: input.buildingIds ?? [],
           isDefault: false,
           state: 'pending_otp',

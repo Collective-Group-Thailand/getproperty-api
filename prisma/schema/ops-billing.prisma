@@ -301,6 +301,13 @@ model Invoice {
   debitNotes         DebitNote[]
   depositSettlements DepositSettlement[] @relation("DepositSettlementFinalInvoice")
 
+  qrCodes          PaymentQrCode[]
+  slipReviews      SlipReview[]
+  payments         Payment[]
+  allocations      PaymentAllocation[]
+  taxInvoices      TaxInvoice[]
+  payerCredits     PayerCredit[]
+
   @@unique([tenantId, number], map: "invoice_tenant_id_number_key", where: raw("(number IS NOT NULL)"))
   @@unique([tenantId, promptpayRef], map: "invoice_tenant_id_promptpay_ref_key", where: raw("(promptpay_ref IS NOT NULL)"))
   @@index([tenantId, buildingId, status, dueDate], map: "invoice_tenant_id_building_id_status_due_date_idx")

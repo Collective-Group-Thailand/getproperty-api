@@ -12,6 +12,7 @@ import { WorkflowTimers } from '@core/workflow/workflow-timers.service';
 import { BULLMQ_REDIS, type RedisClient } from '@database/redis.module';
 import { BillingCyclesService } from '@modules/ops-billing/billing-cycles.service';
 import { LeasesService } from '@modules/ops-leases/leases.service';
+import { SettlementsService } from '@modules/ops-payments/settlements.service';
 import { DeviceCommandsService } from '@modules/smart-devices/commands.service';
 import { GatewayConfigService } from '@modules/smart-devices/gateway-config.service';
 import { MeterHealthService } from '@modules/smart-health/meter-health.service';
@@ -42,6 +43,7 @@ export const MAINTENANCE_JOBS = {
   // B4 billing & compliance
   'compliance-score': 86_400_000,
   'billing-cycles': 900_000,
+  'payment-settlement': 86_400_000,
 } as const;
 type MaintenanceJob = keyof typeof MAINTENANCE_JOBS;
 
@@ -75,6 +77,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly commands: DeviceCommandsService,
     private readonly complianceScores: ComplianceScoreService,
     private readonly billingCycles: BillingCyclesService,
+    private readonly settlements: SettlementsService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -144,6 +147,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'billing-cycles':
         await this.billingCycles.sweep();
+        break;
+      case 'payment-settlement':
+        await this.settlements.daily();
         break;
       default:
         this.logger.warn(`unknown maintenance job ${job.name}`);

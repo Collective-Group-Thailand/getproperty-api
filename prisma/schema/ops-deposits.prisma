@@ -219,6 +219,8 @@ model Deposit {
   carriedTo       Deposit[]          @relation("DepositCarriedOver")
   settlement      DepositSettlement?
 
+  receipts Receipt[]
+
   @@unique([tenantId, receiptNumber], map: "deposit_tenant_id_receipt_number_key")
   @@index([tenantId, status], map: "deposit_tenant_id_status_idx")
   @@index([unitId], map: "deposit_unit_id_idx")

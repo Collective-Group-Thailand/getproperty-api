@@ -195,6 +195,17 @@ export class BankAccountCreateDto {
   @IsEnum(PaymentProviderName)
   paymentProvider?: PaymentProviderName;
 
+  @ApiPropertyOptional({
+    example: '010555012345601',
+    maxLength: 64,
+    description:
+      'Merchant / biller id of this account at the payment provider (Thai QR per invoice, D-042); stored sealed. Required for QR payments when `paymentProvider` is not `none`.',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(3, 64)
+  providerMerchantRef?: string;
+
   @ApiPropertyOptional({ type: [String], example: [] })
   @IsOptional()
   @IsArray()

@@ -40,4 +40,25 @@ export const FEATURE_FLAGS: readonly FeatureFlagDef[] = [
     defaultEnabled: false,
     rolloutPct: 0,
   },
+  {
+    key: 'payments.provider.kbank',
+    description:
+      'B4.4 (D-042, O-001): Thai QR through KBank for this tenant — real adapter UNVERIFIED against the live API.',
+    defaultEnabled: false,
+    rolloutPct: 0,
+  },
+  {
+    key: 'payments.provider.scb',
+    description:
+      'B4.4 (D-042, O-001): Thai QR through SCB for this tenant — real adapter UNVERIFIED against the live API.',
+    defaultEnabled: false,
+    rolloutPct: 0,
+  },
+  {
+    key: 'payments.provider.opn',
+    description:
+      'B4.4 (D-042, O-001): Thai QR (PromptPay) through Opn Payments — real adapter UNVERIFIED against the live API.',
+    defaultEnabled: false,
+    rolloutPct: 0,
+  },
 ];

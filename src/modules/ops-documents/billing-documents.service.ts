@@ -77,6 +77,10 @@ export class BillingDocuments {
     return `${this.config.get('PUBLIC_RESIDENT_APP_URL')}/invoices/${invoiceId}`;
   }
 
+  receiptLink(receiptId: string): string {
+    return `${this.config.get('PUBLIC_RESIDENT_APP_URL')}/receipts/${receiptId}`;
+  }
+
   private async logo(tx: Tx, tenantId: string): Promise<string | null> {
     const tenant = await tx.tenant.findUnique({ where: { id: tenantId }, include: { logoDocument: true } });
     const doc = tenant?.logoDocument;

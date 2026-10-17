@@ -13,7 +13,7 @@ import { type InvoiceSnapshot, invoiceView } from './document-views';
 import { depositStatementBubble, flexMessage, invoiceAltText, invoiceBubble } from './flex';
 
 /**
- * LINE Flex for billing messages (B4.3, D-011): the resolvers of `invoice.issued` / `invoice.resent` (the billed
+ * LINE Flex for billing messages (B4.3, D-011): the resolvers of `invoice.payment_ready` / `invoice.resent` (the billed
  * party gets the invoice bubble built from the issue snapshot) and `deposit.refunded` (the statement bubble)
  * replace the B1.3 text ones; the published `line_flex_json` template embeds `flex` (`{{json flex.contents}}`).
  */
@@ -50,7 +50,8 @@ export class BillingNotifications implements OnModuleInit {
         consentPurpose: 'resident.service',
       };
     };
-    registerNotifiable('invoice.issued', invoice);
+    // the invoice goes out once its credit and QR are settled (B4.4 `invoice.payment_ready`)
+    registerNotifiable('invoice.payment_ready', invoice);
     registerNotifiable('invoice.resent', invoice);
 
     registerNotifiable('deposit.refunded', async (tx, e) => {

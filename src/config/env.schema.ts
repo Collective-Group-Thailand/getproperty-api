@@ -433,6 +433,36 @@ export class EnvironmentVariables {
   @Max(120_000)
   PDF_RENDER_TIMEOUT_MS = 30_000;
 
+  // --- Payments (B4.4, D-042; real adapters behind the payments.provider.* flags — O-001) -------------------
+
+  @IsUrl({ require_tld: false })
+  PAYMENTS_SCB_BASE_URL = 'https://api-sandbox.partners.scb';
+
+  @IsUrl({ require_tld: false })
+  PAYMENTS_KBANK_BASE_URL = 'https://openapi-sandbox.kasikornbank.com';
+
+  @IsUrl({ require_tld: false })
+  PAYMENTS_OPN_BASE_URL = 'https://api.omise.co';
+
+  /** Prefix of the per-merchant secret ids (`<prefix>/<provider>/<merchantRef>`): API keys, webhook secrets. */
+  @IsString()
+  PAYMENTS_SECRETS_PREFIX = 'getproperty/payments';
+
+  /** Lifetime of a dynamic Thai QR (minutes). */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(5)
+  @Max(60 * 24 * 60)
+  PAYMENTS_QR_TTL_MINUTES = 60 * 24 * 45;
+
+  @IsUrl({ require_tld: false })
+  SLIP_VERIFY_BASE_URL = 'https://developer.easyslip.com';
+
+  /** Slip verification API key; the fake verifier is used while unset or in fake mode. */
+  @IsOptional()
+  @IsString()
+  SLIP_VERIFY_API_KEY?: string;
+
   // --- Email (SES v2) -----------------------------------------------------------------------------------
 
   @IsString()

@@ -203,7 +203,7 @@ export function addWebhooks(document: OpenAPIObject): void {
     const id = HTTP_METHODS.map((m) => item[m]?.operationId).find(Boolean);
     if (!id) continue;
     webhooks[id.replace(/^webhooks\./, '')] = {
-      $ref: `#/paths/${route.replaceAll('~', '~0').replaceAll('/', '~1')}`,
+      $ref: `#/paths/${route.replaceAll('~', '~0').replaceAll('/', '~1').replaceAll('{', '%7B').replaceAll('}', '%7D')}`,
     };
   }
   const hasProvider = Object.keys(webhooks).some((key) => !key.startsWith('system.'));
