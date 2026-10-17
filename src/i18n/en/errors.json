@@ -404,5 +404,11 @@
       "title": "Preview out of date",
       "detail": "The building or the file changed since the preview; preview again."
     }
+  },
+  "party": {
+    "link_not_active": {
+      "title": "Link not active",
+      "detail": "This login is not linked to the party any more."
+    }
   }
 }

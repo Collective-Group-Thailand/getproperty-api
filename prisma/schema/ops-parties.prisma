@@ -1,0 +1,24 @@
+// ops — A1 parties: occupant profiles (TM30 fields, D-052; B2.2, schema-design v2 §3.3.2).
+
+/// 1:1 extension of core.party for residents.
+model OccupantProfile {
+  partyId               String    @id @map("party_id") @db.Uuid
+  tenantId              String    @map("tenant_id") @db.Uuid
+  visaType              String?   @map("visa_type")
+  arrivalDate           DateTime? @map("arrival_date") @db.Date
+  entryPort             String?   @map("entry_port")
+  passportIssuedCountry String?   @map("passport_issued_country") @db.Char(2)
+  occupation            String?
+  notes                 String?
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy             String?   @map("created_by") @db.Uuid
+  updatedAt             DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy             String?   @map("updated_by") @db.Uuid
+
+  party  Party  @relation("OccupantProfileParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "occupant_profile_party_id_fkey")
+  tenant Tenant @relation("OccupantProfileTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "occupant_profile_tenant_id_fkey")
+
+  @@index([tenantId], map: "occupant_profile_tenant_id_idx")
+  @@map("occupant_profile")
+  @@schema("ops")
+}

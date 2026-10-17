@@ -51,7 +51,7 @@ export function fileDto(d: Document): FileDto {
   };
 }
 
-const FILE_EXAMPLE = {
+export const FILE_EXAMPLE = {
   id: FAKE.uuid,
   kind: 'meter_photo',
   scopeType: 'unit',

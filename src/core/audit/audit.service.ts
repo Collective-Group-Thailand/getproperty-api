@@ -64,6 +64,7 @@ export const AUDIT_ACTIONS = [
   'unit.status_changed',
   'unit.bulk_created',
   'unit.imported',
+  'party.unlinked',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

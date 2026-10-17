@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { partiesController } from '../owner/parties.controller';
 import { filesController } from '../shared/files.controller';
 import { StaffMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
@@ -17,6 +18,7 @@ import { systemPingController } from '../system-ping.controller';
     systemPingController(SURFACES.staff),
     StaffMeController,
     filesController(SURFACES.staff),
+    partiesController(SURFACES.staff),
     notificationsController(SURFACES.staff),
     pushSubscriptionsController(SURFACES.staff),
     realtimeController(SURFACES.staff),

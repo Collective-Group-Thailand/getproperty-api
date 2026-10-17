@@ -59,6 +59,10 @@ export const API_TAGS: Record<string, string> = {
   'owner.meters': 'Meter positions: one meter per unit and utility, common-area and main meters (D-012).',
   'owner.assetItems': 'Appliances and furniture of units (contract annex, inspections).',
   'owner.unitImports': 'Excel template, preview and import of units; Excel export (D-014).',
+  'owner.parties':
+    'People and companies: lessees, co-tenants, guarantors; sealed ID numbers, ID document images, resident login links (D-148, D-151, D-172).',
+  'staff.parties': 'People and companies captured by staff at move-in (D-151).',
+  'resident.privacy': 'What the controllers hold about me, my consents and PDPA requests (D-025).',
   'staff.me': 'Who I am in the staff PWA: tenant, role, building limits, permissions, menu.',
   'staff.files': 'Uploads and signed downloads limited to my buildings (contract §3 Files).',
   'staff.notifications': 'In-app inbox of the signed-in staff member.',
