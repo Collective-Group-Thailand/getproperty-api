@@ -1476,7 +1476,7 @@ Forward references across deliverables use **nullable columns without FK** at cr
 9. **`ops.receivable_balance` per (party, unit)** instead of per lease — needed for condo co-owners and landlords paying common fees; apartments get the same numbers (one lessee per unit). Confirm.
 10. **v1 migration files** in `prisma/migrations/` are superseded and must not be applied; B1.2 step 2b deletes them and starts the history from §7.2 (they were never applied anywhere).
 
-### 7.5 Implementation notes — B1.2 step 2 (2026-10-17, v2.1)
+### 7.5 Implementation notes — B1.2 step 2 and B1.3 (2026-10-17, v2.2)
 Applied by `collective-asset-core` v0.1.0 and getproperty-api migrations 0001–0009. The founder accepted every §7.4
 proposal (singular names, uuidv7-only ids, `adjustment` source type, `meter_assignment` in core, RLS on hypertables
 verified in B3.2, owner-stamped rows via `acts_for`, platform-only `user_account`, cycles per property, receivables per
@@ -1500,6 +1500,11 @@ verified in B3.2, owner-stamped rows via `acts_for`, platform-only `user_account
 | 14 | 0001 | no `timescaledb` extension | D-162 |
 | 15 | integration envelope (§4.8) | fields `eventId, type, version (int), occurredAt, idempotencyKey, sourcePlatform, tenantId, correlationId?, causationId?, payload`; `contract_version` column = package semver | B1.2 session spec |
 | 16 | many tables | extra CHECKs (E.164 phones, language codes, period ranges, state ↔ timestamp consistency, `document_series` platform types ↔ `tenant_id` null) | defence in depth |
+| 17 | `smart.device`, `smart.device_certificate`, `smart.provisioning_code` (B1.3, migration 0010) | migrated in B1.3 instead of B3.1 (device bootstrap is a B1.3 deliverable); `device_certificate` + `certificate_pem`, RLS `platform_only` (stricter than §4.5 P); `provisioning_code.tenant_id`/`building_id` NOT NULL, `code_hash` unique (HMAC) | D-165 |
+| 18 | `smart.mqtt_acl` (new, B1.3) | `(device_id, tenant_id, username, permission allow|deny, action publish|subscribe|all, topic LIKE 'gp/v1/%', revoked_at)`, partial UQ `(username, action, topic) WHERE revoked_at IS NULL`; read by new role `gp_mqtt` (EMQX PostgreSQL authorizer) | D-165, D-130 |
+| 19 | `platform.event_consumption` (new, B1.3) | inbox per `(event_id, subscriber)` UQ: `state processed|failed|dead`, `attempts`, `last_error`, `first_attempt_at`, `processed_at`, `replayed_at/by` | D-166 exactly-once subscribers |
+| 20 | `platform.auth_session.device_id` | FK to `smart.device` + index (device sessions) | D-165 |
+| 21 | `core` 0.2.0 / 0.2.1 (asset-core) | `party_link_via.phone_match` + cross-tenant party lookup indexes (0008); fix of the `access` argument of `core.accessible_building_ids/unit_ids` shadowed by the grant column (0009) | D-061, D-152 |
 
 ---
 
