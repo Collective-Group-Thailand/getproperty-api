@@ -120,6 +120,10 @@ export const ERROR_CODES = {
   'lease.signature_invalid': HttpStatus.UNPROCESSABLE_ENTITY,
   'consent.required': HttpStatus.CONFLICT,
   'invitation.party_mismatch': HttpStatus.CONFLICT,
+  'deposit.invalid_state': HttpStatus.CONFLICT,
+  'deposit.refund_mismatch': HttpStatus.UNPROCESSABLE_ENTITY,
+  'inspection.invalid_state': HttpStatus.CONFLICT,
+  'inspection.exists': HttpStatus.CONFLICT,
   'internal.unexpected': HttpStatus.INTERNAL_SERVER_ERROR,
 } as const satisfies Record<string, HttpStatus>;
 

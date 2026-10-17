@@ -76,6 +76,7 @@ model WorkflowInstance {
   definition WorkflowDefinition @relation(fields: [definitionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workflow_instance_definition_id_fkey")
   events     WorkflowEvent[]
   timers     WorkflowTimer[]
+  depositSettlements DepositSettlement[]
 
   @@unique([subjectType, subjectId, definitionId], map: "workflow_instance_subject_type_subject_id_definition_id_key", where: raw("(closed_at IS NULL)"))
   @@index([tenantId, definitionId, state], map: "workflow_instance_tenant_id_definition_id_state_idx")

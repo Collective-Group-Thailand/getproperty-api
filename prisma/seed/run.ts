@@ -17,6 +17,10 @@ import { SETTINGS } from '../../src/core/settings/catalogue';
 import { WORKFLOW_DEFINITIONS } from '../../src/core/workflow/definitions';
 import { specToRow } from '../../src/core/workflow/engine';
 import {
+  DEFAULT_INSPECTION_ITEMS,
+  DEFAULT_INSPECTION_TEMPLATE_NAME,
+} from '../../src/modules/ops-deposits/inspection-checklist';
+import {
   CLAUSE_SCHEMA,
   FORBIDDEN_CLAUSE_TYPES,
   STANDARD_TEMPLATE_BODY,
@@ -98,6 +102,7 @@ export async function runSeed(
   await tx(db, () => seedFeatureFlags(db));
   await tx(db, () => seedWorkflowDefinitions(db));
   await tx(db, () => seedLeaseTemplates(db));
+  await tx(db, () => seedInspectionTemplates(db));
   if (mode === 'dev') await tx(db, () => seedDev(db));
 
   const counts = await countRows(db);
@@ -307,6 +312,15 @@ async function seedWorkflowDefinitions(db: ClientBase): Promise<void> {
   }
 }
 
+/** The platform default inspection checklist (B2.4, D-023) — tenant_id NULL; tenants may add their own. */
+async function seedInspectionTemplates(db: ClientBase): Promise<void> {
+  await db.query(
+    `INSERT INTO ops.inspection_template (tenant_id, name, items) VALUES (NULL, $1, $2::jsonb)
+     ON CONFLICT (tenant_id, name) DO NOTHING`,
+    [DEFAULT_INSPECTION_TEMPLATE_NAME, JSON.stringify(DEFAULT_INSPECTION_ITEMS)],
+  );
+}
+
 /** The platform สคบ. 2568 standard contract (D-020), version 1 — tenant_id NULL, published. */
 async function seedLeaseTemplates(db: ClientBase): Promise<void> {
   await db.query(
@@ -488,6 +502,7 @@ async function seedDev(db: ClientBase): Promise<void> {
   );
   await seedDevUnits(db);
   await seedDevLease(db);
+  await seedDevDeposit(db);
   for (const [user, role] of [
     [DEV.users.platformAdmin, 'platform_admin'],
     [DEV.users.support, 'support'],
@@ -588,6 +603,28 @@ async function seedDevUnits(db: ClientBase): Promise<void> {
   }
 }
 
+/**
+ * B2.4: the deposit of the development lease, received at signing (receipt DPR-2026-00001 from the series; no PDF —
+ * documents need object storage, which seeds do not touch).
+ */
+async function seedDevDeposit(db: ClientBase): Promise<void> {
+  await db.query(
+    `INSERT INTO ops.document_series (tenant_id, doc_type, fiscal_year, prefix, next_number)
+     VALUES ($1, 'deposit_receipt', 2026, 'DPR', 2)
+     ON CONFLICT (tenant_id, doc_type, fiscal_year) DO NOTHING`,
+    [DEV.tenantId],
+  );
+  await db.query(
+    `INSERT INTO ops.deposit (tenant_id, building_id, unit_id, lease_id, amount_security, amount_advance_rent, status,
+                              received_at, held_at, receipt_number, receipt_reference)
+     SELECT l.tenant_id, l.building_id, l.unit_id, l.id, l.deposit_amount, l.advance_rent_amount, 'held',
+            '2026-09-25T10:00:00+07:00', '2026-09-25T10:00:00+07:00', 'DPR-2026-00001', 'เงินสด ณ วันทำสัญญา'
+       FROM ops.lease l WHERE l.id = $1
+     ON CONFLICT (lease_id) DO NOTHING`,
+    [DEV.leaseId],
+  );
+}
+
 const COUNTED_TABLES = [
   'platform.role',
   'platform.permission',
@@ -627,6 +664,8 @@ const COUNTED_TABLES = [
   'ops.lease',
   'ops.lease_party',
   'core.occupancy',
+  'ops.inspection_template',
+  'ops.deposit',
 ];
 
 export async function countRows(db: ClientBase): Promise<Record<string, number>> {

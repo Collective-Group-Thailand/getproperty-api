@@ -1,5 +1,6 @@
 import { actorEnvelope, systemActor } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
+import { type Tx } from '@database/prisma.service';
 import { TenantTx } from '@database/tenant-tx';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -53,6 +54,10 @@ export class WorkflowTimers {
             where: { id: timer.id },
             data: { firedAt: now, attempt: { increment: 1 } },
           });
+          if (timer.kind === 'reminder') {
+            await this.remind(tx, timer, now);
+            continue;
+          }
           if (timer.kind !== 'sla_warn' && timer.kind !== 'sla_breach') continue;
           const column = timer.kind === 'sla_warn' ? 'slaWarnedAt' : 'slaBreachedAt';
           const marked = await tx.workflowInstance.updateMany({
@@ -98,5 +103,47 @@ export class WorkflowTimers {
         return due.length;
       }),
     );
+  }
+
+  /** A `remindBefore` reminder (e.g. T-3 / T-1 of a deposit refund): `workflow.sla_reminder` with the time left. */
+  private async remind(tx: Tx, timer: DueTimer, now: Date): Promise<void> {
+    const instance = await tx.workflowInstance.findUniqueOrThrow({
+      where: { id: timer.instance_id },
+      include: { definition: { select: { key: true, version: true } } },
+    });
+    const hoursLeft = instance.slaDueAt
+      ? Math.max(0, Math.round((instance.slaDueAt.getTime() - now.getTime()) / 3_600_000))
+      : null;
+    const envelope = await this.events.record(tx, {
+      type: 'workflow.sla_reminder',
+      aggregateType: 'workflow_instance',
+      aggregateId: instance.id,
+      tenantId: instance.tenantId,
+      buildingId: instance.buildingId,
+      payload: {
+        instanceId: instance.id,
+        definitionKey: instance.definition.key,
+        subjectType: instance.subjectType,
+        subjectId: instance.subjectId,
+        state: instance.state,
+        slaDueAt: instance.slaDueAt?.toISOString() ?? null,
+        hoursLeft,
+        daysLeft: hoursLeft === null ? null : Math.ceil(hoursLeft / 24),
+        timerId: timer.id,
+      },
+    });
+    await tx.workflowEvent.create({
+      data: {
+        tenantId: instance.tenantId,
+        instanceId: instance.id,
+        fromState: instance.state,
+        toState: instance.state,
+        event: 'sla_reminder',
+        actor: actorEnvelope(RequestContext.actor()),
+        occurredAt: now,
+        data: { timerId: timer.id, hoursLeft },
+        domainEventId: envelope.id,
+      },
+    });
   }
 }

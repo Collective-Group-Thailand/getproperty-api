@@ -23,6 +23,7 @@ import {
   OwnerUnitsController,
   OwnerUtilityAccountsController,
 } from './assets.controller';
+import { inspectionsController, OwnerDepositsController } from './deposits.controller';
 import {
   OwnerAssetGrantsController,
   OwnerAuditLogController,
@@ -44,7 +45,7 @@ import {
   OwnerTenantController,
 } from './tenancy.controller';
 
-/** `/v1/owner/*` (contract §2): owner console — B1.3 identity, tenancy, settings, tariffs, governance, files; B2.1 properties, buildings, floors, units, board, profiles, utility accounts, meters, asset items, Excel import; B2.2 parties; B2.3 leases, lease templates, lease invitations. */
+/** `/v1/owner/*` (contract §2): owner console — B1.3 identity, tenancy, settings, tariffs, governance, files; B2.1 properties, buildings, floors, units, board, profiles, utility accounts, meters, asset items, Excel import; B2.2 parties; B2.3 leases, lease templates, lease invitations; B2.4 deposits, inspections. */
 @Module({
   controllers: [
     systemPingController(SURFACES.owner),
@@ -76,6 +77,8 @@ import {
     OwnerPartyDetailsController,
     OwnerLeasesController,
     OwnerLeaseTemplatesController,
+    OwnerDepositsController,
+    inspectionsController(SURFACES.owner),
     filesController(SURFACES.owner),
     notificationsController(SURFACES.owner),
     pushSubscriptionsController(SURFACES.owner),

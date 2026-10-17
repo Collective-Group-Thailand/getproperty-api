@@ -50,6 +50,18 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     ],
   },
   {
+    key: 'workflow.sla_reminder',
+    description: 'Owner/Manager: a workflow is due soon, e.g. a deposit refund at T-3 / T-1 (D-023, D-159)',
+    th: [
+      'ใกล้ถึงกำหนดเวลา',
+      'งาน {{workflow.definitionKey}} ของ {{tenant.name}} จะครบกำหนดในอีก {{workflow.daysLeft}} วัน (สถานะ {{workflow.state}})',
+    ],
+    en: [
+      'Due soon',
+      'A {{workflow.definitionKey}} task of {{tenant.name}} is due in {{workflow.daysLeft}} day(s) (state {{workflow.state}}).',
+    ],
+  },
+  {
     key: 'dsr.received',
     description: 'Owner: a PDPA data subject request arrived (D-025)',
     th: [
@@ -88,7 +100,7 @@ export const NOTIFICATION_ROUTES: {
   urgent: boolean;
 }[] = [
   ...OPERATOR_EVENTS.flatMap((e) =>
-    (e.key === 'workflow.sla_breached' ? ['owner', 'manager'] : ['owner']).flatMap((audience) =>
+    (e.key.startsWith('workflow.') ? ['owner', 'manager'] : ['owner']).flatMap((audience) =>
       (['in_app', 'line'] as const).map((channel) => ({
         eventType: e.key,
         audience,
@@ -97,7 +109,13 @@ export const NOTIFICATION_ROUTES: {
       })),
     ),
   ),
-  ...['invoice.issued', 'invoice.reminder', 'receipt.issued'].map((eventType) => ({
+  ...[
+    'invoice.issued',
+    'invoice.reminder',
+    'receipt.issued',
+    'deposit.settlement_proposed',
+    'deposit.refunded',
+  ].map((eventType) => ({
     eventType,
     audience: 'resident',
     channel: 'line',
@@ -157,6 +175,42 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         language: 'en',
         subject: null,
         body: 'Payment of {{payment.amount}} THB received — receipt {{receipt.number}}. Thank you.',
+      },
+    ],
+  },
+  {
+    key: 'deposit.settlement_proposed',
+    channel: 'line',
+    audience: 'resident',
+    description: 'Deposit settlement proposed: review, accept or dispute in the LIFF (D-023)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}} เสนอการคืนเงินประกัน: หัก {{settlement.deductionsTotal}} บาท คืน {{settlement.proposedRefund}} บาท ภายใน {{settlement.deadlineOn}} — แตะเพื่อดูรายการและหลักฐาน แล้วยอมรับหรือโต้แย้ง',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}} proposes your deposit settlement: {{settlement.deductionsTotal}} THB deducted, {{settlement.proposedRefund}} THB refunded by {{settlement.deadlineOn}} — tap to see the items and evidence, then accept or dispute.',
+      },
+    ],
+  },
+  {
+    key: 'deposit.refunded',
+    channel: 'line',
+    audience: 'resident',
+    description: 'Deposit refunded with the statement (D-023)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}} คืนเงินประกัน {{settlement.refundAmount}} บาท แล้ว ใบแจ้งรายการ {{settlement.statementNumber}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}} refunded {{settlement.refundAmount}} THB of your deposit — statement {{settlement.statementNumber}}.',
       },
     ],
   },

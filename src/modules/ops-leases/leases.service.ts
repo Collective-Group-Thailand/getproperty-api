@@ -1398,10 +1398,11 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
     for (const o of occupancies)
       await tx.occupancy.update({
         where: { id: o.id },
-        // a lease that never started keeps a one-day period (exclusion ranges cannot be empty)
+        // the period ends on the move-out day; a lease ended on (or before) its first day keeps a one-day period
+        // (valid_to > valid_from, exclusion ranges cannot be empty)
         data: {
           validTo: new Date(
-            day > o.validFrom.toISOString().slice(0, 10) ? day : o.validFrom.toISOString().slice(0, 10),
+            day > o.validFrom.toISOString().slice(0, 10) ? day : o.validFrom.getTime() + 86_400_000,
           ),
           movedOutAt: moveOutAt,
           updatedBy: by(),

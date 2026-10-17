@@ -31,6 +31,8 @@ export interface StartInput {
   subjectId: string;
   definitionKey: string;
   context?: Record<string, unknown>;
+  /** When the SLA clock started (default now): e.g. the move-out time of a deposit settlement opened later. */
+  clockStart?: Date;
 }
 
 /**
@@ -89,11 +91,15 @@ export class WorkflowService {
   async start(tx: Tx, input: StartInput): Promise<WorkflowInstance> {
     const now = this.clock.now();
     const { row, spec } = await this.definitionFor(tx, input.definitionKey, input.tenantId);
+    const clockStart =
+      input.clockStart && input.clockStart.getTime() < now.getTime() ? input.clockStart : now;
     const plan = planStart(
       spec,
       now,
       await this.calendars.calendar(),
+      // the SLA settings in force now (when the instance opens), even for a clock started earlier
       await this.settingLookup(spec, input.tenantId, now),
+      clockStart,
     );
     const instance = await tx.workflowInstance.create({
       data: {
@@ -105,7 +111,7 @@ export class WorkflowService {
         state: plan.to,
         stateEnteredAt: now,
         slaDueAt: plan.slaDueAt,
-        startedAt: now,
+        startedAt: clockStart,
         context: (input.context ?? {}) as Prisma.InputJsonValue,
       },
     });

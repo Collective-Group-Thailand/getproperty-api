@@ -8,7 +8,7 @@ export interface InstanceSnapshot {
 }
 
 export interface TimerPlan {
-  kind: 'sla_warn' | 'sla_breach';
+  kind: 'sla_warn' | 'sla_breach' | 'reminder';
   fireAt: Date;
 }
 
@@ -61,8 +61,15 @@ function slaFor(
     return { slaDueAt: previousDue, timers: [], keep: true };
   }
   const value = def.sla.settingKey ? settings(def.sla.settingKey) : undefined;
-  const { dueAt, warnAt } = slaTimes(def.sla, from === 'instance' ? start : enteredAt, calendar, value);
+  const { dueAt, warnAt, remindAt } = slaTimes(
+    def.sla,
+    from === 'instance' ? start : enteredAt,
+    calendar,
+    value,
+  );
   const timers: TimerPlan[] = [];
+  for (const at of remindAt)
+    if (at.getTime() > enteredAt.getTime()) timers.push({ kind: 'reminder', fireAt: at });
   if (warnAt && warnAt.getTime() > enteredAt.getTime()) timers.push({ kind: 'sla_warn', fireAt: warnAt });
   timers.push({ kind: 'sla_breach', fireAt: dueAt });
   return { slaDueAt: dueAt, timers, keep: false };
@@ -74,8 +81,10 @@ export function planStart(
   now: Date,
   calendar: BusinessCalendar,
   settings: SettingLookup,
+  /** When the instance clock started (default `now`), e.g. a move-out recorded after the fact. */
+  clockStart: Date = now,
 ): Plan {
-  const sla = slaFor(spec, spec.initial, now, now, null, null, calendar, settings);
+  const sla = slaFor(spec, spec.initial, clockStart, now, null, null, calendar, settings);
   return {
     from: null,
     to: spec.initial,

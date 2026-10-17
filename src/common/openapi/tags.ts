@@ -66,6 +66,11 @@ export const API_TAGS: Record<string, string> = {
   'owner.leaseTemplates': 'The standard contract templates and the addendum clause types they allow (D-020).',
   'resident.leases': 'My leases: contract, e-signature with OTP + LINE, 30-day notice (D-020, D-062).',
   'resident.invitations': 'Lease invitations: preview and accept after the PDPA consents (D-025, D-061).',
+  'owner.deposits':
+    'Deposits: receipt, the 7-day settlement with itemised deductions and evidence, refund and statement, late flags (D-023, D-159).',
+  'owner.inspections': 'Move-in / move-out inspections with photos, meter registers and signatures (D-023).',
+  'staff.inspections': 'Move-in / move-out inspections done by staff on the PWA (D-023).',
+  'resident.deposits': 'My deposits: the proposed settlement with its evidence, accept or dispute (D-023).',
   'staff.parties': 'People and companies captured by staff at move-in (D-151).',
   'resident.privacy': 'What the controllers hold about me, my consents and PDPA requests (D-025).',
   'staff.me': 'Who I am in the staff PWA: tenant, role, building limits, permissions, menu.',

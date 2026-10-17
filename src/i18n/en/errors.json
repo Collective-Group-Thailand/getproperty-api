@@ -504,5 +504,25 @@
       "title": "Invalid signature image",
       "detail": "The signature must be a PNG image of at most 200 KB."
     }
+  },
+  "deposit": {
+    "invalid_state": {
+      "title": "Not possible in this deposit state",
+      "detail": "The deposit or its settlement is not in a state that allows this action ({status})."
+    },
+    "refund_mismatch": {
+      "title": "Refund does not match the settlement",
+      "detail": "The refund must pay back at least the proposed (or agreed) amount: only itemised deductions with evidence may be kept."
+    }
+  },
+  "inspection": {
+    "invalid_state": {
+      "title": "Not possible in this inspection state",
+      "detail": "The inspection is not in a state that allows this action ({status})."
+    },
+    "exists": {
+      "title": "Inspection already exists",
+      "detail": "This lease already has an inspection of this type."
+    }
   }
 }
