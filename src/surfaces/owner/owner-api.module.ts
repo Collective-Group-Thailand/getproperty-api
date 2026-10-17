@@ -48,6 +48,7 @@ import {
   OwnerUtilityTariffsController,
 } from './money-settings.controller';
 import { OwnerPartyDetailsController, partiesController } from './parties.controller';
+import { OwnerPaymentsController } from './payments.controller';
 import { OwnerSearchController } from './search.controller';
 import {
   deviceInstallsController,
@@ -103,6 +104,7 @@ import {
     OwnerInvoiceChargesController,
     OwnerBillingDocumentsController,
     OwnerExportsController,
+    OwnerPaymentsController,
     inspectionsController(SURFACES.owner),
     filesController(SURFACES.owner),
     notificationsController(SURFACES.owner),

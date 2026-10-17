@@ -657,6 +657,10 @@
     "credit_exceeds": {
       "title": "Credit exceeds the invoice",
       "detail": "The credit note exceeds the line amount or the invoice's outstanding balance"
+    },
+    "nothing_due": {
+      "title": "Nothing due",
+      "detail": "This invoice is paid"
     }
   },
   "rate_plan": {
@@ -683,6 +687,60 @@
     "not_ready": {
       "title": "Export not ready",
       "detail": "The export file is still being built, or building it failed"
+    }
+  },
+  "payment": {
+    "partial_not_allowed": {
+      "title": "Partial payment not accepted",
+      "detail": "Partial payments are off for this landlord; the amount must equal what is due"
+    },
+    "invalid_state": {
+      "title": "Payment in the wrong state",
+      "detail": "The payment is not in a state that allows this action"
+    },
+    "credit_used": {
+      "title": "Credit already used",
+      "detail": "The credit this payment created was used or refunded; reverse those first"
+    },
+    "unavailable": {
+      "title": "QR payment unavailable",
+      "detail": "The landlord has no QR payment provider; transfer to the account and upload the slip"
+    }
+  },
+  "slip": {
+    "not_allowed": {
+      "title": "Slips not accepted",
+      "detail": "The landlord does not accept transfer slips"
+    },
+    "invalid_state": {
+      "title": "Slip in the wrong state",
+      "detail": "This slip was already decided, or the same transfer was already used by an earlier slip (reject that one first)"
+    }
+  },
+  "refund": {
+    "exceeds_credit": {
+      "title": "Refund exceeds the credit",
+      "detail": "The refund is larger than the payer's remaining credit"
+    }
+  },
+  "webhook": {
+    "signature_invalid": {
+      "title": "Invalid signature",
+      "detail": "The callback signature is invalid or the merchant is unknown"
+    },
+    "malformed": {
+      "title": "Malformed callback",
+      "detail": "The callback body could not be read"
+    }
+  },
+  "settlement": {
+    "duplicate": {
+      "title": "Settlement already processed",
+      "detail": "A settlement file of this account and date was already processed"
+    },
+    "unreadable": {
+      "title": "Settlement file unreadable",
+      "detail": "The settlement file could not be read"
     }
   }
 }

@@ -37,7 +37,7 @@ export type NotifiableResolver = (
   event: DomainEventEnvelope,
 ) => Promise<NotificationPlanInput | null>;
 
-async function operators(
+export async function operators(
   tx: Tx,
   tenantId: string,
   roles: string[],
@@ -194,23 +194,6 @@ export const NOTIFIABLE_EVENTS: Record<string, NotifiableResolver> = {
     },
     consentPurpose: 'resident.service',
   }),
-  /** B4.2: the billed party receives the issued invoice by LINE (D-011, D-022); 4.3 adds the Flex card and QR. */
-  'invoice.issued': async (tx, e) => {
-    const p = e.payload as { billedPartyId?: string; unitId?: string | null };
-    if (!p.billedPartyId || !e.tenantId) return null;
-    const unit = p.unitId
-      ? await tx.unit.findUnique({ where: { id: p.unitId }, select: { unitNo: true } })
-      : null;
-    return {
-      recipients: await billedParty(tx, p.billedPartyId),
-      data: {
-        tenant: { name: await tenantName(tx, e.tenantId) },
-        invoice: e.payload,
-        unit: { unitNo: unit?.unitNo ?? '' },
-      },
-      consentPurpose: 'resident.service',
-    };
-  },
   /** B4.2 (D-031): staff are asked for the readings the cut-off did not bring. */
   'billing_cycle.readings_requested': async (tx, e) =>
     e.tenantId

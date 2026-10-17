@@ -13,6 +13,8 @@ export type RawBodyRequest = IncomingMessage & { rawBody?: Buffer };
  */
 export const LARGE_BODY_ROUTES: readonly { pattern: RegExp; limit: string }[] = [
   { pattern: /^\/v1\/device\/readings\/batch(\/|\?|$)/, limit: '2mb' },
+  // B4.4: a resident's transfer slip image arrives inline (base64, ≤ 5 MB decoded)
+  { pattern: /^\/v1\/resident\/invoices\/[^/]+\/slips(\?|$)/, limit: '7mb' },
 ];
 
 /**

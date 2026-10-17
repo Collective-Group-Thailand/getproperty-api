@@ -141,6 +141,11 @@ export const DOMAIN_EVENT_TYPES = {
   'invoice.resent': 'The owner sent an issued invoice to the payer again (LINE Flex, D-011).',
   'export.requested': 'An operator requested an export (document archive, Excel, accounting formats, D-051).',
   // B4.4 payments
+  'invoice.payment_ready':
+    'An issued invoice is ready to send: credit applied and its Thai QR created when the tenant has a provider (D-042).',
+  'payment.webhook_received':
+    'A signed payment provider callback was stored; the worker processes it (D-042).',
+  'receipt.voided': 'A receipt was voided because its payment was reversed (D-044).',
   'payment.confirmed':
     'A payment was confirmed (webhook, settlement file, slip or manual) and allocated (D-042).',
   'payment.failed': 'A provider reported a failed payment.',

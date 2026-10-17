@@ -159,6 +159,18 @@ export const ERROR_CODES = {
   'rate_plan.in_use': HttpStatus.CONFLICT,
   'billing_cycle.invalid_state': HttpStatus.CONFLICT,
   'export.not_ready': HttpStatus.CONFLICT,
+  'payment.partial_not_allowed': HttpStatus.UNPROCESSABLE_ENTITY,
+  'payment.invalid_state': HttpStatus.CONFLICT,
+  'payment.credit_used': HttpStatus.CONFLICT,
+  'payment.unavailable': HttpStatus.CONFLICT,
+  'invoice.nothing_due': HttpStatus.CONFLICT,
+  'slip.not_allowed': HttpStatus.CONFLICT,
+  'slip.invalid_state': HttpStatus.CONFLICT,
+  'refund.exceeds_credit': HttpStatus.UNPROCESSABLE_ENTITY,
+  'webhook.signature_invalid': HttpStatus.UNAUTHORIZED,
+  'webhook.malformed': HttpStatus.UNPROCESSABLE_ENTITY,
+  'settlement.duplicate': HttpStatus.CONFLICT,
+  'settlement.unreadable': HttpStatus.UNPROCESSABLE_ENTITY,
   'internal.unexpected': HttpStatus.INTERNAL_SERVER_ERROR,
 } as const satisfies Record<string, HttpStatus>;
 

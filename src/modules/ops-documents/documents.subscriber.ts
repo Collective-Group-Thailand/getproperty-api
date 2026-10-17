@@ -6,13 +6,14 @@ import { Injectable, type OnModuleInit } from '@nestjs/common';
 import { BillingDocuments } from './billing-documents.service';
 
 /**
- * Document generation is an event subscriber, never inline (CLAUDE.md): an issued invoice or note gets its A4 PDF
- * (`core.document`) in the worker; idempotent (the row's `document_id` is set once).
+ * Document generation is an event subscriber, never inline (CLAUDE.md): an issued invoice (once its QR exists —
+ * `invoice.payment_ready`, B4.4) or note gets its A4 PDF (`core.document`) in the worker; idempotent (the row's
+ * `document_id` is set once).
  */
 @Injectable()
 export class BillingDocumentsSubscriber implements EventSubscriber, OnModuleInit {
   readonly name = 'billing-documents';
-  readonly eventTypes = ['invoice.issued', 'credit_note.issued', 'debit_note.issued'] as const;
+  readonly eventTypes = ['invoice.payment_ready', 'credit_note.issued', 'debit_note.issued'] as const;
 
   constructor(
     private readonly registry: EventSubscriberRegistry,
@@ -24,7 +25,7 @@ export class BillingDocumentsSubscriber implements EventSubscriber, OnModuleInit
   }
 
   async handle(event: DomainEventEnvelope, tx: Tx): Promise<void> {
-    if (event.type === 'invoice.issued')
+    if (event.type === 'invoice.payment_ready')
       await this.documents.generateInvoice(tx, event.payload.invoiceId as string);
     else
       await this.documents.generateNote(

@@ -142,6 +142,25 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     ],
   },
   {
+    key: 'slip.review_requested',
+    description:
+      'Owner/Manager: a transfer slip could not be confirmed automatically and waits for review (D-043)',
+    th: ['สลิปรอตรวจสอบ', 'มีสลิปโอนเงินรอตรวจสอบของ {{tenant.name}} ({{slip.reasons}})'],
+    en: ['Slip to review', 'A transfer slip of {{tenant.name}} waits for your review ({{slip.reasons}}).'],
+  },
+  {
+    key: 'settlement_file.processed',
+    description: 'Owner: the provider settlement shows payments that do not match (D-042)',
+    th: [
+      'ยอดชำระไม่ตรงกับรายการของผู้ให้บริการ',
+      'ไฟล์สรุปยอดวันที่ {{settlement.statementDate}} ของ {{tenant.name}} มีรายการไม่ตรง {{settlement.discrepancies}} รายการ',
+    ],
+    en: [
+      'Settlement discrepancies',
+      'The settlement of {{settlement.statementDate}} for {{tenant.name}} has {{settlement.discrepancies}} item(s) that do not match.',
+    ],
+  },
+  {
     key: 'billing_cycle.computed',
     description: 'Owner/Manager: the cycle drafts are computed and ready to review and issue (D-011)',
     th: [
@@ -157,7 +176,7 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
 
 /** Operator audiences per event: workflow → owner + manager; device/meter health → owner + manager + staff. */
 const operatorAudiences = (key: string): string[] =>
-  key.startsWith('workflow.') || key === 'billing_cycle.computed'
+  key.startsWith('workflow.') || key === 'billing_cycle.computed' || key === 'slip.review_requested'
     ? ['owner', 'manager']
     : key.startsWith('meter.') || key.startsWith('device.') || key === 'billing_cycle.readings_requested'
       ? ['owner', 'manager', 'staff']
@@ -265,6 +284,7 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         subject: null,
         body: 'Payment of {{payment.amount}} THB received — receipt {{receipt.number}}. Thank you.',
       },
+      ...flexVersions(),
     ],
   },
   {

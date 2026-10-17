@@ -14,7 +14,7 @@ export const API_TAGS: Record<string, string> = {
   'technician.system': `${SURFACE_DESCRIPTIONS[SURFACES.technician]} Placeholder until B5 (ping only).`,
   'admin.system': `${SURFACE_DESCRIPTIONS[SURFACES.admin]} System: ping and build information.`,
   'device.system': `${SURFACE_DESCRIPTIONS[SURFACES.device]} System: ping.`,
-  'webhooks.system': `${SURFACE_DESCRIPTIONS[SURFACES.webhooks]} Placeholder until B4 (ping only).`,
+  'webhooks.system': `${SURFACE_DESCRIPTIONS[SURFACES.webhooks]} Ping.`,
   'public.system': `${SURFACE_DESCRIPTIONS[SURFACES.public]} System: ping.`,
   'public.plans':
     'Price plans of the platform for the public pricing page (D-156; Proposed until the pilot).',
@@ -118,6 +118,10 @@ export const API_TAGS: Record<string, string> = {
     'Invoice, note and receipt PDFs (A4 and 80 mm), sending an invoice again, the documents of a month (D-050).',
   'owner.exports':
     'Exports built by the worker: document archives (B4.3), Excel and accounting formats (B4.5), D-051.',
+  'owner.payments':
+    'Money received into my own account (D-042): payments by QR callback, settlement file, slip or by hand; slip reviews, settlement reconciliations, receipts, payers’ credit and refunds (D-043, D-044).',
+  'resident.payments':
+    'Paying an invoice: Thai QR to the landlord’s account, transfer slips, my receipts (D-042, D-043, D-044).',
   'admin.documentTemplates': 'Preview of the billing document templates with sample data (D-050).',
   'admin.featureFlags': 'Feature flags and tenant overrides.',
   'admin.auditLog': 'Platform-wide audit log (D-161).',
@@ -160,4 +164,6 @@ export const API_TAGS: Record<string, string> = {
   'admin.ingest': 'Ingest dead letters (refused MQTT / HTTPS payloads) and replay (D-162).',
   'webhooks.placeholder':
     'PLACEHOLDER provider callback shape (payload, signature header, expected response); the real providers (payment QR, slip verification, LINE) arrive in B4.',
+  'webhooks.payments':
+    'Signed payment confirmations from KBank, SCB and Opn (O-001) for each landlord’s own merchant account (D-042, ADR-0008).',
 };

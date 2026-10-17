@@ -363,6 +363,7 @@ model TenantBankAccount {
   promptpayIdEnc         Bytes?           @map("promptpay_id_enc")
   paymentProvider        PaymentProvider  @default(none) @map("payment_provider")
   providerMerchantRefEnc Bytes?           @map("provider_merchant_ref_enc")
+  providerMerchantRefHash Bytes?          @map("provider_merchant_ref_hash")
   buildingIds            String[]         @map("building_ids") @db.Uuid
   isDefault              Boolean          @default(false) @map("is_default")
   state                  BankAccountState @default(pending_otp)
@@ -379,7 +380,13 @@ model TenantBankAccount {
   confirmedByOtp OtpChallenge?              @relation(fields: [confirmedByOtpId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tenant_bank_account_confirmed_by_otp_id_fkey")
   history        TenantBankAccountHistory[]
 
+  qrCodes         PaymentQrCode[]
+  payments        Payment[]
+  webhooks        PaymentWebhook[]
+  settlementFiles  PaymentSettlementFile[]
+
   @@unique([tenantId], map: "tenant_bank_account_tenant_id_default_key", where: raw("(is_default AND (state = 'active'::platform.bank_account_state))"))
+  @@index([paymentProvider, providerMerchantRefHash], map: "tenant_bank_account_provider_merchant_idx", where: raw("(provider_merchant_ref_hash IS NOT NULL)"))
   @@index([tenantId, state], map: "tenant_bank_account_tenant_id_state_idx")
   @@map("tenant_bank_account")
   @@schema("platform")

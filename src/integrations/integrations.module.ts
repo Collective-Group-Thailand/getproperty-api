@@ -22,6 +22,9 @@ import { MQTT_CLIENT, type MqttClientPort } from './mqtt/mqtt-client.port';
 import { FakeOcr } from './ocr/fake-ocr';
 import { OCR, type OcrPort } from './ocr/ocr.port';
 import { VisionOcrAdapter } from './ocr/vision-ocr.adapter';
+import { FakePaymentProviders, FakeSlipVerifier } from './payments/fake-payment-providers';
+import { PAYMENT_PROVIDERS, SLIP_VERIFIER } from './payments/payment-provider.port';
+import { EasySlipVerifier, RealPaymentProviders } from './payments/real-payment-providers';
 import { FakePdfRenderer } from './pdf/fake-pdf-renderer';
 import { PDF_RENDERER, type PdfRendererPort } from './pdf/pdf-renderer.port';
 import { PuppeteerPdfRenderer } from './pdf/puppeteer-pdf-renderer';
@@ -138,6 +141,28 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
         config.useFakes ? new FakeOcr() : new VisionOcrAdapter(ai),
     },
     {
+      provide: PAYMENT_PROVIDERS,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig) =>
+        config.useFakes
+          ? new FakePaymentProviders()
+          : new RealPaymentProviders({
+              kbank: config.get('PAYMENTS_KBANK_BASE_URL'),
+              scb: config.get('PAYMENTS_SCB_BASE_URL'),
+              opn: config.get('PAYMENTS_OPN_BASE_URL'),
+            }),
+    },
+    {
+      provide: SLIP_VERIFIER,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig) => {
+        const key = config.get('SLIP_VERIFY_API_KEY');
+        return config.useFakes || !key
+          ? new FakeSlipVerifier()
+          : new EasySlipVerifier(config.get('SLIP_VERIFY_BASE_URL'), key);
+      },
+    },
+    {
       provide: PDF_RENDERER,
       inject: [AppConfig],
       useFactory: (config: AppConfig): PdfRendererPort =>
@@ -223,6 +248,8 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
   ],
   exports: [
     OBJECT_STORAGE,
+    PAYMENT_PROVIDERS,
+    SLIP_VERIFIER,
     PDF_RENDERER,
     SECRETS_PROVIDER,
     MQTT_CLIENT,

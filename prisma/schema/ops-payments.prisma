@@ -1,0 +1,494 @@
+// ops — B4.4 payments (schema-design v2 §3.3.5; migration 0022; D-042, D-043, D-044, D-050).
+
+enum QrStatus {
+  active
+  paid
+  expired
+  cancelled
+
+  @@map("qr_status")
+  @@schema("ops")
+}
+
+enum PaymentMethod {
+  qr
+  transfer_slip
+  cash
+  bank_transfer_manual
+  card
+  offset
+
+  @@map("payment_method")
+  @@schema("ops")
+}
+
+enum PaymentStatus {
+  pending
+  confirmed
+  failed
+  refunded
+  reversed
+
+  @@map("payment_status")
+  @@schema("ops")
+}
+
+enum PaymentConfirmation {
+  webhook
+  settlement_file
+  slip_verified
+  slip_review
+  manual
+  credit
+
+  @@map("payment_confirmation")
+  @@schema("ops")
+}
+
+enum SlipStatus {
+  pending_verification
+  auto_confirmed
+  pending_review
+  approved
+  rejected
+  duplicate
+
+  @@map("slip_status")
+  @@schema("ops")
+}
+
+enum SettlementFileStatus {
+  received
+  processed
+  failed
+
+  @@map("settlement_file_status")
+  @@schema("ops")
+}
+
+enum ReceiptKind {
+  payment
+  deposit
+  advance
+
+  @@map("receipt_kind")
+  @@schema("ops")
+}
+
+enum TaxInvoiceKind {
+  tax_invoice
+  receipt_tax_invoice
+
+  @@map("tax_invoice_kind")
+  @@schema("ops")
+}
+
+enum CreditEntryKind {
+  overpayment
+  applied
+  refunded
+  reversed
+
+  @@map("credit_entry_kind")
+  @@schema("ops")
+}
+
+enum WebhookOutcome {
+  received
+  processed
+  ignored
+  rejected
+
+  @@map("webhook_outcome")
+  @@schema("ops")
+}
+
+/// Dynamic Thai QR (Tag 30) per invoice and amount (D-042).
+model PaymentQrCode {
+  id            String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String          @map("tenant_id") @db.Uuid
+  buildingId    String          @map("building_id") @db.Uuid
+  unitId        String?         @map("unit_id") @db.Uuid
+  invoiceId     String          @map("invoice_id") @db.Uuid
+  provider      PaymentProvider
+  bankAccountId String          @map("bank_account_id") @db.Uuid
+  reference     String
+  amount        Decimal         @db.Decimal(14, 2)
+  payload       String
+  providerQrId  String?         @map("provider_qr_id")
+  status        QrStatus        @default(active)
+  expiresAt     DateTime?       @map("expires_at") @db.Timestamptz(6)
+  paidAt        DateTime?       @map("paid_at") @db.Timestamptz(6)
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant            @relation("PaymentQrCodeTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_qr_code_tenant_id_fkey")
+  building    Building          @relation("PaymentQrCodeBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_qr_code_building_id_fkey")
+  unit        Unit?             @relation("PaymentQrCodeUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_qr_code_unit_id_fkey")
+  invoice     Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_qr_code_invoice_id_fkey")
+  bankAccount TenantBankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_qr_code_bank_account_id_fkey")
+  payments    Payment[]
+
+  @@unique([invoiceId], map: "payment_qr_code_active_key", where: raw("(status = 'active'::ops.qr_status)"))
+  @@index([tenantId], map: "payment_qr_code_tenant_id_idx")
+  @@index([buildingId], map: "payment_qr_code_building_id_idx")
+  @@index([unitId], map: "payment_qr_code_unit_id_idx")
+  @@index([invoiceId], map: "payment_qr_code_invoice_id_idx")
+  @@index([bankAccountId], map: "payment_qr_code_bank_account_id_idx")
+  @@index([provider, reference], map: "payment_qr_code_provider_reference_idx")
+  @@map("payment_qr_code")
+  @@schema("ops")
+}
+
+/// Transfer slips (D-043 fallback).
+model SlipReview {
+  id                    String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId              String     @map("tenant_id") @db.Uuid
+  buildingId            String     @map("building_id") @db.Uuid
+  unitId                String?    @map("unit_id") @db.Uuid
+  invoiceId             String     @map("invoice_id") @db.Uuid
+  payerPartyId          String     @map("payer_party_id") @db.Uuid
+  slipDocumentId        String     @map("slip_document_id") @db.Uuid
+  uploadedBy            String?    @map("uploaded_by") @db.Uuid
+  uploadedAt            DateTime   @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  verifier              String?
+  verifyResult          Json?      @map("verify_result")
+  transRef              String?    @map("trans_ref")
+  amountDetected        Decimal?   @map("amount_detected") @db.Decimal(14, 2)
+  receiverAccountMasked String?    @map("receiver_account_masked")
+  receiverBankCode      String?    @map("receiver_bank_code")
+  senderName            String?    @map("sender_name")
+  slipDatetime          DateTime?  @map("slip_datetime") @db.Timestamptz(6)
+  status                SlipStatus @default(pending_verification)
+  reasons               String[]   @default([])
+  duplicateOfId         String?    @map("duplicate_of_id") @db.Uuid
+  reviewedBy            String?    @map("reviewed_by") @db.Uuid
+  reviewedAt            DateTime?  @map("reviewed_at") @db.Timestamptz(6)
+  rejectReason          String?    @map("reject_reason")
+  paymentId             String?    @map("payment_id") @db.Uuid
+  createdAt             DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  version               Int        @default(1)
+
+  tenant       Tenant       @relation("SlipReviewTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "slip_review_tenant_id_fkey")
+  building     Building     @relation("SlipReviewBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "slip_review_building_id_fkey")
+  unit         Unit?        @relation("SlipReviewUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "slip_review_unit_id_fkey")
+  invoice      Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "slip_review_invoice_id_fkey")
+  payer        Party        @relation("SlipReviewPayer", fields: [payerPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "slip_review_payer_party_id_fkey")
+  slipDocument Document     @relation("SlipReviewDocument", fields: [slipDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "slip_review_slip_document_id_fkey")
+  uploader     UserAccount? @relation("SlipReviewUploader", fields: [uploadedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "slip_review_uploaded_by_fkey")
+  reviewer     UserAccount? @relation("SlipReviewReviewer", fields: [reviewedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "slip_review_reviewed_by_fkey")
+  duplicateOf  SlipReview?  @relation("SlipReviewDuplicate", fields: [duplicateOfId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "slip_review_duplicate_of_id_fkey")
+  duplicates   SlipReview[] @relation("SlipReviewDuplicate")
+  payment      Payment?     @relation("SlipReviewPayment", fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "slip_review_payment_id_fkey")
+  payments     Payment[]    @relation("PaymentSlipReview")
+
+  @@unique([tenantId, transRef], map: "slip_review_trans_ref_key", where: raw("((trans_ref IS NOT NULL) AND (status <> ALL (ARRAY['duplicate'::ops.slip_status, 'rejected'::ops.slip_status])))"))
+  @@index([tenantId, status], map: "slip_review_tenant_id_status_idx")
+  @@index([tenantId, transRef], map: "slip_review_trans_ref_idx")
+  @@index([buildingId], map: "slip_review_building_id_idx")
+  @@index([unitId], map: "slip_review_unit_id_idx")
+  @@index([invoiceId], map: "slip_review_invoice_id_idx")
+  @@index([payerPartyId], map: "slip_review_payer_party_id_idx")
+  @@index([slipDocumentId], map: "slip_review_slip_document_id_idx")
+  @@index([uploadedBy], map: "slip_review_uploaded_by_idx")
+  @@index([reviewedBy], map: "slip_review_reviewed_by_idx")
+  @@index([duplicateOfId], map: "slip_review_duplicate_of_id_idx")
+  @@index([paymentId], map: "slip_review_payment_id_idx")
+  @@map("slip_review")
+  @@schema("ops")
+}
+
+/// Money received into the tenant's own account (D-042).
+model Payment {
+  id                 String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String               @map("tenant_id") @db.Uuid
+  buildingId         String               @map("building_id") @db.Uuid
+  unitId             String?              @map("unit_id") @db.Uuid
+  invoiceId          String?              @map("invoice_id") @db.Uuid
+  payerPartyId       String?              @map("payer_party_id") @db.Uuid
+  leaseId            String?              @map("lease_id") @db.Uuid
+  amount             Decimal              @db.Decimal(14, 2)
+  method             PaymentMethod
+  provider           PaymentProvider?
+  providerRef        String?              @map("provider_ref")
+  providerPayload    Json?                @map("provider_payload")
+  bankAccountId      String?              @map("bank_account_id") @db.Uuid
+  qrCodeId           String?              @map("qr_code_id") @db.Uuid
+  status             PaymentStatus        @default(pending)
+  paidAt             DateTime             @map("paid_at") @db.Timestamptz(6)
+  confirmedAt        DateTime?            @map("confirmed_at") @db.Timestamptz(6)
+  confirmedVia       PaymentConfirmation? @map("confirmed_via")
+  reconciledAt       DateTime?            @map("reconciled_at") @db.Timestamptz(6)
+  slipDocumentId     String?              @map("slip_document_id") @db.Uuid
+  evidenceDocumentId String?              @map("evidence_document_id") @db.Uuid
+  slipReviewId       String?              @map("slip_review_id") @db.Uuid
+  recordedBy         String?              @map("recorded_by") @db.Uuid
+  whtAmount          Decimal              @default(0) @map("wht_amount") @db.Decimal(14, 2)
+  allocatedTotal     Decimal              @default(0) @map("allocated_total") @db.Decimal(14, 2)
+  creditedAmount     Decimal              @default(0) @map("credited_amount") @db.Decimal(14, 2)
+  reversedAt         DateTime?            @map("reversed_at") @db.Timestamptz(6)
+  reverseReason      String?              @map("reverse_reason")
+  notes              String?
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          String?              @map("created_by") @db.Uuid
+  updatedAt          DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy          String?              @map("updated_by") @db.Uuid
+  version            Int                  @default(1)
+
+  tenant           Tenant             @relation("PaymentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_tenant_id_fkey")
+  building         Building           @relation("PaymentBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_building_id_fkey")
+  unit             Unit?              @relation("PaymentUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_unit_id_fkey")
+  invoice          Invoice?           @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_invoice_id_fkey")
+  payer            Party?             @relation("PaymentPayer", fields: [payerPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_payer_party_id_fkey")
+  lease            Lease?             @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_lease_id_fkey")
+  bankAccount      TenantBankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_bank_account_id_fkey")
+  qrCode           PaymentQrCode?     @relation(fields: [qrCodeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_qr_code_id_fkey")
+  slipDocument     Document?          @relation("PaymentSlipDocument", fields: [slipDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_slip_document_id_fkey")
+  evidenceDocument Document?          @relation("PaymentEvidenceDocument", fields: [evidenceDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_evidence_document_id_fkey")
+  slipReview       SlipReview?        @relation("PaymentSlipReview", fields: [slipReviewId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_slip_review_id_fkey")
+  recorder         UserAccount?       @relation("PaymentRecorder", fields: [recordedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_recorded_by_fkey")
+  allocations      PaymentAllocation[]
+  slipReviews      SlipReview[]       @relation("SlipReviewPayment")
+  receipts         Receipt[]
+  taxInvoices      TaxInvoice[]
+  credits          PayerCredit[]
+
+  @@unique([provider, providerRef], map: "payment_provider_ref_key", where: raw("(provider_ref IS NOT NULL)"))
+  @@index([tenantId, buildingId, paidAt(sort: Desc)], map: "payment_tenant_id_building_id_paid_at_idx")
+  @@index([invoiceId], map: "payment_invoice_id_idx")
+  @@index([payerPartyId, paidAt(sort: Desc)], map: "payment_payer_party_id_paid_at_idx")
+  @@index([status], map: "payment_status_pending_idx", where: raw("(status = 'pending'::ops.payment_status)"))
+  @@index([buildingId], map: "payment_building_id_idx")
+  @@index([unitId], map: "payment_unit_id_idx")
+  @@index([leaseId], map: "payment_lease_id_idx")
+  @@index([bankAccountId], map: "payment_bank_account_id_idx")
+  @@index([qrCodeId], map: "payment_qr_code_id_idx")
+  @@index([slipDocumentId], map: "payment_slip_document_id_idx")
+  @@index([evidenceDocumentId], map: "payment_evidence_document_id_idx")
+  @@index([slipReviewId], map: "payment_slip_review_id_idx")
+  @@index([recordedBy], map: "payment_recorded_by_idx")
+  @@map("payment")
+  @@schema("ops")
+}
+
+model PaymentAllocation {
+  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  paymentId   String    @map("payment_id") @db.Uuid
+  invoiceId   String    @map("invoice_id") @db.Uuid
+  amount      Decimal   @db.Decimal(14, 2)
+  allocatedAt DateTime  @default(now()) @map("allocated_at") @db.Timestamptz(6)
+  reversedAt  DateTime? @map("reversed_at") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation("PaymentAllocationTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_allocation_tenant_id_fkey")
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_allocation_payment_id_fkey")
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_allocation_invoice_id_fkey")
+
+  @@unique([paymentId, invoiceId], map: "payment_allocation_payment_id_invoice_id_key")
+  @@index([tenantId], map: "payment_allocation_tenant_id_idx")
+  @@index([invoiceId], map: "payment_allocation_invoice_id_idx")
+  @@map("payment_allocation")
+  @@schema("ops")
+}
+
+/// Inbound payment provider callbacks (D-042).
+model PaymentWebhook {
+  id             String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  provider       PaymentProvider
+  eventId        String          @map("event_id")
+  tenantId       String?         @map("tenant_id") @db.Uuid
+  bankAccountId  String?         @map("bank_account_id") @db.Uuid
+  signatureValid Boolean         @map("signature_valid")
+  outcome        WebhookOutcome  @default(received)
+  detail         String?
+  payload        Json            @default("{}")
+  receivedAt     DateTime        @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt    DateTime?       @map("processed_at") @db.Timestamptz(6)
+
+  tenant      Tenant?            @relation("PaymentWebhookTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_webhook_tenant_id_fkey")
+  bankAccount TenantBankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_webhook_bank_account_id_fkey")
+
+  @@unique([provider, eventId], map: "payment_webhook_provider_event_id_key")
+  @@index([tenantId], map: "payment_webhook_tenant_id_idx")
+  @@index([bankAccountId], map: "payment_webhook_bank_account_id_idx")
+  @@map("payment_webhook")
+  @@schema("ops")
+}
+
+model PaymentSettlementFile {
+  id             String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String               @map("tenant_id") @db.Uuid
+  provider       PaymentProvider
+  bankAccountId  String               @map("bank_account_id") @db.Uuid
+  statementDate  DateTime             @map("statement_date") @db.Date
+  fileDocumentId String?              @map("file_document_id") @db.Uuid
+  rowsTotal      Int                  @default(0) @map("rows_total")
+  rowsMatched    Int                  @default(0) @map("rows_matched")
+  rowsCreated    Int                  @default(0) @map("rows_created")
+  rowsUnmatched  Int                  @default(0) @map("rows_unmatched")
+  discrepancies  Json                 @default("[]")
+  processedAt    DateTime?            @map("processed_at") @db.Timestamptz(6)
+  status         SettlementFileStatus @default(received)
+  error          String?
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?              @map("created_by") @db.Uuid
+
+  tenant       Tenant            @relation("PaymentSettlementFileTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_settlement_file_tenant_id_fkey")
+  bankAccount  TenantBankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_settlement_file_bank_account_id_fkey")
+  fileDocument Document?         @relation("PaymentSettlementFileDocument", fields: [fileDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_settlement_file_file_document_id_fkey")
+
+  @@unique([provider, bankAccountId, statementDate], map: "payment_settlement_file_provider_account_date_key")
+  @@index([tenantId], map: "payment_settlement_file_tenant_id_idx")
+  @@index([bankAccountId], map: "payment_settlement_file_bank_account_id_idx")
+  @@index([fileDocumentId], map: "payment_settlement_file_file_document_id_idx")
+  @@map("payment_settlement_file")
+  @@schema("ops")
+}
+
+/// Receipts (D-044).
+model Receipt {
+  id           String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String      @map("tenant_id") @db.Uuid
+  buildingId   String      @map("building_id") @db.Uuid
+  unitId       String?     @map("unit_id") @db.Uuid
+  kind         ReceiptKind
+  paymentId    String?     @map("payment_id") @db.Uuid
+  depositId    String?     @map("deposit_id") @db.Uuid
+  payerPartyId String      @map("payer_party_id") @db.Uuid
+  number       String      @db.Citext
+  issuedAt     DateTime    @map("issued_at") @db.Timestamptz(6)
+  documentId   String?     @map("document_id") @db.Uuid
+  amount       Decimal     @db.Decimal(14, 2)
+  lines        Json        @default("[]")
+  eTaxRef      String?     @map("e_tax_ref")
+  voidedAt     DateTime?   @map("voided_at") @db.Timestamptz(6)
+  voidReason   String?     @map("void_reason")
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant   Tenant    @relation("ReceiptTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receipt_tenant_id_fkey")
+  building Building  @relation("ReceiptBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receipt_building_id_fkey")
+  unit     Unit?     @relation("ReceiptUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receipt_unit_id_fkey")
+  payment  Payment?  @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receipt_payment_id_fkey")
+  deposit  Deposit?  @relation(fields: [depositId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receipt_deposit_id_fkey")
+  payer    Party     @relation("ReceiptPayer", fields: [payerPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receipt_payer_party_id_fkey")
+  document Document? @relation("ReceiptDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "receipt_document_id_fkey")
+
+  @@unique([tenantId, number], map: "receipt_tenant_id_number_key")
+  @@index([paymentId], map: "receipt_payment_id_idx")
+  @@index([buildingId], map: "receipt_building_id_idx")
+  @@index([unitId], map: "receipt_unit_id_idx")
+  @@index([depositId], map: "receipt_deposit_id_idx")
+  @@index([payerPartyId], map: "receipt_payer_party_id_idx")
+  @@index([documentId], map: "receipt_document_id_idx")
+  @@map("receipt")
+  @@schema("ops")
+}
+
+/// Tax invoices of VAT-registered tenants (D-050, O-004).
+model TaxInvoice {
+  id           String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String         @map("tenant_id") @db.Uuid
+  buildingId   String         @map("building_id") @db.Uuid
+  unitId       String?        @map("unit_id") @db.Uuid
+  kind         TaxInvoiceKind
+  invoiceId    String?        @map("invoice_id") @db.Uuid
+  paymentId    String?        @map("payment_id") @db.Uuid
+  buyerPartyId String         @map("buyer_party_id") @db.Uuid
+  number       String         @db.Citext
+  issuedAt     DateTime       @map("issued_at") @db.Timestamptz(6)
+  documentId   String?        @map("document_id") @db.Uuid
+  subtotal     Decimal        @db.Decimal(14, 2)
+  vatAmount    Decimal        @map("vat_amount") @db.Decimal(14, 2)
+  total        Decimal        @db.Decimal(14, 2)
+  eTaxRef      String?        @map("e_tax_ref")
+  voidedAt     DateTime?      @map("voided_at") @db.Timestamptz(6)
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant   Tenant    @relation("TaxInvoiceTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tax_invoice_tenant_id_fkey")
+  building Building  @relation("TaxInvoiceBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tax_invoice_building_id_fkey")
+  unit     Unit?     @relation("TaxInvoiceUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tax_invoice_unit_id_fkey")
+  invoice  Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tax_invoice_invoice_id_fkey")
+  payment  Payment?  @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tax_invoice_payment_id_fkey")
+  buyer    Party     @relation("TaxInvoiceBuyer", fields: [buyerPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tax_invoice_buyer_party_id_fkey")
+  document Document? @relation("TaxInvoiceDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tax_invoice_document_id_fkey")
+
+  @@unique([tenantId, number], map: "tax_invoice_tenant_id_number_key")
+  @@index([buildingId], map: "tax_invoice_building_id_idx")
+  @@index([unitId], map: "tax_invoice_unit_id_idx")
+  @@index([invoiceId], map: "tax_invoice_invoice_id_idx")
+  @@index([paymentId], map: "tax_invoice_payment_id_idx")
+  @@index([buyerPartyId], map: "tax_invoice_buyer_party_id_idx")
+  @@index([documentId], map: "tax_invoice_document_id_idx")
+  @@map("tax_invoice")
+  @@schema("ops")
+}
+
+/// Credit ledger of a payer × unit (D-044).
+model PayerCredit {
+  id         String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String          @map("tenant_id") @db.Uuid
+  buildingId String          @map("building_id") @db.Uuid
+  unitId     String?         @map("unit_id") @db.Uuid
+  partyId    String          @map("party_id") @db.Uuid
+  kind       CreditEntryKind
+  amount     Decimal         @db.Decimal(14, 2)
+  paymentId  String?         @map("payment_id") @db.Uuid
+  invoiceId  String?         @map("invoice_id") @db.Uuid
+  refundId   String?         @map("refund_id") @db.Uuid
+  note       String?
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?         @map("created_by") @db.Uuid
+
+  tenant   Tenant   @relation("PayerCreditTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payer_credit_tenant_id_fkey")
+  building Building @relation("PayerCreditBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payer_credit_building_id_fkey")
+  unit     Unit?    @relation("PayerCreditUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payer_credit_unit_id_fkey")
+  party    Party    @relation("PayerCreditParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payer_credit_party_id_fkey")
+  payment  Payment? @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payer_credit_payment_id_fkey")
+  invoice  Invoice? @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payer_credit_invoice_id_fkey")
+  refund   Refund?  @relation(fields: [refundId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payer_credit_refund_id_fkey")
+
+  @@index([partyId, unitId], map: "payer_credit_party_id_unit_id_idx")
+  @@index([tenantId], map: "payer_credit_tenant_id_idx")
+  @@index([buildingId], map: "payer_credit_building_id_idx")
+  @@index([unitId], map: "payer_credit_unit_id_idx")
+  @@index([paymentId], map: "payer_credit_payment_id_idx")
+  @@index([invoiceId], map: "payer_credit_invoice_id_idx")
+  @@index([refundId], map: "payer_credit_refund_id_idx")
+  @@map("payer_credit")
+  @@schema("ops")
+}
+
+/// Money paid back to a payer from their credit (D-044).
+model Refund {
+  id                 String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String           @map("tenant_id") @db.Uuid
+  buildingId         String           @map("building_id") @db.Uuid
+  unitId             String?          @map("unit_id") @db.Uuid
+  partyId            String           @map("party_id") @db.Uuid
+  amount             Decimal          @db.Decimal(14, 2)
+  method             RefundMethod
+  reference          String?
+  evidenceDocumentId String?          @map("evidence_document_id") @db.Uuid
+  refundedAt         DateTime         @map("refunded_at") @db.Timestamptz(6)
+  recordedBy         String?          @map("recorded_by") @db.Uuid
+  note               String?
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant           Tenant        @relation("RefundTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "refund_tenant_id_fkey")
+  building         Building      @relation("RefundBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "refund_building_id_fkey")
+  unit             Unit?         @relation("RefundUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "refund_unit_id_fkey")
+  party            Party         @relation("RefundParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "refund_party_id_fkey")
+  evidenceDocument Document?     @relation("RefundEvidenceDocument", fields: [evidenceDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "refund_evidence_document_id_fkey")
+  recorder         UserAccount?  @relation("RefundRecorder", fields: [recordedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "refund_recorded_by_fkey")
+  credits          PayerCredit[]
+
+  @@index([tenantId], map: "refund_tenant_id_idx")
+  @@index([buildingId], map: "refund_building_id_idx")
+  @@index([unitId], map: "refund_unit_id_idx")
+  @@index([partyId], map: "refund_party_id_idx")
+  @@index([evidenceDocumentId], map: "refund_evidence_document_id_idx")
+  @@index([recordedBy], map: "refund_recorded_by_idx")
+  @@map("refund")
+  @@schema("ops")
+}
