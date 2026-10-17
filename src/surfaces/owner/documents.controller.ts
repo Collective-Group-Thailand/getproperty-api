@@ -1,4 +1,4 @@
-import { CurrentTenant, TenantScoped } from '@common/auth/auth.decorators';
+import { AllowWhenReadOnly, CurrentTenant, TenantScoped } from '@common/auth/auth.decorators';
 import { Can } from '@common/auth/can.decorator';
 import { type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
@@ -260,6 +260,7 @@ export class OwnerExportsController {
   @HttpCode(202)
   @Idempotent()
   @TenantScoped()
+  @AllowWhenReadOnly()
   @Can('export.create')
   @ApiAsync({ poll: 'owner.exports.get' })
   @ApiEndpoint({

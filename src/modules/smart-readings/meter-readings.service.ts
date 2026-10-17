@@ -3,6 +3,7 @@ import { RequestContext } from '@common/context/request-context';
 import { systemTenantContext, type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
 import { toBangkokIso } from '@common/time/bangkok';
+import { AiUsageService } from '@core/ai-usage/ai-usage.service';
 import { AuditService } from '@core/audit/audit.service';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { DocumentsService } from '@core/documents/documents.service';
@@ -100,11 +101,34 @@ export class MeterReadingsService extends TenantScopedRepository {
     private readonly events: DomainEvents,
     @Inject(OCR) private readonly ocr: OcrPort,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly aiUsage: AiUsageService,
   ) {
     super();
   }
 
   /** Rules are those in force when the reading is processed: a back-dated reading is judged by today's settings. */
+  /** One AI usage record per meter photo sent to OCR (D-161; the plan's monthly OCR allowance counts them). */
+  private meterOcrUsage(
+    tenantId: string,
+    buildingId: string,
+    model: string,
+    outcome: 'ok' | 'error',
+    photoId: string,
+  ) {
+    return this.aiUsage.record({
+      tenantId,
+      buildingId,
+      feature: 'meter_ocr',
+      provider: this.ocr.mode === 'fake' ? 'fake' : 'ai_gateway',
+      model,
+      inputUnits: 1,
+      unitKind: 'images',
+      outcome,
+      subjectType: 'core.document',
+      subjectId: photoId,
+    });
+  }
+
   async confidenceScale(): Promise<ConfidenceScale> {
     return this.settings.valueAt<ConfidenceScale>('readings.confidence', this.clock.now());
   }
@@ -395,9 +419,23 @@ export class MeterReadingsService extends TenantScopedRepository {
           previousRegister: null,
         });
         ocr = { raw: r.raw, confidence: r.confidence, value: r.value, minConfidence };
+        await this.meterOcrUsage(
+          ctx.tenantId,
+          prepared.assignment.buildingId,
+          r.model,
+          'ok',
+          input.photoDocumentId,
+        );
       } catch (error) {
         this.logger.warn(`meter OCR unavailable: ${(error as Error).message}`);
         ocr = { raw: null, confidence: 0, value: null, minConfidence };
+        await this.meterOcrUsage(
+          ctx.tenantId,
+          prepared.assignment.buildingId,
+          'unknown',
+          'error',
+          input.photoDocumentId,
+        );
       }
     }
     const value = input.typedValue ?? ocr?.value ?? null;

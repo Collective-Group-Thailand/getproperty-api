@@ -1,0 +1,704 @@
+// platform — price plans, subscriptions, platform AR, HaaS, pilots and field orders (§3.2.10, B6.1; D-081–D-083, D-156).
+
+enum PlanKind {
+  software
+  addon
+  hardware_rental
+  hardware_sale
+  service
+
+  @@map("plan_kind")
+  @@schema("platform")
+}
+
+enum PlanBillingUnit {
+  per_unit
+  per_meter_point
+  per_building
+  per_tenant
+  per_report
+
+  @@map("plan_billing_unit")
+  @@schema("platform")
+}
+
+enum SubscriptionStatus {
+  trial
+  active
+  past_due
+  suspended
+  cancelled
+
+  @@map("subscription_status")
+  @@schema("platform")
+}
+
+enum BillingPeriod {
+  monthly
+  annual
+
+  @@map("billing_period")
+  @@schema("platform")
+}
+
+enum PlatformInvoiceStatus {
+  draft
+  issued
+  paid
+  partially_paid
+  overdue
+  void
+  credited
+
+  @@map("platform_invoice_status")
+  @@schema("platform")
+}
+
+enum PlatformInvoiceKind {
+  first
+  monthly
+  adjustment
+
+  @@map("platform_invoice_kind")
+  @@schema("platform")
+}
+
+enum PlatformLineKind {
+  subscription
+  addon
+  setup
+  hardware_rental
+  hardware_sale
+  ai_overage
+  inspection
+  discount
+  adjustment
+
+  @@map("platform_line_kind")
+  @@schema("platform")
+}
+
+enum PlatformPaymentMethod {
+  qr
+  bank_transfer
+  card
+  offset
+
+  @@map("platform_payment_method")
+  @@schema("platform")
+}
+
+enum PlatformPaymentState {
+  confirmed
+  reversed
+
+  @@map("platform_payment_state")
+  @@schema("platform")
+}
+
+enum PlatformCreditNoteState {
+  requested
+  issued
+  rejected
+
+  @@map("platform_credit_note_state")
+  @@schema("platform")
+}
+
+enum HaasState {
+  allocated
+  installed
+  in_service
+  replaced
+  deinstalled
+  written_off
+
+  @@map("haas_state")
+  @@schema("platform")
+}
+
+enum SiteSurveyState {
+  requested
+  scheduled
+  done
+  cancelled
+
+  @@map("site_survey_state")
+  @@schema("platform")
+}
+
+enum InstallOrderKind {
+  install
+  deinstall
+  replace
+  site_survey
+
+  @@map("install_order_kind")
+  @@schema("platform")
+}
+
+enum InstallOrderState {
+  open
+  in_progress
+  done
+  cancelled
+
+  @@map("install_order_state")
+  @@schema("platform")
+}
+
+/// Plans of the platform (D-156); only active plans are sold.
+model PricePlan {
+  id         String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  key        String      @unique(map: "price_plan_key_key")
+  tenantType TenantType? @map("tenant_type")
+  nameTh     String      @map("name_th")
+  nameEn     String      @map("name_en")
+  kind       PlanKind
+  isActive   Boolean     @default(true) @map("is_active")
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?     @map("created_by") @db.Uuid
+  updatedAt  DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy  String?     @map("updated_by") @db.Uuid
+
+  versions PricePlanVersion[]
+
+  @@map("price_plan")
+  @@schema("platform")
+}
+
+/// Effective-dated price of a plan (D-156 values, Proposed until the pilot); published versions never overlap or change.
+model PricePlanVersion {
+  id                 String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  planId             String               @map("plan_id") @db.Uuid
+  version            Int
+  effectiveFrom      DateTime             @map("effective_from") @db.Date
+  effectiveTo        DateTime?            @map("effective_to") @db.Date
+  billingUnit        PlanBillingUnit      @map("billing_unit")
+  unitPrice          Decimal?             @map("unit_price") @db.Decimal(14, 4)
+  priceRange         Json?                @map("price_range")
+  tiers              Json                 @default("[]")
+  minUnits           Int?                 @map("min_units")
+  minMonthly         Decimal?             @map("min_monthly") @db.Decimal(14, 2)
+  annualDiscountPct  Decimal              @default(15) @map("annual_discount_pct") @db.Decimal(7, 4)
+  termMonths         Int?                 @map("term_months") @db.SmallInt
+  setupFee           Decimal              @default(0) @map("setup_fee") @db.Decimal(14, 2)
+  includedAllowances Json                 @default("{}") @map("included_allowances")
+  vatRate            Decimal              @default(0.07) @map("vat_rate") @db.Decimal(5, 4)
+  currency           String               @default("THB") @db.Char(3)
+  terms              Json                 @default("{}")
+  state              TemplateVersionState @default(draft)
+  publishedBy        String?              @map("published_by") @db.Uuid
+  publishedAt        DateTime?            @map("published_at") @db.Timestamptz(6)
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          String?              @map("created_by") @db.Uuid
+  updatedAt          DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy          String?              @map("updated_by") @db.Uuid
+
+  plan          PricePlan           @relation(fields: [planId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "price_plan_version_plan_id_fkey")
+  subscriptions Subscription[]
+  usages        SubscriptionUsage[]
+
+  @@unique([planId, version], map: "price_plan_version_plan_id_version_key")
+  @@map("price_plan_version")
+  @@schema("platform")
+}
+
+/// Pilot terms of a tenant (D-083).
+model PilotAgreement {
+  id                  String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String    @unique(map: "pilot_agreement_tenant_id_key") @map("tenant_id") @db.Uuid
+  signedAt            DateTime  @map("signed_at") @db.Date
+  discountPct         Decimal   @map("discount_pct") @db.Decimal(7, 4)
+  termMonths          Int       @map("term_months") @db.SmallInt
+  referenceSiteRights Boolean   @default(true) @map("reference_site_rights")
+  anonymisedDataUse   Boolean   @default(true) @map("anonymised_data_use")
+  feedbackCadence     String    @default("biweekly") @map("feedback_cadence")
+  kpiReviewAt         DateTime  @map("kpi_review_at") @db.Date
+  kpiTargets          Json      @default("{}") @map("kpi_targets")
+  baseline            Json      @default("{}")
+  agreementDocumentId String?   @map("agreement_document_id") @db.Uuid
+  notes               String?
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy           String?   @map("created_by") @db.Uuid
+  updatedAt           DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy           String?   @map("updated_by") @db.Uuid
+  version             Int       @default(1)
+
+  tenant            Tenant         @relation("PilotAgreementTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "pilot_agreement_tenant_id_fkey")
+  agreementDocument Document?      @relation("PilotAgreementDocument", fields: [agreementDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "pilot_agreement_agreement_document_id_fkey")
+  subscriptions     Subscription[]
+
+  @@index([agreementDocumentId], map: "pilot_agreement_agreement_document_id_idx")
+  @@map("pilot_agreement")
+  @@schema("platform")
+}
+
+/// Platform field work per building (D-081): install / de-install / replace hardware and site surveys.
+model InstallOrder {
+  id                  String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String            @map("tenant_id") @db.Uuid
+  buildingId          String            @map("building_id") @db.Uuid
+  kind                InstallOrderKind
+  subscriptionId      String?           @map("subscription_id") @db.Uuid
+  siteSurveyRequestId String?           @map("site_survey_request_id") @db.Uuid
+  state               InstallOrderState @default(open)
+  assignedTo          String?           @map("assigned_to") @db.Uuid
+  dueAt               DateTime?         @map("due_at") @db.Timestamptz(6)
+  items               Json              @default("[]")
+  notes               String?
+  completedAt         DateTime?         @map("completed_at") @db.Timestamptz(6)
+  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy           String?           @map("created_by") @db.Uuid
+  updatedAt           DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy           String?           @map("updated_by") @db.Uuid
+  version             Int               @default(1)
+
+  tenant             Tenant              @relation("InstallOrderTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "install_order_tenant_id_fkey")
+  building           Building            @relation("InstallOrderBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "install_order_building_id_fkey")
+  assignee           UserAccount?        @relation("InstallOrderAssignee", fields: [assignedTo], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "install_order_assigned_to_fkey")
+  subscription       Subscription?       @relation("InstallOrderSubscription", fields: [subscriptionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "install_order_subscription_id_fkey")
+  siteSurvey         SiteSurveyRequest?  @relation("InstallOrderSiteSurvey", fields: [siteSurveyRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "install_order_site_survey_request_id_fkey")
+  surveysResultingIn SiteSurveyRequest[] @relation("SiteSurveyInstallOrder")
+  deinstallOf        Subscription[]      @relation("SubscriptionDeinstallOrder")
+  haasDeinstalls     HaasAsset[]         @relation("HaasAssetDeinstallOrder")
+  haasEvents         HaasAssetEvent[]
+
+  @@index([tenantId, state], map: "install_order_tenant_id_state_idx")
+  @@index([buildingId], map: "install_order_building_id_idx")
+  @@index([subscriptionId], map: "install_order_subscription_id_idx")
+  @@index([siteSurveyRequestId], map: "install_order_site_survey_request_id_idx")
+  @@index([assignedTo], map: "install_order_assigned_to_idx")
+  @@map("install_order")
+  @@schema("platform")
+}
+
+/// Upgrade Starter → Smart (D-156): the owner asks, a field engineer surveys, the outcome becomes an install order.
+model SiteSurveyRequest {
+  id             String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String          @map("tenant_id") @db.Uuid
+  buildingId     String          @map("building_id") @db.Uuid
+  requestedBy    String?         @map("requested_by") @db.Uuid
+  targetPlanKey  String          @default("apartment_smart") @map("target_plan_key")
+  state          SiteSurveyState @default(requested)
+  scheduledFor   DateTime?       @map("scheduled_for") @db.Timestamptz(6)
+  assignedTo     String?         @map("assigned_to") @db.Uuid
+  findings       Json            @default("{}")
+  notes          String?
+  installOrderId String?         @map("install_order_id") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy      String?         @map("updated_by") @db.Uuid
+  version        Int             @default(1)
+
+  tenant        Tenant         @relation("SiteSurveyRequestTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "site_survey_request_tenant_id_fkey")
+  building      Building       @relation("SiteSurveyRequestBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "site_survey_request_building_id_fkey")
+  requester     UserAccount?   @relation("SiteSurveyRequestRequester", fields: [requestedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "site_survey_request_requested_by_fkey")
+  assignee      UserAccount?   @relation("SiteSurveyRequestAssignee", fields: [assignedTo], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "site_survey_request_assigned_to_fkey")
+  installOrder  InstallOrder?  @relation("SiteSurveyInstallOrder", fields: [installOrderId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "site_survey_request_install_order_id_fkey")
+  installOrders InstallOrder[] @relation("InstallOrderSiteSurvey")
+
+  @@index([tenantId, state], map: "site_survey_request_tenant_id_state_idx")
+  @@index([buildingId], map: "site_survey_request_building_id_idx")
+  @@index([requestedBy], map: "site_survey_request_requested_by_idx")
+  @@index([assignedTo], map: "site_survey_request_assigned_to_idx")
+  @@index([installOrderId], map: "site_survey_request_install_order_id_idx")
+  @@map("site_survey_request")
+  @@schema("platform")
+}
+
+/// A tenant's subscription (D-082): trial → active → past_due → suspended (read-only) → cancelled.
+model Subscription {
+  id                  String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String             @map("tenant_id") @db.Uuid
+  planVersionId       String             @map("plan_version_id") @db.Uuid
+  planKey             String             @map("plan_key")
+  addonPlanVersionIds String[]           @default([]) @map("addon_plan_version_ids") @db.Uuid
+  state               SubscriptionStatus @default(trial)
+  trialEndsAt         DateTime           @map("trial_ends_at") @db.Timestamptz(6)
+  startedAt           DateTime           @map("started_at") @db.Timestamptz(6)
+  activatedAt         DateTime?          @map("activated_at") @db.Timestamptz(6)
+  termStart           DateTime?          @map("term_start") @db.Date
+  termEnd             DateTime?          @map("term_end") @db.Date
+  billingPeriod       BillingPeriod      @default(monthly) @map("billing_period")
+  billingDay          Int                @default(1) @map("billing_day") @db.SmallInt
+  nextInvoiceAt       DateTime?          @map("next_invoice_at") @db.Timestamptz(6)
+  discountPct         Decimal            @default(0) @map("discount_pct") @db.Decimal(7, 4)
+  discountReason      String?            @map("discount_reason")
+  pilotAgreementId    String?            @map("pilot_agreement_id") @db.Uuid
+  pastDueSince        DateTime?          @map("past_due_since") @db.Timestamptz(6)
+  suspendedAt         DateTime?          @map("suspended_at") @db.Timestamptz(6)
+  cancelledAt         DateTime?          @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason        String?            @map("cancel_reason")
+  cancelEffectiveDate DateTime?          @map("cancel_effective_date") @db.Date
+  deinstallOrderId    String?            @map("deinstall_order_id") @db.Uuid
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy           String?            @map("created_by") @db.Uuid
+  updatedAt           DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy           String?            @map("updated_by") @db.Uuid
+  version             Int                @default(1)
+
+  tenant         Tenant              @relation("SubscriptionTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "subscription_tenant_id_fkey")
+  planVersion    PricePlanVersion    @relation(fields: [planVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "subscription_plan_version_id_fkey")
+  pilotAgreement PilotAgreement?     @relation(fields: [pilotAgreementId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "subscription_pilot_agreement_id_fkey")
+  deinstallOrder InstallOrder?       @relation("SubscriptionDeinstallOrder", fields: [deinstallOrderId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "subscription_deinstall_order_id_fkey")
+  events         SubscriptionEvent[]
+  usages         SubscriptionUsage[]
+  invoices       PlatformInvoice[]
+  installOrders  InstallOrder[]      @relation("InstallOrderSubscription")
+  haasAssets     HaasAsset[]
+
+  @@index([tenantId], map: "subscription_tenant_id_idx")
+  @@index([planVersionId], map: "subscription_plan_version_id_idx")
+  @@index([pilotAgreementId], map: "subscription_pilot_agreement_id_idx")
+  @@index([deinstallOrderId], map: "subscription_deinstall_order_id_idx")
+  @@index([state], map: "subscription_state_idx")
+  @@unique([tenantId], map: "subscription_tenant_id_open_key", where: raw("(state = ANY (ARRAY['trial'::platform.subscription_status, 'active'::platform.subscription_status, 'past_due'::platform.subscription_status, 'suspended'::platform.subscription_status]))"))
+  @@map("subscription")
+  @@schema("platform")
+}
+
+/// History of a subscription. Append-only.
+model SubscriptionEvent {
+  id             String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  subscriptionId String   @map("subscription_id") @db.Uuid
+  type           String
+  occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  actor          Json     @default("{}")
+  data           Json     @default("{}")
+
+  tenant       Tenant       @relation("SubscriptionEventTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "subscription_event_tenant_id_fkey")
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "subscription_event_subscription_id_fkey")
+
+  @@index([subscriptionId, occurredAt], map: "subscription_event_subscription_id_occurred_at_idx")
+  @@index([tenantId], map: "subscription_event_tenant_id_idx")
+  @@map("subscription_event")
+  @@schema("platform")
+}
+
+/// Monthly snapshot on the 1st (D-082, D-156): units counted, rented meter points, OCR images (D-161), amount.
+model SubscriptionUsage {
+  id                 String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  subscriptionId     String   @map("subscription_id") @db.Uuid
+  month              DateTime @db.Date
+  unitsCounted       Int      @map("units_counted")
+  meterPointsCounted Int      @default(0) @map("meter_points_counted")
+  ocrImages          Int      @default(0) @map("ocr_images")
+  unitsByBuilding    Json     @default("{}") @map("units_by_building")
+  planVersionId      String   @map("plan_version_id") @db.Uuid
+  amountComputed     Decimal  @map("amount_computed") @db.Decimal(14, 2)
+  lines              Json     @default("[]")
+  snapshotAt         DateTime @map("snapshot_at") @db.Timestamptz(6)
+
+  tenant       Tenant            @relation("SubscriptionUsageTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "subscription_usage_tenant_id_fkey")
+  subscription Subscription      @relation(fields: [subscriptionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "subscription_usage_subscription_id_fkey")
+  planVersion  PricePlanVersion  @relation(fields: [planVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "subscription_usage_plan_version_id_fkey")
+  invoices     PlatformInvoice[]
+
+  @@unique([subscriptionId, month], map: "subscription_usage_subscription_id_month_key")
+  @@index([tenantId], map: "subscription_usage_tenant_id_idx")
+  @@index([planVersionId], map: "subscription_usage_plan_version_id_idx")
+  @@map("subscription_usage")
+  @@schema("platform")
+}
+
+/// Collective Group (Thailand) → tenant (D-146, D-156); immutable apart from payment state, QR and document.
+model PlatformInvoice {
+  id             String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String                @map("tenant_id") @db.Uuid
+  subscriptionId String                @map("subscription_id") @db.Uuid
+  usageId        String?               @map("usage_id") @db.Uuid
+  kind           PlatformInvoiceKind
+  number         String                @unique(map: "platform_invoice_number_key") @db.Citext
+  documentId     String?               @map("document_id") @db.Uuid
+  periodStart    DateTime              @map("period_start") @db.Date
+  periodEnd      DateTime              @map("period_end") @db.Date
+  issuedAt       DateTime              @map("issued_at") @db.Timestamptz(6)
+  dueAt          DateTime              @map("due_at") @db.Timestamptz(6)
+  subtotal       Decimal               @db.Decimal(14, 2)
+  discount       Decimal               @default(0) @db.Decimal(14, 2)
+  vatAmount      Decimal               @default(0) @map("vat_amount") @db.Decimal(14, 2)
+  total          Decimal               @db.Decimal(14, 2)
+  paidTotal      Decimal               @default(0) @map("paid_total") @db.Decimal(14, 2)
+  creditedTotal  Decimal               @default(0) @map("credited_total") @db.Decimal(14, 2)
+  state          PlatformInvoiceStatus @default(issued)
+  overdueSince   DateTime?             @map("overdue_since") @db.Timestamptz(6)
+  snapshot       Json                  @default("{}")
+  qrPayload      String?               @map("qr_payload")
+  qrReference    String?               @unique(map: "platform_invoice_qr_reference_key") @map("qr_reference")
+  qrExpiresAt    DateTime?             @map("qr_expires_at") @db.Timestamptz(6)
+  voidedAt       DateTime?             @map("voided_at") @db.Timestamptz(6)
+  voidReason     String?               @map("void_reason")
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?               @map("created_by") @db.Uuid
+  updatedAt      DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+  version        Int                   @default(1)
+
+  tenant       Tenant                @relation("PlatformInvoiceTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_invoice_tenant_id_fkey")
+  subscription Subscription          @relation(fields: [subscriptionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_invoice_subscription_id_fkey")
+  usage        SubscriptionUsage?    @relation(fields: [usageId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_invoice_usage_id_fkey")
+  document     Document?             @relation("PlatformInvoiceDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_invoice_document_id_fkey")
+  lines        PlatformInvoiceLine[]
+  payments     PlatformPayment[]
+  receipts     PlatformReceipt[]
+  creditNotes  PlatformCreditNote[]
+
+  @@index([tenantId, state], map: "platform_invoice_tenant_id_state_idx")
+  @@index([subscriptionId], map: "platform_invoice_subscription_id_idx")
+  @@index([usageId], map: "platform_invoice_usage_id_idx")
+  @@index([documentId], map: "platform_invoice_document_id_idx")
+  @@unique([subscriptionId, kind, periodStart], map: "platform_invoice_subscription_period_key", where: raw("((kind <> 'adjustment'::platform.platform_invoice_kind) AND (state <> 'void'::platform.platform_invoice_status))"))
+  @@map("platform_invoice")
+  @@schema("platform")
+}
+
+model PlatformInvoiceLine {
+  id          String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String           @map("tenant_id") @db.Uuid
+  invoiceId   String           @map("invoice_id") @db.Uuid
+  lineNo      Int              @map("line_no") @db.SmallInt
+  kind        PlatformLineKind
+  description String
+  quantity    Decimal          @db.Decimal(12, 3)
+  unitPrice   Decimal          @map("unit_price") @db.Decimal(14, 4)
+  amount      Decimal          @db.Decimal(14, 2)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant          @relation("PlatformInvoiceLineTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_invoice_line_tenant_id_fkey")
+  invoice PlatformInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_invoice_line_invoice_id_fkey")
+
+  @@unique([invoiceId, lineNo], map: "platform_invoice_line_invoice_id_line_no_key")
+  @@index([tenantId], map: "platform_invoice_line_tenant_id_idx")
+  @@map("platform_invoice_line")
+  @@schema("platform")
+}
+
+/// Payments of platform invoices (platform QR callbacks or transfers recorded by Finance).
+model PlatformPayment {
+  id                 String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String                @map("tenant_id") @db.Uuid
+  invoiceId          String                @map("invoice_id") @db.Uuid
+  amount             Decimal               @db.Decimal(14, 2)
+  method             PlatformPaymentMethod
+  provider           String?
+  providerRef        String?               @map("provider_ref")
+  paidAt             DateTime              @map("paid_at") @db.Timestamptz(6)
+  confirmedAt        DateTime              @map("confirmed_at") @db.Timestamptz(6)
+  state              PlatformPaymentState  @default(confirmed)
+  recordedBy         String?               @map("recorded_by") @db.Uuid
+  evidenceDocumentId String?               @map("evidence_document_id") @db.Uuid
+  receiptId          String?               @map("receipt_id") @db.Uuid
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant           Tenant           @relation("PlatformPaymentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_payment_tenant_id_fkey")
+  invoice          PlatformInvoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_payment_invoice_id_fkey")
+  recorder         UserAccount?     @relation("PlatformPaymentRecorder", fields: [recordedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_payment_recorded_by_fkey")
+  evidenceDocument Document?        @relation("PlatformPaymentEvidence", fields: [evidenceDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_payment_evidence_document_id_fkey")
+  receipt          PlatformReceipt? @relation("PlatformPaymentReceipt", fields: [receiptId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_payment_receipt_id_fkey")
+  receiptOf        PlatformReceipt? @relation("PlatformReceiptPayment")
+
+  @@index([tenantId], map: "platform_payment_tenant_id_idx")
+  @@index([invoiceId], map: "platform_payment_invoice_id_idx")
+  @@index([recordedBy], map: "platform_payment_recorded_by_idx")
+  @@index([evidenceDocumentId], map: "platform_payment_evidence_document_id_idx")
+  @@index([receiptId], map: "platform_payment_receipt_id_idx")
+  @@unique([provider, providerRef], map: "platform_payment_provider_ref_key", where: raw("(provider_ref IS NOT NULL)"))
+  @@map("platform_payment")
+  @@schema("platform")
+}
+
+model PlatformReceipt {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  paymentId  String    @unique(map: "platform_receipt_payment_id_key") @map("payment_id") @db.Uuid
+  invoiceId  String    @map("invoice_id") @db.Uuid
+  number     String    @unique(map: "platform_receipt_number_key") @db.Citext
+  amount     Decimal   @db.Decimal(14, 2)
+  vatAmount  Decimal   @default(0) @map("vat_amount") @db.Decimal(14, 2)
+  documentId String?   @map("document_id") @db.Uuid
+  issuedAt   DateTime  @map("issued_at") @db.Timestamptz(6)
+  voidedAt   DateTime? @map("voided_at") @db.Timestamptz(6)
+  voidReason String?   @map("void_reason")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant    Tenant            @relation("PlatformReceiptTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_receipt_tenant_id_fkey")
+  payment   PlatformPayment   @relation("PlatformReceiptPayment", fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_receipt_payment_id_fkey")
+  invoice   PlatformInvoice   @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_receipt_invoice_id_fkey")
+  document  Document?         @relation("PlatformReceiptDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_receipt_document_id_fkey")
+  paymentOf PlatformPayment[] @relation("PlatformPaymentReceipt")
+
+  @@index([tenantId], map: "platform_receipt_tenant_id_idx")
+  @@index([invoiceId], map: "platform_receipt_invoice_id_idx")
+  @@index([documentId], map: "platform_receipt_document_id_idx")
+  @@map("platform_receipt")
+  @@schema("platform")
+}
+
+/// Credit notes on platform invoices (D-091 maker-checker).
+model PlatformCreditNote {
+  id          String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String                  @map("tenant_id") @db.Uuid
+  invoiceId   String                  @map("invoice_id") @db.Uuid
+  state       PlatformCreditNoteState @default(requested)
+  number      String?                 @db.Citext
+  amount      Decimal                 @db.Decimal(14, 2)
+  reason      String
+  requestedBy String                  @map("requested_by") @db.Uuid
+  requestedAt DateTime                @default(now()) @map("requested_at") @db.Timestamptz(6)
+  approvedBy  String?                 @map("approved_by") @db.Uuid
+  decidedAt   DateTime?               @map("decided_at") @db.Timestamptz(6)
+  issuedAt    DateTime?               @map("issued_at") @db.Timestamptz(6)
+  documentId  String?                 @map("document_id") @db.Uuid
+  createdAt   DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant    Tenant          @relation("PlatformCreditNoteTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_credit_note_tenant_id_fkey")
+  invoice   PlatformInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_credit_note_invoice_id_fkey")
+  requester UserAccount     @relation("PlatformCreditNoteRequester", fields: [requestedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_credit_note_requested_by_fkey")
+  approver  UserAccount?    @relation("PlatformCreditNoteApprover", fields: [approvedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_credit_note_approved_by_fkey")
+  document  Document?       @relation("PlatformCreditNoteDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_credit_note_document_id_fkey")
+
+  @@index([tenantId], map: "platform_credit_note_tenant_id_idx")
+  @@index([invoiceId], map: "platform_credit_note_invoice_id_idx")
+  @@index([requestedBy], map: "platform_credit_note_requested_by_idx")
+  @@index([approvedBy], map: "platform_credit_note_approved_by_idx")
+  @@index([documentId], map: "platform_credit_note_document_id_idx")
+  @@unique([number], map: "platform_credit_note_number_key", where: raw("(number IS NOT NULL)"))
+  @@map("platform_credit_note")
+  @@schema("platform")
+}
+
+/// Platform-owned hardware at a tenant (D-081 HaaS, meter rental D-156).
+model HaasAsset {
+  id                 String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  deviceId           String     @map("device_id") @db.Uuid
+  tenantId           String     @map("tenant_id") @db.Uuid
+  buildingId         String?    @map("building_id") @db.Uuid
+  subscriptionId     String?    @map("subscription_id") @db.Uuid
+  kind               DeviceKind
+  installedAt        DateTime?  @map("installed_at") @db.Date
+  termMonths         Int        @map("term_months") @db.SmallInt
+  termEnd            DateTime?  @map("term_end") @db.Date
+  monthlyValue       Decimal    @map("monthly_value") @db.Decimal(14, 2)
+  acquisitionCost    Decimal    @map("acquisition_cost") @db.Decimal(14, 2)
+  depreciationMethod String     @default("straight_line") @map("depreciation_method")
+  state              HaasState  @default(allocated)
+  replacedByAssetId  String?    @map("replaced_by_asset_id") @db.Uuid
+  deinstallOrderId   String?    @map("deinstall_order_id") @db.Uuid
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          String?    @map("created_by") @db.Uuid
+  updatedAt          DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy          String?    @map("updated_by") @db.Uuid
+  version            Int        @default(1)
+
+  device         Device           @relation("HaasAssetDevice", fields: [deviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "haas_asset_device_id_fkey")
+  tenant         Tenant           @relation("HaasAssetTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "haas_asset_tenant_id_fkey")
+  building       Building?        @relation("HaasAssetBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "haas_asset_building_id_fkey")
+  subscription   Subscription?    @relation(fields: [subscriptionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "haas_asset_subscription_id_fkey")
+  replacedBy     HaasAsset?       @relation("HaasAssetReplacement", fields: [replacedByAssetId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "haas_asset_replaced_by_asset_id_fkey")
+  replaces       HaasAsset[]      @relation("HaasAssetReplacement")
+  deinstallOrder InstallOrder?    @relation("HaasAssetDeinstallOrder", fields: [deinstallOrderId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "haas_asset_deinstall_order_id_fkey")
+  events         HaasAssetEvent[]
+
+  @@index([deviceId], map: "haas_asset_device_id_idx")
+  @@index([tenantId, state], map: "haas_asset_tenant_id_state_idx")
+  @@index([buildingId], map: "haas_asset_building_id_idx")
+  @@index([subscriptionId], map: "haas_asset_subscription_id_idx")
+  @@index([replacedByAssetId], map: "haas_asset_replaced_by_asset_id_idx")
+  @@index([deinstallOrderId], map: "haas_asset_deinstall_order_id_idx")
+  @@unique([deviceId], map: "haas_asset_device_id_live_key", where: raw("(state <> ALL (ARRAY['replaced'::platform.haas_state, 'deinstalled'::platform.haas_state, 'written_off'::platform.haas_state]))"))
+  @@map("haas_asset")
+  @@schema("platform")
+}
+
+model HaasAssetEvent {
+  id             String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  haasAssetId    String   @map("haas_asset_id") @db.Uuid
+  type           String
+  occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  actor          Json     @default("{}")
+  data           Json     @default("{}")
+  installOrderId String?  @map("install_order_id") @db.Uuid
+
+  tenant       Tenant        @relation("HaasAssetEventTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "haas_asset_event_tenant_id_fkey")
+  asset        HaasAsset     @relation(fields: [haasAssetId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "haas_asset_event_haas_asset_id_fkey")
+  installOrder InstallOrder? @relation(fields: [installOrderId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "haas_asset_event_install_order_id_fkey")
+
+  @@index([haasAssetId, occurredAt], map: "haas_asset_event_haas_asset_id_occurred_at_idx")
+  @@index([tenantId], map: "haas_asset_event_tenant_id_idx")
+  @@index([installOrderId], map: "haas_asset_event_install_order_id_idx")
+  @@map("haas_asset_event")
+  @@schema("platform")
+}
+
+enum AiFeature {
+  meter_ocr
+  invoice_ocr
+  resident_bot
+  legal_qa
+  stt
+  minutes
+  other
+
+  @@map("ai_feature")
+  @@schema("platform")
+}
+
+enum AiUnitKind {
+  tokens
+  images
+  seconds
+  requests
+
+  @@map("ai_unit_kind")
+  @@schema("platform")
+}
+
+/// One row per AI adapter call (D-161); append-only.
+model AiUsageRecord {
+  id            String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String     @map("tenant_id") @db.Uuid
+  buildingId    String?    @map("building_id") @db.Uuid
+  feature       AiFeature
+  provider      String
+  model         String
+  promptVersion String?    @map("prompt_version")
+  inputUnits    Int        @default(0) @map("input_units")
+  outputUnits   Int        @default(0) @map("output_units")
+  unitKind      AiUnitKind @map("unit_kind")
+  costThb       Decimal    @default(0) @map("cost_thb") @db.Decimal(14, 4)
+  requestRef    String?    @map("request_ref")
+  outcome       String     @default("ok")
+  subjectType   String?    @map("subject_type")
+  subjectId     String?    @map("subject_id") @db.Uuid
+  occurredAt    DateTime   @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  tenant   Tenant    @relation("AiUsageRecordTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "ai_usage_record_tenant_id_fkey")
+  building Building? @relation("AiUsageRecordBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "ai_usage_record_building_id_fkey")
+
+  @@index([tenantId, feature, occurredAt(sort: Desc)], map: "ai_usage_record_tenant_id_feature_occurred_at_idx")
+  @@index([buildingId], map: "ai_usage_record_building_id_idx")
+  @@map("ai_usage_record")
+  @@schema("platform")
+}
+
+/// Pilot KPIs of a tenant per day and window (D-083).
+model KpiSnapshot {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  window     String
+  asOf       DateTime @map("as_of") @db.Date
+  baseline   Json     @default("{}")
+  current    Json     @default("{}")
+  computedAt DateTime @map("computed_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation("KpiSnapshotTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "kpi_snapshot_tenant_id_fkey")
+
+  @@unique([tenantId, window, asOf], map: "kpi_snapshot_tenant_id_window_as_of_key")
+  @@map("kpi_snapshot")
+  @@schema("platform")
+}

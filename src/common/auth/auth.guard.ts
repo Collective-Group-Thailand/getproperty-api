@@ -9,7 +9,7 @@ import { Reflector } from '@nestjs/core';
 import { type Request } from 'express';
 
 import { type Audience, SURFACE_AUDIENCE, surfaceOfPath } from '../../surfaces/surfaces';
-import { IS_PUBLIC, OPTIONAL_AUTH, TENANT_OPTIONAL } from './auth.decorators';
+import { ALLOW_WHEN_READ_ONLY, IS_PUBLIC, OPTIONAL_AUTH, TENANT_OPTIONAL } from './auth.decorators';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -93,7 +93,11 @@ export class AuthGuard implements CanActivate {
       if (tenant && actor?.type === 'user') {
         const access = await this.access.operator(actor.publicId, tenant.tenantId);
         if (!access) throw new DomainException('tenant.not_in_scope');
-        if (access.tenantStatus === 'read_only' && !SAFE_METHODS.has(req.method))
+        if (
+          access.tenantStatus === 'read_only' &&
+          !SAFE_METHODS.has(req.method) &&
+          this.reflector.getAllAndOverride<boolean>(ALLOW_WHEN_READ_ONLY, targets) !== true
+        )
           throw new DomainException('tenant.read_only');
         tenant.role = access.role;
         tenant.buildingIds = access.buildingIds;

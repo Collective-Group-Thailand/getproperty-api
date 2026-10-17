@@ -136,6 +136,25 @@ export const AUDIT_ACTIONS = [
   'penalty.assessed',
   'penalty.waived',
   'document.resent',
+  // B6 platform business
+  'price_plan.version_created',
+  'price_plan.version_published',
+  'subscription.created',
+  'subscription.plan_changed',
+  'subscription.cancellation_requested',
+  'subscription.state_changed',
+  'platform_invoice.issued',
+  'platform_payment.recorded',
+  'platform_credit_note.requested',
+  'platform_credit_note.issued',
+  'platform_credit_note.rejected',
+  'pilot_agreement.saved',
+  'install_order.created',
+  'install_order.updated',
+  'site_survey.requested',
+  'site_survey.updated',
+  'haas.registered',
+  'haas.transitioned',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

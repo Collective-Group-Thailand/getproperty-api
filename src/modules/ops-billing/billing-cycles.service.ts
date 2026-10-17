@@ -1,3 +1,4 @@
+import { Semaphore } from '@common/concurrency/semaphore';
 import { systemActor, userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { systemTenantContext, type TenantContext } from '@common/context/tenant-context';
@@ -106,6 +107,9 @@ export function cycleNextActions(c: Pick<BillingCycle, 'status'>): string[] {
  * Lease end: a final invoice draft to the move-out (advance rent applied), refreshed when the move-out inspection
  * records the registers, linked to the deposit settlement when issued.
  */
+/** Drafts computed at once by a cycle (each holds a pooled connection while it reads its inputs). */
+const COMPUTE_CONCURRENCY = 4;
+
 @Injectable()
 export class BillingCyclesService extends TenantScopedRepository implements OnModuleInit {
   private readonly logger = new Logger(BillingCyclesService.name);
@@ -616,8 +620,12 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
     let total = new Decimal(0);
     let drafts = 0;
     let needsReview = 0;
-    for (const b of billables) {
-      const d = await this.computeBillable(ctx, cycle, b);
+    // billables are independent (one draft per unit × party): a few at a time (B6.5 load target, D-207)
+    const computeSlots = new Semaphore(COMPUTE_CONCURRENCY);
+    const results = await Promise.all(
+      billables.map((b) => computeSlots.run(() => this.computeBillable(ctx, cycle, b))),
+    );
+    for (const d of results) {
       drafts += 1;
       if (d.reviewFlags.length) needsReview += 1;
       total = total.plus(d.total);
@@ -742,16 +750,19 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
     }
     const skipped: { invoiceId: string; reason: string }[] = [];
     let issued = 0;
-    for (const d of drafts) {
-      const ok = await ISSUE_SLOTS.run(() =>
-        this.db.tenant(
-          ctx,
-          (tx) => this.invoices.issueInTx(tx, ctx, d.id, { ackId, throwOnRefusal: false, skipped }),
-          ISSUE_TX,
-        ),
-      );
-      if (ok) issued += 1;
-    }
+    // the issue transactions overlap up to the issue slots; numbers stay gapless (the series row is taken last)
+    await Promise.all(
+      drafts.map(async (d) => {
+        const ok = await ISSUE_SLOTS.run(() =>
+          this.db.tenant(
+            ctx,
+            (tx) => this.invoices.issueInTx(tx, ctx, d.id, { ackId, throwOnRefusal: false, skipped }),
+            ISSUE_TX,
+          ),
+        );
+        if (ok) issued += 1;
+      }),
+    );
     const now = this.clock.now();
     return this.db.tenant(ctx, async (tx) => {
       const fresh = await this.loadCycle(tx, ctx, id);

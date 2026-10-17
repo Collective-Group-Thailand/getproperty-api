@@ -12,6 +12,7 @@ import {
 import { webVitalsController } from '../shared/web-vitals.controller';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
+import { ADMIN_BUSINESS_CONTROLLERS } from './admin-business.controller';
 import {
   AdminBuildingsController,
   AdminDevicesController,
@@ -34,6 +35,7 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
 /** `/v1/admin/*` (contract §2): the platform admin zone (D-161) — B1.3 tenants, platform users, support, settings, tariffs, outbox, templates, devices. */
 @Module({
   controllers: [
+    ...ADMIN_BUSINESS_CONTROLLERS,
     systemPingController(SURFACES.admin),
     AdminSystemController,
     AdminMeController,

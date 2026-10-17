@@ -3,6 +3,7 @@ import { RequestContext } from '@common/context/request-context';
 import { systemTenantContext, type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
 import { bangkokDate, startOfBangkokDay } from '@common/time/bangkok';
+import { AiUsageService } from '@core/ai-usage/ai-usage.service';
 import { AuditService } from '@core/audit/audit.service';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { DocumentsService } from '@core/documents/documents.service';
@@ -75,6 +76,7 @@ export class UtilityLossService extends TenantScopedRepository {
     @Inject(BILLED_UNITS) private readonly billed: BilledUnitsProvider,
     @Inject(OCR) private readonly ocr: OcrPort,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly aiUsage: AiUsageService,
   ) {
     super();
   }
@@ -275,15 +277,31 @@ export class UtilityLossService extends TenantScopedRepository {
       mimeTypes: INVOICE_MIME,
       maxBytes: 15_000_000,
     });
+    const usage = (model: string, outcome: 'ok' | 'error') =>
+      this.aiUsage.record({
+        tenantId: ctx.tenantId,
+        buildingId,
+        feature: 'invoice_ocr',
+        provider: this.ocr.mode === 'fake' ? 'fake' : 'ai_gateway',
+        model,
+        inputUnits: 1,
+        unitKind: 'images',
+        outcome,
+        subjectType: 'core.document',
+        subjectId: documentId,
+      });
     try {
-      return await this.ocr.readUtilityInvoice({
+      const r = await this.ocr.readUtilityInvoice({
         file: file.body,
         mimeType: file.document.mimeType,
         utility,
         tenantId: ctx.tenantId,
       });
+      await usage(r.model, 'ok');
+      return r;
     } catch (error) {
       this.logger.warn(`utility invoice OCR unavailable: ${(error as Error).message}`);
+      await usage('unknown', 'error');
       throw new DomainException('provider.unavailable');
     }
   }

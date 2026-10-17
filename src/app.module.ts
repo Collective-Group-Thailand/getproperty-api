@@ -18,6 +18,7 @@ import { DatabaseModule } from '@database/database.module';
 import { RedisModule } from '@database/redis.module';
 import { IntegrationsModule } from '@integrations/integrations.module';
 import { OpsModule } from '@modules/ops.module';
+import { PlatformModule } from '@modules/platform.module';
 import { SmartModule } from '@modules/smart.module';
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -62,6 +63,7 @@ import { SurfacesModule } from './surfaces/surfaces.module';
     CoreModule,
     OpsModule,
     SmartModule,
+    PlatformModule,
     HealthModule,
     SurfacesModule,
   ],

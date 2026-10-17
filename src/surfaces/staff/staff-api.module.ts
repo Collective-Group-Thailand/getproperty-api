@@ -7,6 +7,7 @@ import {
   devicesController,
   meterReadingsController,
 } from '../owner/smart.controller';
+import { StaffInstallOrdersController } from '../owner/subscription.controller';
 import { filesController } from '../shared/files.controller';
 import { StaffMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
@@ -26,6 +27,7 @@ import { StaffFieldController } from './staff-field.controller';
     systemPingController(SURFACES.staff),
     StaffMeController,
     StaffFieldController,
+    StaffInstallOrdersController,
     filesController(SURFACES.staff),
     partiesController(SURFACES.staff),
     inspectionsController(SURFACES.staff),

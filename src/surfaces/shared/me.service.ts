@@ -16,6 +16,7 @@ import {
   type OperatorMeDto,
   type ResidentLinkedDto,
   type ResidentMeDto,
+  type SubscriptionStateName,
   type TechnicianMeDto,
   type TenantRoleName,
   type TenantStatusName,
@@ -95,6 +96,16 @@ export class MeService {
       ? memberships.find((m) => m.tenantId === current.tenantId)?.tenant
       : undefined;
     const actor = RequestContext.actor();
+    // the tenant's latest subscription (B6.1, D-082)
+    const subscription = current
+      ? await this.db.platform((tx) =>
+          tx.subscription.findFirst({
+            where: { tenantId: current.tenantId },
+            orderBy: { startedAt: 'desc' },
+            select: { state: true, planKey: true },
+          }),
+        )
+      : null;
     return {
       user: dto,
       hasPassword,
@@ -124,7 +135,11 @@ export class MeService {
         : [],
       featureFlags: flags,
       subscription: currentTenant
-        ? { plan: currentTenant.plan, state: null, readOnly: currentTenant.status === 'read_only' }
+        ? {
+            plan: subscription?.planKey ?? currentTenant.plan,
+            state: (subscription?.state as SubscriptionStateName | undefined) ?? null,
+            readOnly: currentTenant.status === 'read_only',
+          }
         : null,
       scopes: actor && 'scopes' in actor ? [...actor.scopes] : [],
     };

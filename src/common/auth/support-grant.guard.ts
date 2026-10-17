@@ -19,15 +19,19 @@ import { EXT } from '../openapi/decorators';
 
 export const SUPPORT_GRANT_PARAM = 'getproperty:support-grant-param';
 
+/** Methods a support grant may use (it reads; it never changes tenant data). */
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
 /**
  * A `/v1/admin` read into one tenant's data (contract §8, D-090): the `Support` role needs an active support grant
  * for the tenant named by the route parameter; `Platform admin` bypasses it. Both are audited per request
- * (`support_grant.used` / `support_grant.bypassed`). Documents 403 `support.grant_required`.
+ * (`support_grant.used` / `support_grant.bypassed`). A grant is **read-only** ("view as tenant", B6.1): Support
+ * gets 403 `support.read_only` on any non-safe method (audited as denied). Documents 403 `support.grant_required`.
  */
 export const SupportGrantRequired = (param = 'tenantId') =>
   applyDecorators(
     SetMetadata(SUPPORT_GRANT_PARAM, param),
-    ApiExtension(`${EXT.errors}-support`, ['support.grant_required']),
+    ApiExtension(`${EXT.errors}-support`, ['support.grant_required', 'support.read_only']),
   );
 
 @Injectable()
@@ -73,6 +77,16 @@ export class SupportGrantGuard implements CanActivate {
         metadata: { method: req.method, path },
       });
       throw new DomainException('support.grant_required');
+    }
+    if (!SAFE_METHODS.has(req.method)) {
+      await this.audit.recordAlone({
+        action: 'support_grant.used',
+        tenantId,
+        supportGrantId: grant.id,
+        outcome: 'denied',
+        metadata: { method: req.method, path, reason: 'read_only' },
+      });
+      throw new DomainException('support.read_only');
     }
     RequestContext.setActor({ ...actor, supportGrantId: grant.id });
     RequestContext.setTenant({ tenantId, source: 'path', supportGrantId: grant.id });

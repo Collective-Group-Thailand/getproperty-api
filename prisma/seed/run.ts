@@ -33,6 +33,7 @@ import {
 } from '../../src/modules/ops-leases/contract-template';
 import { HOLIDAYS } from './data/holidays';
 import { NOTIFICATION_ROUTES, NOTIFICATION_TEMPLATES } from './data/notifications';
+import { PRICE_PLAN_EFFECTIVE_FROM, PRICE_PLANS } from './data/price-plans';
 import { CONSENT_PURPOSES, RETENTION_POLICIES } from './data/privacy';
 import { UTILITY_TARIFFS } from './data/utility-tariffs';
 
@@ -105,6 +106,7 @@ export async function runSeed(
   await tx(db, () => seedWorkflowDefinitions(db));
   await tx(db, () => seedLeaseTemplates(db));
   await tx(db, () => seedInspectionTemplates(db));
+  await tx(db, () => seedPricePlans(db));
   if (mode === 'dev') await tx(db, () => seedDev(db));
 
   const counts = await countRows(db);
@@ -352,6 +354,44 @@ async function seedWorkflowDefinitions(db: ClientBase): Promise<void> {
         JSON.stringify(row.states),
         JSON.stringify(row.transitions),
         JSON.stringify(row.sla),
+      ],
+    );
+  }
+}
+
+/**
+ * D-156 price plans (B6.1) with version 1 effective from 2026-01-01: the plans sold in Phase 1 published, the others
+ * a draft. Seeded once; later prices are new versions published by the platform (audited, never edited).
+ */
+async function seedPricePlans(db: ClientBase): Promise<void> {
+  for (const p of PRICE_PLANS) {
+    await db.query(
+      `INSERT INTO platform.price_plan (key, tenant_type, name_th, name_en, kind, is_active)
+       VALUES ($1, $2::core.tenant_type, $3, $4, $5::platform.plan_kind, $6) ON CONFLICT (key) DO NOTHING`,
+      [p.key, p.tenantType, p.nameTh, p.nameEn, p.kind, p.isActive],
+    );
+    const v = p.version;
+    await db.query(
+      `INSERT INTO platform.price_plan_version (plan_id, version, effective_from, billing_unit, unit_price, price_range,
+                                               tiers, min_units, min_monthly, term_months, included_allowances, terms,
+                                               state, published_at)
+       SELECT pp.id, 1, $2, $3::platform.plan_billing_unit, $4, $5::jsonb, $6::jsonb, $7, $8, $9, $10::jsonb, $11::jsonb,
+              $12::platform.template_version_state, CASE WHEN $12 = 'published' THEN now() END
+         FROM platform.price_plan pp
+        WHERE pp.key = $1 AND NOT EXISTS (SELECT 1 FROM platform.price_plan_version x WHERE x.plan_id = pp.id)`,
+      [
+        p.key,
+        PRICE_PLAN_EFFECTIVE_FROM,
+        v.billingUnit,
+        v.unitPrice,
+        v.priceRange ? JSON.stringify(v.priceRange) : null,
+        JSON.stringify(v.tiers),
+        v.minUnits,
+        v.minMonthly,
+        v.termMonths,
+        JSON.stringify(v.includedAllowances),
+        JSON.stringify(v.terms),
+        v.published ? 'published' : 'draft',
       ],
     );
   }
@@ -712,6 +752,8 @@ const COUNTED_TABLES = [
   'core.occupancy',
   'ops.inspection_template',
   'ops.deposit',
+  'platform.price_plan',
+  'platform.price_plan_version',
 ];
 
 export async function countRows(db: ClientBase): Promise<Record<string, number>> {

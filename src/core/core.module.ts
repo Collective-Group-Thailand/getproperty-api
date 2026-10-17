@@ -5,6 +5,7 @@ import { BULLMQ_REDIS, type RedisClient } from '@database/redis.module';
 import { TenantTx } from '@database/tenant-tx';
 import { Global, Inject, Injectable, Module, type OnApplicationShutdown } from '@nestjs/common';
 
+import { AiUsageService } from './ai-usage/ai-usage.service';
 import {
   BuildingService,
   FloorService,
@@ -125,6 +126,7 @@ const SERVICES = [
   NotificationRoutesService,
   NotificationTemplatesService,
   TopicPreferencesService,
+  AiUsageService,
   NotificationDelivery,
   RealtimeHub,
   ConsentService,

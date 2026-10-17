@@ -101,6 +101,18 @@ export const API_TAGS: Record<string, string> = {
   'technician.me': 'Who I am as a technician (work orders arrive with B5, R2).',
   'technician.notifications': 'In-app inbox of the technician.',
   'admin.me': 'Who I am in the platform admin zone: roles, permissions, menu, TOTP state (D-161).',
+  'admin.pricePlans':
+    'Price plans and their effective-dated versions (D-156, Proposed until the pilot): draft, publish (never backdated, never edited).',
+  'admin.subscriptions':
+    'Subscriptions of tenants (D-082): trial → active → past_due → suspended (read-only) → cancelled, plan changes, typed-confirmation suspension.',
+  'admin.platformInvoices':
+    "Collective Group's invoices to its tenants (D-146, D-156): Thai QR of the platform merchant, transfers recorded by Finance, maker-checker credit notes (D-091).",
+  'admin.haas':
+    'The HaaS register (D-081): platform-owned gateways and rented meters at tenants with term, monthly value, book value and history.',
+  'admin.fieldWork':
+    "Install / de-install orders and site surveys of Collective's field engineers (D-081, D-156).",
+  'owner.subscription':
+    'My plan (D-082, D-156): subscription, usage counted, invoices from getproperty with Thai QR, platform hardware, upgrade to Smart.',
   'admin.tenants':
     'Tenant onboarding and administration; tenant data only under a support grant (D-090, D-161).',
   'admin.supportGrants': 'Support access requests and incident approvals (D-090).',
