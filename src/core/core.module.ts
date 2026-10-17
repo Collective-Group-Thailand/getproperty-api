@@ -19,6 +19,8 @@ import { BusinessCalendarService } from './calendar/business-calendar.service';
 import { CLOCK, type Clock, SystemClock } from './clock/clock';
 import { ComplianceAcknowledgementService } from './compliance/compliance-acknowledgement.service';
 import { ComplianceGate } from './compliance/compliance-gate.service';
+import { ComplianceRulesService } from './compliance/compliance-rules.service';
+import { ComplianceScoreService } from './compliance/compliance-score.service';
 import { DeviceBootstrapService } from './devices/device-bootstrap.service';
 import { DeviceCaService } from './devices/device-ca.service';
 import { DeviceIdentityService } from './devices/device-identity.service';
@@ -110,6 +112,8 @@ const SERVICES = [
   UtilityTariffsService,
   ComplianceAcknowledgementService,
   ComplianceGate,
+  ComplianceRulesService,
+  ComplianceScoreService,
   DocumentNumbering,
   DeviceCaService,
   DeviceRegistryService,

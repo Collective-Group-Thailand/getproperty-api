@@ -3393,10 +3393,261 @@
         ],
         "type": "string"
       },
+      "ComplianceRuleDto": {
+        "properties": {
+          "appliesTo": {
+            "example": [
+              "rate_plan",
+              "invoice"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ComplianceRuleTarget"
+            },
+            "type": "array"
+          },
+          "defaultSeverity": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ComplianceSeverity"
+              }
+            ],
+            "example": "warn"
+          },
+          "descriptionEn": {
+            "example": "Electricity/water rates above the utility’s effective average rate trigger the warning.",
+            "type": "string"
+          },
+          "descriptionTh": {
+            "example": "อัตราค่าไฟฟ้า/ค่าน้ำต้องไม่เกินอัตราที่ผู้ให้บริการเรียกเก็บ",
+            "type": "string"
+          },
+          "id": {
+            "example": "compliance.tariff_cap",
+            "type": "string"
+          },
+          "legalRef": {
+            "description": "Clauses of docs/compliance/legal-reference.md (D-149).",
+            "example": "ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (6); legal-reference §1 ค่าน้ำ/ค่าไฟ, §4; D-021a, D-140",
+            "type": "string"
+          },
+          "settingsUsed": {
+            "example": [
+              "compliance.tariff_cap.severity"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "severity": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ComplianceSeverity"
+              }
+            ],
+            "description": "The severity in force for this tenant now (platform admin overrides, D-021a).",
+            "example": "warn"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ComplianceRuleStatus"
+              }
+            ],
+            "description": "D-149: rules stay pending until the legal team verifies legal-reference.md.",
+            "example": "pending_legal_verification"
+          }
+        },
+        "required": [
+          "id",
+          "legalRef",
+          "defaultSeverity",
+          "severity",
+          "appliesTo",
+          "status",
+          "descriptionTh",
+          "descriptionEn",
+          "settingsUsed"
+        ],
+        "type": "object"
+      },
+      "ComplianceRuleListDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ComplianceRuleDto"
+            },
+            "type": "array"
+          },
+          "inScope": {
+            "description": "The tenant is in scope of the สคบ. 2568 announcement (D-158).",
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "inScope",
+          "data"
+        ],
+        "type": "object"
+      },
+      "ComplianceRuleStatus": {
+        "description": "D-149: rules stay pending until the legal team verifies legal-reference.md.",
+        "enum": [
+          "active",
+          "pending_legal_verification",
+          "verified",
+          "retired"
+        ],
+        "type": "string"
+      },
+      "ComplianceRuleTarget": {
+        "enum": [
+          "tenant",
+          "lease",
+          "rate_plan",
+          "invoice",
+          "deposit",
+          "access",
+          "notice"
+        ],
+        "type": "string"
+      },
+      "ComplianceScoreComponent": {
+        "enum": [
+          "invoices_within_rate",
+          "above_cap_acknowledged",
+          "deposits_on_time",
+          "standard_contracts"
+        ],
+        "type": "string"
+      },
+      "ComplianceScoreComponentDto": {
+        "properties": {
+          "denominator": {
+            "example": 120,
+            "type": "number"
+          },
+          "key": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ComplianceScoreComponent"
+              }
+            ],
+            "example": "invoices_within_rate"
+          },
+          "numerator": {
+            "example": 118,
+            "type": "number"
+          },
+          "ratio": {
+            "description": "numerator / denominator, 4 decimals; null when nothing was judged (left out of the mean).",
+            "example": "0.9833",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "numerator",
+          "denominator",
+          "ratio"
+        ],
+        "type": "object"
+      },
+      "ComplianceScoreDto": {
+        "properties": {
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ComplianceScoreComponentDto"
+            },
+            "type": "array"
+          },
+          "computedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "depositsDue": {
+            "example": 3,
+            "type": "number"
+          },
+          "depositsRefundedOnTime": {
+            "example": 3,
+            "type": "number"
+          },
+          "invoicesTotal": {
+            "example": 120,
+            "type": "number"
+          },
+          "invoicesWithinRate": {
+            "example": 118,
+            "type": "number"
+          },
+          "leasesOnStandardTemplate": {
+            "example": 118,
+            "type": "number"
+          },
+          "leasesTotal": {
+            "example": 120,
+            "type": "number"
+          },
+          "linesAboveCap": {
+            "description": "Invoice lines above the utility rate (D-021a).",
+            "example": 2,
+            "type": "number"
+          },
+          "linesAboveCapAcknowledged": {
+            "example": 2,
+            "type": "number"
+          },
+          "month": {
+            "description": "Bangkok month `YYYY-MM`.",
+            "example": "2026-11",
+            "type": "string"
+          },
+          "score": {
+            "description": "Mean of the judged components × 100, 2 decimals (0–100).",
+            "example": "97.50",
+            "type": "string"
+          }
+        },
+        "required": [
+          "month",
+          "score",
+          "invoicesTotal",
+          "invoicesWithinRate",
+          "linesAboveCap",
+          "linesAboveCapAcknowledged",
+          "depositsDue",
+          "depositsRefundedOnTime",
+          "leasesTotal",
+          "leasesOnStandardTemplate",
+          "components",
+          "computedAt"
+        ],
+        "type": "object"
+      },
+      "ComplianceScoreListDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ComplianceScoreDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
       "ComplianceSeverity": {
         "enum": [
-          "warn",
-          "block"
+          "block",
+          "warn"
         ],
         "type": "string"
       },
@@ -19182,6 +19433,163 @@
         ],
         "x-required-permissions": [
           "admin.building.manage"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/compliance/rules": {
+      "get": {
+        "description": "Every rule of the registry with its legal reference, legal-verification status (D-149) and the severity in force platform-wide. Severities are changed through the settings `compliance.tariff_cap.severity` and `compliance.severity_overrides` (platform or per tenant, D-021a).\n\nImplements: D-021a, D-149, ADR-0007.",
+        "operationId": "admin.compliance.rules",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "appliesTo": [
+                        "rate_plan",
+                        "invoice"
+                      ],
+                      "defaultSeverity": "warn",
+                      "descriptionEn": "Electricity/water rates above the utility’s effective average rate trigger the legal warning.",
+                      "descriptionTh": "อัตราค่าไฟฟ้า/ค่าน้ำต้องไม่เกินอัตราที่ผู้ให้บริการเรียกเก็บ (เฉลี่ยตามหน่วยที่ใช้)",
+                      "id": "compliance.tariff_cap",
+                      "legalRef": "ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (6); legal-reference §1 ค่าน้ำ/ค่าไฟ, §4; D-021a, D-140",
+                      "settingsUsed": [
+                        "compliance.tariff_cap.severity"
+                      ],
+                      "severity": "warn",
+                      "status": "pending_legal_verification"
+                    }
+                  ],
+                  "inScope": true
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceRuleListDto"
+                }
+              }
+            },
+            "description": "Rules",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Compliance registry with platform severities",
+        "tags": [
+          "admin.compliance"
+        ],
+        "x-required-permissions": [
+          "admin.compliance.manage"
         ],
         "x-surface": "admin"
       }
@@ -49067,6 +49475,634 @@
         ],
         "x-required-permissions": [
           "compliance.acknowledge"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/compliance/rules": {
+      "get": {
+        "description": "The compliance registry (ADR-0007): every rule with its legal reference (legal-reference.md, D-149), the subjects it applies to, its default severity and the severity in force for this tenant — `warn` rules need the Owner’s acknowledgement, `block` rules refuse (D-021a). `inScope` = the tenant is subject to the สคบ. 2568 announcement (≥ 3 units, D-158).\n\nImplements: D-020, D-021a, D-149, D-158.",
+        "operationId": "owner.compliance.rules",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "appliesTo": [
+                        "rate_plan",
+                        "invoice"
+                      ],
+                      "defaultSeverity": "warn",
+                      "descriptionEn": "Electricity/water rates above the utility’s effective average rate trigger the legal warning.",
+                      "descriptionTh": "อัตราค่าไฟฟ้า/ค่าน้ำต้องไม่เกินอัตราที่ผู้ให้บริการเรียกเก็บ (เฉลี่ยตามหน่วยที่ใช้)",
+                      "id": "compliance.tariff_cap",
+                      "legalRef": "ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (6); legal-reference §1 ค่าน้ำ/ค่าไฟ, §4; D-021a, D-140",
+                      "settingsUsed": [
+                        "compliance.tariff_cap.severity"
+                      ],
+                      "severity": "warn",
+                      "status": "pending_legal_verification"
+                    }
+                  ],
+                  "inScope": true
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceRuleListDto"
+                }
+              }
+            },
+            "description": "Rules",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Compliance rules in force for my tenant",
+        "tags": [
+          "owner.compliance"
+        ],
+        "x-required-permissions": [
+          "report.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/compliance/score": {
+      "get": {
+        "description": "Recomputes and returns the tenant’s compliance score of the month (`platform.compliance_score`, ADR-0007): invoices within the utility rate, lines above the cap acknowledged (D-021a), deposits refunded on time (D-023), leases on the สคบ. standard template (D-020); the mean of the judged components × 100.\n\nImplements: D-020, D-021a, D-023.",
+        "operationId": "owner.compliance.score",
+        "parameters": [
+          {
+            "description": "Bangkok month `YYYY-MM` (default: the current month).",
+            "in": "query",
+            "name": "month",
+            "required": false,
+            "schema": {
+              "example": "2026-11",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "components": [
+                    {
+                      "denominator": 120,
+                      "key": "invoices_within_rate",
+                      "numerator": 118,
+                      "ratio": "0.9833"
+                    },
+                    {
+                      "denominator": 2,
+                      "key": "above_cap_acknowledged",
+                      "numerator": 2,
+                      "ratio": "1.0000"
+                    },
+                    {
+                      "denominator": 3,
+                      "key": "deposits_on_time",
+                      "numerator": 3,
+                      "ratio": "1.0000"
+                    },
+                    {
+                      "denominator": 120,
+                      "key": "standard_contracts",
+                      "numerator": 108,
+                      "ratio": "0.9000"
+                    }
+                  ],
+                  "computedAt": "2026-11-01T00:15:00+07:00",
+                  "depositsDue": 3,
+                  "depositsRefundedOnTime": 3,
+                  "invoicesTotal": 120,
+                  "invoicesWithinRate": 118,
+                  "leasesOnStandardTemplate": 108,
+                  "leasesTotal": 120,
+                  "linesAboveCap": 2,
+                  "linesAboveCapAcknowledged": 2,
+                  "month": "2026-11",
+                  "score": "97.50"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceScoreDto"
+                }
+              }
+            },
+            "description": "Score",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Compliance score of a month",
+        "tags": [
+          "owner.compliance"
+        ],
+        "x-required-permissions": [
+          "report.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/compliance/scores": {
+      "get": {
+        "description": "Stored monthly scores, newest first (the last 12 months computed by the nightly job or on request, ADR-0007).\n\nImplements: D-020, D-021a.",
+        "operationId": "owner.compliance.scores",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "components": [
+                        {
+                          "denominator": 120,
+                          "key": "invoices_within_rate",
+                          "numerator": 118,
+                          "ratio": "0.9833"
+                        },
+                        {
+                          "denominator": 2,
+                          "key": "above_cap_acknowledged",
+                          "numerator": 2,
+                          "ratio": "1.0000"
+                        },
+                        {
+                          "denominator": 3,
+                          "key": "deposits_on_time",
+                          "numerator": 3,
+                          "ratio": "1.0000"
+                        },
+                        {
+                          "denominator": 120,
+                          "key": "standard_contracts",
+                          "numerator": 108,
+                          "ratio": "0.9000"
+                        }
+                      ],
+                      "computedAt": "2026-11-01T00:15:00+07:00",
+                      "depositsDue": 3,
+                      "depositsRefundedOnTime": 3,
+                      "invoicesTotal": 120,
+                      "invoicesWithinRate": 118,
+                      "leasesOnStandardTemplate": 108,
+                      "leasesTotal": 120,
+                      "linesAboveCap": 2,
+                      "linesAboveCapAcknowledged": 2,
+                      "month": "2026-11",
+                      "score": "97.50"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceScoreListDto"
+                }
+              }
+            },
+            "description": "History",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Compliance score history",
+        "tags": [
+          "owner.compliance"
+        ],
+        "x-required-permissions": [
+          "report.read"
         ],
         "x-surface": "owner"
       }
@@ -96860,6 +97896,10 @@
       "name": "admin.buildings"
     },
     {
+      "description": "The compliance rule registry with legal references, verification status and platform severities (ADR-0007, D-021a, D-149).",
+      "name": "admin.compliance"
+    },
+    {
       "description": "PDPA requests across tenants (D-025).",
       "name": "admin.dataSubjectRequests"
     },
@@ -97010,6 +98050,10 @@
     {
       "description": "Buildings the tenant owns, operates or holds a grant for (D-151, D-152).",
       "name": "owner.buildings"
+    },
+    {
+      "description": "Compliance rules in force for the tenant and its monthly compliance score (ADR-0007, D-020, D-021a, D-158).",
+      "name": "owner.compliance"
     },
     {
       "description": "Owner acknowledgements of compliance warnings (D-021a, contract §3).",

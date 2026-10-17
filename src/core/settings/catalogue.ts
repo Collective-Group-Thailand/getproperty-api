@@ -42,6 +42,16 @@ export const SETTINGS: readonly SettingDef[] = [
     allowedValues: ['warn', 'block'],
   },
   {
+    key: 'compliance.severity_overrides',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-021a / ADR-0007: the platform admin\'s per-rule severity overrides of the compliance registry ({"compliance.<rule>": "warn" | "block"}), platform-wide or per tenant; rules not listed keep their registry default.',
+    editableBy: ADMIN_COMPLIANCE,
+    value: {},
+    reason: 'seed: ADR-0007 (no overrides)',
+  },
+  {
     key: 'tenant.subject_to_ocpb_2568',
     valueType: 'bool',
     scopeAllowed: ['platform', 'tenant'],

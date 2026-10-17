@@ -235,6 +235,26 @@
     "no_forfeiture": {
       "title": "No forfeiture",
       "detail": "The deposit or advance rent may not be forfeited without a breach by the lessee."
+    },
+    "scope": {
+      "title": "In scope of the announcement",
+      "detail": "Tenants renting out 3 or more units are subject to the OCPB 2568 announcement."
+    },
+    "invoice_lead_time": {
+      "title": "Due date too early",
+      "detail": "The invoice must reach the lessee at least 3 days before its due date."
+    },
+    "entry_notice": {
+      "title": "Notice required before entry",
+      "detail": "Entering a unit requires prior notice except in an emergency."
+    },
+    "no_cutoff": {
+      "title": "No cut-off or lock-out",
+      "detail": "Cutting power or water, locking out or removing belongings for arrears is not allowed; the platform has no such function."
+    },
+    "invoice_immutable": {
+      "title": "Issued invoices are immutable",
+      "detail": "An issued invoice cannot be changed or deleted; issue a credit/debit note or void and re-issue it."
     }
   },
   "device": {

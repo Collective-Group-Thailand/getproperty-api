@@ -1476,7 +1476,7 @@ Forward references across deliverables use **nullable columns without FK** at cr
 9. **`ops.receivable_balance` per (party, unit)** instead of per lease — needed for condo co-owners and landlords paying common fees; apartments get the same numbers (one lessee per unit). Confirm.
 10. **v1 migration files** in `prisma/migrations/` are superseded and must not be applied; B1.2 step 2b deletes them and starts the history from §7.2 (they were never applied anywhere).
 
-### 7.5 Implementation notes — B1.2 step 2, B1.3, B2 and B3 (2026-10-17, v2.3)
+### 7.5 Implementation notes — B1.2 step 2, B1.3, B2, B3 and B4 (2026-10-17, v2.4)
 Applied by `collective-asset-core` v0.1.0 and getproperty-api migrations 0001–0009 (B3: 0015–0018). The founder accepted every §7.4
 proposal (singular names, uuidv7-only ids, `adjustment` source type, `meter_assignment` in core, RLS on hypertables
 verified in B3.2, owner-stamped rows via `acts_for`, platform-only `user_account`, cycles per property, receivables per
@@ -1530,6 +1530,7 @@ verified in B3.2, owner-stamped rows via `acts_for`, platform-only `user_account
 | 44 | `smart.meter_reading_review` (0017) | + `band_low`, `band_high`, `trailing_avg`, `corrected_register`, `corrected_reading_id`; CHECKs decided ⇔ status ≠ open, corrected ⇔ corrected reading, a note of ≥ 3 characters to correct or reject | D-035 |
 | 45 | `ops.utility_invoice` (0018) | UQ `(building_id, utility, period_start, period_end, utility_account_id) NULLS NOT DISTINCT`; + `source` (`manual\|ocr\|ebill_import`), `ocr_raw`, `ft`, `service_charge`, `vat`, registers; CHECKs provider ↔ utility, period ≤ 62 days | D-032, D-188 |
 | 46 | `ops.loss_report`, `ops.loss_suspect` (0018) | report per building × utility × `period_start/period_end` (`billing_cycle_id` kept without FK until B4.2); + `price_basis`, `utility_tariff_version_id`, `billed_units_source` (`meter_readings_stub` until B4.2), `inputs_snapshot`; suspects with `loss_suspect_kind`, `score 0–100`, `detail jsonb` | D-032, D-188 |
+| 47 | `platform.compliance_score` (B4.1, migration 0019) | + `invoices_within_rate` (numerator of the first component), `created_at`/`updated_at`; CHECKs month is the first day, score 0–100, every numerator ≤ its denominator; components with ratios kept in `details` | D-190 |
 
 ---
 

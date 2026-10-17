@@ -106,6 +106,10 @@ export const API_TAGS: Record<string, string> = {
   'admin.supportGrants': 'Support access requests and incident approvals (D-090).',
   'admin.platformUsers': 'Collective staff accounts and platform roles (D-161).',
   'admin.settings': 'Platform defaults of configurable business values (ADR-0004).',
+  'admin.compliance':
+    'The compliance rule registry with legal references, verification status and platform severities (ADR-0007, D-021a, D-149).',
+  'owner.compliance':
+    'Compliance rules in force for the tenant and its monthly compliance score (ADR-0007, D-020, D-021a, D-158).',
   'admin.featureFlags': 'Feature flags and tenant overrides.',
   'admin.auditLog': 'Platform-wide audit log (D-161).',
   'admin.dataSubjectRequests': 'PDPA requests across tenants (D-025).',
