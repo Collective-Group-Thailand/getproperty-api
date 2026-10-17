@@ -316,19 +316,25 @@ export class IngestPipeline {
           const prev = lastTime.get(a.c.meter_asset_item_id);
           if (!prev || prev.getTime() < a.t.getTime()) lastTime.set(a.c.meter_asset_item_id, a.t);
         }
-        for (const [deviceId, seq] of maxSeq)
-          await tx.$executeRaw`
-            UPDATE smart.device SET last_seq = GREATEST(coalesce(last_seq, 0), ${seq}::bigint), last_seen_at = ${receivedAt},
-                   status = CASE WHEN status IN ('provisioned', 'offline', 'degraded') THEN 'online'::smart.device_status ELSE status END,
-                   status_changed_at = CASE WHEN status IN ('provisioned', 'offline', 'degraded') THEN ${receivedAt} ELSE status_changed_at END
-             WHERE id = ${deviceId}::uuid`;
-        for (const [assetItemId, t] of lastTime) {
-          const c = stored.find((a) => a.c.meter_asset_item_id === assetItemId)!.c;
-          await tx.$executeRaw`
-            INSERT INTO smart.meter_status (asset_item_id, tenant_id, building_id, last_telemetry_at)
-            VALUES (${assetItemId}::uuid, ${c.tenant_id}::uuid, ${c.building_id}::uuid, ${t})
-            ON CONFLICT (asset_item_id) DO UPDATE SET last_telemetry_at = GREATEST(coalesce(smart.meter_status.last_telemetry_at, EXCLUDED.last_telemetry_at), EXCLUDED.last_telemetry_at)`;
-        }
+        // set-based (one statement each, whatever the number of meters in the batch — B6.5 load target)
+        await tx.$executeRaw`
+          UPDATE smart.device d SET last_seq = GREATEST(coalesce(d.last_seq, 0), x.s::bigint), last_seen_at = ${receivedAt},
+                 status = CASE WHEN d.status IN ('provisioned', 'offline', 'degraded') THEN 'online'::smart.device_status ELSE d.status END,
+                 status_changed_at = CASE WHEN d.status IN ('provisioned', 'offline', 'degraded') THEN ${receivedAt} ELSE d.status_changed_at END
+            FROM unnest(${[...maxSeq.keys()]}::text[], ${[...maxSeq.values()].map(String)}::text[]) AS x(id, s)
+           WHERE d.id = x.id::uuid`;
+        const statusRows = [...lastTime].map(([assetItemId, t]) => ({
+          assetItemId,
+          t,
+          c: stored.find((a) => a.c.meter_asset_item_id === assetItemId)!.c,
+        }));
+        await tx.$executeRaw`
+          INSERT INTO smart.meter_status (asset_item_id, tenant_id, building_id, last_telemetry_at)
+          SELECT a::uuid, tid::uuid, bid::uuid, t::timestamptz
+            FROM unnest(${statusRows.map((r) => r.assetItemId)}::text[], ${statusRows.map((r) => r.c.tenant_id)}::text[],
+                        ${statusRows.map((r) => r.c.building_id)}::text[], ${statusRows.map((r) => r.t.toISOString())}::text[])
+              AS x(a, tid, bid, t)
+          ON CONFLICT (asset_item_id) DO UPDATE SET last_telemetry_at = GREATEST(coalesce(smart.meter_status.last_telemetry_at, EXCLUDED.last_telemetry_at), EXCLUDED.last_telemetry_at)`;
         await tx.$executeRaw`
           UPDATE smart.device_health_latest SET ingest_lag_ms = ${Math.min(lagMs, 2_000_000_000)}::int WHERE gateway_device_id = ${gateway.id}::uuid`;
         await tx.$executeRaw`UPDATE smart.device SET last_seen_at = ${receivedAt} WHERE id = ${gateway.id}::uuid`;
@@ -390,12 +396,21 @@ export class IngestPipeline {
         end: new Date(start.getTime() + ms),
       });
     }
-    for (const b of buckets.values()) {
-      const first = await tx.$queryRaw<{ device_id: string; seq: string; time: Date }[]>`
-        SELECT device_id::text, seq::text, time FROM smart.telemetry_point
-         WHERE asset_item_id = ${b.assetItemId}::uuid AND time >= ${b.start} AND time < ${b.end}
-         ORDER BY time ASC, seq ASC LIMIT 1`;
-      const winner = first[0];
+    // the first stored point of every (meter, interval) bucket in one statement
+    const list = [...buckets.values()];
+    const firsts = list.length
+      ? await tx.$queryRaw<{ asset_item_id: string; start: Date; device_id: string; seq: string }[]>`
+          SELECT b.aid AS asset_item_id, b.s AS start, f.device_id::text, f.seq::text
+            FROM unnest(${list.map((b) => b.assetItemId)}::text[], ${list.map((b) => b.start.toISOString())}::text[],
+                        ${list.map((b) => b.end.toISOString())}::text[]) AS b(aid, s, e)
+            CROSS JOIN LATERAL (
+              SELECT t.device_id, t.seq FROM smart.telemetry_point t
+               WHERE t.asset_item_id = b.aid::uuid AND t.time >= b.s::timestamptz AND t.time < b.e::timestamptz
+               ORDER BY t.time ASC, t.seq ASC LIMIT 1) f`
+      : [];
+    const winners = new Map(firsts.map((f) => [`${f.asset_item_id}|${new Date(f.start).toISOString()}`, f]));
+    for (const b of list) {
+      const winner = winners.get(`${b.assetItemId}|${b.start.toISOString()}`);
       if (!winner) continue;
       const a = stored.find(
         (x) =>

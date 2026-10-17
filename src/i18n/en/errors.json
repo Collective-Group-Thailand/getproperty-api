@@ -341,6 +341,10 @@
     "invalid_transition": {
       "title": "Support grant cannot change",
       "detail": "The support grant is not in a state that allows this action."
+    },
+    "read_only": {
+      "title": "Read-only support access",
+      "detail": "A support grant allows reading the tenant's data only; changes need the tenant or a platform admin."
     }
   },
   "bank_account": {
@@ -741,6 +745,86 @@
     "unreadable": {
       "title": "Settlement file unreadable",
       "detail": "The settlement file could not be read"
+    }
+  },
+  "subscription": {
+    "exists": {
+      "title": "Subscription exists",
+      "detail": "The tenant already has an open subscription; change its plan instead."
+    },
+    "not_found": {
+      "title": "No subscription",
+      "detail": "The tenant has no open subscription."
+    },
+    "invalid_state": {
+      "title": "Not possible in this state",
+      "detail": "The subscription cannot do this in its current state."
+    },
+    "plan_mismatch": {
+      "title": "Plan not for this tenant type",
+      "detail": "The plan is sold to another type of tenant."
+    },
+    "confirmation_mismatch": {
+      "title": "Confirmation does not match",
+      "detail": "Type the tenant slug exactly to confirm."
+    }
+  },
+  "price_plan": {
+    "not_found": {
+      "title": "No price in force",
+      "detail": "The plan has no published price on that date."
+    },
+    "not_sold": {
+      "title": "Plan not sold",
+      "detail": "The plan or add-on is not sold now, or not with this plan."
+    },
+    "invalid_state": {
+      "title": "Price version not changeable",
+      "detail": "Only a draft version from a date after the version in force can be published."
+    }
+  },
+  "platform_invoice": {
+    "invalid_state": {
+      "title": "Not possible on this invoice",
+      "detail": "The platform invoice or credit note is not in a state that allows this."
+    },
+    "amount_exceeds_open": {
+      "title": "Amount too high",
+      "detail": "The amount is higher than what is still open on the invoice."
+    }
+  },
+  "platform_credit_note": {
+    "same_approver": {
+      "title": "Second person required",
+      "detail": "Another platform user must approve a credit note (maker-checker)."
+    }
+  },
+  "haas": {
+    "not_platform_owned": {
+      "title": "Not a platform device",
+      "detail": "Only devices owned by the platform (HaaS) go in the register."
+    },
+    "tenant_mismatch": {
+      "title": "Device at another tenant",
+      "detail": "The device is assigned to another tenant."
+    },
+    "invalid_transition": {
+      "title": "Invalid asset move",
+      "detail": "The asset cannot move to that state from its current state."
+    }
+  },
+  "install_order": {
+    "invalid_transition": {
+      "title": "Invalid order move",
+      "detail": "The order or survey cannot do this in its current state."
+    },
+    "items_open": {
+      "title": "Items still open",
+      "detail": "Mark every item done before completing the order."
+    },
+    "assignee_invalid": {
+      "title": "Not a field engineer",
+      "detail": "Assign the order to a platform user with the field engineer role."
     }
   }
 }

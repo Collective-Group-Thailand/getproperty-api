@@ -204,6 +204,32 @@ export class EnvironmentVariables {
   @IsString()
   AWS_SECRETS_ID?: string;
 
+  // --- GCP (D-160, D-207) ----------------------------------------------------------------------------
+
+  /** Object storage provider when it is real: `s3` (default) or `gcs` (Google Cloud Storage). */
+  @IsIn(['s3', 'gcs'])
+  OBJECT_STORAGE_DRIVER: 's3' | 'gcs' = 's3';
+
+  /** Secret store when integrations are real: `aws` (Secrets Manager, default) or `gcp` (Secret Manager). */
+  @IsIn(['aws', 'gcp'])
+  SECRETS_DRIVER: 'aws' | 'gcp' = 'aws';
+
+  @IsOptional()
+  @IsString()
+  GCP_PROJECT_ID?: string;
+
+  @IsOptional()
+  @IsString()
+  GCS_BUCKET?: string;
+
+  /** As `S3_KEY_PREFIX`, for a shared GCS bucket. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^([A-Za-z0-9._-]+\/)*$/, {
+    message: 'GCS_KEY_PREFIX: path segments ending in /, e.g. getproperty/',
+  })
+  GCS_KEY_PREFIX?: string;
+
   // --- HTTP ----------------------------------------------------------------------------------------
 
   @Transform(toBoolean)

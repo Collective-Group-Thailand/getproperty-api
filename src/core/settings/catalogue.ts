@@ -426,6 +426,82 @@ export const SETTINGS: readonly SettingDef[] = [
     reason: 'seed: D-082',
   },
   {
+    key: 'subscription.invoice_due_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-082 / D-204: days from the issue of a platform invoice to its due date. B6.1 assumption: 15 days.',
+    editableBy: ['admin.subscription.manage'],
+    value: 15,
+    reason: 'seed: D-204 (B6.1 assumption)',
+  },
+  {
+    key: 'subscription.grace_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-082 / D-204: days after the due date before an unpaid platform invoice is overdue and the subscription past due. B6.1 assumption: 7 days.',
+    editableBy: ['admin.subscription.manage'],
+    value: 7,
+    reason: 'seed: D-204 (B6.1 assumption)',
+  },
+  {
+    key: 'subscription.suspend_after_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-082 / D-204: days a subscription stays past due before it is suspended (tenant read-only, never data loss). B6.1 assumption: 30 days.',
+    editableBy: ['admin.subscription.manage'],
+    value: 30,
+    reason: 'seed: D-204 (B6.1 assumption)',
+  },
+  {
+    key: 'platform.company',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-146 / D-204 (⚖ O-008): the issuer printed on platform invoices, receipts and credit notes — Collective Group (Thailand). Tax id, branch and address are placeholders until Finance confirms them.',
+    editableBy: ADMIN,
+    value: {
+      legalName: 'Collective Group (Thailand) Co., Ltd.',
+      displayName: 'getproperty',
+      taxId: null,
+      branch: null,
+      address: null,
+      email: 'billing@getproperty.co',
+      vatRegistered: true,
+    },
+    reason: 'seed: D-204 placeholder (O-008)',
+  },
+  {
+    key: 'platform.payments.merchant',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      "D-204 (⚖ O-008, O-001): the platform's own merchant account for the Thai QR of platform invoices (provider, merchant reference, account name); credentials in the secret store under payments/platform/<provider>/<merchantRef>. Disabled until the account exists (O-001: provider not chosen; with fake integrations the fake adapter of that provider answers).",
+    editableBy: ['admin.subscription.manage'],
+    value: {
+      enabled: false,
+      provider: 'kbank',
+      merchantRef: 'GP-PLATFORM',
+      accountName: 'Collective Group (Thailand)',
+    },
+    reason: 'seed: D-204 placeholder (O-008)',
+  },
+  {
+    key: 'ai.unit_costs',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-161 / D-204 (O-009): cost to the platform per unit of each AI feature (THB) to track AI cost per tenant; 0 until the provider prices are entered.',
+    editableBy: ['admin.subscription.manage'],
+    value: {
+      meter_ocr: { unitKind: 'images', costPerUnitThb: '0' },
+      invoice_ocr: { unitKind: 'images', costPerUnitThb: '0' },
+    },
+    reason: 'seed: D-204 placeholder (O-009)',
+  },
+  {
     key: 'pricing.price_plans',
     valueType: 'json',
     scopeAllowed: ['platform'],

@@ -117,6 +117,7 @@ model Device {
   healthLatest      DeviceHealthLatest?  @relation("DeviceHealthLatestGateway")
   events            DeviceEvent[]        @relation("DeviceEventGateway")
   readings          MeterReading[]       @relation("MeterReadingDevice")
+  haasAssets        HaasAsset[]          @relation("HaasAssetDevice")
 
   @@index([tenantId, buildingId, kind, status], map: "device_tenant_id_building_id_kind_status_idx")
   @@index([status, lastSeenAt], map: "device_status_last_seen_at_idx")

@@ -7,6 +7,7 @@ import { RedisModule } from '@database/redis.module';
 import { IntegrationsModule } from '@integrations/integrations.module';
 import { IngestModule } from '@modules/ingest/ingest.module';
 import { OpsModule } from '@modules/ops.module';
+import { PlatformModule } from '@modules/platform.module';
 import { SmartModule } from '@modules/smart.module';
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
@@ -33,6 +34,7 @@ import { LoggerModule } from 'nestjs-pino';
     CoreModule,
     OpsModule,
     SmartModule,
+    PlatformModule,
     IngestModule,
   ],
 })

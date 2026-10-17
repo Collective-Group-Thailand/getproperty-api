@@ -3,6 +3,7 @@ import { WORKFLOW_DEFINITIONS } from '@core/workflow/definitions';
 import { LINE_KIND_RULES } from '@modules/ops-billing/engine/line-kinds';
 
 import { NOTIFICATION_ROUTES, NOTIFICATION_TEMPLATES } from '../../prisma/seed/data/notifications';
+import { PRICE_PLANS } from '../../prisma/seed/data/price-plans';
 import { countRows, DEV, runSeed } from '../../prisma/seed/run';
 import { COMPLIANCE_RULES } from '../../src/core/compliance/rules';
 import { SETTINGS } from '../../src/core/settings/catalogue';
@@ -43,6 +44,8 @@ describe('seeds (reference + dev)', () => {
       ),
       'platform.notification_route': NOTIFICATION_ROUTES.length,
       'platform.feature_flag': FEATURE_FLAGS.length,
+      'platform.price_plan': PRICE_PLANS.length,
+      'platform.price_plan_version': PRICE_PLANS.length,
       'ops.workflow_definition': WORKFLOW_DEFINITIONS.length,
       'platform.user_credential': 5,
       'core.tenant': 1,

@@ -168,6 +168,23 @@ export const DOMAIN_EVENT_TYPES = {
   'invoice.reminder_sent': 'A payment reminder was sent to the payer (D-045).',
   'penalty.assessed': 'A late fee was assessed for the next invoice (D-045, ⚖ O-002).',
   'export.completed': 'An export file (Excel, FlowAccount, PEAK, VAT working figures) is ready (D-051).',
+  // B6 platform business (D-081, D-082, D-083, D-156, D-204)
+  'price_plan.published': 'A price plan version was published from its effective date (D-156).',
+  'subscription.created': 'A tenant was subscribed to a plan; the trial started (D-082).',
+  'subscription.plan_changed': 'The plan or add-ons of a subscription changed (D-082, D-156).',
+  'subscription.state_changed':
+    'A subscription moved (trial / active / past_due / suspended / cancelled); suspended and cancelled tenants are read-only (D-082).',
+  'platform_invoice.issued': 'Collective Group issued a platform invoice to a tenant (D-146, D-156).',
+  'platform_invoice.ready': 'The PDF (and Thai QR) of a platform invoice is ready for the owner (D-146).',
+  'platform_invoice.overdue': 'A platform invoice is unpaid after its due date and the grace days (D-082).',
+  'platform_payment.confirmed':
+    'A payment of a platform invoice was confirmed and its receipt issued (D-146).',
+  'platform_credit_note.issued': 'A credit note on a platform invoice was approved by a second user (D-091).',
+  'pilot_agreement.saved': 'The pilot agreement of a tenant was recorded or changed (D-083).',
+  'install_order.created': 'A platform install / de-install order was opened for a building (D-081).',
+  'install_order.changed': 'A platform install order changed state (D-081).',
+  'site_survey.requested': 'An owner asked for a site survey to upgrade to Smart (D-156).',
+  'haas_asset.changed': 'A platform-owned device at a tenant changed state in the HaaS register (D-081).',
 } as const;
 export type DomainEventType = keyof typeof DOMAIN_EVENT_TYPES;
 

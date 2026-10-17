@@ -8,6 +8,7 @@ import { HttpAiGatewayAdapter, UnconfiguredAiGateway } from './ai/http-ai-gatewa
 import { EMAIL, type EmailPort } from './email/email.port';
 import { FakeEmail } from './email/fake-email';
 import { SesEmailAdapter } from './email/ses-email.adapter';
+import { GcsObjectStorage } from './gcs/gcs-object-storage';
 import { KEY_WRAP } from './kms/key-wrap.port';
 import { LocalKeyWrap } from './kms/local-key-wrap';
 import { FakeLineLogin } from './line/fake-line-login';
@@ -33,6 +34,7 @@ import { OBJECT_STORAGE, type ObjectStorage } from './s3/object-storage.port';
 import { S3ObjectStorage } from './s3/s3-object-storage';
 import { AwsSecretsProvider } from './secrets/aws-secrets.provider';
 import { FakeSecretsProvider } from './secrets/fake-secrets.provider';
+import { GcpSecretsProvider } from './secrets/gcp-secrets.provider';
 import { SECRETS_PROVIDER } from './secrets/secrets.port';
 import { FakeSms } from './sms/fake-sms';
 import { SMS, type SmsPort } from './sms/sms.port';
@@ -80,13 +82,19 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
       useFactory: (config: AppConfig): ObjectStorage =>
         config.useFakeObjectStorage
           ? new FakeObjectStorage()
-          : new S3ObjectStorage({
-              region: config.get('AWS_REGION'),
-              bucket: config.get('S3_BUCKET'),
-              endpoint: config.get('AWS_ENDPOINT_URL'),
-              forcePathStyle: config.get('S3_FORCE_PATH_STYLE'),
-              keyPrefix: config.get('S3_KEY_PREFIX') ?? '',
-            }),
+          : config.get('OBJECT_STORAGE_DRIVER') === 'gcs'
+            ? new GcsObjectStorage({
+                bucket: config.get('GCS_BUCKET')!,
+                projectId: config.get('GCP_PROJECT_ID'),
+                keyPrefix: config.get('GCS_KEY_PREFIX') ?? '',
+              })
+            : new S3ObjectStorage({
+                region: config.get('AWS_REGION'),
+                bucket: config.get('S3_BUCKET'),
+                endpoint: config.get('AWS_ENDPOINT_URL'),
+                forcePathStyle: config.get('S3_FORCE_PATH_STYLE'),
+                keyPrefix: config.get('S3_KEY_PREFIX') ?? '',
+              }),
     },
     {
       provide: SECRETS_PROVIDER,
@@ -94,10 +102,12 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
       useFactory: (config: AppConfig) =>
         config.useFakes
           ? new FakeSecretsProvider({}, { fake: 'true' })
-          : new AwsSecretsProvider({
-              region: config.get('AWS_REGION'),
-              endpoint: config.get('AWS_ENDPOINT_URL'),
-            }),
+          : config.get('SECRETS_DRIVER') === 'gcp'
+            ? new GcpSecretsProvider({ projectId: config.get('GCP_PROJECT_ID')! })
+            : new AwsSecretsProvider({
+                region: config.get('AWS_REGION'),
+                endpoint: config.get('AWS_ENDPOINT_URL'),
+              }),
     },
     {
       provide: MQTT_CLIENT,

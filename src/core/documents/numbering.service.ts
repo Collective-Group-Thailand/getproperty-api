@@ -15,12 +15,16 @@ export const SERIES_PREFIX: Partial<Record<DocumentType, string>> = {
   receipt_tax_invoice: 'RTI',
   credit_note: 'CRN',
   debit_note: 'DBN',
+  platform_invoice: 'PIV',
+  platform_receipt: 'PRC',
+  platform_credit_note: 'PCN',
 };
 
 /**
  * Gapless document numbers (schema-design §4.4, D-050): inside the transaction that makes the document final, the
  * series row of (tenant, type, Bangkok calendar year) is created if missing, locked `FOR UPDATE`, read and bumped;
- * a rollback consumes nothing. Format `PREFIX-YYYY-00042`. Platform series (tenant NULL) are B6.1's.
+ * a rollback consumes nothing. Format `PREFIX-YYYY-00042`. Collective Group's own series (platform invoice /
+ * receipt / credit note, B6.1, D-146) have tenant_id NULL (`nextPlatform`).
  */
 @Injectable()
 export class DocumentNumbering {
@@ -37,6 +41,28 @@ export class DocumentNumbering {
        FOR UPDATE`;
     const series = rows[0];
     if (!series) throw new Error(`document series ${docType}/${year} missing for tenant ${tenantId}`);
+    await tx.$executeRaw`UPDATE ops.document_series SET next_number = next_number + 1 WHERE id = ${series.id}::uuid`;
+    return `${series.prefix}-${year}-${String(series.next_number).padStart(series.width, '0')}`;
+  }
+
+  /** Collective Group's own series (D-146): `ops.document_series` rows with tenant_id NULL (`PIV` / `PRC` / `PCN`). */
+  async nextPlatform(
+    tx: Tx,
+    docType: 'platform_invoice' | 'platform_receipt' | 'platform_credit_note',
+    at: Date,
+  ): Promise<string> {
+    const year = Number(bangkokDate(at).slice(0, 4));
+    const prefix = SERIES_PREFIX[docType]!;
+    await tx.$executeRaw`
+      INSERT INTO ops.document_series (tenant_id, doc_type, fiscal_year, prefix, next_number)
+      VALUES (NULL, ${docType}::ops.document_type, ${year}, ${prefix}, 1)
+      ON CONFLICT (tenant_id, doc_type, fiscal_year) DO NOTHING`;
+    const rows = await tx.$queryRaw<{ id: string; next_number: number; prefix: string; width: number }[]>`
+      SELECT id, next_number, prefix, width FROM ops.document_series
+       WHERE tenant_id IS NULL AND doc_type = ${docType}::ops.document_type AND fiscal_year = ${year}
+       FOR UPDATE`;
+    const series = rows[0];
+    if (!series) throw new Error(`platform document series ${docType}/${year} missing`);
     await tx.$executeRaw`UPDATE ops.document_series SET next_number = next_number + 1 WHERE id = ${series.id}::uuid`;
     return `${series.prefix}-${year}-${String(series.next_number).padStart(series.width, '0')}`;
   }

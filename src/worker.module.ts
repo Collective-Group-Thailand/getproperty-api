@@ -6,6 +6,7 @@ import { DatabaseModule } from '@database/database.module';
 import { RedisModule } from '@database/redis.module';
 import { IntegrationsModule } from '@integrations/integrations.module';
 import { OpsModule } from '@modules/ops.module';
+import { PlatformModule } from '@modules/platform.module';
 import { SmartModule } from '@modules/smart.module';
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
@@ -35,6 +36,7 @@ import { WorkerRunner } from './worker.runner';
     CoreModule,
     OpsModule,
     SmartModule,
+    PlatformModule,
   ],
   providers: [WorkerRunner],
 })

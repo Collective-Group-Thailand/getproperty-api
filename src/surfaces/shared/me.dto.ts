@@ -117,7 +117,7 @@ export class SubscriptionSummaryDto {
     enumName: 'SubscriptionState',
     nullable: true,
     example: null,
-    description: 'From platform.subscription (B6.1); null until subscriptions exist.',
+    description: 'From platform.subscription (B6.1, D-082); null before the platform subscribed the tenant.',
   })
   state!: SubscriptionStateName | null;
 
