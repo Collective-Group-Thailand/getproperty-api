@@ -1,0 +1,204 @@
+// smart — B3.3 meter readings, the billing source of truth (schema-design v2 §3.4.3; migration 0017; D-012, D-030,
+// D-035, D-142, D-143): reading batches, meter readings (+ monotonicity / immutability triggers in SQL), reviews.
+
+enum ReadingSource {
+  iot
+  ocr
+  manual
+  estimated
+
+  @@map("reading_source")
+  @@schema("smart")
+}
+
+enum ReadingReviewState {
+  accepted
+  pending_review
+  rejected
+  corrected
+
+  @@map("reading_review_state")
+  @@schema("smart")
+}
+
+enum ReadingChannel {
+  mqtt
+  https_batch
+  staff_pwa
+  owner_web
+  inspection
+  cycle_estimate
+  import
+
+  @@map("reading_channel")
+  @@schema("smart")
+}
+
+enum ReadingBatchKind {
+  staff_round
+  import
+  cycle_estimate
+  https_batch
+  inspection
+
+  @@map("reading_batch_kind")
+  @@schema("smart")
+}
+
+enum ReviewReason {
+  non_monotonic
+  out_of_band
+  ocr_low_confidence
+  clock_suspect
+  missing_photo
+  manual_flag
+  decreasing_without_swap
+
+  @@map("review_reason")
+  @@schema("smart")
+}
+
+enum ReviewStatus {
+  open
+  accepted
+  corrected
+  rejected
+
+  @@map("review_status")
+  @@schema("smart")
+}
+
+/// A staff reading round, an import, an HTTPS batch, an inspection or a cycle-estimate run.
+model ReadingBatch {
+  id             String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String           @map("tenant_id") @db.Uuid
+  buildingId     String           @map("building_id") @db.Uuid
+  kind           ReadingBatchKind
+  billingCycleId String?          @map("billing_cycle_id") @db.Uuid
+  periodKey      String?          @map("period_key")
+  startedAt      DateTime         @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt    DateTime?        @map("completed_at") @db.Timestamptz(6)
+  submittedBy    String?          @map("submitted_by") @db.Uuid
+  stats          Json             @default("{}")
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?          @map("created_by") @db.Uuid
+  updatedAt      DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy      String?          @map("updated_by") @db.Uuid
+
+  tenant   Tenant         @relation("ReadingBatchTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "reading_batch_tenant_id_fkey")
+  building Building       @relation("ReadingBatchBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "reading_batch_building_id_fkey")
+  readings MeterReading[]
+
+  @@unique([buildingId, kind, periodKey], map: "reading_batch_building_id_kind_period_key_key", where: raw("(kind = 'staff_round'::smart.reading_batch_kind)"))
+  @@index([tenantId, buildingId], map: "reading_batch_tenant_id_building_id_idx")
+  @@map("reading_batch")
+  @@schema("smart")
+}
+
+/// One accepted (or reviewed) cumulative register reading from any source (D-012, D-030).
+model MeterReading {
+  id                    String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId              String             @map("tenant_id") @db.Uuid
+  buildingId            String             @map("building_id") @db.Uuid
+  assetItemId           String             @map("asset_item_id") @db.Uuid
+  meterAssignmentId     String             @map("meter_assignment_id") @db.Uuid
+  unitId                String?            @map("unit_id") @db.Uuid
+  deviceId              String?            @map("device_id") @db.Uuid
+  readingBatchId        String?            @map("reading_batch_id") @db.Uuid
+  register              Decimal            @db.Decimal(12, 3)
+  unit                  MeterUnit
+  readAt                DateTime           @map("read_at") @db.Timestamptz(6)
+  receivedAt            DateTime           @default(now()) @map("received_at") @db.Timestamptz(6)
+  source                ReadingSource
+  confidence            Decimal            @db.Decimal(4, 3)
+  quality               ReadingQuality?
+  seq                   BigInt?
+  telemetryTime         DateTime?          @map("telemetry_time") @db.Timestamptz(6)
+  reviewState           ReadingReviewState @map("review_state")
+  reviewId              String?            @map("review_id") @db.Uuid
+  previousReadingId     String?            @map("previous_reading_id") @db.Uuid
+  consumption           Decimal?           @db.Decimal(12, 3)
+  isRollover            Boolean            @default(false) @map("is_rollover")
+  swapId                String?            @map("swap_id") @db.Uuid
+  isInstall             Boolean            @default(false) @map("is_install")
+  isFinal               Boolean            @default(false) @map("is_final")
+  evidenceDocumentId    String?            @map("evidence_document_id") @db.Uuid
+  ocrRawValue           String?            @map("ocr_raw_value")
+  ocrConfidence         Decimal?           @map("ocr_confidence") @db.Decimal(4, 3)
+  typedValue            Decimal?           @map("typed_value") @db.Decimal(12, 3)
+  submittedBy           String?            @map("submitted_by") @db.Uuid
+  submittedVia          ReadingChannel     @map("submitted_via")
+  estimateBasis         Json?              @map("estimate_basis")
+  supersededByReadingId String?            @map("superseded_by_reading_id") @db.Uuid
+  note                  String?
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy             String?            @map("created_by") @db.Uuid
+  updatedAt             DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy             String?            @map("updated_by") @db.Uuid
+
+  tenant           Tenant              @relation("MeterReadingTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_tenant_id_fkey")
+  building         Building            @relation("MeterReadingBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_building_id_fkey")
+  assetItem        AssetItem           @relation("MeterReadingAssetItem", fields: [assetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_asset_item_id_fkey")
+  assignment       MeterAssignment     @relation("MeterReadingAssignment", fields: [meterAssignmentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_meter_assignment_id_fkey")
+  unitRef          Unit?               @relation("MeterReadingUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_unit_id_fkey")
+  device           Device?             @relation("MeterReadingDevice", fields: [deviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_device_id_fkey")
+  batch            ReadingBatch?       @relation(fields: [readingBatchId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_reading_batch_id_fkey")
+  previous         MeterReading?       @relation("MeterReadingPrevious", fields: [previousReadingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_previous_reading_id_fkey")
+  next             MeterReading[]      @relation("MeterReadingPrevious")
+  supersededBy     MeterReading?       @relation("MeterReadingSupersede", fields: [supersededByReadingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_superseded_by_reading_id_fkey")
+  supersedes       MeterReading[]      @relation("MeterReadingSupersede")
+  swap             MeterSwap?          @relation("MeterReadingSwap", fields: [swapId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_swap_id_fkey")
+  evidence         Document?           @relation("MeterReadingEvidence", fields: [evidenceDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_evidence_document_id_fkey")
+  review           MeterReadingReview? @relation("MeterReadingCurrentReview", fields: [reviewId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_review_id_fkey")
+  reviews          MeterReadingReview[] @relation("MeterReadingReviewReading")
+  correctedReviews MeterReadingReview[] @relation("MeterReadingReviewCorrected")
+  swapsAsOldLast   MeterSwap[]         @relation("MeterSwapOldLastReading")
+  swapsAsNewFirst  MeterSwap[]         @relation("MeterSwapNewFirstReading")
+  statusOf         MeterStatus[]       @relation("MeterStatusLastReading")
+
+  @@unique([assetItemId, readAt, source], map: "meter_reading_asset_item_id_read_at_source_key", where: raw("(review_state = ANY (ARRAY['accepted'::smart.reading_review_state, 'pending_review'::smart.reading_review_state]))"))
+  @@unique([deviceId, seq], map: "meter_reading_device_id_seq_key", where: raw("(seq IS NOT NULL)"))
+  @@index([tenantId, buildingId, assetItemId, readAt(sort: Desc)], map: "meter_reading_accepted_idx", where: raw("(review_state = 'accepted'::smart.reading_review_state)"))
+  @@index([meterAssignmentId, readAt(sort: Desc)], map: "meter_reading_meter_assignment_id_read_at_idx")
+  @@index([tenantId, reviewState], map: "meter_reading_pending_idx", where: raw("(review_state = 'pending_review'::smart.reading_review_state)"))
+  @@index([unitId], map: "meter_reading_unit_id_idx")
+  @@index([readingBatchId], map: "meter_reading_reading_batch_id_idx")
+  @@index([reviewId], map: "meter_reading_review_id_idx")
+  @@map("meter_reading")
+  @@schema("smart")
+}
+
+/// Owner review queue (D-035).
+model MeterReadingReview {
+  id                 String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String       @map("tenant_id") @db.Uuid
+  buildingId         String       @map("building_id") @db.Uuid
+  unitId             String?      @map("unit_id") @db.Uuid
+  readingId          String       @unique(map: "meter_reading_review_reading_id_key") @map("reading_id") @db.Uuid
+  reason             ReviewReason
+  bandLow            Decimal?     @map("band_low") @db.Decimal(12, 3)
+  bandHigh           Decimal?     @map("band_high") @db.Decimal(12, 3)
+  trailingAvg        Decimal?     @map("trailing_avg") @db.Decimal(12, 3)
+  status             ReviewStatus @default(open)
+  decidedBy          String?      @map("decided_by") @db.Uuid
+  decidedAt          DateTime?    @map("decided_at") @db.Timestamptz(6)
+  decisionNote       String?      @map("decision_note")
+  correctedRegister  Decimal?     @map("corrected_register") @db.Decimal(12, 3)
+  correctedReadingId String?      @map("corrected_reading_id") @db.Uuid
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          String?      @map("created_by") @db.Uuid
+  updatedAt          DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy          String?      @map("updated_by") @db.Uuid
+
+  tenant           Tenant         @relation("MeterReadingReviewTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_review_tenant_id_fkey")
+  building         Building       @relation("MeterReadingReviewBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_review_building_id_fkey")
+  unitRef          Unit?          @relation("MeterReadingReviewUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_review_unit_id_fkey")
+  reading          MeterReading   @relation("MeterReadingReviewReading", fields: [readingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_review_reading_id_fkey")
+  correctedReading MeterReading?  @relation("MeterReadingReviewCorrected", fields: [correctedReadingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_reading_review_corrected_reading_id_fkey")
+  currentOf        MeterReading[] @relation("MeterReadingCurrentReview")
+
+  @@index([tenantId, status, createdAt], map: "meter_reading_review_tenant_id_status_created_at_idx")
+  @@index([buildingId], map: "meter_reading_review_building_id_idx")
+  @@map("meter_reading_review")
+  @@schema("smart")
+}

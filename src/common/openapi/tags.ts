@@ -113,11 +113,38 @@ export const API_TAGS: Record<string, string> = {
   'admin.utilityTariffs': 'Utility tariff versions: enter → verify by a second user → publish (D-021a).',
   'admin.outbox': 'Event relay dead letters and replay (B1.3).',
   'admin.notificationTemplates': 'Notification templates: versions, preview, publish, test send.',
-  'admin.devices': 'Device fleet registration and gateway provisioning codes (D-130).',
+  'admin.devices':
+    'Device fleet: registration, inventory import, assignment, fleet counts, OTA rings, certificate revocation, retirement, provisioning codes and commands (D-033, D-130, D-131).',
   'admin.buildings': 'Building operator changes (D-152).',
   'admin.notifications': 'In-app inbox of the platform user.',
   'admin.pushSubscriptions': 'Web push (VAPID) subscriptions of the admin browser.',
   'admin.realtime': 'Realtime auth and the server-sent events stream (contract §6).',
+  // B3 smart metering
+  'owner.devices':
+    'Gateways and meter devices of my buildings: health, channels, config versions, events, commands (D-033, D-034, D-131).',
+  'staff.devices':
+    'Gateways and meter devices of my buildings for field work: health and commands (D-033, D-131).',
+  'owner.deviceInstalls':
+    'Gateway provisioning from its QR, meter device install / removal with photo readings, meter swaps (D-033).',
+  'staff.deviceInstalls':
+    'Field work in the staff PWA: provision a gateway, install or remove a meter device, swap a meter (D-033).',
+  'owner.meterReadings':
+    'Meter readings (IoT, OCR, manual), usage series from the rollups and the reading rounds (D-012, D-030, D-035, D-162).',
+  'staff.meterReadings':
+    'Staff readings with photo + OCR, the reading round before the cut-off, usage series (D-031, D-035).',
+  'owner.readingReviews':
+    'Review queue: accept, correct (superseding reading, D-142) or reject doubtful readings (D-035).',
+  'owner.utilityInvoices':
+    'The building’s MEA/PEA/MWA/PWA invoices: manual entry, OCR prefill, e-bill import (D-032).',
+  'owner.loss':
+    'Utility loss per billing period with suspects and trend (D-032); billed units from readings until B4.',
+  'resident.usage': 'My daily usage from the meters of my leased unit (D-063).',
+  'device.config':
+    'The gateway’s compiled configuration (cold start; also retained on MQTT, device protocol §3).',
+  'device.ota': 'The signed OTA manifest for `ota_apply` (edge CR-011, D-131).',
+  'device.readings': 'HTTPS batch fallback for buffered telemetry (edge CR-009, api-conventions §7).',
+  'admin.ota': 'OTA releases (signed manifests) and ring-by-ring rollouts (D-131).',
+  'admin.ingest': 'Ingest dead letters (refused MQTT / HTTPS payloads) and replay (D-162).',
   'webhooks.placeholder':
     'PLACEHOLDER provider callback shape (payload, signature header, expected response); the real providers (payment QR, slip verification, LINE) arrive in B4.',
 };

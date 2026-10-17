@@ -158,6 +158,19 @@ export class EnvironmentVariables {
   @Matches(/^[A-Za-z0-9_-]+$/, { message: 'MQTT_SHARED_GROUP must be a plain token' })
   MQTT_SHARED_GROUP = 'ingest';
 
+  /**
+   * Use an EMQX shared subscription (`$share/<group>/…`) so ingest replicas split the load. Off for brokers without
+   * shared subscriptions (e.g. the in-process test broker): then run a single ingest replica.
+   */
+  @Transform(toBoolean)
+  @IsBoolean()
+  MQTT_SHARED_SUBSCRIPTION = true;
+
+  /** MQTT protocol version of the cloud's broker connection: 5 (EMQX, D-130) or 4 (3.1.1, test brokers). */
+  @Transform(toNumber)
+  @IsIn([4, 5])
+  MQTT_PROTOCOL_VERSION: 4 | 5 = 5;
+
   /** Stable MQTT client id prefix; the process id is appended so replicas never collide. */
   @IsString()
   @Matches(/^[A-Za-z0-9_-]+$/, { message: 'MQTT_CLIENT_ID_PREFIX must be a plain token' })
@@ -461,6 +474,14 @@ export class EnvironmentVariables {
   @Matches(/^(mqtts?|wss?):\/\//, { message: 'MQTT_PUBLIC_URL must be an mqtt(s):// or ws(s):// URL' })
   MQTT_PUBLIC_URL = 'mqtts://mqtt.getproperty.invalid:8883';
 
+  /**
+   * OTA manifest signing keys trusted by the API (JSON object `{ "<keyId>": "<base64 raw ed25519 public key>" }`);
+   * a release whose manifest signature does not verify against one of them is refused (D-131, edge CR-011).
+   */
+  @IsOptional()
+  @IsString()
+  OTA_SIGNING_PUBLIC_KEYS?: string;
+
   /** WebSocket broker URL for buildings whose network blocks 8883 (device protocol §1: WSS on 443). */
   @IsString()
   @Matches(/^wss?:\/\//, { message: 'MQTT_PUBLIC_WS_URL must be a ws(s):// URL' })
@@ -480,6 +501,28 @@ export class EnvironmentVariables {
   @IsString()
   @Matches(/^[a-z0-9-]+$/, { message: 'DEVICE_MTLS_HEADER must be a lower-case header name' })
   DEVICE_MTLS_HEADER = 'x-client-cert';
+
+  // --- AI gateway (D-161) ----------------------------------------------------------------------------------
+
+  /** Collective AI gateway base URL (vision OCR of meter photos and utility invoices); empty = OCR unavailable. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^https?:\/\/[^\s]+$/, { message: 'AI_GATEWAY_URL must be an http(s) URL' })
+  AI_GATEWAY_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  AI_GATEWAY_API_KEY?: string;
+
+  /** Vision model name requested from the gateway. */
+  @IsString()
+  AI_VISION_MODEL = 'vision-default';
+
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1000)
+  @Max(120000)
+  AI_GATEWAY_TIMEOUT_MS = 30000;
 
   // --- Files ----------------------------------------------------------------------------------------------
 

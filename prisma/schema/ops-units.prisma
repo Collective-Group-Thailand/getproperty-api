@@ -77,6 +77,7 @@ model UtilityAccount {
 
   tenant   Tenant   @relation("UtilityAccountTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "utility_account_tenant_id_fkey")
   building Building @relation("UtilityAccountBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "utility_account_building_id_fkey")
+  invoices UtilityInvoice[]
 
   @@unique([buildingId, utility, customerNo], map: "utility_account_building_id_utility_customer_no_key")
   @@index([tenantId, buildingId], map: "utility_account_tenant_id_building_id_idx")

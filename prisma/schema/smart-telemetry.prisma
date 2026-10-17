@@ -1,0 +1,301 @@
+// smart — B3.2 MQTT ingest storage (schema-design v2 §3.4.2; migration 0016; D-162 portable partitions): telemetry
+// points and health samples are monthly range-partitioned in SQL (Prisma models the parents), rollups are plain
+// tables, plus the dedup window, gateway health, device events, dead letters and the rollup cursor.
+
+enum MeterUnit {
+  kwh
+  m3
+
+  @@map("meter_unit")
+  @@schema("smart")
+}
+
+enum ReadingQuality {
+  good
+  estimated_by_gateway
+  clock_suspect
+  overflow_corrected
+  register_decrease
+
+  @@map("reading_quality")
+  @@schema("smart")
+}
+
+enum LinkType {
+  ethernet
+  wifi
+  lte
+
+  @@map("link_type")
+  @@schema("smart")
+}
+
+enum DeviceEventType {
+  meter_offline
+  pulse_overflow
+  config_applied
+  config_rejected
+  ota_started
+  ota_applied
+  ota_rolled_back
+  ota_failed
+  tamper
+  power_loss
+  restart
+  seq_gap
+  invalid_payload
+  batch_too_large
+  unbound_meter
+  config_drift
+  battery_low
+  gateway_online
+  gateway_offline
+
+  @@map("device_event_type")
+  @@schema("smart")
+}
+
+enum DeviceEventSeverity {
+  info
+  warning
+  critical
+
+  @@map("device_event_severity")
+  @@schema("smart")
+}
+
+enum IngestFailure {
+  malformed_json
+  invalid_payload
+  gateway_mismatch
+  unknown_gateway
+  batch_too_large
+  unknown_topic
+  processing_error
+
+  @@map("ingest_failure")
+  @@schema("smart")
+}
+
+/// Every accepted interval reading (insight only, D-030); monthly range partitions (D-162).
+model TelemetryPoint {
+  time            DateTime       @db.Timestamptz(6)
+  receivedAt      DateTime       @default(now()) @map("received_at") @db.Timestamptz(6)
+  tenantId        String         @map("tenant_id") @db.Uuid
+  buildingId      String         @map("building_id") @db.Uuid
+  assetItemId     String         @map("asset_item_id") @db.Uuid
+  deviceId        String         @map("device_id") @db.Uuid
+  gatewayDeviceId String         @map("gateway_device_id") @db.Uuid
+  seq             BigInt
+  register        Decimal        @db.Decimal(12, 3)
+  unit            MeterUnit
+  quality         ReadingQuality
+  configVersion   Int?           @map("config_version")
+  extra           Json?
+
+  @@id([deviceId, seq, time], map: "telemetry_point_pkey")
+  @@index([tenantId, buildingId, time(sort: Desc)], map: "telemetry_point_tenant_id_building_id_time_idx")
+  @@index([assetItemId, time(sort: Desc)], map: "telemetry_point_asset_item_id_time_idx")
+  @@index([receivedAt], map: "telemetry_point_received_at_idx")
+  @@map("telemetry_point")
+  @@schema("smart")
+}
+
+/// Gateway heartbeats and LWTs (D-034); monthly range partitions (D-162).
+model DeviceHealthSample {
+  time             DateTime  @db.Timestamptz(6)
+  gatewayDeviceId  String    @map("gateway_device_id") @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  buildingId       String    @map("building_id") @db.Uuid
+  agentVersion     String?   @map("agent_version")
+  configVersion    Int?      @map("config_version")
+  uptimeS          Int?      @map("uptime_s")
+  bufferedReadings Int?      @map("buffered_readings")
+  diskFreeMb       Int?      @map("disk_free_mb")
+  cpuPct           Int?      @map("cpu_pct") @db.SmallInt
+  memPct           Int?      @map("mem_pct") @db.SmallInt
+  link             LinkType?
+  rssi             Int?      @db.SmallInt
+  meters           Json?
+  isLwt            Boolean   @default(false) @map("is_lwt")
+
+  @@id([gatewayDeviceId, time], map: "device_health_sample_pkey")
+  @@index([tenantId, buildingId, time(sort: Desc)], map: "device_health_sample_tenant_id_building_id_time_idx")
+  @@map("device_health_sample")
+  @@schema("smart")
+}
+
+/// 15-minute rollup per meter asset item (D-162).
+model Telemetry15m {
+  assetItemId   String    @map("asset_item_id") @db.Uuid
+  bucket        DateTime  @db.Timestamptz(6)
+  tenantId      String    @map("tenant_id") @db.Uuid
+  buildingId    String    @map("building_id") @db.Uuid
+  unit          MeterUnit
+  firstTime     DateTime  @map("first_time") @db.Timestamptz(6)
+  lastTime      DateTime  @map("last_time") @db.Timestamptz(6)
+  firstRegister Decimal   @map("first_register") @db.Decimal(12, 3)
+  lastRegister  Decimal   @map("last_register") @db.Decimal(12, 3)
+  minRegister   Decimal   @map("min_register") @db.Decimal(12, 3)
+  maxRegister   Decimal   @map("max_register") @db.Decimal(12, 3)
+  points        Int
+  usage         Decimal?  @db.Decimal(12, 3)
+  avgPowerW     Decimal?  @map("avg_power_w") @db.Decimal(12, 2)
+  avgFlowLpm    Decimal?  @map("avg_flow_lpm") @db.Decimal(12, 3)
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@id([assetItemId, bucket], map: "telemetry_15m_pkey")
+  @@index([tenantId, buildingId, bucket], map: "telemetry_15m_tenant_id_building_id_bucket_idx")
+  @@map("telemetry_15m")
+  @@schema("smart")
+}
+
+/// Hourly rollup (D-162).
+model Telemetry1h {
+  assetItemId   String    @map("asset_item_id") @db.Uuid
+  bucket        DateTime  @db.Timestamptz(6)
+  tenantId      String    @map("tenant_id") @db.Uuid
+  buildingId    String    @map("building_id") @db.Uuid
+  unit          MeterUnit
+  firstTime     DateTime  @map("first_time") @db.Timestamptz(6)
+  lastTime      DateTime  @map("last_time") @db.Timestamptz(6)
+  firstRegister Decimal   @map("first_register") @db.Decimal(12, 3)
+  lastRegister  Decimal   @map("last_register") @db.Decimal(12, 3)
+  minRegister   Decimal   @map("min_register") @db.Decimal(12, 3)
+  maxRegister   Decimal   @map("max_register") @db.Decimal(12, 3)
+  points        Int
+  usage         Decimal?  @db.Decimal(12, 3)
+  avgPowerW     Decimal?  @map("avg_power_w") @db.Decimal(12, 2)
+  avgFlowLpm    Decimal?  @map("avg_flow_lpm") @db.Decimal(12, 3)
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@id([assetItemId, bucket], map: "telemetry_1h_pkey")
+  @@index([tenantId, buildingId, bucket], map: "telemetry_1h_tenant_id_building_id_bucket_idx")
+  @@map("telemetry_1h")
+  @@schema("smart")
+}
+
+/// Daily rollup in Asia/Bangkok days (D-162).
+model Telemetry1d {
+  assetItemId   String    @map("asset_item_id") @db.Uuid
+  bucket        DateTime  @db.Timestamptz(6)
+  tenantId      String    @map("tenant_id") @db.Uuid
+  buildingId    String    @map("building_id") @db.Uuid
+  unit          MeterUnit
+  firstTime     DateTime  @map("first_time") @db.Timestamptz(6)
+  lastTime      DateTime  @map("last_time") @db.Timestamptz(6)
+  firstRegister Decimal   @map("first_register") @db.Decimal(12, 3)
+  lastRegister  Decimal   @map("last_register") @db.Decimal(12, 3)
+  minRegister   Decimal   @map("min_register") @db.Decimal(12, 3)
+  maxRegister   Decimal   @map("max_register") @db.Decimal(12, 3)
+  points        Int
+  usage         Decimal?  @db.Decimal(12, 3)
+  avgPowerW     Decimal?  @map("avg_power_w") @db.Decimal(12, 2)
+  avgFlowLpm    Decimal?  @map("avg_flow_lpm") @db.Decimal(12, 3)
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@id([assetItemId, bucket], map: "telemetry_1d_pkey")
+  @@index([tenantId, buildingId, bucket], map: "telemetry_1d_tenant_id_building_id_bucket_idx")
+  @@map("telemetry_1d")
+  @@schema("smart")
+}
+
+/// High-water mark of the telemetry-rollup job.
+model RollupCursor {
+  name           String   @id(map: "rollup_cursor_pkey")
+  processedUntil DateTime @map("processed_until") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("rollup_cursor")
+  @@schema("smart")
+}
+
+/// D-143 dedup window of (meter device, seq).
+model IngestSeqMark {
+  deviceId   String   @map("device_id") @db.Uuid
+  seq        BigInt
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+
+  @@id([deviceId, seq], map: "ingest_seq_mark_pkey")
+  @@index([receivedAt], map: "ingest_seq_mark_received_at_idx")
+  @@map("ingest_seq_mark")
+  @@schema("smart")
+}
+
+/// Last heartbeat and computed status of each gateway (D-034).
+model DeviceHealthLatest {
+  gatewayDeviceId  String       @id @map("gateway_device_id") @db.Uuid
+  tenantId         String       @map("tenant_id") @db.Uuid
+  buildingId       String       @map("building_id") @db.Uuid
+  lastHeartbeatAt  DateTime?    @map("last_heartbeat_at") @db.Timestamptz(6)
+  agentVersion     String?      @map("agent_version")
+  configVersion    Int?         @map("config_version")
+  uptimeS          Int?         @map("uptime_s")
+  bufferedReadings Int?         @map("buffered_readings")
+  diskFreeMb       Int?         @map("disk_free_mb")
+  cpuPct           Int?         @map("cpu_pct") @db.SmallInt
+  memPct           Int?         @map("mem_pct") @db.SmallInt
+  link             LinkType?
+  rssi             Int?         @db.SmallInt
+  meters           Json?
+  isLwt            Boolean      @default(false) @map("is_lwt")
+  missedHeartbeats Int          @default(0) @map("missed_heartbeats") @db.SmallInt
+  computedStatus   DeviceStatus @map("computed_status")
+  ingestLagMs      Int?         @map("ingest_lag_ms")
+  updatedAt        DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  gateway  Device   @relation("DeviceHealthLatestGateway", fields: [gatewayDeviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "device_health_latest_gateway_device_id_fkey")
+  tenant   Tenant   @relation("DeviceHealthLatestTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "device_health_latest_tenant_id_fkey")
+  building Building @relation("DeviceHealthLatestBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "device_health_latest_building_id_fkey")
+
+  @@index([tenantId, buildingId], map: "device_health_latest_tenant_id_building_id_idx")
+  @@map("device_health_latest")
+  @@schema("smart")
+}
+
+/// Operational events from gateways and from the cloud (D-147: plain table, 24 months).
+model DeviceEvent {
+  id               String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  eventId          String              @unique(map: "device_event_event_id_key") @map("event_id") @db.Uuid
+  tenantId         String?             @map("tenant_id") @db.Uuid
+  buildingId       String?             @map("building_id") @db.Uuid
+  gatewayDeviceId  String              @map("gateway_device_id") @db.Uuid
+  deviceId         String?             @map("device_id") @db.Uuid
+  type             DeviceEventType
+  severity         DeviceEventSeverity
+  occurredAt       DateTime            @map("occurred_at") @db.Timestamptz(6)
+  receivedAt       DateTime            @default(now()) @map("received_at") @db.Timestamptz(6)
+  configVersion    String?             @map("config_version")
+  message          String?
+  data             Json?
+  acknowledgedAt   DateTime?           @map("acknowledged_at") @db.Timestamptz(6)
+  acknowledgedBy   String?             @map("acknowledged_by") @db.Uuid
+  serviceRequestId String?             @map("service_request_id") @db.Uuid
+
+  gateway Device @relation("DeviceEventGateway", fields: [gatewayDeviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "device_event_gateway_device_id_fkey")
+
+  @@index([tenantId, buildingId, occurredAt(sort: Desc)], map: "device_event_tenant_id_building_id_occurred_at_idx")
+  @@index([gatewayDeviceId, type, occurredAt(sort: Desc)], map: "device_event_gateway_device_id_type_occurred_at_idx")
+  @@map("device_event")
+  @@schema("smart")
+}
+
+/// Payloads the ingest pipeline refused, for admin inspection and replay (device protocol §5).
+model IngestDeadLetter {
+  id              String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  receivedAt      DateTime      @default(now()) @map("received_at") @db.Timestamptz(6)
+  topic           String
+  channel         String        @default("mqtt")
+  gatewayDeviceId String?       @map("gateway_device_id") @db.Uuid
+  reason          IngestFailure
+  detail          String?
+  payload         Bytes
+  replayedAt      DateTime?     @map("replayed_at") @db.Timestamptz(6)
+  replayedBy      String?       @map("replayed_by") @db.Uuid
+  replayOutcome   String?       @map("replay_outcome")
+
+  @@index([receivedAt(sort: Desc)], map: "ingest_dead_letter_received_at_idx")
+  @@index([gatewayDeviceId], map: "ingest_dead_letter_gateway_device_id_idx")
+  @@map("ingest_dead_letter")
+  @@schema("smart")
+}

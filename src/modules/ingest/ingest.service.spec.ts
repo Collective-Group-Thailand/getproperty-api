@@ -67,7 +67,6 @@ describe('IngestService (MQTT DTO validation, device-protocol.md)', () => {
       batch([reading(1, { register: '1234567890.1' })]),
       batch([reading(1, { unit: 'litre' })]),
       batch([reading(1, { bogus: true })]),
-      batch(Array.from({ length: MAX_READINGS_PER_BATCH + 1 }, (_, i) => reading(i))),
       batch([]),
       { ...batch([reading(1)]), gatewayId: 'not-a-uuid' },
     ];
@@ -77,6 +76,14 @@ describe('IngestService (MQTT DTO validation, device-protocol.md)', () => {
     }
     expect(ingest.counters.rejected).toBe(cases.length);
     expect(ingest.counters.byReason.invalid_payload).toBe(cases.length);
+  });
+
+  it('refuses a batch above 200 readings as batch_too_large (backpressure)', async () => {
+    const outcome = await ingest.handle(
+      `gp/v1/${GW}/telemetry`,
+      JSON.stringify(batch(Array.from({ length: MAX_READINGS_PER_BATCH + 1 }, (_, i) => reading(i)))),
+    );
+    expect(outcome).toMatchObject({ status: 'rejected', reason: 'batch_too_large' });
   });
 
   it('refuses malformed JSON, unknown topics and a body gatewayId that differs from the topic', async () => {

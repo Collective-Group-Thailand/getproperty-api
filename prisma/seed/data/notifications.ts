@@ -73,7 +73,51 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
       'A PDPA {{dsr.kind}} request for {{tenant.name}} must be handled by {{dsr.dueAt}}.',
     ],
   },
+  {
+    key: 'meter.stale',
+    description: 'Owner/Manager/Staff: a meter has not reported for longer than health.stale_after (D-034)',
+    th: [
+      'มิเตอร์ไม่ส่งข้อมูล',
+      'มิเตอร์ {{meter.label}} ของ {{tenant.name}} ไม่ส่งข้อมูลตั้งแต่ {{meter.lastSeenAt}} — โปรดตรวจสอบเกตเวย์หรือจดเลขมิเตอร์เอง',
+    ],
+    en: [
+      'Meter not reporting',
+      'Meter {{meter.label}} of {{tenant.name}} has not reported since {{meter.lastSeenAt}} — check the gateway or read the meter manually.',
+    ],
+  },
+  {
+    key: 'meter.silent',
+    description: 'Owner/Manager/Staff: a meter is silent; a service request is raised (D-034)',
+    th: [
+      'มิเตอร์เงียบ',
+      'มิเตอร์ {{meter.label}} ของ {{tenant.name}} ไม่ส่งข้อมูลนานเกินกำหนด (ล่าสุด {{meter.lastSeenAt}}) ระบบเปิดงานซ่อมให้แล้ว',
+    ],
+    en: [
+      'Meter silent',
+      'Meter {{meter.label}} of {{tenant.name}} has been silent too long (last {{meter.lastSeenAt}}); a service request was raised.',
+    ],
+  },
+  {
+    key: 'device.offline',
+    description: 'Owner/Manager/Staff: a gateway went offline (LWT or missed heartbeats, D-034)',
+    th: [
+      'เกตเวย์ออฟไลน์',
+      'เกตเวย์ {{device.serial}} ของ {{tenant.name}} ออฟไลน์ตั้งแต่ {{device.since}} — มิเตอร์ที่ต่ออยู่จะไม่ส่งข้อมูลจนกว่าจะกลับมา',
+    ],
+    en: [
+      'Gateway offline',
+      'Gateway {{device.serial}} of {{tenant.name}} has been offline since {{device.since}}; its meters will not report until it is back.',
+    ],
+  },
 ];
+
+/** Operator audiences per event: workflow → owner + manager; device/meter health → owner + manager + staff. */
+const operatorAudiences = (key: string): string[] =>
+  key.startsWith('workflow.')
+    ? ['owner', 'manager']
+    : key.startsWith('meter.') || key.startsWith('device.')
+      ? ['owner', 'manager', 'staff']
+      : ['owner'];
 
 const operatorTemplates = (): TemplateSeed[] =>
   OPERATOR_EVENTS.flatMap((e) =>
@@ -100,7 +144,7 @@ export const NOTIFICATION_ROUTES: {
   urgent: boolean;
 }[] = [
   ...OPERATOR_EVENTS.flatMap((e) =>
-    (e.key.startsWith('workflow.') ? ['owner', 'manager'] : ['owner']).flatMap((audience) =>
+    operatorAudiences(e.key).flatMap((audience) =>
       (['in_app', 'line'] as const).map((channel) => ({
         eventType: e.key,
         audience,

@@ -10,6 +10,10 @@ import { SupportGrantService } from '@core/tenancy/support-grant.service';
 import { WorkflowTimers } from '@core/workflow/workflow-timers.service';
 import { BULLMQ_REDIS, type RedisClient } from '@database/redis.module';
 import { LeasesService } from '@modules/ops-leases/leases.service';
+import { DeviceCommandsService } from '@modules/smart-devices/commands.service';
+import { GatewayConfigService } from '@modules/smart-devices/gateway-config.service';
+import { MeterHealthService } from '@modules/smart-health/meter-health.service';
+import { TelemetryMaintenanceService } from '@modules/smart-ingest/telemetry-maintenance.service';
 import {
   Inject,
   Injectable,
@@ -26,6 +30,13 @@ export const MAINTENANCE_JOBS = {
   'support-grants-expire': 300_000,
   retention: 86_400_000,
   'lease-lifecycle': 3_600_000,
+  // B3 smart metering
+  'telemetry-rollup': 60_000,
+  'telemetry-partitions': 86_400_000,
+  'gateway-health': 60_000,
+  'meter-health': 300_000,
+  'config-drift': 300_000,
+  'device-commands': 30_000,
 } as const;
 type MaintenanceJob = keyof typeof MAINTENANCE_JOBS;
 
@@ -53,6 +64,10 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly supportGrants: SupportGrantService,
     private readonly retention: RetentionService,
     private readonly leases: LeasesService,
+    private readonly telemetry: TelemetryMaintenanceService,
+    private readonly meterHealth: MeterHealthService,
+    private readonly configs: GatewayConfigService,
+    private readonly commands: DeviceCommandsService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -98,6 +113,24 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'lease-lifecycle':
         await this.leases.sweep();
+        break;
+      case 'telemetry-rollup':
+        await this.telemetry.rollup();
+        break;
+      case 'telemetry-partitions':
+        await this.telemetry.partitionsAndRetention();
+        break;
+      case 'gateway-health':
+        await this.telemetry.gatewaySweep();
+        break;
+      case 'meter-health':
+        await this.meterHealth.run();
+        break;
+      case 'config-drift':
+        await this.configs.detectDrift();
+        break;
+      case 'device-commands':
+        await this.commands.sweep();
         break;
       default:
         this.logger.warn(`unknown maintenance job ${job.name}`);

@@ -66,3 +66,24 @@
 ## 5. Security
 - No secrets in config payloads; broker credentials are the certificate. The agent never exposes the RS485 bus or GPIO over the network; the local status page is read-only and LAN-only.
 - All payloads validated by the cloud against the schemas; an invalid payload is dropped, counted and raises `device.invalid_payload` after a threshold.
+
+## 6. Cloud behaviour (getproperty-api B3, D-183–D-188)
+- **HTTPS endpoints** (device JWT; a presented client certificate must be the same gateway's):
+  - `GET /v1/device/config` → the latest compiled `GatewayConfig` (the document retained on `gp/v1/<gatewayId>/config`), for a cold start without MQTT (compiled on demand when none exists yet).
+  - `GET /v1/device/ota/manifest?releaseId=<uuid>` → the signed manifest below, for the gateway's architecture only (`404` otherwise); without `releaseId` the release of the newest rollout that targeted the gateway.
+  - `POST /v1/device/readings/batch` — body = `TelemetryBatch` of the calling gateway (another `gatewayId` → `422 device.invalid_payload`); same pipeline as MQTT; `200 { accepted, duplicates, rejected: [{ meterId, seq, reason }] }`. Any 2xx means durable; replays are harmless (dedup `(meterId, seq)`); an `Idempotency-Key` header is accepted and ignored (CR-009).
+- **OTA manifest** (edge CR-011; `ota_apply.args.manifestUrl` points at the endpoint above):
+  ```jsonc
+  { "schema": 1, "version": "0.4.0", "channel": "stable",              // stable | beta | canary
+    "arch": "arm64",                                                      // arm64 | x64 | armv7
+    "artifact": { "url": "https://…/arm64.tar.zst", "sha256": "<64 hex>", "size": 48211234 },
+    "minAgentVersion": "0.3.0", "releasedAt": "2026-10-15T09:00:00Z",
+    "signature": { "alg": "ed25519", "keyId": "gp-ota-2026", "value": "<base64>" } }
+  ```
+  The signature covers the canonical JSON of the manifest **without** `signature` (keys sorted recursively, no whitespace). The API refuses a release whose signature does not verify against `OTA_SIGNING_PUBLIC_KEYS`; the agent verifies again with its baked-in keys. The agent reports `ota_started`, `ota_applied` (`data.version`), `ota_failed` / `ota_rolled_back` (`data.error`) on `…/events`; `ota_applied` sets the gateway's firmware version.
+- **Authorisation of readings**: a reading is stored only when the meter channel `(gatewayId, meterId)` is open at its `readAt`; otherwise it is refused (audited, `unbound_meter` device event), never re-attributed.
+- **Refused payloads** (malformed JSON, schema violation, unknown topic, unknown/retired gateway, topic ≠ `gatewayId`, more than 200 readings → also a `batch_too_large` event) are kept as dead letters for an admin replay; messages that still fail after retries are dead-lettered as `processing_error` (QoS 1 is acknowledged on receipt).
+- **Billing candidates**: the first stored reading of each 60-minute interval per meter (`readings.iot_promotion_minutes`) becomes a `smart.meter_reading` (`source: iot`); `register_decrease` goes to the owner review queue, `clock_suspect` / `estimated_by_gateway` / `overflow_corrected` are accepted with a lower confidence. Every point stays in telemetry for the usage charts.
+- **Presence**: `online` on the next `Health` after `provisioned`/`offline` (telemetry refreshes `lastSeenAt`), `degraded` while `Health.meters[]` reports a non-`ok` meter, `offline` on the LWT or after 5 missed heartbeats (`health.gateway_missed_heartbeats` × `heartbeatS`).
+- **Config drift**: a gateway whose `Health.configVersion` / `config_applied` lags the latest compiled version for more than 15 min (`health.config_drift_minutes`) is flagged once per version (`config_drift` device event, `driftFlaggedAt` in the device views); the config is never re-published unless its content changed.
+- **Commands**: re-sent every 60 s while unacknowledged, at most 3 times, then `expired`; `ttlS` 300 (`ota_apply` 3,600).

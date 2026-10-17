@@ -78,6 +78,45 @@ export const DOMAIN_EVENT_TYPES = {
   'deposit.settlement_late': 'The refund deadline passed before the refund (compliance.deposit_deadline).',
   'inspection.created': 'A move-in / move-out inspection was created.',
   'inspection.completed': 'An inspection was completed and signed; report numbered.',
+  // B3.1 devices
+  'device.assigned': 'A device left the platform inventory for a tenant building (D-033).',
+  'device.retired': 'A device was retired; certificates and broker ACL revoked (D-033).',
+  'device.certificate_revoked': 'A gateway certificate was revoked by the platform admin (D-130).',
+  'device.installed': 'A meter device was installed on a meter position with its install reading (D-033).',
+  'device.unbound':
+    'A meter device was removed from its meter position; the meter reads manually again (D-012).',
+  'meter.swapped': 'A meter was replaced: old assignment closed, new one opened at the same instant (D-033).',
+  'meter_channel.changed':
+    'A meter channel opened or closed: the gateway configs listed are recompiled (D-131).',
+  'gateway_config.compiled': 'A new GatewayConfig version was compiled for a gateway (D-131).',
+  'gateway_config.applied': 'A gateway reported config_applied for a version (D-131).',
+  'gateway_config.rejected': 'A gateway rejected a config version and kept the previous one (D-131).',
+  'device.command_issued': 'A command was issued to a gateway (device protocol §4).',
+  'device.command_finished': 'A gateway acknowledged a command as done or failed, or it expired.',
+  'ota.release_created': 'A signed agent release was registered (D-131).',
+  'ota.rollout_changed':
+    'An OTA rollout was created, started, paused, resumed, completed or aborted (D-131).',
+  // B3.2 ingest
+  'device.online': 'A gateway is online again (heartbeat after offline or LWT, D-034).',
+  'device.offline': 'A gateway went offline: LWT or 5 missed heartbeats (D-034).',
+  'device.degraded': 'A gateway reports meters that do not answer (D-034).',
+  'device.event_received':
+    'A gateway or the cloud recorded an operational device event (device protocol §2).',
+  'reading.candidate':
+    'An IoT reading is a candidate billing reading (first of its promotion interval, D-030).',
+  // B3.3 readings
+  'reading.accepted': 'A meter reading was accepted into smart.meter_reading (D-012, D-030).',
+  'reading.review_requested': 'A reading waits in the owner review queue (D-035).',
+  'reading.reviewed': 'The owner accepted, corrected (superseding row, D-142) or rejected a reading.',
+  // B3.4 health and loss
+  'meter.stale': 'A meter has no reading for longer than health.stale_after (D-034).',
+  'meter.silent': 'A meter has no reading for longer than the silent threshold (D-034).',
+  'meter.recovered': 'A stale or silent meter reads again (D-034).',
+  'service.auto_request_requested':
+    'A maintenance request should be opened automatically (D-034; consumed by B5).',
+  'utility_invoice.changed':
+    'A utility (MEA/PEA/MWA/PWA) invoice of a building was entered or changed (D-032).',
+  'loss_report.computed': 'A utility loss report was computed for a building and period (D-032).',
 } as const;
 export type DomainEventType = keyof typeof DOMAIN_EVENT_TYPES;
 

@@ -25,6 +25,7 @@ import {
   AdminSettingsController,
   AdminWorkflowDefinitionsController,
 } from './admin-platform.controller';
+import { AdminFleetController, AdminIngestController, AdminOtaController } from './admin-smart.controller';
 import { AdminSystemController } from './admin-system.controller';
 import { AdminSupportGrantsController, AdminTenantsController } from './admin-tenants.controller';
 
@@ -47,6 +48,9 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
     AdminNotificationTemplatesController,
     AdminDevicesController,
     AdminBuildingsController,
+    AdminFleetController,
+    AdminOtaController,
+    AdminIngestController,
     notificationsController(SURFACES.admin),
     pushSubscriptionsController(SURFACES.admin),
     realtimeController(SURFACES.admin),

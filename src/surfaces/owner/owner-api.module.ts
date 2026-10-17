@@ -42,6 +42,14 @@ import {
 import { OwnerPartyDetailsController, partiesController } from './parties.controller';
 import { OwnerSearchController } from './search.controller';
 import {
+  deviceInstallsController,
+  devicesController,
+  meterReadingsController,
+  OwnerLossController,
+  OwnerReadingReviewsController,
+  OwnerUtilityInvoicesController,
+} from './smart.controller';
+import {
   OwnerInvitationsController,
   OwnerMembersController,
   OwnerTenantController,
@@ -86,6 +94,12 @@ import {
     pushSubscriptionsController(SURFACES.owner),
     realtimeController(SURFACES.owner),
     OwnerSearchController,
+    devicesController(SURFACES.owner),
+    deviceInstallsController(SURFACES.owner),
+    meterReadingsController(SURFACES.owner),
+    OwnerReadingReviewsController,
+    OwnerUtilityInvoicesController,
+    OwnerLossController,
     webVitalsController('owner'),
   ],
   providers: [MeService],

@@ -189,6 +189,121 @@ export const SETTINGS: readonly SettingDef[] = [
     value: { electric: 'PT2H', water: 'PT6H', silent: 'PT24H' },
     reason: 'seed: D-034',
   },
+  {
+    key: 'health.gateway_missed_heartbeats',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description: 'D-034: a gateway is offline after this many missed heartbeats (heartbeat every 60 s).',
+    editableBy: ADMIN,
+    value: 5,
+    reason: 'seed: D-034',
+  },
+  {
+    key: 'health.config_drift_minutes',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-131 (B3.1): a gateway whose health reports an older config version than the published one for longer than this is flagged config_drift.',
+    editableBy: ADMIN,
+    value: 15,
+    reason: 'seed: D-131 drift detector (B3.1 prompt)',
+  },
+  // --- devices, telemetry, readings (B3) --------------------------------------------------------------
+  {
+    key: 'devices.gateway_defaults',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-131 / D-034: polling interval (default 15 min) and heartbeat interval (60 s) compiled into every GatewayConfig.',
+    editableBy: ADMIN,
+    value: { pollIntervalS: 900, heartbeatS: 60 },
+    reason: 'seed: D-131 defaults',
+  },
+  {
+    key: 'readings.confidence',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-012 / D-035 (Proposed): confidence recorded on each reading by source and IoT quality; the billing cut-off selector prefers the highest-confidence reading (B4.2).',
+    editableBy: ADMIN,
+    value: {
+      iot: '1.000',
+      iotEstimatedByGateway: '0.700',
+      iotClockSuspect: '0.600',
+      iotOverflowCorrected: '0.900',
+      ocr: '0.900',
+      manual: '0.950',
+      inspection: '0.950',
+      estimated: '0.300',
+    },
+    reason: 'seed: D-012 proposed confidence scale',
+  },
+  {
+    key: 'readings.iot_promotion_minutes',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-030 / D-031 (Proposed): the first IoT reading of each interval of this length (Asia/Bangkok) becomes a billing reading (`smart.meter_reading`); the ±2 h cut-off window always finds one.',
+    editableBy: OWNER_BILLING,
+    value: 60,
+    reason: 'seed: D-031 window ±120 min',
+  },
+  {
+    key: 'readings.ocr_min_confidence',
+    valueType: 'decimal',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-035: an OCR reading below this confidence (or disagreeing with the typed value) goes to the review queue with its photo.',
+    editableBy: OWNER_SETTINGS,
+    value: '0.80',
+    reason: 'seed: D-035',
+  },
+  {
+    key: 'readings.round_window_days',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-031 / D-035 (Proposed): a staff reading round asks for every manual (or stale IoT) meter without a reading in the last N days before the billing cut-off.',
+    editableBy: OWNER_BILLING,
+    value: 7,
+    reason: 'seed: D-031 reading round window',
+  },
+  {
+    key: 'telemetry.retention',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-162 / D-147: raw telemetry 24 months, gateway health samples 6 months, rollups 5 years, dedup marks 90 days — retention by partition drop / purge.',
+    editableBy: ADMIN,
+    value: { raw: 'P24M', health: 'P6M', rollups: 'P5Y', seqMarks: 'P90D', deviceEvents: 'P24M' },
+    reason: 'seed: D-162',
+  },
+  {
+    key: 'ingest.invalid_payload_alert',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-130 (device protocol §5): a gateway with this many invalid payloads within the window raises `device.invalid_payload`.',
+    editableBy: ADMIN,
+    value: { count: 10, window: 'PT1H' },
+    reason: 'seed: device protocol §5 threshold',
+  },
+  {
+    key: 'loss.suspect_rules',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-032 (Proposed): loss suspects — night window and minimum night water flow per 15 minutes, the anomaly threshold in standard deviations of the trailing consumption.',
+    editableBy: OWNER_SETTINGS,
+    value: {
+      nightFrom: '01:00',
+      nightTo: '05:00',
+      nightFlowM3Per15m: '0.010',
+      anomalySigma: '2',
+      trailingPeriods: 6,
+    },
+    reason: 'seed: D-032 suspects',
+  },
   // --- notifications & privacy ------------------------------------------------------------------------
   {
     key: 'notifications.quiet_hours',

@@ -87,6 +87,8 @@ model Device {
   lastSeq              BigInt?         @map("last_seq")
   configAppliedVersion Int?            @map("config_applied_version")
   otaRing              OtaRing         @default(all) @map("ota_ring")
+  arch                 String?
+  busConfig            Json            @default("[]") @map("bus_config")
   retiredAt            DateTime?       @map("retired_at") @db.Timestamptz(6)
   retiredReason        String?         @map("retired_reason")
   notes                String?
@@ -105,6 +107,16 @@ model Device {
   provisioningCodes ProvisioningCode[]
   mqttAcl          MqttAcl[]
   sessions         AuthSession[]
+  channelsAsMeter   MeterChannel[]       @relation("MeterChannelMeterDevice")
+  channelsAsGateway MeterChannel[]       @relation("MeterChannelGateway")
+  gatewayConfigs    GatewayConfig[]      @relation("GatewayConfigGateway")
+  swapsOld          MeterSwap[]          @relation("MeterSwapOldDevice")
+  swapsNew          MeterSwap[]          @relation("MeterSwapNewDevice")
+  rolloutDevices    OtaRolloutDevice[]   @relation("OtaRolloutDeviceDevice")
+  commands          DeviceCommand[]      @relation("DeviceCommandGateway")
+  healthLatest      DeviceHealthLatest?  @relation("DeviceHealthLatestGateway")
+  events            DeviceEvent[]        @relation("DeviceEventGateway")
+  readings          MeterReading[]       @relation("MeterReadingDevice")
 
   @@index([tenantId, buildingId, kind, status], map: "device_tenant_id_building_id_kind_status_idx")
   @@index([status, lastSeenAt], map: "device_status_last_seen_at_idx")
