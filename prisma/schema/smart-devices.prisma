@@ -1,0 +1,185 @@
+// smart — device registry slice needed by B1.3 device bootstrap (schema-design §3.4.1; the rest of the device
+// tables arrive in B3.1): devices, certificates ⟲, provisioning codes, and the EMQX ACL source (§7.5 rows 17–19).
+
+enum DeviceKind {
+  gateway
+  electric_meter
+  water_meter
+  lock
+  breaker
+  sensor
+  door_controller
+  camera
+
+  @@map("device_kind")
+  @@schema("smart")
+}
+
+enum DeviceOwnership {
+  platform_haas
+  tenant_owned
+
+  @@map("device_ownership")
+  @@schema("smart")
+}
+
+enum DeviceStatus {
+  inventory
+  assigned
+  provisioned
+  online
+  degraded
+  offline
+  retired
+
+  @@map("device_status")
+  @@schema("smart")
+}
+
+enum OtaRing {
+  canary
+  pilot
+  all
+
+  @@map("ota_ring")
+  @@schema("smart")
+}
+
+enum MqttPermission {
+  allow
+  deny
+
+  @@map("mqtt_permission")
+  @@schema("smart")
+}
+
+enum MqttAction {
+  publish
+  subscribe
+  all
+
+  @@map("mqtt_action")
+  @@schema("smart")
+}
+
+/// Every gateway, meter, lock, breaker, sensor (D-033). Inventory rows (tenant_id null) are platform-only.
+model Device {
+  id                   String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  serial               String          @unique(map: "device_serial_key") @db.Citext
+  kind                 DeviceKind
+  model                String
+  vendor               String
+  driver               String?
+  firmwareVersion      String?         @map("firmware_version")
+  hardwareRev          String?         @map("hardware_rev")
+  ownership            DeviceOwnership @default(platform_haas)
+  tenantId             String?         @map("tenant_id") @db.Uuid
+  buildingId           String?         @map("building_id") @db.Uuid
+  assetItemId          String?         @unique(map: "device_asset_item_id_key") @map("asset_item_id") @db.Uuid
+  gatewayDeviceId      String?         @map("gateway_device_id") @db.Uuid
+  status               DeviceStatus    @default(inventory)
+  statusChangedAt      DateTime        @default(now()) @map("status_changed_at") @db.Timestamptz(6)
+  lastSeenAt           DateTime?       @map("last_seen_at") @db.Timestamptz(6)
+  certFingerprint      Bytes?          @map("cert_fingerprint")
+  certNotAfter         DateTime?       @map("cert_not_after") @db.Timestamptz(6)
+  certSerial           String?         @map("cert_serial")
+  mqttClientId         String?         @unique(map: "device_mqtt_client_id_key") @map("mqtt_client_id")
+  lastSeq              BigInt?         @map("last_seq")
+  configAppliedVersion Int?            @map("config_applied_version")
+  otaRing              OtaRing         @default(all) @map("ota_ring")
+  retiredAt            DateTime?       @map("retired_at") @db.Timestamptz(6)
+  retiredReason        String?         @map("retired_reason")
+  notes                String?
+  createdAt            DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy            String?         @map("created_by") @db.Uuid
+  updatedAt            DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy            String?         @map("updated_by") @db.Uuid
+  version              Int             @default(1)
+
+  tenant           Tenant?             @relation("DeviceTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "device_tenant_id_fkey")
+  building         Building?           @relation("DeviceBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "device_building_id_fkey")
+  assetItem        AssetItem?          @relation("DeviceAssetItem", fields: [assetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "device_asset_item_id_fkey")
+  gateway          Device?             @relation("DeviceGateway", fields: [gatewayDeviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "device_gateway_device_id_fkey")
+  meters           Device[]            @relation("DeviceGateway")
+  certificates     DeviceCertificate[]
+  provisioningCodes ProvisioningCode[]
+  mqttAcl          MqttAcl[]
+  sessions         AuthSession[]
+
+  @@index([tenantId, buildingId, kind, status], map: "device_tenant_id_building_id_kind_status_idx")
+  @@index([status, lastSeenAt], map: "device_status_last_seen_at_idx")
+  @@index([gatewayDeviceId], map: "device_gateway_device_id_idx")
+  @@index([buildingId], map: "device_building_id_idx")
+  @@index([serial(ops: raw("gin_trgm_ops"))], type: Gin, map: "device_serial_trgm_idx")
+  @@map("device")
+  @@schema("smart")
+}
+
+/// Client certificates issued by the platform device CA (append-only except one revocation).
+model DeviceCertificate {
+  id                String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  deviceId          String    @map("device_id") @db.Uuid
+  serialNumber      String    @unique(map: "device_certificate_serial_number_key") @map("serial_number")
+  fingerprintSha256 Bytes     @unique(map: "device_certificate_fingerprint_sha256_key") @map("fingerprint_sha256")
+  subjectCn         String    @map("subject_cn")
+  notBefore         DateTime  @map("not_before") @db.Timestamptz(6)
+  notAfter          DateTime  @map("not_after") @db.Timestamptz(6)
+  issuedAt          DateTime  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  revokedAt         DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokeReason      String?   @map("revoke_reason")
+  csrSha256         Bytes     @map("csr_sha256")
+  certificatePem    String    @map("certificate_pem")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?   @map("created_by") @db.Uuid
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "device_certificate_device_id_fkey")
+
+  @@index([deviceId], map: "device_certificate_device_id_idx")
+  @@map("device_certificate")
+  @@schema("smart")
+}
+
+/// One-time provisioning codes printed on the gateway QR (D-033); HMAC only.
+model ProvisioningCode {
+  id             String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  deviceId       String    @map("device_id") @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  buildingId     String    @map("building_id") @db.Uuid
+  codeHash       Bytes     @unique(map: "provisioning_code_code_hash_key") @map("code_hash")
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt     DateTime? @map("consumed_at") @db.Timestamptz(6)
+  consumedFromIp String?   @map("consumed_from_ip") @db.Inet
+  issuedBy       String?   @map("issued_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  device   Device   @relation(fields: [deviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "provisioning_code_device_id_fkey")
+  tenant   Tenant   @relation("ProvisioningCodeTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "provisioning_code_tenant_id_fkey")
+  building Building @relation("ProvisioningCodeBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "provisioning_code_building_id_fkey")
+
+  @@index([expiresAt], map: "provisioning_code_expires_at_idx", where: raw("(consumed_at IS NULL)"))
+  @@index([deviceId], map: "provisioning_code_device_id_idx")
+  @@index([tenantId, buildingId], map: "provisioning_code_tenant_id_building_id_idx")
+  @@map("provisioning_code")
+  @@schema("smart")
+}
+
+/// EMQX PostgreSQL authorization source (device protocol §1); read by the broker as gp_mqtt.
+model MqttAcl {
+  id         String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  deviceId   String         @map("device_id") @db.Uuid
+  tenantId   String         @map("tenant_id") @db.Uuid
+  username   String
+  permission MqttPermission @default(allow)
+  action     MqttAction
+  topic      String
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  revokedAt  DateTime?      @map("revoked_at") @db.Timestamptz(6)
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "mqtt_acl_device_id_fkey")
+  tenant Tenant @relation("MqttAclTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "mqtt_acl_tenant_id_fkey")
+
+  @@unique([username, action, topic], map: "mqtt_acl_username_action_topic_key", where: raw("(revoked_at IS NULL)"))
+  @@index([deviceId], map: "mqtt_acl_device_id_idx")
+  @@map("mqtt_acl")
+  @@schema("smart")
+}

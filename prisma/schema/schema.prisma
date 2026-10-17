@@ -8,6 +8,7 @@
 //   platform-compliance.prisma  compliance rules, evaluations, acknowledgements
 //   ops-workflow.prisma         workflow engine tables, document series
 //   bridge.prisma               integration events
+//   smart-devices.prisma        devices, certificates, provisioning codes, MQTT ACL (B1.3 slice of §3.4.1)
 // Table and column names stay snake_case through @@map/@map (schema-design §1.2). Anything Prisma cannot express
 // (CHECK and EXCLUDE constraints, triggers, RLS policies, views, functions) lives in the hand-written SQL of
 // prisma/migrations/*/migration.sql. `pnpm db:diff` (prisma migrate diff) and the integration drift test must

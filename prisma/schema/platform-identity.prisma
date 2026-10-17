@@ -154,7 +154,7 @@ model UserCredential {
   @@schema("platform")
 }
 
-/// Refresh-token families (rotation + reuse detection). device_id ⇢ smart.device (FK in B3.1).
+/// Refresh tokens: one row per token, grouped by family_id (= the `sid` claim); rotation + reuse detection.
 model AuthSession {
   id               String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
   userId           String?              @map("user_id") @db.Uuid
@@ -173,9 +173,11 @@ model AuthSession {
   scopes           String[]             @default([])
   lastUsedAt       DateTime?            @map("last_used_at") @db.Timestamptz(6)
 
-  user UserAccount? @relation("AuthSessionUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "auth_session_user_id_fkey")
+  user   UserAccount? @relation("AuthSessionUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "auth_session_user_id_fkey")
+  device Device?      @relation(fields: [deviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "auth_session_device_id_fkey")
 
   @@index([userId, revokedAt], map: "auth_session_user_id_revoked_at_idx")
+  @@index([deviceId], map: "auth_session_device_id_idx")
   @@index([familyId], map: "auth_session_family_id_idx")
   @@index([expiresAt], map: "auth_session_expires_at_idx")
   @@map("auth_session")
