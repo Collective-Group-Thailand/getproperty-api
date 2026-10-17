@@ -59,6 +59,28 @@ async function operators(
   }));
 }
 
+/** The lessee of a lease as a resident recipient (LINE of the party or of its linked login). */
+async function lessee(tx: Tx, leaseId: string): Promise<Recipient[]> {
+  const lease = await tx.lease.findUnique({ where: { id: leaseId }, include: { lessee: true } });
+  if (!lease) return [];
+  const link = await tx.partyUserLink.findFirst({
+    where: { partyId: lease.lesseePartyId, state: 'active' },
+    include: { user: true },
+  });
+  return [
+    {
+      audience: 'resident',
+      type: 'party',
+      id: lease.lessee.id,
+      tenantId: lease.tenantId,
+      language: lease.lessee.language,
+      line: lease.lessee.lineUserId ?? link?.user.lineUserId ?? null,
+      phone: lease.lessee.phoneE164,
+      email: lease.lessee.email,
+    },
+  ];
+}
+
 async function tenantName(tx: Tx, tenantId: string): Promise<string> {
   return (
     (await tx.tenant.findUnique({ where: { id: tenantId }, select: { displayName: true } }))?.displayName ??
@@ -80,9 +102,30 @@ export const NOTIFIABLE_EVENTS: Record<string, NotifiableResolver> = {
     data: { tenant: { name: await tenantName(tx, e.tenantId!) }, reason: e.payload.reason },
     urgent: true,
   }),
+  'workflow.sla_reminder': async (tx, e) => ({
+    recipients: await operators(tx, e.tenantId!, ['owner', 'manager'], 'owner'),
+    data: { workflow: e.payload, tenant: { name: await tenantName(tx, e.tenantId!) } },
+  }),
   'workflow.sla_breached': async (tx, e) => ({
     recipients: await operators(tx, e.tenantId!, ['owner', 'manager'], 'owner'),
     data: { workflow: e.payload, tenant: { name: await tenantName(tx, e.tenantId!) } },
+  }),
+  /** B2.4: the resident reviews the proposed deposit settlement in the LIFF (D-023). */
+  'deposit.settlement_proposed': async (tx, e) => ({
+    recipients: await lessee(tx, e.payload.leaseId as string),
+    data: {
+      tenant: { name: await tenantName(tx, e.tenantId!) },
+      settlement: e.payload,
+    },
+    consentPurpose: 'resident.service',
+  }),
+  'deposit.refunded': async (tx, e) => ({
+    recipients: await lessee(tx, e.payload.leaseId as string),
+    data: {
+      tenant: { name: await tenantName(tx, e.tenantId!) },
+      settlement: e.payload,
+    },
+    consentPurpose: 'resident.service',
   }),
   'dsr.received': async (tx, e) =>
     e.tenantId

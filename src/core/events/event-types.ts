@@ -31,6 +31,7 @@ export const DOMAIN_EVENT_TYPES = {
   'workflow.transitioned': 'A workflow instance moved to another state.',
   'workflow.sla_warning': 'A workflow instance is close to its SLA due time.',
   'workflow.sla_breached': 'A workflow instance breached its SLA (emitted once).',
+  'workflow.sla_reminder': 'A reminder before a workflow SLA due time (e.g. T-3 / T-1 of a deposit refund).',
   'document.uploaded': 'A file finished uploading; scan and thumbnail follow.',
   'document.scanned': 'A file was scanned (clean or infected).',
   'consent.changed': 'A consent was granted or withdrawn (D-025).',
@@ -64,6 +65,18 @@ export const DOMAIN_EVENT_TYPES = {
   'lease.cancelled': 'A draft or unsigned lease was cancelled.',
   'lease.invitation_created': 'A resident was invited to a lease (LINE QR / SMS / link, D-061).',
   'lease.invitation_accepted': 'A resident accepted a lease invitation and linked their login (D-061).',
+  // B2.4 deposits and inspections
+  'deposit.opened': 'A lease was activated: its deposit is expected (D-023).',
+  'deposit.received': 'The deposit and advance rent were received; receipt numbered.',
+  'deposit.settlement_opened':
+    'The lease ended: the deposit settlement and its refund clock started (D-023).',
+  'deposit.settlement_proposed': 'The owner proposed the deposit settlement (deductions with evidence).',
+  'deposit.settlement_accepted': 'The resident accepted the proposed settlement.',
+  'deposit.settlement_disputed': 'The resident disputed the proposed settlement.',
+  'deposit.refunded': 'The refund was paid; statement numbered and stored.',
+  'deposit.settlement_late': 'The refund deadline passed before the refund (compliance.deposit_deadline).',
+  'inspection.created': 'A move-in / move-out inspection was created.',
+  'inspection.completed': 'An inspection was completed and signed; report numbered.',
 } as const;
 export type DomainEventType = keyof typeof DOMAIN_EVENT_TYPES;
 

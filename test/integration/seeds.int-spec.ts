@@ -57,6 +57,8 @@ describe('seeds (reference + dev)', () => {
       'ops.lease_party': 1,
       'core.occupancy': 1,
       'core.party': 2,
+      'ops.inspection_template': 1,
+      'ops.deposit': 1,
     });
   });
 

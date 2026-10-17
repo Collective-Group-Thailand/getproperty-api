@@ -21,11 +21,13 @@ model UnitProfile {
   version                  Int       @default(1)
 
   tenant   Tenant       @relation("UnitProfileTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "unit_profile_tenant_id_fkey")
-  building Building     @relation("UnitProfileBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "unit_profile_building_id_fkey")
-  details  UnitDetail[]
+  building           Building            @relation("UnitProfileBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "unit_profile_building_id_fkey")
+  inspectionTemplate InspectionTemplate? @relation(fields: [inspectionTemplateId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "unit_profile_inspection_template_id_fkey")
+  details            UnitDetail[]
 
   @@unique([buildingId, name], map: "unit_profile_building_id_name_key", where: raw("(deleted_at IS NULL)"))
   @@index([tenantId, buildingId], map: "unit_profile_tenant_id_building_id_idx")
+  @@index([inspectionTemplateId], map: "unit_profile_inspection_template_id_idx")
   @@map("unit_profile")
   @@schema("ops")
 }

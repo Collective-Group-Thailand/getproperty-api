@@ -1,0 +1,316 @@
+// B2.4 — deposits, move-in/move-out inspections and the 7-day settlement (migration 0014; schema-design v2 §3.3.3).
+
+enum DepositStatus {
+  pending
+  held
+  settling
+  refunded
+  forfeited_partially
+  forfeited
+  disputed
+
+  @@map("deposit_status")
+  @@schema("ops")
+}
+
+enum SettlementStatus {
+  opened
+  inspected
+  proposed
+  agreed
+  disputed
+  refunded
+  closed
+
+  @@map("settlement_status")
+  @@schema("ops")
+}
+
+enum ResidentResponse {
+  accepted
+  disputed
+
+  @@map("resident_response")
+  @@schema("ops")
+}
+
+enum RefundMethod {
+  bank_transfer
+  cash
+  offset
+
+  @@map("refund_method")
+  @@schema("ops")
+}
+
+enum DeductionKind {
+  damage
+  missing_item
+  cleaning
+  unpaid_invoice
+  other
+
+  @@map("deduction_kind")
+  @@schema("ops")
+}
+
+enum WearCategory {
+  normal_wear
+  damage
+
+  @@map("wear_category")
+  @@schema("ops")
+}
+
+enum InspectionType {
+  move_in
+  move_out
+  periodic
+
+  @@map("inspection_type")
+  @@schema("ops")
+}
+
+enum InspectionStatus {
+  scheduled
+  in_progress
+  completed
+  signed
+
+  @@map("inspection_status")
+  @@schema("ops")
+}
+
+enum ItemCondition {
+  good
+  fair
+  damaged
+  missing
+  not_applicable
+
+  @@map("item_condition")
+  @@schema("ops")
+}
+
+/// Inspection checklist ([{key, labelTh, labelEn, area}]); tenant_id null = platform default.
+model InspectionTemplate {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String?  @map("tenant_id") @db.Uuid
+  name      String
+  items     Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  tenant       Tenant?       @relation("InspectionTemplateTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "inspection_template_tenant_id_fkey")
+  unitProfiles UnitProfile[]
+  inspections  Inspection[]
+
+  @@unique([tenantId, name], map: "inspection_template_tenant_id_name_key")
+  @@map("inspection_template")
+  @@schema("ops")
+}
+
+model Inspection {
+  id                          String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                    String           @map("tenant_id") @db.Uuid
+  buildingId                  String           @map("building_id") @db.Uuid
+  unitId                      String           @map("unit_id") @db.Uuid
+  leaseId                     String?          @map("lease_id") @db.Uuid
+  type                        InspectionType
+  templateId                  String?          @map("template_id") @db.Uuid
+  status                      InspectionStatus @default(scheduled)
+  scheduledFor                DateTime?        @map("scheduled_for") @db.Timestamptz(6)
+  startedAt                   DateTime?        @map("started_at") @db.Timestamptz(6)
+  completedAt                 DateTime?        @map("completed_at") @db.Timestamptz(6)
+  inspectorUserId             String?          @map("inspector_user_id") @db.Uuid
+  residentSignatureDocumentId String?          @map("resident_signature_document_id") @db.Uuid
+  staffSignatureDocumentId    String?          @map("staff_signature_document_id") @db.Uuid
+  reportNumber                String?          @map("report_number") @db.Citext
+  reportDocumentId            String?          @map("report_document_id") @db.Uuid
+  notes                       String?
+  createdAt                   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                   String?          @map("created_by") @db.Uuid
+  updatedAt                   DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy                   String?          @map("updated_by") @db.Uuid
+  version                     Int              @default(1)
+
+  tenant            Tenant              @relation("InspectionTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "inspection_tenant_id_fkey")
+  building          Building            @relation("InspectionBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "inspection_building_id_fkey")
+  unit              Unit                @relation("InspectionUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "inspection_unit_id_fkey")
+  lease             Lease?              @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "inspection_lease_id_fkey")
+  template          InspectionTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "inspection_template_id_fkey")
+  residentSignature Document?           @relation("InspectionResidentSignature", fields: [residentSignatureDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "inspection_resident_signature_fkey")
+  staffSignature    Document?           @relation("InspectionStaffSignature", fields: [staffSignatureDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "inspection_staff_signature_fkey")
+  reportDocument    Document?           @relation("InspectionReportDocument", fields: [reportDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "inspection_report_document_fkey")
+  items             InspectionItem[]
+  moveInFor         DepositSettlement[] @relation("SettlementMoveIn")
+  moveOutFor        DepositSettlement[] @relation("SettlementMoveOut")
+
+  @@unique([tenantId, reportNumber], map: "inspection_tenant_id_report_number_key")
+  @@unique([leaseId, type], map: "inspection_lease_id_type_key", where: raw("(type <> 'periodic'::ops.inspection_type)"))
+  @@index([tenantId, buildingId, type, status], map: "inspection_tenant_id_building_id_type_status_idx")
+  @@index([unitId], map: "inspection_unit_id_idx")
+  @@map("inspection")
+  @@schema("ops")
+}
+
+model InspectionItem {
+  id               String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String         @map("tenant_id") @db.Uuid
+  inspectionId     String         @map("inspection_id") @db.Uuid
+  itemKey          String         @map("item_key")
+  label            String
+  area             String?
+  condition        ItemCondition?
+  notes            String?
+  photoDocumentIds String[]       @default([]) @map("photo_document_ids") @db.Uuid
+  meterAssetItemId String?        @map("meter_asset_item_id") @db.Uuid
+  meterRegister    Decimal?       @map("meter_register") @db.Decimal(12, 3)
+  sortOrder        Int            @default(0) @map("sort_order") @db.SmallInt
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?        @map("created_by") @db.Uuid
+  updatedAt        DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy        String?        @map("updated_by") @db.Uuid
+
+  tenant     Tenant                  @relation("InspectionItemTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "inspection_item_tenant_id_fkey")
+  inspection Inspection              @relation(fields: [inspectionId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "inspection_item_inspection_id_fkey")
+  meter      AssetItem?              @relation("InspectionItemMeter", fields: [meterAssetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "inspection_item_meter_asset_item_id_fkey")
+  deductions DepositSettlementItem[]
+
+  @@unique([inspectionId, itemKey], map: "inspection_item_inspection_id_item_key_key")
+  @@index([tenantId], map: "inspection_item_tenant_id_idx")
+  @@map("inspection_item")
+  @@schema("ops")
+}
+
+model Deposit {
+  id                   String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId             String        @map("tenant_id") @db.Uuid
+  buildingId           String        @map("building_id") @db.Uuid
+  unitId               String        @map("unit_id") @db.Uuid
+  leaseId              String        @unique(map: "deposit_lease_id_key") @map("lease_id") @db.Uuid
+  amountSecurity       Decimal       @map("amount_security") @db.Decimal(14, 2)
+  amountAdvanceRent    Decimal       @default(0) @map("amount_advance_rent") @db.Decimal(14, 2)
+  status               DepositStatus @default(pending)
+  receivedAt           DateTime?     @map("received_at") @db.Timestamptz(6)
+  receivedPaymentId    String?       @map("received_payment_id") @db.Uuid
+  receiptId            String?       @map("receipt_id") @db.Uuid
+  receiptNumber        String?       @map("receipt_number") @db.Citext
+  receiptDocumentId    String?       @map("receipt_document_id") @db.Uuid
+  receiptReference     String?       @map("receipt_reference")
+  carriedFromDepositId String?       @map("carried_from_deposit_id") @db.Uuid
+  heldAt               DateTime?     @map("held_at") @db.Timestamptz(6)
+  settledAt            DateTime?     @map("settled_at") @db.Timestamptz(6)
+  deductionsSummary    Json?         @map("deductions_summary")
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy            String?       @map("created_by") @db.Uuid
+  updatedAt            DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy            String?       @map("updated_by") @db.Uuid
+  version              Int           @default(1)
+
+  tenant          Tenant             @relation("DepositTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_tenant_id_fkey")
+  building        Building           @relation("DepositBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_building_id_fkey")
+  unit            Unit               @relation("DepositUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_unit_id_fkey")
+  lease           Lease              @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_lease_id_fkey")
+  receiptDocument Document?          @relation("DepositReceiptDocument", fields: [receiptDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_receipt_document_fkey")
+  carriedFrom     Deposit?           @relation("DepositCarriedOver", fields: [carriedFromDepositId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_carried_from_fkey")
+  carriedTo       Deposit[]          @relation("DepositCarriedOver")
+  settlement      DepositSettlement?
+
+  @@unique([tenantId, receiptNumber], map: "deposit_tenant_id_receipt_number_key")
+  @@index([tenantId, status], map: "deposit_tenant_id_status_idx")
+  @@index([unitId], map: "deposit_unit_id_idx")
+  @@index([carriedFromDepositId], map: "deposit_carried_from_deposit_id_idx")
+  @@map("deposit")
+  @@schema("ops")
+}
+
+model DepositSettlement {
+  id                       String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                 String            @map("tenant_id") @db.Uuid
+  buildingId               String            @map("building_id") @db.Uuid
+  unitId                   String            @map("unit_id") @db.Uuid
+  depositId                String            @unique(map: "deposit_settlement_deposit_id_key") @map("deposit_id") @db.Uuid
+  leaseId                  String            @map("lease_id") @db.Uuid
+  workflowInstanceId       String            @map("workflow_instance_id") @db.Uuid
+  openedAt                 DateTime          @map("opened_at") @db.Timestamptz(6)
+  moveOutAt                DateTime          @map("move_out_at") @db.Timestamptz(6)
+  deadlineAt               DateTime          @map("deadline_at") @db.Timestamptz(6)
+  status                   SettlementStatus  @default(opened)
+  moveInInspectionId       String?           @map("move_in_inspection_id") @db.Uuid
+  moveOutInspectionId      String?           @map("move_out_inspection_id") @db.Uuid
+  finalInvoiceId           String?           @map("final_invoice_id") @db.Uuid
+  depositHeld              Decimal           @map("deposit_held") @db.Decimal(14, 2)
+  deductionsTotal          Decimal           @default(0) @map("deductions_total") @db.Decimal(14, 2)
+  utilitiesFinal           Decimal           @default(0) @map("utilities_final") @db.Decimal(14, 2)
+  proposedRefund           Decimal?          @map("proposed_refund") @db.Decimal(14, 2)
+  agreedRefund             Decimal?          @map("agreed_refund") @db.Decimal(14, 2)
+  proposedAt               DateTime?         @map("proposed_at") @db.Timestamptz(6)
+  proposedBy               String?           @map("proposed_by") @db.Uuid
+  residentResponse         ResidentResponse? @map("resident_response")
+  residentRespondedAt      DateTime?         @map("resident_responded_at") @db.Timestamptz(6)
+  disputeReason            String?           @map("dispute_reason")
+  refundedAt               DateTime?         @map("refunded_at") @db.Timestamptz(6)
+  refundAmount             Decimal?          @map("refund_amount") @db.Decimal(14, 2)
+  refundMethod             RefundMethod?     @map("refund_method")
+  refundReference          String?           @map("refund_reference")
+  refundEvidenceDocumentId String?           @map("refund_evidence_document_id") @db.Uuid
+  statementNumber          String?           @map("statement_number") @db.Citext
+  statementDocumentId      String?           @map("statement_document_id") @db.Uuid
+  closedAt                 DateTime?         @map("closed_at") @db.Timestamptz(6)
+  isLate                   Boolean           @default(false) @map("is_late")
+  lateFlaggedAt            DateTime?         @map("late_flagged_at") @db.Timestamptz(6)
+  createdAt                DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                String?           @map("created_by") @db.Uuid
+  updatedAt                DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy                String?           @map("updated_by") @db.Uuid
+  version                  Int               @default(1)
+
+  tenant            Tenant                  @relation("DepositSettlementTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_tenant_id_fkey")
+  building          Building                @relation("DepositSettlementBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_building_id_fkey")
+  unit              Unit                    @relation("DepositSettlementUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_unit_id_fkey")
+  deposit           Deposit                 @relation(fields: [depositId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_deposit_id_fkey")
+  lease             Lease                   @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_lease_id_fkey")
+  workflowInstance  WorkflowInstance        @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_workflow_fkey")
+  moveInInspection  Inspection?             @relation("SettlementMoveIn", fields: [moveInInspectionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_move_in_fkey")
+  moveOutInspection Inspection?             @relation("SettlementMoveOut", fields: [moveOutInspectionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_move_out_fkey")
+  refundEvidence    Document?               @relation("DepositSettlementRefundEvidence", fields: [refundEvidenceDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_refund_evidence_fkey")
+  statementDocument Document?               @relation("DepositSettlementStatementDocument", fields: [statementDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_statement_document_fkey")
+  items             DepositSettlementItem[]
+
+  @@unique([tenantId, statementNumber], map: "deposit_settlement_tenant_id_statement_number_key")
+  @@index([tenantId, status, deadlineAt], map: "deposit_settlement_tenant_id_status_deadline_at_idx")
+  @@index([leaseId], map: "deposit_settlement_lease_id_idx")
+  @@index([workflowInstanceId], map: "deposit_settlement_workflow_instance_id_idx")
+  @@map("deposit_settlement")
+  @@schema("ops")
+}
+
+model DepositSettlementItem {
+  id                  String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String        @map("tenant_id") @db.Uuid
+  settlementId        String        @map("settlement_id") @db.Uuid
+  kind                DeductionKind
+  description         String
+  amount              Decimal       @db.Decimal(14, 2)
+  inspectionItemId    String?       @map("inspection_item_id") @db.Uuid
+  evidenceDocumentIds String[]      @default([]) @map("evidence_document_ids") @db.Uuid
+  wearCategory        WearCategory  @default(damage) @map("wear_category")
+  residentAccepted    Boolean?      @map("resident_accepted")
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy           String?       @map("created_by") @db.Uuid
+  updatedAt           DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy           String?       @map("updated_by") @db.Uuid
+
+  tenant         Tenant            @relation("DepositSettlementItemTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_item_tenant_id_fkey")
+  settlement     DepositSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "deposit_settlement_item_settlement_id_fkey")
+  inspectionItem InspectionItem?   @relation(fields: [inspectionItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_item_inspection_item_id_fkey")
+
+  @@index([settlementId], map: "deposit_settlement_item_settlement_id_idx")
+  @@index([tenantId], map: "deposit_settlement_item_tenant_id_idx")
+  @@index([inspectionItemId], map: "deposit_settlement_item_inspection_item_id_idx")
+  @@map("deposit_settlement_item")
+  @@schema("ops")
+}

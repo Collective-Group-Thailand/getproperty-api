@@ -117,6 +117,43 @@ describe('workflow engine (D-159) — pure planning, no getproperty imports', ()
     expect(() => parseDuration('P')).toThrow();
   });
 
+  it('deposit settlement v2: reminders at T-3 and T-1, clock from the move-out (D-023)', () => {
+    const v2 = WORKFLOW_DEFINITIONS.find((d) => d.key === 'deposit_settlement' && d.version === 2)!;
+    const moveOut = new Date('2026-11-30T03:00:00Z');
+    const now = new Date('2026-12-01T03:00:00Z');
+    const plan = planStart(v2, now, calendar, settings, moveOut);
+    expect(plan.slaDueAt!.toISOString()).toBe('2026-12-07T03:00:00.000Z');
+    expect(plan.timers.map((t) => [t.kind, t.fireAt.toISOString()])).toEqual([
+      ['reminder', '2026-12-04T03:00:00.000Z'],
+      ['reminder', '2026-12-06T03:00:00.000Z'],
+      ['sla_breach', '2026-12-07T03:00:00.000Z'],
+    ]);
+    // a move-out recorded 5 days late: the T-3 reminder is already past and dropped
+    const late = planStart(v2, new Date('2026-12-05T03:00:00Z'), calendar, settings, moveOut);
+    expect(late.timers.map((t) => t.kind)).toEqual(['reminder', 'sla_breach']);
+    // the clock keeps running through the settlement states (same instance-level policy)
+    const proposed = planTransition(
+      v2,
+      { state: 'opened', startedAt: moveOut, slaDueAt: plan.slaDueAt },
+      'propose',
+      now,
+      calendar,
+      settings,
+      () => true,
+    );
+    expect(proposed).toMatchObject({ to: 'proposed', cancelTimers: false, timers: [] });
+    expect(
+      validateDefinition({
+        ...v2,
+        states: [
+          { key: 'opened', sla: { duration: 'P1D', calendar: 'calendar', remindBefore: ['X'] } },
+          { key: 'refunded', terminal: true },
+        ],
+        transitions: [],
+      }),
+    ).toContain('state "opened": bad remindBefore "X"');
+  });
+
   it('round-trips through the stored row shape', () => {
     for (const d of WORKFLOW_DEFINITIONS) {
       const back = specFromRow(specToRow(d));

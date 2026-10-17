@@ -16,6 +16,8 @@ export interface SlaPolicy {
   calendar: SlaCalendar;
   /** Warn this long before the due time (ISO 8601 duration). */
   warnBefore?: string;
+  /** Reminders this long before the due time (ISO 8601 durations, e.g. `['P3D', 'P1D']` for T-3 and T-1). */
+  remindBefore?: readonly string[];
   /**
    * `instance` (default): the clock runs from the instance start and survives transitions between states that share
    * the policy (e.g. a 30-day request deadline); `state`: it restarts when the state is entered.
@@ -69,6 +71,8 @@ export function validateDefinition(spec: WorkflowDefinitionSpec): string[] {
       if (s.sla.duration && !DURATION.test(s.sla.duration)) problems.push(`state "${s.key}": bad duration`);
       if (s.sla.warnBefore && !DURATION.test(s.sla.warnBefore))
         problems.push(`state "${s.key}": bad warnBefore`);
+      for (const r of s.sla.remindBefore ?? [])
+        if (!DURATION.test(r)) problems.push(`state "${s.key}": bad remindBefore "${r}"`);
       if (s.terminal) problems.push(`terminal state "${s.key}" cannot have an SLA`);
     }
   }

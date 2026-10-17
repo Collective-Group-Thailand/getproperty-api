@@ -73,7 +73,11 @@ export function policyDuration(policy: SlaPolicy, settingValue?: number): Durati
 export interface SlaTimes {
   dueAt: Date;
   warnAt: Date | null;
+  /** Reminder times (`remindBefore`) still in the future of the clock start, earliest first. */
+  remindAt: Date[];
 }
+
+const ms = (d: Duration) => d.days * 86_400_000 + d.hours * 3_600_000 + d.minutes * 60_000;
 
 export function slaTimes(
   policy: SlaPolicy,
@@ -82,8 +86,11 @@ export function slaTimes(
   settingValue?: number,
 ): SlaTimes {
   const dueAt = addDuration(clockStart, policyDuration(policy, settingValue), policy.calendar, calendar);
-  if (!policy.warnBefore) return { dueAt, warnAt: null };
-  const w = parseDuration(policy.warnBefore);
-  const warnAt = new Date(dueAt.getTime() - (w.days * 86_400_000 + w.hours * 3_600_000 + w.minutes * 60_000));
-  return { dueAt, warnAt: warnAt.getTime() > clockStart.getTime() ? warnAt : null };
+  const remindAt = (policy.remindBefore ?? [])
+    .map((r) => new Date(dueAt.getTime() - ms(parseDuration(r))))
+    .filter((at) => at.getTime() > clockStart.getTime())
+    .sort((a, b) => a.getTime() - b.getTime());
+  if (!policy.warnBefore) return { dueAt, warnAt: null, remindAt };
+  const warnAt = new Date(dueAt.getTime() - ms(parseDuration(policy.warnBefore)));
+  return { dueAt, warnAt: warnAt.getTime() > clockStart.getTime() ? warnAt : null, remindAt };
 }

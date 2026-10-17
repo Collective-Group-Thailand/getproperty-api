@@ -1,5 +1,10 @@
 import { Global, Module } from '@nestjs/common';
 
+import { DepositDocuments } from './ops-deposits/deposit-documents';
+import { DepositsService } from './ops-deposits/deposits.service';
+import { DepositDeadlineSubscriber } from './ops-deposits/deposits.subscriber';
+import { InspectionsService } from './ops-deposits/inspections.service';
+import { ResidentDepositsService } from './ops-deposits/resident-deposits.service';
 import { ContractRenderer } from './ops-leases/contract-renderer';
 import { LeasesService } from './ops-leases/leases.service';
 import { ResidentLeasesService } from './ops-leases/resident-leases.service';
@@ -26,6 +31,11 @@ const SERVICES = [
   ContractRenderer,
   LeasesService,
   ResidentLeasesService,
+  DepositDocuments,
+  InspectionsService,
+  DepositsService,
+  DepositDeadlineSubscriber,
+  ResidentDepositsService,
 ];
 
 /**

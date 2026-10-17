@@ -76,6 +76,17 @@ export const AUDIT_ACTIONS = [
   'lease.renewed',
   'lease.invitation_created',
   'lease.invitation_accepted',
+  'deposit.received',
+  'deposit.deduction_added',
+  'deposit.deduction_removed',
+  'deposit.settlement_proposed',
+  'deposit.settlement_accepted',
+  'deposit.settlement_disputed',
+  'deposit.refunded',
+  'deposit.settlement_late',
+  'inspection.created',
+  'inspection.updated',
+  'inspection.completed',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

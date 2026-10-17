@@ -70,6 +70,38 @@ export const WORKFLOW_DEFINITIONS: readonly WorkflowDefinitionSpec[] = [
     ],
   },
   {
+    key: 'deposit_settlement',
+    version: 2,
+    description:
+      'D-023 (B2.4): deposit settlement after move-out — refund due `deposit.refund_days` calendar days after the move-out, reminders to the owner at T-3 and T-1, breach = late (compliance.deposit_deadline). A proposal may come straight after move-out when nothing is deducted; the owner may revise a proposal before the resident answers.',
+    initial: 'opened',
+    states: [
+      ...(['opened', 'inspected', 'proposed', 'agreed', 'disputed'] as const).map((key) => ({
+        key,
+        sla: {
+          settingKey: 'deposit.refund_days',
+          settingUnit: 'days' as const,
+          calendar: 'calendar' as const,
+          remindBefore: ['P3D', 'P1D'],
+        },
+      })),
+      { key: 'refunded', terminal: true },
+    ],
+    transitions: [
+      { from: 'opened', event: 'inspect', to: 'inspected' },
+      {
+        from: ['opened', 'inspected', 'disputed'],
+        event: 'propose',
+        to: 'proposed',
+        guard: 'deductions_have_evidence',
+      },
+      { from: 'proposed', event: 'revise', to: 'inspected' },
+      { from: 'proposed', event: 'agree', to: 'agreed' },
+      { from: 'proposed', event: 'dispute', to: 'disputed' },
+      { from: ['agreed', 'disputed'], event: 'refund', to: 'refunded' },
+    ],
+  },
+  {
     key: 'data_subject_request',
     version: 1,
     description:
