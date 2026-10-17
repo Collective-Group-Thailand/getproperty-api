@@ -24,6 +24,12 @@ import {
   OwnerUnitsController,
   OwnerUtilityAccountsController,
 } from './assets.controller';
+import {
+  OwnerBillingCyclesController,
+  OwnerInvoiceChargesController,
+  OwnerInvoicesController,
+  OwnerRatePlansController,
+} from './billing.controller';
 import { OwnerComplianceController } from './compliance.controller';
 import { inspectionsController, OwnerDepositsController } from './deposits.controller';
 import {
@@ -90,6 +96,10 @@ import {
     OwnerLeasesController,
     OwnerLeaseTemplatesController,
     OwnerDepositsController,
+    OwnerRatePlansController,
+    OwnerBillingCyclesController,
+    OwnerInvoicesController,
+    OwnerInvoiceChargesController,
     inspectionsController(SURFACES.owner),
     filesController(SURFACES.owner),
     notificationsController(SURFACES.owner),

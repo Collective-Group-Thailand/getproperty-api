@@ -19,6 +19,8 @@ export interface StatementData {
   items: { description: string; amount: string }[];
   deductionsTotal: string;
   utilitiesFinal: string;
+  /** Advance rent the final invoice did not use, paid back with the deposit (D-177). */
+  advanceRentUnused?: string;
   refundAmount: string;
   refundMethod: string;
   refundReference: string | null;
@@ -117,6 +119,7 @@ ${d.reference ? `<p>อ้างอิงการชำระ: ${esc(d.referenc
 ${rows || '<tr><td>ไม่มีรายการหัก</td><td></td></tr>'}
 <tr><td>รวมรายการหัก</td><td class="num">${esc(formatThb(d.deductionsTotal))} บาท</td></tr>
 <tr><td>ค่าสาธารณูปโภคงวดสุดท้าย</td><td class="num">${esc(formatThb(d.utilitiesFinal))} บาท</td></tr>
+${d.advanceRentUnused && Number(d.advanceRentUnused) > 0 ? `<tr><td>คืนค่าเช่าล่วงหน้าส่วนที่ไม่ได้ใช้</td><td class="num">${esc(formatThb(d.advanceRentUnused))} บาท</td></tr>` : ''}
 <tr><td><b>คืนเงิน</b></td><td class="num"><b>${esc(formatThb(d.refundAmount))} บาท</b> (${esc(bahtText(d.refundAmount))})</td></tr></table>
 <p>คืนเงินวันที่ ${esc(thaiDate(d.refundedOn))} โดย${esc(METHOD_TH[d.refundMethod] ?? d.refundMethod)}${d.refundReference ? ` อ้างอิง ${esc(d.refundReference)}` : ''}${d.late ? ' <span class="termination">(คืนเกินกำหนด)</span>' : ''}</p>
 <p>รายการหักทุกรายการมีหลักฐานภาพถ่ายจากการตรวจคืนห้อง ไม่มีการหักค่าเสื่อมสภาพจากการใช้งานตามปกติ</p>`;

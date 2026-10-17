@@ -7,13 +7,13 @@
     "periodStart": "2026-09-30",
     "periodEnd": "2026-10-31",
     "invoiceUnits": "1400.000",
-    "unitBilledUnits": "1325.000",
+    "unitBilledUnits": "1280.000",
     "commonAreaUnits": "0.000",
-    "lossUnits": "75.000",
-    "lossPct": "5.3571",
-    "lossThb": "321.43",
+    "lossUnits": "120.000",
+    "lossPct": "8.5714",
+    "lossThb": "514.29",
     "priceBasis": "invoice_average",
-    "billedUnitsSource": "meter_readings_stub",
+    "billedUnitsSource": "invoices",
     "computedAt": "<at>",
     "suspects": [
       {
@@ -43,9 +43,9 @@
   "trend": [
     {
       "periodEnd": "2026-10-31",
-      "lossUnits": "75.000",
-      "lossPct": "5.3571",
-      "lossThb": "321.43"
+      "lossUnits": "120.000",
+      "lossPct": "8.5714",
+      "lossThb": "514.29"
     }
   ]
 }

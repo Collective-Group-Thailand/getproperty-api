@@ -245,6 +245,7 @@ model DepositSettlement {
   depositHeld              Decimal           @map("deposit_held") @db.Decimal(14, 2)
   deductionsTotal          Decimal           @default(0) @map("deductions_total") @db.Decimal(14, 2)
   utilitiesFinal           Decimal           @default(0) @map("utilities_final") @db.Decimal(14, 2)
+  advanceRentUnused        Decimal           @default(0) @map("advance_rent_unused") @db.Decimal(14, 2)
   proposedRefund           Decimal?          @map("proposed_refund") @db.Decimal(14, 2)
   agreedRefund             Decimal?          @map("agreed_refund") @db.Decimal(14, 2)
   proposedAt               DateTime?         @map("proposed_at") @db.Timestamptz(6)
@@ -279,11 +280,13 @@ model DepositSettlement {
   refundEvidence    Document?               @relation("DepositSettlementRefundEvidence", fields: [refundEvidenceDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_refund_evidence_fkey")
   statementDocument Document?               @relation("DepositSettlementStatementDocument", fields: [statementDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_statement_document_fkey")
   items             DepositSettlementItem[]
+  finalInvoice      Invoice?                @relation("DepositSettlementFinalInvoice", fields: [finalInvoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deposit_settlement_final_invoice_id_fkey")
 
   @@unique([tenantId, statementNumber], map: "deposit_settlement_tenant_id_statement_number_key")
   @@index([tenantId, status, deadlineAt], map: "deposit_settlement_tenant_id_status_deadline_at_idx")
   @@index([leaseId], map: "deposit_settlement_lease_id_idx")
   @@index([workflowInstanceId], map: "deposit_settlement_workflow_instance_id_idx")
+  @@index([finalInvoiceId], map: "deposit_settlement_final_invoice_id_idx")
   @@map("deposit_settlement")
   @@schema("ops")
 }

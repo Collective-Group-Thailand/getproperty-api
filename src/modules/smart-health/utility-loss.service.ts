@@ -459,7 +459,8 @@ export class UtilityLossService extends TenantScopedRepository {
               unitNo: p.unitId ? (unitNo.get(p.unitId) ?? null) : null,
               assetItemIds: p.assetItemIds,
               purpose: p.purpose,
-              units: p.units,
+              units: p.meteredUnits ?? p.units,
+              billedUnits: p.units,
               occupied: p.purpose === 'unit' ? occupied.has(p.unitId!) : null,
               estimated: p.estimated,
               stale: p.assetItemIds.some((id) => ['stale', 'silent'].includes(statuses.get(id) ?? '')),
@@ -488,6 +489,7 @@ export class UtilityLossService extends TenantScopedRepository {
             key: p.key,
             purpose: p.purpose,
             units: p.units.toFixed(3),
+            billedUnits: (p.billedUnits ?? p.units).toFixed(3),
             occupied: p.occupied,
           })),
           price: {

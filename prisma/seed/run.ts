@@ -16,6 +16,7 @@ import { PERMISSIONS, ROLE_PERMISSIONS, ROLES, splitPermission } from '../../src
 import { SETTINGS } from '../../src/core/settings/catalogue';
 import { WORKFLOW_DEFINITIONS } from '../../src/core/workflow/definitions';
 import { specToRow } from '../../src/core/workflow/engine';
+import { LINE_KIND_RULES } from '../../src/modules/ops-billing/engine/line-kinds';
 import {
   DEFAULT_INSPECTION_ITEMS,
   DEFAULT_INSPECTION_TEMPLATE_NAME,
@@ -94,6 +95,7 @@ export async function runSeed(
   await tx(db, () => seedRbac(db));
   await tx(db, () => seedSettings(db));
   await tx(db, () => seedComplianceRules(db));
+  await tx(db, () => seedInvoiceLineKinds(db));
   await tx(db, () => seedUtilityTariffs(db));
   await tx(db, () => seedCalendar(db));
   await tx(db, () => seedPrivacy(db));
@@ -181,6 +183,34 @@ async function seedComplianceRules(db: ClientBase): Promise<void> {
              IS DISTINCT FROM (EXCLUDED.legal_ref, EXCLUDED.default_severity, EXCLUDED.applies_to,
               EXCLUDED.description_th, EXCLUDED.description_en, EXCLUDED.settings_used)`,
       [r.id, r.legalRef, r.defaultSeverity, r.appliesTo, r.descriptionTh, r.descriptionEn, r.settingsUsed],
+    );
+  }
+}
+
+/** The invoice line kind catalogue (B4.2, D-041): reference data the engine and the invoice_line FK rely on. */
+async function seedInvoiceLineKinds(db: ClientBase): Promise<void> {
+  for (const r of LINE_KIND_RULES) {
+    await db.query(
+      `INSERT INTO ops.invoice_line_kind_rule (line_kind, source_type, requires_lease_line, requires_meter, compliance_rule_id, allowed_when_setting, description)
+       VALUES ($1::ops.invoice_line_kind, $2::ops.invoice_line_source_type, $3, $4, $5, $6, $7)
+       ON CONFLICT (line_kind) DO UPDATE SET source_type = EXCLUDED.source_type,
+         requires_lease_line = EXCLUDED.requires_lease_line, requires_meter = EXCLUDED.requires_meter,
+         compliance_rule_id = EXCLUDED.compliance_rule_id, allowed_when_setting = EXCLUDED.allowed_when_setting,
+         description = EXCLUDED.description, updated_at = now()
+       WHERE (ops.invoice_line_kind_rule.source_type, ops.invoice_line_kind_rule.requires_lease_line,
+              ops.invoice_line_kind_rule.requires_meter, ops.invoice_line_kind_rule.compliance_rule_id,
+              ops.invoice_line_kind_rule.allowed_when_setting, ops.invoice_line_kind_rule.description)
+             IS DISTINCT FROM (EXCLUDED.source_type, EXCLUDED.requires_lease_line, EXCLUDED.requires_meter,
+              EXCLUDED.compliance_rule_id, EXCLUDED.allowed_when_setting, EXCLUDED.description)`,
+      [
+        r.lineKind,
+        r.sourceType,
+        r.requiresLeaseLine,
+        r.requiresMeter,
+        r.complianceRuleId,
+        r.allowedWhenSetting,
+        r.description,
+      ],
     );
   }
 }
@@ -632,6 +662,7 @@ const COUNTED_TABLES = [
   'platform.setting',
   'platform.setting_version',
   'platform.compliance_rule',
+  'ops.invoice_line_kind_rule',
   'platform.utility_tariff',
   'platform.utility_tariff_version',
   'platform.business_calendar',

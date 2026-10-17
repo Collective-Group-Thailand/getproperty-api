@@ -1,5 +1,6 @@
 import { FEATURE_FLAGS } from '@core/feature-flags/catalogue';
 import { WORKFLOW_DEFINITIONS } from '@core/workflow/definitions';
+import { LINE_KIND_RULES } from '@modules/ops-billing/engine/line-kinds';
 
 import { NOTIFICATION_ROUTES, NOTIFICATION_TEMPLATES } from '../../prisma/seed/data/notifications';
 import { countRows, DEV, runSeed } from '../../prisma/seed/run';
@@ -30,6 +31,7 @@ describe('seeds (reference + dev)', () => {
       'platform.setting': SETTINGS.length,
       'platform.setting_version': SETTINGS.length,
       'platform.compliance_rule': COMPLIANCE_RULES.length,
+      'ops.invoice_line_kind_rule': LINE_KIND_RULES.length,
       'platform.utility_tariff': 8,
       'platform.utility_tariff_version': 20,
       'platform.business_calendar': 46,

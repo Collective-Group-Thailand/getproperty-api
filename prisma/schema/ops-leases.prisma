@@ -201,6 +201,10 @@ model Lease {
   deposit          Deposit?
   settlements      DepositSettlement[]
   inspections      Inspection[]
+  powerRatePlan    RatePlan?            @relation("LeasePowerRatePlan", fields: [powerRatePlanId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_power_rate_plan_id_fkey")
+  waterRatePlan    RatePlan?            @relation("LeaseWaterRatePlan", fields: [waterRatePlanId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_water_rate_plan_id_fkey")
+  invoices         Invoice[]
+  invoiceCharges   InvoiceCharge[]
 
   @@unique([tenantId, number], map: "lease_tenant_id_number_key")
   @@index([tenantId, buildingId, status], map: "lease_tenant_id_building_id_status_idx")
@@ -208,6 +212,8 @@ model Lease {
   @@index([lesseePartyId], map: "lease_lessee_party_id_idx")
   @@index([tenantId, endDate], map: "lease_tenant_id_end_date_idx", where: raw("(status = ANY (ARRAY['active'::ops.lease_status, 'notice_given'::ops.lease_status, 'ending'::ops.lease_status]))"))
   @@index([renewedFromLeaseId], map: "lease_renewed_from_lease_id_idx")
+  @@index([powerRatePlanId], map: "lease_power_rate_plan_id_idx")
+  @@index([waterRatePlanId], map: "lease_water_rate_plan_id_idx")
   @@map("lease")
   @@schema("ops")
 }
@@ -252,6 +258,7 @@ model LeaseLine {
 
   tenant Tenant @relation("LeaseLineTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_line_tenant_id_fkey")
   lease  Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "lease_line_lease_id_fkey")
+  invoiceLines InvoiceLine[]
 
   @@index([leaseId], map: "lease_line_lease_id_idx")
   @@map("lease_line")

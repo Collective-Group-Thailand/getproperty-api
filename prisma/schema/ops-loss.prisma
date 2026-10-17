@@ -94,11 +94,13 @@ model LossReport {
   utilityInvoice       UtilityInvoice?       @relation(fields: [utilityInvoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "loss_report_utility_invoice_id_fkey")
   utilityTariffVersion UtilityTariffVersion? @relation("LossReportTariffVersion", fields: [utilityTariffVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "loss_report_utility_tariff_version_id_fkey")
   suspects             LossSuspect[]
+  billingCycle         BillingCycle?         @relation(fields: [billingCycleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "loss_report_billing_cycle_id_fkey")
 
   @@unique([buildingId, utility, periodStart, periodEnd], map: "loss_report_building_id_utility_period_start_period_end_key")
   @@index([tenantId, buildingId], map: "loss_report_tenant_id_building_id_idx")
   @@index([utilityInvoiceId], map: "loss_report_utility_invoice_id_idx")
   @@index([utilityTariffVersionId], map: "loss_report_utility_tariff_version_id_idx")
+  @@index([billingCycleId], map: "loss_report_billing_cycle_id_idx")
   @@map("loss_report")
   @@schema("ops")
 }

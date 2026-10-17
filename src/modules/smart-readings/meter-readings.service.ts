@@ -135,6 +135,8 @@ export class MeterReadingsService extends TenantScopedRepository {
         meterAssignmentId: a.id,
         reviewState: 'accepted',
         supersededByReadingId: null,
+        // B4.2: billing estimates never constrain or judge real readings (D-192)
+        source: { not: 'estimated' },
         readAt: { lt: input.readAt },
       },
       orderBy: { readAt: 'desc' },
@@ -147,6 +149,7 @@ export class MeterReadingsService extends TenantScopedRepository {
               meterAssignmentId: a.id,
               reviewState: 'accepted',
               supersededByReadingId: null,
+              source: { not: 'estimated' },
               readAt: { lt: input.readAt, gte: new Date(input.readAt.getTime() - 120 * 86_400_000) },
             },
             orderBy: { readAt: 'asc' },

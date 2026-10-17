@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 
 import { IngestService } from './ingest/ingest.service';
+import { InvoiceBilledUnits } from './ops-billing/invoice-billed-units';
 import {
   AutoServiceRequestSubscriber,
   DeviceCommandSubscriber,
@@ -14,7 +15,7 @@ import { DeviceFleetService } from './smart-devices/fleet.service';
 import { GatewayConfigService } from './smart-devices/gateway-config.service';
 import { DeviceInstallsService } from './smart-devices/installs.service';
 import { OtaService } from './smart-devices/ota.service';
-import { BILLED_UNITS, MeterReadingsBilledUnits } from './smart-health/billed-units.provider';
+import { BILLED_UNITS } from './smart-health/billed-units.provider';
 import { MeterHealthService } from './smart-health/meter-health.service';
 import { UtilityLossService } from './smart-health/utility-loss.service';
 import { IngestPipeline } from './smart-ingest/ingest-pipeline.service';
@@ -48,7 +49,8 @@ const SERVICES = [
 @Module({
   providers: [
     ...SERVICES,
-    { provide: BILLED_UNITS, useClass: MeterReadingsBilledUnits },
+    // B4.2: billed units of the loss report come from issued invoices (the B3.4 readings stub is gone, D-032)
+    { provide: BILLED_UNITS, useClass: InvoiceBilledUnits },
     ReadingCandidateSubscriber,
     GatewayConfigSubscriber,
     DeviceCommandSubscriber,

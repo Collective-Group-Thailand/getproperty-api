@@ -1,0 +1,643 @@
+// ops — A2 billing: rate plans, billing cycles, invoices, lines, one-off charges, credit/debit notes, estimate
+// settlements (B4.2; schema-design v2 §3.3.4, §4.2, §4.9; migration 0020; D-021a, D-022, D-031, D-040, D-041, D-046).
+
+enum RatePlanKind {
+  power
+  water
+  common_fee
+  fund
+  rent
+  service
+
+  @@map("rate_plan_kind")
+  @@schema("ops")
+}
+
+enum RateBasis {
+  per_unit
+  per_sqm
+  per_ownership_ratio
+  fixed
+
+  @@map("rate_basis")
+  @@schema("ops")
+}
+
+enum BillingCycleStatus {
+  open
+  readings_pending
+  computed
+  issued
+  closed
+  cancelled
+
+  @@map("billing_cycle_status")
+  @@schema("ops")
+}
+
+enum EstimatePolicy {
+  allow
+  block
+
+  @@map("estimate_policy")
+  @@schema("ops")
+}
+
+enum InvoiceStatus {
+  draft
+  issued
+  partially_paid
+  paid
+  overdue
+  void
+
+  @@map("invoice_status")
+  @@schema("ops")
+}
+
+enum InvoiceLineSourceType {
+  rent
+  meter
+  common_fee
+  fund
+  penalty
+  service
+  deposit
+  adjustment
+
+  @@map("invoice_line_source_type")
+  @@schema("ops")
+}
+
+enum InvoiceLineKind {
+  rent
+  electricity
+  water
+  internet
+  parking
+  cleaning
+  furniture
+  common_fee
+  fund
+  water_minimum
+  other_fixed
+  one_off
+  late_fee
+  estimate_settlement
+  prior_balance
+  discount
+  deposit_offset
+  service_charge_work
+
+  @@map("invoice_line_kind")
+  @@schema("ops")
+}
+
+enum NoteReason {
+  reading_correction
+  tariff_correction
+  goodwill
+  duplicate
+  estimate_settlement
+  other
+
+  @@map("note_reason")
+  @@schema("ops")
+}
+
+enum NoteStatus {
+  issued
+  applied
+  void
+
+  @@map("note_status")
+  @@schema("ops")
+}
+
+enum EstimateSettlementStatus {
+  pending
+  settled_on_invoice
+  settled_by_note
+
+  @@map("estimate_settlement_status")
+  @@schema("ops")
+}
+
+enum InvoiceChargeStatus {
+  pending
+  applied
+  cancelled
+
+  @@map("invoice_charge_status")
+  @@schema("ops")
+}
+
+/// A tenant-set tariff (D-151, D-021a); building_id null = tenant-wide.
+model RatePlan {
+  id         String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String       @map("tenant_id") @db.Uuid
+  buildingId String?      @map("building_id") @db.Uuid
+  kind       RatePlanKind
+  name       String
+  isDefault  Boolean      @default(false) @map("is_default")
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?      @map("created_by") @db.Uuid
+  updatedAt  DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy  String?      @map("updated_by") @db.Uuid
+  deletedAt  DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  deletedBy  String?      @map("deleted_by") @db.Uuid
+  version    Int          @default(1)
+
+  tenant          Tenant            @relation("RatePlanTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rate_plan_tenant_id_fkey")
+  building        Building?         @relation("RatePlanBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rate_plan_building_id_fkey")
+  versions        RatePlanVersion[]
+  powerForLeases  Lease[]           @relation("LeasePowerRatePlan")
+  waterForLeases  Lease[]           @relation("LeaseWaterRatePlan")
+
+  @@unique([tenantId, buildingId, kind], map: "rate_plan_default_key", where: raw("(is_default AND (deleted_at IS NULL))"))
+  @@index([tenantId, buildingId], map: "rate_plan_tenant_id_building_id_idx")
+  @@index([buildingId], map: "rate_plan_building_id_idx")
+  @@map("rate_plan")
+  @@schema("ops")
+}
+
+/// Effective-dated tiers interpreted by the billing engine (schema-design §4.2.2).
+model RatePlanVersion {
+  id                          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                    String    @map("tenant_id") @db.Uuid
+  ratePlanId                  String    @map("rate_plan_id") @db.Uuid
+  effectiveFrom               DateTime  @map("effective_from") @db.Date
+  effectiveTo                 DateTime? @map("effective_to") @db.Date
+  tiers                       Json
+  basis                       RateBasis
+  minimumCharge               Decimal?  @map("minimum_charge") @db.Decimal(14, 2)
+  currency                    String    @default("THB") @db.Char(3)
+  capCheck                    Json?     @map("cap_check")
+  aboveCap                    Boolean   @default(false) @map("above_cap")
+  complianceAcknowledgementId String?   @map("compliance_acknowledgement_id") @db.Uuid
+  note                        String?
+  createdAt                   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                   String?   @map("created_by") @db.Uuid
+  updatedAt                   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy                   String?   @map("updated_by") @db.Uuid
+
+  tenant              Tenant                     @relation("RatePlanVersionTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rate_plan_version_tenant_id_fkey")
+  ratePlan            RatePlan                   @relation(fields: [ratePlanId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "rate_plan_version_rate_plan_id_fkey")
+  acknowledgement     ComplianceAcknowledgement? @relation("RatePlanVersionAck", fields: [complianceAcknowledgementId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rate_plan_version_ack_fkey")
+  invoiceLines        InvoiceLine[]
+  estimateSettlements EstimateSettlement[]
+
+  @@unique([ratePlanId, effectiveFrom], map: "rate_plan_version_rate_plan_id_effective_from_key")
+  @@index([tenantId], map: "rate_plan_version_tenant_id_idx")
+  @@index([complianceAcknowledgementId], map: "rate_plan_version_compliance_acknowledgement_id_idx")
+  @@map("rate_plan_version")
+  @@schema("ops")
+}
+
+/// A billing period of a property (D-031).
+model BillingCycle {
+  id                    String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId              String             @map("tenant_id") @db.Uuid
+  propertyId            String             @map("property_id") @db.Uuid
+  periodKey             String             @map("period_key")
+  periodStart           DateTime           @map("period_start") @db.Date
+  periodEnd             DateTime           @map("period_end") @db.Date
+  cutOffAt              DateTime           @map("cut_off_at") @db.Timestamptz(6)
+  status                BillingCycleStatus @default(open)
+  readingsWindowMinutes Int                @map("readings_window_minutes")
+  graceDeadlineAt       DateTime           @map("grace_deadline_at") @db.Timestamptz(6)
+  estimatePolicy        EstimatePolicy     @map("estimate_policy")
+  generatedAt           DateTime           @default(now()) @map("generated_at") @db.Timestamptz(6)
+  readingsRequestedAt   DateTime?          @map("readings_requested_at") @db.Timestamptz(6)
+  computedAt            DateTime?          @map("computed_at") @db.Timestamptz(6)
+  issuedAt              DateTime?          @map("issued_at") @db.Timestamptz(6)
+  closedAt              DateTime?          @map("closed_at") @db.Timestamptz(6)
+  autoIssueAt           DateTime?          @map("auto_issue_at") @db.Timestamptz(6)
+  stats                 Json               @default("{}")
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy             String?            @map("created_by") @db.Uuid
+  updatedAt             DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy             String?            @map("updated_by") @db.Uuid
+  version               Int                @default(1)
+
+  tenant         Tenant          @relation("BillingCycleTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "billing_cycle_tenant_id_fkey")
+  property       Property        @relation("BillingCycleProperty", fields: [propertyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "billing_cycle_property_id_fkey")
+  invoices       Invoice[]
+  charges        InvoiceCharge[]
+  lossReports    LossReport[]
+  readingBatches ReadingBatch[]
+
+  @@unique([propertyId, periodStart], map: "billing_cycle_property_id_period_start_key")
+  @@unique([propertyId, periodKey], map: "billing_cycle_property_id_period_key_key")
+  @@index([tenantId, status], map: "billing_cycle_tenant_id_status_idx")
+  @@map("billing_cycle")
+  @@schema("ops")
+}
+
+/// One invoice per billed party × unit × period; immutable once issued (D-040).
+model Invoice {
+  id                  String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String           @map("tenant_id") @db.Uuid
+  buildingId          String           @map("building_id") @db.Uuid
+  unitId              String?          @map("unit_id") @db.Uuid
+  billedPartyId       String           @map("billed_party_id") @db.Uuid
+  leaseId             String?          @map("lease_id") @db.Uuid
+  billingCycleId      String?          @map("billing_cycle_id") @db.Uuid
+  isFinal             Boolean          @default(false) @map("is_final")
+  number              String?          @db.Citext
+  documentId          String?          @map("document_id") @db.Uuid
+  periodStart         DateTime         @map("period_start") @db.Date
+  periodEnd           DateTime         @map("period_end") @db.Date
+  issuedAt            DateTime?        @map("issued_at") @db.Timestamptz(6)
+  dueDate             DateTime?        @map("due_date") @db.Date
+  status              InvoiceStatus    @default(draft)
+  subtotal            Decimal          @default(0) @db.Decimal(14, 2)
+  vatAmount           Decimal          @default(0) @map("vat_amount") @db.Decimal(14, 2)
+  total               Decimal          @default(0) @db.Decimal(14, 2)
+  paidTotal           Decimal          @default(0) @map("paid_total") @db.Decimal(14, 2)
+  balance             Decimal          @default(0) @db.Decimal(14, 2)
+  creditedTotal       Decimal          @default(0) @map("credited_total") @db.Decimal(14, 2)
+  debitedTotal        Decimal          @default(0) @map("debited_total") @db.Decimal(14, 2)
+  priorBalanceCarried Decimal          @default(0) @map("prior_balance_carried") @db.Decimal(14, 2)
+  hasEstimate         Boolean          @default(false) @map("has_estimate")
+  hasAboveCapLine     Boolean          @default(false) @map("has_above_cap_line")
+  complianceFlags     String[]         @default([]) @map("compliance_flags")
+  reviewFlags         String[]         @default([]) @map("review_flags")
+  notesToPayer        String?          @map("notes_to_payer")
+  snapshot            Json?
+  snapshotSha256      Bytes?           @map("snapshot_sha256")
+  promptpayRef        String?          @map("promptpay_ref")
+  qrPayload           String?          @map("qr_payload")
+  qrProvider          PaymentProvider? @map("qr_provider")
+  qrExpiresAt         DateTime?        @map("qr_expires_at") @db.Timestamptz(6)
+  voidedAt            DateTime?        @map("voided_at") @db.Timestamptz(6)
+  voidReason          String?          @map("void_reason")
+  voidedBy            String?          @map("voided_by") @db.Uuid
+  replacedByInvoiceId String?          @map("replaced_by_invoice_id") @db.Uuid
+  replacesInvoiceId   String?          @map("replaces_invoice_id") @db.Uuid
+  lastPaymentAt       DateTime?        @map("last_payment_at") @db.Timestamptz(6)
+  overdueSince        DateTime?        @map("overdue_since") @db.Date
+  reminderCount       Int              @default(0) @map("reminder_count") @db.SmallInt
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy           String?          @map("created_by") @db.Uuid
+  updatedAt           DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy           String?          @map("updated_by") @db.Uuid
+  version             Int              @default(1)
+
+  tenant             Tenant              @relation("InvoiceTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_tenant_id_fkey")
+  building           Building            @relation("InvoiceBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_building_id_fkey")
+  unit               Unit?               @relation("InvoiceUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_unit_id_fkey")
+  billedParty        Party               @relation("InvoiceBilledParty", fields: [billedPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_billed_party_id_fkey")
+  lease              Lease?              @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_lease_id_fkey")
+  billingCycle       BillingCycle?       @relation(fields: [billingCycleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_billing_cycle_id_fkey")
+  document           Document?           @relation("InvoiceDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_document_id_fkey")
+  replacedBy         Invoice?            @relation("InvoiceReplacedBy", fields: [replacedByInvoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_replaced_by_fkey")
+  replacedInvoices   Invoice[]           @relation("InvoiceReplacedBy")
+  replaces           Invoice?            @relation("InvoiceReplaces", fields: [replacesInvoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_replaces_fkey")
+  replacements       Invoice[]           @relation("InvoiceReplaces")
+  lines              InvoiceLine[]       @relation("InvoiceLines")
+  sourcedLines       InvoiceLine[]       @relation("InvoiceLineSourceInvoice")
+  creditNotes        CreditNote[]
+  debitNotes         DebitNote[]
+  depositSettlements DepositSettlement[] @relation("DepositSettlementFinalInvoice")
+
+  @@unique([tenantId, number], map: "invoice_tenant_id_number_key", where: raw("(number IS NOT NULL)"))
+  @@unique([tenantId, promptpayRef], map: "invoice_tenant_id_promptpay_ref_key", where: raw("(promptpay_ref IS NOT NULL)"))
+  @@index([tenantId, buildingId, status, dueDate], map: "invoice_tenant_id_building_id_status_due_date_idx")
+  @@index([leaseId, periodStart(sort: Desc)], map: "invoice_lease_id_period_start_idx")
+  @@index([billedPartyId, status], map: "invoice_billed_party_id_status_idx")
+  @@index([billingCycleId], map: "invoice_billing_cycle_id_idx")
+  @@index([unitId], map: "invoice_unit_id_idx")
+  @@index([documentId], map: "invoice_document_id_idx")
+  @@index([replacedByInvoiceId], map: "invoice_replaced_by_invoice_id_idx")
+  @@index([replacesInvoiceId], map: "invoice_replaces_invoice_id_idx")
+  @@map("invoice")
+  @@schema("ops")
+}
+
+/// Seeded catalogue of line kinds (D-041).
+model InvoiceLineKindRule {
+  lineKind           InvoiceLineKind       @id @map("line_kind")
+  sourceType         InvoiceLineSourceType @map("source_type")
+  requiresLeaseLine  Boolean               @default(false) @map("requires_lease_line")
+  requiresMeter      Boolean               @default(false) @map("requires_meter")
+  complianceRuleId   String?               @map("compliance_rule_id")
+  allowedWhenSetting String?               @map("allowed_when_setting")
+  description        String
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  complianceRule ComplianceRule? @relation(fields: [complianceRuleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_line_kind_rule_compliance_rule_id_fkey")
+  lines          InvoiceLine[]
+  charges        InvoiceCharge[]
+
+  @@index([complianceRuleId], map: "invoice_line_kind_rule_compliance_rule_id_idx")
+  @@map("invoice_line_kind_rule")
+  @@schema("ops")
+}
+
+model InvoiceLine {
+  id                          String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                    String                @map("tenant_id") @db.Uuid
+  invoiceId                   String                @map("invoice_id") @db.Uuid
+  lineNo                      Int                   @map("line_no") @db.SmallInt
+  sourceType                  InvoiceLineSourceType @map("source_type")
+  lineKind                    InvoiceLineKind       @map("line_kind")
+  sourceId                    String?               @map("source_id") @db.Uuid
+  description                 String
+  quantity                    Decimal               @default(1) @db.Decimal(12, 3)
+  unit                        String?
+  unitPrice                   Decimal?              @map("unit_price") @db.Decimal(14, 4)
+  amount                      Decimal               @db.Decimal(14, 2)
+  periodFrom                  DateTime?             @map("period_from") @db.Date
+  periodTo                    DateTime?             @map("period_to") @db.Date
+  assetItemId                 String?               @map("asset_item_id") @db.Uuid
+  meterAssignmentId           String?               @map("meter_assignment_id") @db.Uuid
+  readingFromId               String?               @map("reading_from_id") @db.Uuid
+  readingToId                 String?               @map("reading_to_id") @db.Uuid
+  registerFrom                Decimal?              @map("register_from") @db.Decimal(12, 3)
+  registerTo                  Decimal?              @map("register_to") @db.Decimal(12, 3)
+  units                       Decimal?              @db.Decimal(12, 3)
+  multiplier                  Decimal?              @db.Decimal(12, 6)
+  readingSource               ReadingSource?        @map("reading_source")
+  isEstimated                 Boolean               @default(false) @map("is_estimated")
+  meterSegments               Json?                 @map("meter_segments")
+  ratePlanVersionId           String?               @map("rate_plan_version_id") @db.Uuid
+  utilityTariffVersionId      String?               @map("utility_tariff_version_id") @db.Uuid
+  capPerUnit                  Decimal?              @map("cap_per_unit") @db.Decimal(14, 4)
+  aboveCap                    Boolean               @default(false) @map("above_cap")
+  complianceAcknowledgementId String?               @map("compliance_acknowledgement_id") @db.Uuid
+  tierBreakdown               Json?                 @map("tier_breakdown")
+  proRata                     Json?                 @map("pro_rata")
+  leaseLineId                 String?               @map("lease_line_id") @db.Uuid
+  estimateSettlementId        String?               @map("estimate_settlement_id") @db.Uuid
+  sourceInvoiceId             String?               @map("source_invoice_id") @db.Uuid
+  complianceRuleIds           String[]              @default([]) @map("compliance_rule_ids")
+  complianceFlags             String[]              @default([]) @map("compliance_flags")
+  vatApplicable               Boolean               @default(false) @map("vat_applicable")
+  createdAt                   DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant               Tenant                     @relation("InvoiceLineTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_line_tenant_id_fkey")
+  invoice              Invoice                    @relation("InvoiceLines", fields: [invoiceId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "invoice_line_invoice_id_fkey")
+  kindRule             InvoiceLineKindRule        @relation(fields: [lineKind], references: [lineKind], onDelete: Restrict, onUpdate: NoAction, map: "invoice_line_line_kind_fkey")
+  assetItem            AssetItem?                 @relation("InvoiceLineAssetItem", fields: [assetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_line_asset_item_id_fkey")
+  meterAssignment      MeterAssignment?           @relation("InvoiceLineMeterAssignment", fields: [meterAssignmentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_line_meter_assignment_id_fkey")
+  readingFrom          MeterReading?              @relation("InvoiceLineReadingFrom", fields: [readingFromId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_line_reading_from_id_fkey")
+  readingTo            MeterReading?              @relation("InvoiceLineReadingTo", fields: [readingToId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_line_reading_to_id_fkey")
+  ratePlanVersion      RatePlanVersion?           @relation(fields: [ratePlanVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_line_rate_plan_version_id_fkey")
+  utilityTariffVersion UtilityTariffVersion?      @relation("InvoiceLineTariffVersion", fields: [utilityTariffVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_line_utility_tariff_version_id_fkey")
+  acknowledgement      ComplianceAcknowledgement? @relation("InvoiceLineAck", fields: [complianceAcknowledgementId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_line_ack_fkey")
+  leaseLine            LeaseLine?                 @relation(fields: [leaseLineId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_line_lease_line_id_fkey")
+  estimateSettlement   EstimateSettlement?        @relation("InvoiceLineEstimateSettlement", fields: [estimateSettlementId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_line_estimate_settlement_id_fkey")
+  sourceInvoice        Invoice?                   @relation("InvoiceLineSourceInvoice", fields: [sourceInvoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_line_source_invoice_id_fkey")
+  appliedCharges       InvoiceCharge[]
+  creditNoteLines      CreditNoteLine[]
+  debitNoteLines       DebitNoteLine[]
+  estimatedSettlements EstimateSettlement[]       @relation("EstimateSettlementEstimatedLine")
+  settlingSettlements  EstimateSettlement[]       @relation("EstimateSettlementSettledLine")
+
+  @@unique([invoiceId, lineNo], map: "invoice_line_invoice_id_line_no_key")
+  @@index([assetItemId, readingToId], map: "invoice_line_asset_item_id_reading_to_id_idx")
+  @@index([tenantId], map: "invoice_line_tenant_id_idx")
+  @@index([lineKind], map: "invoice_line_line_kind_idx")
+  @@index([meterAssignmentId], map: "invoice_line_meter_assignment_id_idx")
+  @@index([readingFromId], map: "invoice_line_reading_from_id_idx")
+  @@index([readingToId], map: "invoice_line_reading_to_id_idx")
+  @@index([ratePlanVersionId], map: "invoice_line_rate_plan_version_id_idx")
+  @@index([utilityTariffVersionId], map: "invoice_line_utility_tariff_version_id_idx")
+  @@index([complianceAcknowledgementId], map: "invoice_line_compliance_acknowledgement_id_idx")
+  @@index([leaseLineId], map: "invoice_line_lease_line_id_idx")
+  @@index([sourceInvoiceId], map: "invoice_line_source_invoice_id_idx")
+  @@index([estimateSettlementId], map: "invoice_line_estimate_settlement_id_idx")
+  @@map("invoice_line")
+  @@schema("ops")
+}
+
+/// One-off items queued for a billed party × unit (D-041, D-045).
+model InvoiceCharge {
+  id                   String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId             String                @map("tenant_id") @db.Uuid
+  buildingId           String                @map("building_id") @db.Uuid
+  unitId               String                @map("unit_id") @db.Uuid
+  partyId              String                @map("party_id") @db.Uuid
+  leaseId              String?               @map("lease_id") @db.Uuid
+  billingCycleId       String?               @map("billing_cycle_id") @db.Uuid
+  sourceType           InvoiceLineSourceType @map("source_type")
+  lineKind             InvoiceLineKind       @map("line_kind")
+  sourceId             String?               @map("source_id") @db.Uuid
+  description          String
+  quantity             Decimal               @default(1) @db.Decimal(12, 3)
+  unitPrice            Decimal               @map("unit_price") @db.Decimal(14, 4)
+  amount               Decimal               @db.Decimal(14, 2)
+  status               InvoiceChargeStatus   @default(pending)
+  appliedInvoiceLineId String?               @map("applied_invoice_line_id") @db.Uuid
+  cancelledAt          DateTime?             @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason         String?               @map("cancel_reason")
+  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy            String?               @map("created_by") @db.Uuid
+  updatedAt            DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy            String?               @map("updated_by") @db.Uuid
+
+  tenant       Tenant              @relation("InvoiceChargeTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_charge_tenant_id_fkey")
+  building     Building            @relation("InvoiceChargeBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_charge_building_id_fkey")
+  unit         Unit                @relation("InvoiceChargeUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_charge_unit_id_fkey")
+  party        Party               @relation("InvoiceChargeParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_charge_party_id_fkey")
+  lease        Lease?              @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_charge_lease_id_fkey")
+  billingCycle BillingCycle?       @relation(fields: [billingCycleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_charge_billing_cycle_id_fkey")
+  kindRule     InvoiceLineKindRule @relation(fields: [lineKind], references: [lineKind], onDelete: Restrict, onUpdate: NoAction, map: "invoice_charge_line_kind_fkey")
+  appliedLine  InvoiceLine?        @relation(fields: [appliedInvoiceLineId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "invoice_charge_applied_line_fkey")
+
+  @@index([tenantId, status], map: "invoice_charge_tenant_id_status_idx")
+  @@index([unitId, partyId], map: "invoice_charge_unit_id_party_id_idx")
+  @@index([buildingId], map: "invoice_charge_building_id_idx")
+  @@index([leaseId], map: "invoice_charge_lease_id_idx")
+  @@index([billingCycleId], map: "invoice_charge_billing_cycle_id_idx")
+  @@index([partyId], map: "invoice_charge_party_id_idx")
+  @@index([appliedInvoiceLineId], map: "invoice_charge_applied_invoice_line_id_idx")
+  @@map("invoice_charge")
+  @@schema("ops")
+}
+
+/// Credit note referencing an issued invoice (D-040).
+model CreditNote {
+  id         String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String     @map("tenant_id") @db.Uuid
+  buildingId String     @map("building_id") @db.Uuid
+  unitId     String?    @map("unit_id") @db.Uuid
+  invoiceId  String     @map("invoice_id") @db.Uuid
+  number     String     @db.Citext
+  documentId String?    @map("document_id") @db.Uuid
+  reason     NoteReason
+  reasonText String     @map("reason_text")
+  subtotal   Decimal    @db.Decimal(14, 2)
+  vatAmount  Decimal    @default(0) @map("vat_amount") @db.Decimal(14, 2)
+  total      Decimal    @db.Decimal(14, 2)
+  issuedAt   DateTime   @map("issued_at") @db.Timestamptz(6)
+  issuedBy   String?    @map("issued_by") @db.Uuid
+  status     NoteStatus @default(issued)
+  appliedAt  DateTime?  @map("applied_at") @db.Timestamptz(6)
+  voidedAt   DateTime?  @map("voided_at") @db.Timestamptz(6)
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?    @map("created_by") @db.Uuid
+  updatedAt  DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy  String?    @map("updated_by") @db.Uuid
+
+  tenant              Tenant               @relation("CreditNoteTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "credit_note_tenant_id_fkey")
+  building            Building             @relation("CreditNoteBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "credit_note_building_id_fkey")
+  unit                Unit?                @relation("CreditNoteUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "credit_note_unit_id_fkey")
+  invoice             Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "credit_note_invoice_id_fkey")
+  document            Document?            @relation("CreditNoteDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "credit_note_document_id_fkey")
+  lines               CreditNoteLine[]
+  estimateSettlements EstimateSettlement[]
+
+  @@unique([tenantId, number], map: "credit_note_tenant_id_number_key")
+  @@index([invoiceId], map: "credit_note_invoice_id_idx")
+  @@index([buildingId], map: "credit_note_building_id_idx")
+  @@index([unitId], map: "credit_note_unit_id_idx")
+  @@index([documentId], map: "credit_note_document_id_idx")
+  @@map("credit_note")
+  @@schema("ops")
+}
+
+model CreditNoteLine {
+  id               String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String          @map("tenant_id") @db.Uuid
+  noteId           String          @map("note_id") @db.Uuid
+  lineNo           Int             @map("line_no") @db.SmallInt
+  lineKind         InvoiceLineKind @map("line_kind")
+  description      String
+  quantity         Decimal         @default(1) @db.Decimal(12, 3)
+  unitPrice        Decimal?        @map("unit_price") @db.Decimal(14, 4)
+  amount           Decimal         @db.Decimal(14, 2)
+  refInvoiceLineId String?         @map("ref_invoice_line_id") @db.Uuid
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant         Tenant       @relation("CreditNoteLineTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "credit_note_line_tenant_id_fkey")
+  note           CreditNote   @relation(fields: [noteId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "credit_note_line_note_id_fkey")
+  refInvoiceLine InvoiceLine? @relation(fields: [refInvoiceLineId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "credit_note_line_ref_invoice_line_id_fkey")
+
+  @@unique([noteId, lineNo], map: "credit_note_line_note_id_line_no_key")
+  @@index([tenantId], map: "credit_note_line_tenant_id_idx")
+  @@index([refInvoiceLineId], map: "credit_note_line_ref_invoice_line_id_idx")
+  @@map("credit_note_line")
+  @@schema("ops")
+}
+
+/// Debit note referencing an issued invoice (D-040).
+model DebitNote {
+  id         String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String     @map("tenant_id") @db.Uuid
+  buildingId String     @map("building_id") @db.Uuid
+  unitId     String?    @map("unit_id") @db.Uuid
+  invoiceId  String     @map("invoice_id") @db.Uuid
+  number     String     @db.Citext
+  documentId String?    @map("document_id") @db.Uuid
+  reason     NoteReason
+  reasonText String     @map("reason_text")
+  subtotal   Decimal    @db.Decimal(14, 2)
+  vatAmount  Decimal    @default(0) @map("vat_amount") @db.Decimal(14, 2)
+  total      Decimal    @db.Decimal(14, 2)
+  issuedAt   DateTime   @map("issued_at") @db.Timestamptz(6)
+  issuedBy   String?    @map("issued_by") @db.Uuid
+  status     NoteStatus @default(issued)
+  appliedAt  DateTime?  @map("applied_at") @db.Timestamptz(6)
+  voidedAt   DateTime?  @map("voided_at") @db.Timestamptz(6)
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?    @map("created_by") @db.Uuid
+  updatedAt  DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy  String?    @map("updated_by") @db.Uuid
+
+  tenant   Tenant          @relation("DebitNoteTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debit_note_tenant_id_fkey")
+  building Building        @relation("DebitNoteBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debit_note_building_id_fkey")
+  unit     Unit?           @relation("DebitNoteUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debit_note_unit_id_fkey")
+  invoice  Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debit_note_invoice_id_fkey")
+  document Document?       @relation("DebitNoteDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debit_note_document_id_fkey")
+  lines    DebitNoteLine[]
+
+  @@unique([tenantId, number], map: "debit_note_tenant_id_number_key")
+  @@index([invoiceId], map: "debit_note_invoice_id_idx")
+  @@index([buildingId], map: "debit_note_building_id_idx")
+  @@index([unitId], map: "debit_note_unit_id_idx")
+  @@index([documentId], map: "debit_note_document_id_idx")
+  @@map("debit_note")
+  @@schema("ops")
+}
+
+model DebitNoteLine {
+  id               String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String          @map("tenant_id") @db.Uuid
+  noteId           String          @map("note_id") @db.Uuid
+  lineNo           Int             @map("line_no") @db.SmallInt
+  lineKind         InvoiceLineKind @map("line_kind")
+  description      String
+  quantity         Decimal         @default(1) @db.Decimal(12, 3)
+  unitPrice        Decimal?        @map("unit_price") @db.Decimal(14, 4)
+  amount           Decimal         @db.Decimal(14, 2)
+  refInvoiceLineId String?         @map("ref_invoice_line_id") @db.Uuid
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant         Tenant       @relation("DebitNoteLineTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debit_note_line_tenant_id_fkey")
+  note           DebitNote    @relation(fields: [noteId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "debit_note_line_note_id_fkey")
+  refInvoiceLine InvoiceLine? @relation(fields: [refInvoiceLineId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debit_note_line_ref_invoice_line_id_fkey")
+
+  @@unique([noteId, lineNo], map: "debit_note_line_note_id_line_no_key")
+  @@index([tenantId], map: "debit_note_line_tenant_id_idx")
+  @@index([refInvoiceLineId], map: "debit_note_line_ref_invoice_line_id_idx")
+  @@map("debit_note_line")
+  @@schema("ops")
+}
+
+/// An estimated meter line reconciled by the actual reading (D-012, D-031).
+model EstimateSettlement {
+  id                     String                   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId               String                   @map("tenant_id") @db.Uuid
+  buildingId             String                   @map("building_id") @db.Uuid
+  unitId                 String?                  @map("unit_id") @db.Uuid
+  assetItemId            String                   @map("asset_item_id") @db.Uuid
+  meterAssignmentId      String                   @map("meter_assignment_id") @db.Uuid
+  estimatedReadingId     String                   @map("estimated_reading_id") @db.Uuid
+  actualReadingId        String?                  @map("actual_reading_id") @db.Uuid
+  estimatedInvoiceLineId String                   @unique(map: "estimate_settlement_estimated_invoice_line_id_key") @map("estimated_invoice_line_id") @db.Uuid
+  estimatedUnits         Decimal                  @map("estimated_units") @db.Decimal(12, 3)
+  actualUnits            Decimal?                 @map("actual_units") @db.Decimal(12, 3)
+  deltaUnits             Decimal?                 @map("delta_units") @db.Decimal(12, 3)
+  deltaAmount            Decimal?                 @map("delta_amount") @db.Decimal(14, 2)
+  ratePlanVersionId      String                   @map("rate_plan_version_id") @db.Uuid
+  utilityTariffVersionId String                   @map("utility_tariff_version_id") @db.Uuid
+  status                 EstimateSettlementStatus @default(pending)
+  settledInvoiceLineId   String?                  @map("settled_invoice_line_id") @db.Uuid
+  settledNoteId          String?                  @map("settled_note_id") @db.Uuid
+  settledAt              DateTime?                @map("settled_at") @db.Timestamptz(6)
+  createdAt              DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy              String?                  @map("created_by") @db.Uuid
+  updatedAt              DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy              String?                  @map("updated_by") @db.Uuid
+
+  tenant               Tenant               @relation("EstimateSettlementTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "estimate_settlement_tenant_id_fkey")
+  building             Building             @relation("EstimateSettlementBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "estimate_settlement_building_id_fkey")
+  unit                 Unit?                @relation("EstimateSettlementUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "estimate_settlement_unit_id_fkey")
+  assetItem            AssetItem            @relation("EstimateSettlementAssetItem", fields: [assetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "estimate_settlement_asset_item_id_fkey")
+  meterAssignment      MeterAssignment      @relation("EstimateSettlementMeterAssignment", fields: [meterAssignmentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "estimate_settlement_meter_assignment_id_fkey")
+  estimatedReading     MeterReading         @relation("EstimateSettlementEstimatedReading", fields: [estimatedReadingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "estimate_settlement_estimated_reading_fkey")
+  actualReading        MeterReading?        @relation("EstimateSettlementActualReading", fields: [actualReadingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "estimate_settlement_actual_reading_fkey")
+  estimatedLine        InvoiceLine          @relation("EstimateSettlementEstimatedLine", fields: [estimatedInvoiceLineId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "estimate_settlement_estimated_line_fkey")
+  settledLine          InvoiceLine?         @relation("EstimateSettlementSettledLine", fields: [settledInvoiceLineId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "estimate_settlement_settled_line_fkey")
+  settledNote          CreditNote?          @relation(fields: [settledNoteId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "estimate_settlement_settled_note_fkey")
+  ratePlanVersion      RatePlanVersion      @relation(fields: [ratePlanVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "estimate_settlement_rate_plan_version_fkey")
+  utilityTariffVersion UtilityTariffVersion @relation("EstimateSettlementTariffVersion", fields: [utilityTariffVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "estimate_settlement_tariff_version_fkey")
+  settlementLines      InvoiceLine[]        @relation("InvoiceLineEstimateSettlement")
+
+  @@index([tenantId, status], map: "estimate_settlement_tenant_id_status_idx")
+  @@index([buildingId], map: "estimate_settlement_building_id_idx")
+  @@index([unitId], map: "estimate_settlement_unit_id_idx")
+  @@index([meterAssignmentId], map: "estimate_settlement_meter_assignment_id_idx")
+  @@index([assetItemId], map: "estimate_settlement_asset_item_id_idx")
+  @@index([estimatedReadingId], map: "estimate_settlement_estimated_reading_id_idx")
+  @@index([actualReadingId], map: "estimate_settlement_actual_reading_id_idx")
+  @@index([settledInvoiceLineId], map: "estimate_settlement_settled_invoice_line_id_idx")
+  @@index([settledNoteId], map: "estimate_settlement_settled_note_id_idx")
+  @@index([ratePlanVersionId], map: "estimate_settlement_rate_plan_version_id_idx")
+  @@index([utilityTariffVersionId], map: "estimate_settlement_utility_tariff_version_id_idx")
+  @@map("estimate_settlement")
+  @@schema("ops")
+}

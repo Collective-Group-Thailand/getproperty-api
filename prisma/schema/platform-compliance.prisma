@@ -43,6 +43,7 @@ model ComplianceRule {
 
   evaluations      ComplianceEvaluation[]
   acknowledgements ComplianceAcknowledgement[]
+  lineKindRules    InvoiceLineKindRule[]
 
   @@map("compliance_rule")
   @@schema("platform")
@@ -97,6 +98,8 @@ model ComplianceAcknowledgement {
   rule               ComplianceRule       @relation(fields: [ruleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "compliance_acknowledgement_rule_id_fkey")
   evaluation         ComplianceEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "compliance_acknowledgement_evaluation_id_fkey")
   acknowledgedByUser UserAccount          @relation("ComplianceAcknowledgementAcknowledgedBy", fields: [acknowledgedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "compliance_acknowledgement_acknowledged_by_fkey")
+  ratePlanVersions   RatePlanVersion[]    @relation("RatePlanVersionAck")
+  invoiceLines       InvoiceLine[]        @relation("InvoiceLineAck")
 
   @@index([tenantId, ruleId, acknowledgedAt(sort: Desc)], map: "compliance_ack_tenant_id_rule_id_acknowledged_at_idx")
   @@index([subjectType, subjectId], map: "compliance_acknowledgement_subject_type_subject_id_idx")

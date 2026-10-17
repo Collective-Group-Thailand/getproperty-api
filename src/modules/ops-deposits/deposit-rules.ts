@@ -22,9 +22,20 @@ export const checkDeductionWear = (d: DeductionInput): RuleCheck => evaluateDepo
 /** ข้อ 4 (10): deductions are itemised with evidence (registry evaluator). */
 export const checkDeductionEvidence = (d: DeductionInput): RuleCheck => evaluateDepositEvidence(d);
 
-/** The refund the settlement owes: deposit − itemised deductions − final utilities, never below zero. */
-export function proposedRefund(depositHeld: string, deductionsTotal: string, utilitiesFinal: string): string {
-  return Decimal.max(0, new Decimal(depositHeld).minus(deductionsTotal).minus(utilitiesFinal)).toFixed(2);
+/**
+ * The refund the settlement owes: deposit + advance rent the final invoice did not use (D-177, never forfeited) −
+ * itemised deductions − final utilities, never below zero.
+ */
+export function proposedRefund(
+  depositHeld: string,
+  deductionsTotal: string,
+  utilitiesFinal: string,
+  advanceRentUnused = '0',
+): string {
+  return Decimal.max(
+    0,
+    new Decimal(depositHeld).plus(advanceRentUnused).minus(deductionsTotal).minus(utilitiesFinal),
+  ).toFixed(2);
 }
 
 /** ข้อ 5 (4): no forfeiture without a breach — the refund pays back at least what the itemised settlement owes. */

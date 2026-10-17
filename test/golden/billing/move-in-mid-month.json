@@ -1,0 +1,148 @@
+{
+  "lines": [
+    {
+      "lineNo": 1,
+      "sourceType": "rent",
+      "quantity": "0.633",
+      "unit": "month",
+      "unitPrice": "4500.0000",
+      "periodFrom": "2026-11-12",
+      "periodTo": "2026-11-30",
+      "sourceId": "lease-1",
+      "leaseLineId": null,
+      "chargeId": null,
+      "estimateSettlementId": null,
+      "meter": null,
+      "ratePlanVersionId": null,
+      "utilityTariffVersionId": null,
+      "capPerUnit": null,
+      "aboveCap": false,
+      "acknowledgementId": null,
+      "tierBreakdown": null,
+      "proRata": {
+        "days": 19,
+        "daysInPeriod": 30,
+        "factor": "0.633333",
+        "from": "2026-11-12",
+        "to": "2026-11-30"
+      },
+      "vatApplicable": false,
+      "complianceRuleIds": ["compliance.no_midterm_increase"],
+      "lineKind": "rent",
+      "description": "ค่าเช่า A-201 (19/30 วัน)",
+      "amount": "2850.00"
+    },
+    {
+      "lineNo": 2,
+      "sourceType": "service",
+      "quantity": "0.633",
+      "unit": "month",
+      "unitPrice": "300.0000",
+      "periodFrom": "2026-11-12",
+      "periodTo": "2026-11-30",
+      "sourceId": "line-net",
+      "leaseLineId": "line-net",
+      "chargeId": null,
+      "estimateSettlementId": null,
+      "meter": null,
+      "ratePlanVersionId": null,
+      "utilityTariffVersionId": null,
+      "capPerUnit": null,
+      "aboveCap": false,
+      "acknowledgementId": null,
+      "tierBreakdown": null,
+      "proRata": {
+        "days": 19,
+        "daysInPeriod": 30,
+        "factor": "0.633333",
+        "from": "2026-11-12",
+        "to": "2026-11-30"
+      },
+      "vatApplicable": false,
+      "complianceRuleIds": ["compliance.bill_disclosure"],
+      "lineKind": "internet",
+      "description": "อินเทอร์เน็ต (19/30 วัน)",
+      "amount": "190.00"
+    },
+    {
+      "lineNo": 3,
+      "sourceType": "meter",
+      "quantity": "61.500",
+      "unit": "kwh",
+      "unitPrice": "3.0000",
+      "periodFrom": "2026-11-01",
+      "periodTo": "2026-11-30",
+      "sourceId": null,
+      "leaseLineId": null,
+      "chargeId": null,
+      "estimateSettlementId": null,
+      "meter": {
+        "utility": "electric",
+        "assetItemId": "asg-e-meter",
+        "meterAssignmentId": "asg-e",
+        "readingFromId": "r-e-in",
+        "readingToId": "r-e1",
+        "registerFrom": "2000.000",
+        "registerTo": "2061.500",
+        "units": "61.500",
+        "multiplier": "1",
+        "readingSource": "iot",
+        "isEstimated": false,
+        "segments": [
+          {
+            "assignmentId": "asg-e",
+            "assetItemId": "asg-e-meter",
+            "code": "A-201e",
+            "multiplier": "1",
+            "rolloverAt": "99999.999",
+            "from": {
+              "readingId": "r-e-in",
+              "register": "2000.000",
+              "readAt": "2026-11-12T03:00:00Z",
+              "source": "manual",
+              "confidence": "0.950",
+              "isEstimated": false,
+              "evidenceDocumentId": null
+            },
+            "to": {
+              "readingId": "r-e1",
+              "register": "2061.500",
+              "readAt": "2026-11-30T16:58:00Z",
+              "source": "iot",
+              "confidence": "1.000",
+              "isEstimated": false,
+              "evidenceDocumentId": null
+            }
+          }
+        ]
+      },
+      "ratePlanVersionId": "rpv-e",
+      "utilityTariffVersionId": "utv-mea-1.1.1",
+      "capPerUnit": "3.2955",
+      "aboveCap": false,
+      "acknowledgementId": null,
+      "tierBreakdown": [
+        {
+          "label": "flat",
+          "units": "61.500",
+          "pricePerUnit": "3.0000",
+          "amount": "184.5"
+        }
+      ],
+      "proRata": null,
+      "vatApplicable": false,
+      "complianceRuleIds": ["compliance.tariff_cap", "compliance.bill_disclosure"],
+      "lineKind": "electricity",
+      "description": "ค่าไฟฟ้า 61.500 หน่วย",
+      "amount": "184.50"
+    }
+  ],
+  "subtotal": "3224.50",
+  "vatAmount": "0.00",
+  "total": "3224.50",
+  "hasEstimate": false,
+  "hasAboveCapLine": false,
+  "reviewFlags": [],
+  "complianceFlags": [],
+  "advanceRent": null
+}

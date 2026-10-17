@@ -15,7 +15,10 @@ export interface PositionInput {
   unitNo: string | null;
   assetItemIds: string[];
   purpose: 'unit' | 'common_area' | 'main';
+  /** What the meters measured in the period (suspects). */
   units: Decimal;
+  /** What was billed (issued invoices, B4.2) — the loss uses it; defaults to `units`. */
+  billedUnits?: Decimal;
   occupied: boolean | null;
   estimated: boolean;
   stale: boolean;
@@ -57,7 +60,7 @@ export function lossNumbers(
 ): LossNumbers {
   const billed = positions
     .filter((p) => p.purpose === 'unit')
-    .reduce((s, p) => s.plus(p.units), new Decimal(0));
+    .reduce((s, p) => s.plus(p.billedUnits ?? p.units), new Decimal(0));
   const common = positions
     .filter((p) => p.purpose === 'common_area')
     .reduce((s, p) => s.plus(p.units), new Decimal(0));
