@@ -307,6 +307,8 @@ model Invoice {
   allocations      PaymentAllocation[]
   taxInvoices      TaxInvoice[]
   payerCredits     PayerCredit[]
+  dunningReminders   DunningReminder[]
+  penaltyAssessment  PenaltyAssessment?
 
   @@unique([tenantId, number], map: "invoice_tenant_id_number_key", where: raw("(number IS NOT NULL)"))
   @@unique([tenantId, promptpayRef], map: "invoice_tenant_id_promptpay_ref_key", where: raw("(promptpay_ref IS NOT NULL)"))
@@ -402,6 +404,7 @@ model InvoiceLine {
   debitNoteLines       DebitNoteLine[]
   estimatedSettlements EstimateSettlement[]       @relation("EstimateSettlementEstimatedLine")
   settlingSettlements  EstimateSettlement[]       @relation("EstimateSettlementSettledLine")
+  penaltyApplied     PenaltyAssessment[]
 
   @@unique([invoiceId, lineNo], map: "invoice_line_invoice_id_line_no_key")
   @@index([assetItemId, readingToId], map: "invoice_line_asset_item_id_reading_to_id_idx")
@@ -453,6 +456,7 @@ model InvoiceCharge {
   billingCycle BillingCycle?       @relation(fields: [billingCycleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_charge_billing_cycle_id_fkey")
   kindRule     InvoiceLineKindRule @relation(fields: [lineKind], references: [lineKind], onDelete: Restrict, onUpdate: NoAction, map: "invoice_charge_line_kind_fkey")
   appliedLine  InvoiceLine?        @relation(fields: [appliedInvoiceLineId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "invoice_charge_applied_line_fkey")
+  penaltyAssessments PenaltyAssessment[]
 
   @@index([tenantId, status], map: "invoice_charge_tenant_id_status_idx")
   @@index([unitId, partyId], map: "invoice_charge_unit_id_party_id_idx")

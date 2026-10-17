@@ -207,6 +207,8 @@ model Lease {
   invoiceCharges   InvoiceCharge[]
 
   payments Payment[]
+  receivableEntries  ReceivableEntry[]
+  penaltyAssessments PenaltyAssessment[]
 
   @@unique([tenantId, number], map: "lease_tenant_id_number_key")
   @@index([tenantId, buildingId, status], map: "lease_tenant_id_building_id_status_idx")

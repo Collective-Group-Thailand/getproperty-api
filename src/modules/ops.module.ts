@@ -31,6 +31,11 @@ import { ReceiptsService } from './ops-payments/receipts.service';
 import { ResidentPaymentsService } from './ops-payments/resident-payments.service';
 import { SettlementsService } from './ops-payments/settlements.service';
 import { SlipsService } from './ops-payments/slips.service';
+import { DashboardService } from './ops-receivables/dashboard.service';
+import { DunningService } from './ops-receivables/dunning.service';
+import { FinanceExports } from './ops-receivables/exports/finance-exports.builders';
+import { ReceivablesService } from './ops-receivables/receivables.service';
+import { ReceivablesNotifications } from './ops-receivables/receivables-notifications';
 import { BoardService } from './ops-units/board.service';
 import { AmenitiesService, MetersService } from './ops-units/meters-items.service';
 import { UnitProfilesService, UtilityAccountsService } from './ops-units/profiles-accounts.service';
@@ -80,11 +85,16 @@ const SERVICES = [
   ReceiptsService,
   PaymentNotifications,
   ResidentPaymentsService,
+  ReceivablesService,
+  DunningService,
+  DashboardService,
+  ReceivablesNotifications,
+  FinanceExports,
 ];
 
 /**
  * Group A business modules (master plan §4: `modules/ops-*`), shared by the HTTP and worker processes so their
- * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4); B4: rate plans, billing cycles, invoices (4.2); documents, Flex, exports (4.3); payments, slips, receipts (4.4).
+ * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4); B4: rate plans, billing cycles, invoices (4.2); documents, Flex, exports (4.3); payments, slips, receipts (4.4); receivables, dunning, penalties, dashboard, finance exports (4.5).
  */
 @Global()
 @Module({ providers: SERVICES, exports: SERVICES })

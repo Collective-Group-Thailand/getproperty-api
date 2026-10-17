@@ -235,7 +235,7 @@ describe('B4.3 documents, series, Flex, archive (real PostgreSQL)', () => {
       .post('/v1/owner/exports')
       .set(bearer(owner))
       .set(idem())
-      .send({ kind: 'invoices_xlsx', params: { period } })
+      .send({ kind: 'tm30', params: { period } })
       .expect(422);
     await t.worker.tick();
     const done = await t.http.get(`/v1/owner/exports/${job.body.id}`).set(bearer(owner)).expect(200);

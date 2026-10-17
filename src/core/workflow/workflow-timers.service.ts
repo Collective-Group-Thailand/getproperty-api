@@ -58,6 +58,10 @@ export class WorkflowTimers {
             await this.remind(tx, timer, now);
             continue;
           }
+          if (timer.kind === 'step') {
+            await this.step(tx, timer, now);
+            continue;
+          }
           if (timer.kind !== 'sla_warn' && timer.kind !== 'sla_breach') continue;
           const column = timer.kind === 'sla_warn' ? 'slaWarnedAt' : 'slaBreachedAt';
           const marked = await tx.workflowInstance.updateMany({
@@ -103,6 +107,45 @@ export class WorkflowTimers {
         return due.length;
       }),
     );
+  }
+
+  /**
+   * A host-scheduled step (e.g. the dunning reminders of `reminders.schedule`, B4.5): `workflow.step_due` with the
+   * timer id; the owning module acts on it (its subscriber) and records what it did.
+   */
+  private async step(tx: Tx, timer: DueTimer, now: Date): Promise<void> {
+    const instance = await tx.workflowInstance.findUniqueOrThrow({
+      where: { id: timer.instance_id },
+      include: { definition: { select: { key: true, version: true } } },
+    });
+    const envelope = await this.events.record(tx, {
+      type: 'workflow.step_due',
+      aggregateType: 'workflow_instance',
+      aggregateId: instance.id,
+      tenantId: instance.tenantId,
+      buildingId: instance.buildingId,
+      payload: {
+        instanceId: instance.id,
+        definitionKey: instance.definition.key,
+        subjectType: instance.subjectType,
+        subjectId: instance.subjectId,
+        state: instance.state,
+        timerId: timer.id,
+      },
+    });
+    await tx.workflowEvent.create({
+      data: {
+        tenantId: instance.tenantId,
+        instanceId: instance.id,
+        fromState: instance.state,
+        toState: instance.state,
+        event: 'step_due',
+        actor: actorEnvelope(RequestContext.actor()),
+        occurredAt: now,
+        data: { timerId: timer.id },
+        domainEventId: envelope.id,
+      },
+    });
   }
 
   /** A `remindBefore` reminder (e.g. T-3 / T-1 of a deposit refund): `workflow.sla_reminder` with the time left. */

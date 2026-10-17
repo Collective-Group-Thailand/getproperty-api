@@ -12,6 +12,12 @@ import {
   SlipStatusName,
 } from '../owner/payments.dto';
 import {
+  PenaltyStatusName,
+  ReceivableEntryTypeName,
+  ReminderStatusName,
+  ReminderTriggerName,
+} from '../owner/receivables.dto';
+import {
   AdminMenuKey,
   BillingCycleStatusName,
   EstimatePolicyName,
@@ -97,6 +103,26 @@ describe('B4.4 payment enums equal the database enums of migration 0022', () => 
     ['slip_status', SlipStatusName],
     ['receipt_kind', ReceiptKindName],
     ['settlement_file_status', SettlementFileStatusName],
+  ] as const)('%s', (name, e) => {
+    expect(Object.values(e).sort()).toEqual(pgEnum(name));
+  });
+});
+
+describe('B4.5 receivable enums equal the database enums of migration 0023', () => {
+  const sql = readFileSync(
+    join(__dirname, '../../../prisma/migrations/20261017000023_0023_ops_receivables/migration.sql'),
+    'utf8',
+  );
+  const pgEnum = (name: string): string[] => {
+    const m = new RegExp(`CREATE TYPE ops\\.${name} AS ENUM \\(([^;]+)\\);`).exec(sql);
+    if (!m) throw new Error(`enum ${name} not found`);
+    return [...m[1]!.matchAll(/'([a-z0-9_]+)'/g)].map((x) => x[1]!).sort();
+  };
+  it.each([
+    ['receivable_entry_type', ReceivableEntryTypeName],
+    ['reminder_status', ReminderStatusName],
+    ['reminder_trigger', ReminderTriggerName],
+    ['penalty_status', PenaltyStatusName],
   ] as const)('%s', (name, e) => {
     expect(Object.values(e).sort()).toEqual(pgEnum(name));
   });

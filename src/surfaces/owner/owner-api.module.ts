@@ -49,6 +49,7 @@ import {
 } from './money-settings.controller';
 import { OwnerPartyDetailsController, partiesController } from './parties.controller';
 import { OwnerPaymentsController } from './payments.controller';
+import { OwnerDashboardController, OwnerReceivablesController } from './receivables.controller';
 import { OwnerSearchController } from './search.controller';
 import {
   deviceInstallsController,
@@ -105,6 +106,8 @@ import {
     OwnerBillingDocumentsController,
     OwnerExportsController,
     OwnerPaymentsController,
+    OwnerReceivablesController,
+    OwnerDashboardController,
     inspectionsController(SURFACES.owner),
     filesController(SURFACES.owner),
     notificationsController(SURFACES.owner),
