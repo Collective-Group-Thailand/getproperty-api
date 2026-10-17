@@ -126,6 +126,10 @@ export class DeviceBootstrapService {
           certSerial: cert.serialNumber,
           mqttClientId: clientId,
           ...(input.agentVersion ? { firmwareVersion: input.agentVersion } : {}),
+          // the OTA rollouts target gateways by architecture (B3.1)
+          ...(input.hardware?.arch && ['arm64', 'x64', 'armv7'].includes(input.hardware.arch)
+            ? { arch: input.hardware.arch }
+            : {}),
           version: { increment: 1 },
         },
       });

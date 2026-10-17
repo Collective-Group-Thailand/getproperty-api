@@ -257,6 +257,18 @@
     "certificate_invalid": {
       "title": "Invalid device certificate",
       "detail": "The gateway certificate is unknown, revoked, expired or belongs to another device."
+    },
+    "not_gateway": {
+      "title": "Not a gateway",
+      "detail": "This device is not a gateway."
+    },
+    "in_use": {
+      "title": "Device in use",
+      "detail": "The device still has meters bound to it; unbind or swap them first."
+    },
+    "unavailable": {
+      "title": "Device unavailable",
+      "detail": "The device is not active in this building."
     }
   },
   "provider": {
@@ -449,6 +461,14 @@
     "already_assigned": {
       "title": "Meter already assigned",
       "detail": "The unit already has an active meter for this utility, or the meter code is taken."
+    },
+    "channel_exists": {
+      "title": "Channel already bound",
+      "detail": "The meter or the bus address is already bound to a gateway."
+    },
+    "no_channel": {
+      "title": "Meter not bound",
+      "detail": "The meter is not bound to a gateway."
     }
   },
   "import": {
@@ -527,6 +547,78 @@
     "exists": {
       "title": "Inspection already exists",
       "detail": "This lease already has an inspection of this type."
+    }
+  },
+  "reading": {
+    "non_monotonic": {
+      "title": "Register went backwards",
+      "detail": "The register is lower than the previous accepted reading and is not a rollover; review it or record a meter swap."
+    },
+    "photo_required": {
+      "title": "Photo required",
+      "detail": "A photo of the meter is required for this reading."
+    },
+    "duplicate": {
+      "title": "Reading already recorded",
+      "detail": "A reading for this meter at this time already exists."
+    },
+    "review_closed": {
+      "title": "Review already decided",
+      "detail": "This reading review has already been decided."
+    },
+    "no_assignment": {
+      "title": "Meter not assigned",
+      "detail": "The meter has no active assignment at that time."
+    },
+    "unreadable": {
+      "title": "Reading unreadable",
+      "detail": "The register could not be read from the photo; enter it manually."
+    }
+  },
+  "ota": {
+    "signature_invalid": {
+      "title": "Invalid signature",
+      "detail": "The release manifest signature does not verify against a trusted key."
+    },
+    "release_exists": {
+      "title": "Release exists",
+      "detail": "A release with this version and architecture already exists."
+    },
+    "ring_order": {
+      "title": "Ring order",
+      "detail": "The previous ring must complete before this ring starts."
+    },
+    "invalid_transition": {
+      "title": "Invalid rollout transition",
+      "detail": "The rollout cannot move to that state from its current state."
+    }
+  },
+  "command": {
+    "not_allowed": {
+      "title": "Command not allowed",
+      "detail": "You may not send this command to this device."
+    }
+  },
+  "ingest": {
+    "not_replayable": {
+      "title": "Not replayable",
+      "detail": "This dead letter cannot be replayed."
+    }
+  },
+  "utility_invoice": {
+    "duplicate": {
+      "title": "Invoice exists",
+      "detail": "An invoice for this utility and period already exists."
+    },
+    "unreadable": {
+      "title": "E-bill unreadable",
+      "detail": "Some fields could not be read from the e-bill; enter the invoice manually."
+    }
+  },
+  "loss": {
+    "no_invoice": {
+      "title": "No utility invoice",
+      "detail": "Enter the utility invoice for this period first."
     }
   }
 }

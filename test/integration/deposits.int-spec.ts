@@ -218,6 +218,17 @@ describe('B2.4 deposits, inspections, 7-day settlement (real PostgreSQL)', () =>
       expect(done.body).toMatchObject({ status: 'signed', staffSigned: true, residentSigned: true });
       expect(done.body.reportNumber).toMatch(/^INS-\d{4}-\d{5}$/);
       await t.http.get(`/v1/staff/inspections/${created.body.id}/report`).set(bearer(staff)).expect(200);
+      // B3.3: the meter registers of the inspection are manual readings (channel `inspection`)
+      const readings = await db.admin.query<{ register: string; source: string; submitted_via: string }>(
+        `SELECT register::text, source::text, submitted_via::text FROM smart.meter_reading WHERE unit_id = $1`,
+        [ids.unit1],
+      );
+      expect(readings.rows.length).toBeGreaterThan(0);
+      expect(
+        readings.rows.every(
+          (r) => r.register === '120.500' && r.source === 'manual' && r.submitted_via === 'inspection',
+        ),
+      ).toBe(true);
     });
 
     it('move-out opens the settlement on the workflow: deadline = move-out + 7 days, T-3/T-1 reminders, move-out task', async () => {

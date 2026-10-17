@@ -1,0 +1,129 @@
+// ops — B3.4 utility invoices and loss (schema-design v2 §3.3.8; migration 0018; D-032).
+
+enum UtilityInvoiceSource {
+  manual
+  ocr
+  ebill_import
+
+  @@map("utility_invoice_source")
+  @@schema("ops")
+}
+
+enum LossSuspectKind {
+  zero_consumption_occupied
+  usage_while_vacant
+  estimated_reading
+  night_water_flow
+  stale_meter
+  consumption_anomaly
+
+  @@map("loss_suspect_kind")
+  @@schema("ops")
+}
+
+/// The building's MEA/PEA/MWA/PWA invoice per period (D-032).
+model UtilityInvoice {
+  id                String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String               @map("tenant_id") @db.Uuid
+  buildingId        String               @map("building_id") @db.Uuid
+  utilityAccountId  String?              @map("utility_account_id") @db.Uuid
+  utility           Utility
+  provider          UtilityProvider
+  periodStart       DateTime             @map("period_start") @db.Date
+  periodEnd         DateTime             @map("period_end") @db.Date
+  invoiceNo         String?              @map("invoice_no")
+  units             Decimal              @db.Decimal(12, 3)
+  amount            Decimal              @db.Decimal(14, 2)
+  ft                Decimal?             @db.Decimal(14, 4)
+  serviceCharge     Decimal?             @map("service_charge") @db.Decimal(14, 2)
+  vat               Decimal?             @db.Decimal(14, 2)
+  previousRegister  Decimal?             @map("previous_register") @db.Decimal(12, 3)
+  currentRegister   Decimal?             @map("current_register") @db.Decimal(12, 3)
+  invoiceDocumentId String?              @map("invoice_document_id") @db.Uuid
+  ocrRaw            Json?                @map("ocr_raw")
+  source            UtilityInvoiceSource @default(manual)
+  enteredBy         String?              @map("entered_by") @db.Uuid
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?              @map("created_by") @db.Uuid
+  updatedAt         DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?              @map("updated_by") @db.Uuid
+  version           Int                  @default(1)
+
+  tenant          Tenant          @relation("UtilityInvoiceTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "utility_invoice_tenant_id_fkey")
+  building        Building        @relation("UtilityInvoiceBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "utility_invoice_building_id_fkey")
+  utilityAccount  UtilityAccount? @relation(fields: [utilityAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "utility_invoice_utility_account_id_fkey")
+  invoiceDocument Document?       @relation("UtilityInvoiceDocument", fields: [invoiceDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "utility_invoice_invoice_document_id_fkey")
+  lossReports     LossReport[]
+
+  @@unique([buildingId, utility, periodStart, periodEnd, utilityAccountId], map: "utility_invoice_period_key")
+  @@index([tenantId, buildingId], map: "utility_invoice_tenant_id_building_id_idx")
+  @@index([utilityAccountId], map: "utility_invoice_utility_account_id_idx")
+  @@index([invoiceDocumentId], map: "utility_invoice_invoice_document_id_idx")
+  @@map("utility_invoice")
+  @@schema("ops")
+}
+
+/// Utility loss per building × utility × billing period (D-032).
+model LossReport {
+  id                     String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId               String   @map("tenant_id") @db.Uuid
+  buildingId             String   @map("building_id") @db.Uuid
+  billingCycleId         String?  @map("billing_cycle_id") @db.Uuid
+  utility                Utility
+  periodStart            DateTime @map("period_start") @db.Date
+  periodEnd              DateTime @map("period_end") @db.Date
+  utilityInvoiceId       String?  @map("utility_invoice_id") @db.Uuid
+  invoiceUnits           Decimal  @map("invoice_units") @db.Decimal(12, 3)
+  unitBilledUnits        Decimal  @map("unit_billed_units") @db.Decimal(12, 3)
+  commonAreaUnits        Decimal  @map("common_area_units") @db.Decimal(12, 3)
+  lossUnits              Decimal  @map("loss_units") @db.Decimal(12, 3)
+  lossPct                Decimal? @map("loss_pct") @db.Decimal(7, 4)
+  lossThb                Decimal  @map("loss_thb") @db.Decimal(14, 2)
+  priceBasis             String   @map("price_basis")
+  utilityTariffVersionId String?  @map("utility_tariff_version_id") @db.Uuid
+  billedUnitsSource      String   @map("billed_units_source")
+  computedAt             DateTime @map("computed_at") @db.Timestamptz(6)
+  inputsSnapshot         Json     @map("inputs_snapshot")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy              String?  @map("created_by") @db.Uuid
+  updatedAt              DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy              String?  @map("updated_by") @db.Uuid
+
+  tenant               Tenant                @relation("LossReportTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "loss_report_tenant_id_fkey")
+  building             Building              @relation("LossReportBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "loss_report_building_id_fkey")
+  utilityInvoice       UtilityInvoice?       @relation(fields: [utilityInvoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "loss_report_utility_invoice_id_fkey")
+  utilityTariffVersion UtilityTariffVersion? @relation("LossReportTariffVersion", fields: [utilityTariffVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "loss_report_utility_tariff_version_id_fkey")
+  suspects             LossSuspect[]
+
+  @@unique([buildingId, utility, periodStart, periodEnd], map: "loss_report_building_id_utility_period_start_period_end_key")
+  @@index([tenantId, buildingId], map: "loss_report_tenant_id_building_id_idx")
+  @@index([utilityInvoiceId], map: "loss_report_utility_invoice_id_idx")
+  @@index([utilityTariffVersionId], map: "loss_report_utility_tariff_version_id_idx")
+  @@map("loss_report")
+  @@schema("ops")
+}
+
+/// Why the loss may be where it is (D-032).
+model LossSuspect {
+  id           String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String          @map("tenant_id") @db.Uuid
+  lossReportId String          @map("loss_report_id") @db.Uuid
+  assetItemId  String?         @map("asset_item_id") @db.Uuid
+  unitId       String?         @map("unit_id") @db.Uuid
+  kind         LossSuspectKind
+  score        Decimal         @db.Decimal(5, 2)
+  detail       Json            @default("{}")
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant     Tenant     @relation("LossSuspectTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "loss_suspect_tenant_id_fkey")
+  lossReport LossReport @relation(fields: [lossReportId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "loss_suspect_loss_report_id_fkey")
+  assetItem  AssetItem? @relation("LossSuspectAssetItem", fields: [assetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "loss_suspect_asset_item_id_fkey")
+  unitRef    Unit?      @relation("LossSuspectUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "loss_suspect_unit_id_fkey")
+
+  @@index([lossReportId], map: "loss_suspect_loss_report_id_idx")
+  @@index([tenantId], map: "loss_suspect_tenant_id_idx")
+  @@index([assetItemId], map: "loss_suspect_asset_item_id_idx")
+  @@index([unitId], map: "loss_suspect_unit_id_idx")
+  @@map("loss_suspect")
+  @@schema("ops")
+}

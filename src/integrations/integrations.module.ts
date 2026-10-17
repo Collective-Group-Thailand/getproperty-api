@@ -2,6 +2,9 @@ import { FieldEncryption } from '@common/crypto/field-encryption';
 import { AppConfig } from '@config/app-config';
 import { Global, Inject, Injectable, Module, type OnApplicationShutdown } from '@nestjs/common';
 
+import { AI_GATEWAY, type AiGatewayPort } from './ai/ai-gateway.port';
+import { FakeAiGateway } from './ai/fake-ai-gateway';
+import { HttpAiGatewayAdapter, UnconfiguredAiGateway } from './ai/http-ai-gateway.adapter';
 import { EMAIL, type EmailPort } from './email/email.port';
 import { FakeEmail } from './email/fake-email';
 import { SesEmailAdapter } from './email/ses-email.adapter';
@@ -16,6 +19,9 @@ import { LINE_MESSAGING, type LineMessagingPort } from './line/line-messaging.po
 import { FakeMqttClient } from './mqtt/fake-mqtt-client';
 import { EmqxMqttClient } from './mqtt/mqtt-client';
 import { MQTT_CLIENT, type MqttClientPort } from './mqtt/mqtt-client.port';
+import { FakeOcr } from './ocr/fake-ocr';
+import { OCR, type OcrPort } from './ocr/ocr.port';
+import { VisionOcrAdapter } from './ocr/vision-ocr.adapter';
 import { FakePdfRenderer } from './pdf/fake-pdf-renderer';
 import { PDF_RENDERER, type PdfRendererPort } from './pdf/pdf-renderer.port';
 import { PuppeteerPdfRenderer } from './pdf/puppeteer-pdf-renderer';
@@ -105,7 +111,31 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
               tlsCaPath: config.get('MQTT_TLS_CA'),
               tlsCertPath: config.get('MQTT_TLS_CERT'),
               tlsKeyPath: config.get('MQTT_TLS_KEY'),
+              protocolVersion: config.get('MQTT_PROTOCOL_VERSION'),
             }),
+    },
+    {
+      provide: AI_GATEWAY,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig): AiGatewayPort => {
+        if (config.useFakes) return new FakeAiGateway();
+        const url = config.get('AI_GATEWAY_URL');
+        const key = config.get('AI_GATEWAY_API_KEY');
+        return url && key
+          ? new HttpAiGatewayAdapter({
+              baseUrl: url,
+              apiKey: key,
+              model: config.get('AI_VISION_MODEL'),
+              timeoutMs: config.get('AI_GATEWAY_TIMEOUT_MS'),
+            })
+          : new UnconfiguredAiGateway();
+      },
+    },
+    {
+      provide: OCR,
+      inject: [AppConfig, AI_GATEWAY],
+      useFactory: (config: AppConfig, ai: AiGatewayPort): OcrPort =>
+        config.useFakes ? new FakeOcr() : new VisionOcrAdapter(ai),
     },
     {
       provide: PDF_RENDERER,
@@ -196,6 +226,8 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
     PDF_RENDERER,
     SECRETS_PROVIDER,
     MQTT_CLIENT,
+    AI_GATEWAY,
+    OCR,
     SMS,
     LINE_LOGIN,
     LINE_MESSAGING,

@@ -88,7 +88,39 @@ async function tenantName(tx: Tx, tenantId: string): Promise<string> {
   );
 }
 
+/** B3.4: "unit 305 · electric" / "common area CA-PUMP · water" for meter health messages (D-034). */
+async function meterLabel(tx: Tx, payload: Record<string, unknown>): Promise<string> {
+  const unit = payload.unitId
+    ? await tx.unit.findUnique({ where: { id: payload.unitId as string }, select: { unitNo: true } })
+    : null;
+  return `${unit?.unitNo ?? (payload.code as string | undefined) ?? ''} · ${typeof payload.utility === 'string' ? payload.utility : ''}`.trim();
+}
+
+const meterHealth: NotifiableResolver = async (tx, e) =>
+  e.tenantId
+    ? {
+        recipients: await operators(tx, e.tenantId, ['owner', 'manager', 'staff'], 'owner'),
+        data: {
+          tenant: { name: await tenantName(tx, e.tenantId) },
+          meter: { label: await meterLabel(tx, e.payload), lastSeenAt: e.payload.lastSeenAt ?? '-' },
+        },
+      }
+    : null;
+
 export const NOTIFIABLE_EVENTS: Record<string, NotifiableResolver> = {
+  /** B3.4 (D-034): meter health and gateway offline reach the operators of the building's tenant. */
+  'meter.stale': meterHealth,
+  'meter.silent': meterHealth,
+  'device.offline': async (tx, e) =>
+    e.tenantId
+      ? {
+          recipients: await operators(tx, e.tenantId, ['owner', 'manager', 'staff'], 'owner'),
+          data: {
+            tenant: { name: await tenantName(tx, e.tenantId) },
+            device: { serial: e.payload.serial, since: e.payload.since ?? e.occurredAt },
+          },
+        }
+      : null,
   'tenant.bank_account.changed': async (tx, e) => ({
     recipients: await operators(tx, e.tenantId!, ['owner'], 'owner'),
     data: {

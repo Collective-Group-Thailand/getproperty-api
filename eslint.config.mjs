@@ -14,6 +14,7 @@ export default tseslint.config(
       'docs/**',
       'eslint.config.mjs',
       'scripts/*.mjs',
+      'test/support/*.mjs',
     ],
   },
   eslint.configs.recommended,

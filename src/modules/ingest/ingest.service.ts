@@ -5,6 +5,7 @@ import { Injectable, Logger, type Type } from '@nestjs/common';
 import { CommandAck } from './protocol/command.dto';
 import { MeterHealthStatus } from './protocol/enums';
 import { DeviceEvent } from './protocol/events.dto';
+import { MAX_READINGS_PER_BATCH } from './protocol/formats';
 import { Health, isLwtPayload } from './protocol/health.dto';
 import { TelemetryBatch } from './protocol/telemetry.dto';
 
@@ -31,7 +32,7 @@ export type IngestOutcome =
   | { status: 'lwt'; gatewayId: string }
   | {
       status: 'rejected';
-      reason: 'unknown_topic' | 'malformed_json' | 'invalid_payload' | 'gateway_mismatch';
+      reason: 'unknown_topic' | 'malformed_json' | 'invalid_payload' | 'gateway_mismatch' | 'batch_too_large';
       detail?: string;
     };
 
@@ -43,10 +44,9 @@ export interface IngestCounters {
 }
 
 /**
- * Validates every MQTT envelope against the protocol DTOs (device-protocol.md §5) and reports the
- * outcome. B1.1 only logs: dedup on (meterId, seq), persistence into readings / telemetry hypertables
- * and the `device.invalid_payload` alert threshold arrive in B3.2. No authorisation yet either — the
- * certificate → device → tenant/building binding is B1.3/B3.1.
+ * Validates every MQTT envelope against the protocol DTOs (device-protocol.md §5) and reports the outcome; a
+ * telemetry batch above 200 readings is refused as `batch_too_large` (backpressure). Stateless: authorisation,
+ * dedup and persistence are the `IngestPipeline`'s (B3.2).
  */
 @Injectable()
 export class IngestService {
@@ -75,6 +75,11 @@ export class IngestService {
       this.logger.warn({ event: 'gateway_lwt', gatewayId: parsed.gatewayId }, 'gateway offline (LWT)');
       return { status: 'lwt', gatewayId: parsed.gatewayId };
     }
+
+    // Backpressure (protocol §2: ≤ 200 readings per batch): refused before validation, with its own reason.
+    const readings = (json as { readings?: unknown } | null)?.readings;
+    if (parsed.kind === 'telemetry' && Array.isArray(readings) && readings.length > MAX_READINGS_PER_BATCH)
+      return this.reject('batch_too_large', topic, `${readings.length} readings`);
 
     let instance: object;
     try {

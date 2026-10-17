@@ -59,3 +59,16 @@ export async function mapConflicts<T>(
     throw error;
   }
 }
+
+/** True when a PL/pgSQL `RAISE EXCEPTION` whose message starts with `marker` (e.g. `smart.monotonic`) caused the error. */
+export function raisedWith(error: unknown, marker: string, depth = 0): boolean {
+  if (!error || typeof error !== 'object' || depth > 5) return false;
+  const e = error as Record<string, unknown>;
+  if (typeof e.message === 'string' && e.message.includes(marker)) return true;
+  const meta = e.meta as Record<string, unknown> | undefined;
+  return (
+    raisedWith(e.cause, marker, depth + 1) ||
+    raisedWith(meta, marker, depth + 1) ||
+    raisedWith(meta?.driverAdapterError, marker, depth + 1)
+  );
+}

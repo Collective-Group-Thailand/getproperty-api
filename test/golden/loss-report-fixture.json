@@ -1,0 +1,51 @@
+{
+  "report": {
+    "id": "<id>",
+    "buildingId": "0199f2a0-0000-7000-8000-000000000004",
+    "utility": "electric",
+    "periodKey": "2026-10",
+    "periodStart": "2026-09-30",
+    "periodEnd": "2026-10-31",
+    "invoiceUnits": "1400.000",
+    "unitBilledUnits": "1325.000",
+    "commonAreaUnits": "0.000",
+    "lossUnits": "75.000",
+    "lossPct": "5.3571",
+    "lossThb": "321.43",
+    "priceBasis": "invoice_average",
+    "billedUnitsSource": "meter_readings_stub",
+    "computedAt": "<at>",
+    "suspects": [
+      {
+        "id": "<id>",
+        "kind": "usage_while_vacant",
+        "unitId": "<unit A-206>",
+        "assetItemId": "<meter A-206>",
+        "score": "56.98",
+        "detail": {
+          "units": "45.000",
+          "unitNo": "A-206"
+        }
+      },
+      {
+        "id": "<id>",
+        "kind": "stale_meter",
+        "unitId": "<unit A-205>",
+        "assetItemId": "<meter A-205>",
+        "score": "40.00",
+        "detail": {
+          "units": "125.000",
+          "unitNo": "A-205"
+        }
+      }
+    ]
+  },
+  "trend": [
+    {
+      "periodEnd": "2026-10-31",
+      "lossUnits": "75.000",
+      "lossPct": "5.3571",
+      "lossThb": "321.43"
+    }
+  ]
+}

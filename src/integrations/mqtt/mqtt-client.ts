@@ -15,6 +15,8 @@ export interface MqttClientOptions {
   clientId: string;
   username?: string;
   password?: string;
+  /** 5 (EMQX, default) or 4 (MQTT 3.1.1 brokers such as the in-process test broker). */
+  protocolVersion?: 4 | 5;
   /** PEM file paths (TLS / mTLS, D-130). */
   tlsCaPath?: string;
   tlsCertPath?: string;
@@ -38,7 +40,7 @@ export class EmqxMqttClient implements MqttClientPort {
     if (options.tlsCertPath) tls.cert = readFileSync(options.tlsCertPath);
     if (options.tlsKeyPath) tls.key = readFileSync(options.tlsKeyPath);
     this.client = connect(options.url, {
-      protocolVersion: 5,
+      protocolVersion: options.protocolVersion ?? 5,
       clientId: options.clientId,
       username: options.username,
       password: options.password,

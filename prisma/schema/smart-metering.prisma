@@ -1,0 +1,330 @@
+// smart — B3.1 device registry completion (schema-design v2 §3.4.1; migration 0015): meter channels, compiled gateway
+// configs, meter swaps, OTA releases / rollouts, device commands, meter status. No cut-off command (D-024, D-157).
+
+enum BusType {
+  modbus_rtu
+  gpio
+  lorawan
+  nb_iot
+  vendor_cloud
+
+  @@map("bus_type")
+  @@schema("smart")
+}
+
+enum RegisterMap {
+  driver_default
+  custom
+
+  @@map("register_map")
+  @@schema("smart")
+}
+
+enum OtaChannel {
+  stable
+  beta
+  canary
+
+  @@map("ota_channel")
+  @@schema("smart")
+}
+
+enum RolloutStatus {
+  planned
+  running
+  paused
+  completed
+  rolled_back
+  aborted
+
+  @@map("rollout_status")
+  @@schema("smart")
+}
+
+enum OtaDeviceStatus {
+  queued
+  commanded
+  started
+  applied
+  rolled_back
+  failed
+
+  @@map("ota_device_status")
+  @@schema("smart")
+}
+
+enum CommandType {
+  read_now
+  restart
+  ota_apply
+  upload_logs
+  set_log_level
+  identify
+
+  @@map("command_type")
+  @@schema("smart")
+}
+
+enum CommandStatus {
+  queued
+  sent
+  accepted
+  done
+  failed
+  expired
+
+  @@map("command_status")
+  @@schema("smart")
+}
+
+enum MeterHealth {
+  ok
+  stale
+  silent
+  no_device
+  unknown
+
+  @@map("meter_health")
+  @@schema("smart")
+}
+
+/// How a gateway reads a meter over time (D-131).
+model MeterChannel {
+  id                String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String      @map("tenant_id") @db.Uuid
+  buildingId        String      @map("building_id") @db.Uuid
+  meterAssetItemId  String      @map("meter_asset_item_id") @db.Uuid
+  meterDeviceId     String?     @map("meter_device_id") @db.Uuid
+  gatewayDeviceId   String      @map("gateway_device_id") @db.Uuid
+  driver            String
+  busId             String      @map("bus_id")
+  busType           BusType     @map("bus_type")
+  address           Int?        @db.SmallInt
+  pin               Int?        @db.SmallInt
+  registerMap       RegisterMap @default(driver_default) @map("register_map")
+  customRegisterMap Json?       @map("custom_register_map")
+  scale             Decimal     @default(1) @db.Decimal(12, 6)
+  litresPerPulse    Decimal?    @map("litres_per_pulse") @db.Decimal(8, 3)
+  validFrom         DateTime    @map("valid_from") @db.Timestamptz(6)
+  validTo           DateTime?   @map("valid_to") @db.Timestamptz(6)
+  unboundReason     String?     @map("unbound_reason")
+  boundBy           String?     @map("bound_by") @db.Uuid
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?     @map("created_by") @db.Uuid
+  updatedAt         DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?     @map("updated_by") @db.Uuid
+
+  tenant      Tenant    @relation("MeterChannelTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_channel_tenant_id_fkey")
+  building    Building  @relation("MeterChannelBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_channel_building_id_fkey")
+  meter       AssetItem @relation("MeterChannelMeter", fields: [meterAssetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_channel_meter_asset_item_id_fkey")
+  meterDevice Device?   @relation("MeterChannelMeterDevice", fields: [meterDeviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_channel_meter_device_id_fkey")
+  gateway     Device    @relation("MeterChannelGateway", fields: [gatewayDeviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_channel_gateway_device_id_fkey")
+
+  @@index([gatewayDeviceId], map: "meter_channel_gateway_device_id_idx", where: raw("(valid_to IS NULL)"))
+  @@index([tenantId, buildingId], map: "meter_channel_tenant_id_building_id_idx")
+  @@index([meterAssetItemId], map: "meter_channel_meter_asset_item_id_idx")
+  @@index([meterDeviceId], map: "meter_channel_meter_device_id_idx")
+  @@map("meter_channel")
+  @@schema("smart")
+}
+
+/// Compiled GatewayConfig documents, retained on MQTT (D-131).
+model GatewayConfig {
+  id              String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  buildingId      String    @map("building_id") @db.Uuid
+  gatewayDeviceId String    @map("gateway_device_id") @db.Uuid
+  version         Int
+  document        Json
+  documentSha256  Bytes     @map("document_sha256")
+  compiledAt      DateTime  @default(now()) @map("compiled_at") @db.Timestamptz(6)
+  publishedAt     DateTime? @map("published_at") @db.Timestamptz(6)
+  appliedAt       DateTime? @map("applied_at") @db.Timestamptz(6)
+  rejectedAt      DateTime? @map("rejected_at") @db.Timestamptz(6)
+  rejectError     String?   @map("reject_error")
+  driftFlaggedAt  DateTime? @map("drift_flagged_at") @db.Timestamptz(6)
+  createdBy       String?   @map("created_by") @db.Uuid
+
+  tenant   Tenant   @relation("GatewayConfigTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "gateway_config_tenant_id_fkey")
+  building Building @relation("GatewayConfigBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "gateway_config_building_id_fkey")
+  gateway  Device   @relation("GatewayConfigGateway", fields: [gatewayDeviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "gateway_config_gateway_device_id_fkey")
+
+  @@unique([gatewayDeviceId, version], map: "gateway_config_gateway_device_id_version_key")
+  @@index([tenantId, buildingId], map: "gateway_config_tenant_id_building_id_idx")
+  @@map("gateway_config")
+  @@schema("smart")
+}
+
+/// A meter replacement (D-033): closes one assignment, opens the next at the same instant.
+model MeterSwap {
+  id                String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  buildingId        String   @map("building_id") @db.Uuid
+  unitId            String?  @map("unit_id") @db.Uuid
+  oldAssignmentId   String   @unique(map: "meter_swap_old_assignment_id_key") @map("old_assignment_id") @db.Uuid
+  newAssignmentId   String   @unique(map: "meter_swap_new_assignment_id_key") @map("new_assignment_id") @db.Uuid
+  oldDeviceId       String?  @map("old_device_id") @db.Uuid
+  newDeviceId       String?  @map("new_device_id") @db.Uuid
+  oldLastRegister   Decimal  @map("old_last_register") @db.Decimal(12, 3)
+  oldLastReadingId  String?  @map("old_last_reading_id") @db.Uuid
+  newFirstRegister  Decimal  @map("new_first_register") @db.Decimal(12, 3)
+  newFirstReadingId String?  @map("new_first_reading_id") @db.Uuid
+  swappedAt         DateTime @map("swapped_at") @db.Timestamptz(6)
+  performedBy       String?  @map("performed_by") @db.Uuid
+  reason            String
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?  @map("created_by") @db.Uuid
+
+  tenant          Tenant          @relation("MeterSwapTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_swap_tenant_id_fkey")
+  building        Building        @relation("MeterSwapBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_swap_building_id_fkey")
+  unit            Unit?           @relation("MeterSwapUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_swap_unit_id_fkey")
+  oldAssignment   MeterAssignment @relation("MeterSwapOldAssignment", fields: [oldAssignmentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_swap_old_assignment_id_fkey")
+  newAssignment   MeterAssignment @relation("MeterSwapNewAssignment", fields: [newAssignmentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_swap_new_assignment_id_fkey")
+  oldDevice       Device?         @relation("MeterSwapOldDevice", fields: [oldDeviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_swap_old_device_id_fkey")
+  newDevice       Device?         @relation("MeterSwapNewDevice", fields: [newDeviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_swap_new_device_id_fkey")
+  oldLastReading  MeterReading?   @relation("MeterSwapOldLastReading", fields: [oldLastReadingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_swap_old_last_reading_id_fkey")
+  newFirstReading MeterReading?   @relation("MeterSwapNewFirstReading", fields: [newFirstReadingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_swap_new_first_reading_id_fkey")
+  readings        MeterReading[]  @relation("MeterReadingSwap")
+
+  @@index([tenantId, buildingId], map: "meter_swap_tenant_id_building_id_idx")
+  @@index([unitId], map: "meter_swap_unit_id_idx")
+  @@index([oldLastReadingId], map: "meter_swap_old_last_reading_id_idx")
+  @@index([newFirstReadingId], map: "meter_swap_new_first_reading_id_idx")
+  @@map("meter_swap")
+  @@schema("smart")
+}
+
+/// Signed agent releases per version and architecture (D-131).
+model OtaRelease {
+  id                 String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  version            String
+  arch               String
+  channel            OtaChannel @default(stable)
+  artifactUrl        String     @map("artifact_url")
+  artifactDocumentId String?    @map("artifact_document_id") @db.Uuid
+  artifactSha256     Bytes      @map("artifact_sha256")
+  sizeBytes          BigInt     @map("size_bytes")
+  minAgentVersion    String?    @map("min_agent_version")
+  manifest           Json
+  signatureKeyId     String     @map("signature_key_id")
+  signature          Bytes
+  releaseNotes       String?    @map("release_notes")
+  releasedAt         DateTime   @map("released_at") @db.Timestamptz(6)
+  publishedAt        DateTime?  @map("published_at") @db.Timestamptz(6)
+  deprecatedAt       DateTime?  @map("deprecated_at") @db.Timestamptz(6)
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          String?    @map("created_by") @db.Uuid
+  updatedAt          DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy          String?    @map("updated_by") @db.Uuid
+
+  artifactDocument Document?    @relation("OtaReleaseArtifact", fields: [artifactDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "ota_release_artifact_document_id_fkey")
+  rollouts         OtaRollout[]
+
+  @@unique([version, arch], map: "ota_release_version_arch_key")
+  @@map("ota_release")
+  @@schema("smart")
+}
+
+/// A release rolled out to one fleet ring (D-131).
+model OtaRollout {
+  id             String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  releaseId      String        @map("release_id") @db.Uuid
+  ring           OtaRing
+  status         RolloutStatus @default(planned)
+  startedAt      DateTime?     @map("started_at") @db.Timestamptz(6)
+  finishedAt     DateTime?     @map("finished_at") @db.Timestamptz(6)
+  maxFailuresPct Decimal       @default(10) @map("max_failures_pct") @db.Decimal(5, 2)
+  notes          String?
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?       @map("created_by") @db.Uuid
+  updatedAt      DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy      String?       @map("updated_by") @db.Uuid
+
+  release OtaRelease         @relation(fields: [releaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "ota_rollout_release_id_fkey")
+  devices OtaRolloutDevice[]
+
+  @@index([releaseId], map: "ota_rollout_release_id_idx")
+  @@map("ota_rollout")
+  @@schema("smart")
+}
+
+/// One gateway of a rollout (D-131).
+model OtaRolloutDevice {
+  id          String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  rolloutId   String          @map("rollout_id") @db.Uuid
+  deviceId    String          @map("device_id") @db.Uuid
+  commandId   String?         @map("command_id") @db.Uuid
+  status      OtaDeviceStatus @default(queued)
+  fromVersion String?         @map("from_version")
+  toVersion   String          @map("to_version")
+  error       String?
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  rollout OtaRollout     @relation(fields: [rolloutId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "ota_rollout_device_rollout_id_fkey")
+  device  Device         @relation("OtaRolloutDeviceDevice", fields: [deviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "ota_rollout_device_device_id_fkey")
+  command DeviceCommand? @relation(fields: [commandId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "ota_rollout_device_command_id_fkey")
+
+  @@unique([rolloutId, deviceId], map: "ota_rollout_device_rollout_id_device_id_key")
+  @@index([deviceId], map: "ota_rollout_device_device_id_idx")
+  @@index([commandId], map: "ota_rollout_device_command_id_idx")
+  @@map("ota_rollout_device")
+  @@schema("smart")
+}
+
+/// Command / CommandAck (device protocol §2, §4).
+model DeviceCommand {
+  id              String        @id @db.Uuid
+  tenantId        String?       @map("tenant_id") @db.Uuid
+  buildingId      String?       @map("building_id") @db.Uuid
+  gatewayDeviceId String        @map("gateway_device_id") @db.Uuid
+  type            CommandType
+  args            Json          @default("{}")
+  issuedAt        DateTime      @map("issued_at") @db.Timestamptz(6)
+  ttlS            Int           @default(300) @map("ttl_s")
+  expiresAt       DateTime      @map("expires_at") @db.Timestamptz(6)
+  attempts        Int           @default(0) @db.SmallInt
+  issuedBy        String?       @map("issued_by") @db.Uuid
+  status          CommandStatus @default(queued)
+  sentAt          DateTime?     @map("sent_at") @db.Timestamptz(6)
+  ackedAt         DateTime?     @map("acked_at") @db.Timestamptz(6)
+  finishedAt      DateTime?     @map("finished_at") @db.Timestamptz(6)
+  result          Json?
+  error           String?
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant         Tenant?            @relation("DeviceCommandTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "device_command_tenant_id_fkey")
+  building       Building?          @relation("DeviceCommandBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "device_command_building_id_fkey")
+  gateway        Device             @relation("DeviceCommandGateway", fields: [gatewayDeviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "device_command_gateway_device_id_fkey")
+  rolloutDevices OtaRolloutDevice[]
+
+  @@index([gatewayDeviceId, status], map: "device_command_gateway_device_id_status_idx")
+  @@index([status, expiresAt], map: "device_command_status_expires_at_idx", where: raw("(status = ANY (ARRAY['queued'::smart.command_status, 'sent'::smart.command_status, 'accepted'::smart.command_status]))"))
+  @@index([tenantId, buildingId], map: "device_command_tenant_id_building_id_idx")
+  @@map("device_command")
+  @@schema("smart")
+}
+
+/// Current health of each meter asset item (D-034).
+model MeterStatus {
+  assetItemId     String      @id @map("asset_item_id") @db.Uuid
+  tenantId        String      @map("tenant_id") @db.Uuid
+  buildingId      String      @map("building_id") @db.Uuid
+  health          MeterHealth @default(unknown)
+  healthChangedAt DateTime    @default(now()) @map("health_changed_at") @db.Timestamptz(6)
+  lastReadingAt   DateTime?   @map("last_reading_at") @db.Timestamptz(6)
+  lastReadingId   String?     @map("last_reading_id") @db.Uuid
+  lastTelemetryAt DateTime?   @map("last_telemetry_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  assetItem   AssetItem     @relation("MeterStatusAssetItem", fields: [assetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_status_asset_item_id_fkey")
+  tenant      Tenant        @relation("MeterStatusTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_status_tenant_id_fkey")
+  building    Building      @relation("MeterStatusBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_status_building_id_fkey")
+  lastReading MeterReading? @relation("MeterStatusLastReading", fields: [lastReadingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "meter_status_last_reading_id_fkey")
+
+  @@index([tenantId, buildingId, health], map: "meter_status_tenant_id_building_id_health_idx")
+  @@index([lastReadingId], map: "meter_status_last_reading_id_idx")
+  @@map("meter_status")
+  @@schema("smart")
+}

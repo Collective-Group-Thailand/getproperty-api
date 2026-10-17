@@ -25,22 +25,22 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
     expect(core.applied).toHaveLength(10);
     const applied = await applyPrismaMigrations(db.admin);
     expect(applied).toEqual(listMigrations().map((m) => m.name));
-    expect(applied).toHaveLength(14);
+    expect(applied).toHaveLength(18);
   });
 
-  it('creates exactly the tables of schema-design §7.1/§7.2 (+ B1.3 §7.5 rows 17–20): core 18, platform 40, ops 22 (B2.1–B2.4), bridge 1, smart 4, juristic empty', async () => {
+  it('creates exactly the tables of schema-design §7.1–§7.3 (+ §7.5): core 18, platform 40, ops 25 (B2.1–B3.4), bridge 1, smart 25 (B1.3 + B3, partitioned parents counted once), juristic empty', async () => {
     const { rows } = await db.admin.query<{ schema: string; n: number }>(
       `SELECT n.nspname AS schema, count(c.oid)::int AS n
-         FROM pg_namespace n LEFT JOIN pg_class c ON c.relnamespace = n.oid AND c.relkind = 'r' AND c.relname NOT LIKE '\\_%'
+         FROM pg_namespace n LEFT JOIN pg_class c ON c.relnamespace = n.oid AND c.relkind IN ('r', 'p') AND NOT c.relispartition AND c.relname NOT LIKE '\\_%'
         WHERE n.nspname IN ('core', 'platform', 'ops', 'smart', 'bridge', 'juristic') GROUP BY 1 ORDER BY 1`,
     );
     expect(Object.fromEntries(rows.map((r) => [r.schema, r.n]))).toEqual({
       bridge: 1,
       core: 18,
       juristic: 0,
-      ops: 22,
+      ops: 25,
       platform: 40,
-      smart: 4,
+      smart: 25,
     });
     const view = await db.admin.query(
       `SELECT to_regclass('platform.v_consent_state') IS NOT NULL AS present`,
@@ -52,7 +52,7 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
     const { rows } = await db.admin.query<{ table: string }>(
       `SELECT n.nspname || '.' || c.relname AS table
          FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE c.relkind = 'r' AND n.nspname IN ('core', 'platform', 'ops', 'bridge', 'smart') AND c.relname NOT LIKE '\\_%'
+        WHERE c.relkind IN ('r', 'p') AND n.nspname IN ('core', 'platform', 'ops', 'bridge', 'smart') AND c.relname NOT LIKE '\\_%'
           AND NOT (c.relrowsecurity AND c.relforcerowsecurity)`,
     );
     expect(rows).toEqual([]);
@@ -69,12 +69,17 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
   });
 
   it('has no drift between prisma/schema and the migrated database (structural check)', async () => {
+    // Monthly partitions of the D-162 tables are created at run time; Prisma models their parents only.
+    const partitions = await db.admin.query<{ name: string }>(
+      `SELECT n.nspname || '.' || c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relispartition`,
+    );
     const problems = await checkPrismaDrift(db.admin, loadDmmf(), {
       schemas: ['core', ...APP_SCHEMAS],
       schemaText: schemaFiles()
         .map(([, text]) => text)
         .join('\n'),
-      ignoreTables: ['core._migration'],
+      ignoreTables: ['core._migration', ...partitions.rows.map((r) => r.name)],
     });
     expect(problems).toEqual([]);
   });

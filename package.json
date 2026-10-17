@@ -37,7 +37,8 @@
     "db:diff": "prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code",
     "db:seed": "pnpm build:fast && node dist/prisma/seed/run.js reference",
     "db:seed:dev": "pnpm build:fast && node dist/prisma/seed/run.js dev",
-    "rbac:build": "pnpm build:fast && node dist/scripts/rbac-build.js"
+    "rbac:build": "pnpm build:fast && node dist/scripts/rbac-build.js",
+    "sim:gateway": "node scripts/sim-gateway.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1152.0",
@@ -107,6 +108,7 @@
     "@types/qrcode": "1.5.5",
     "@types/supertest": "^7.2.1",
     "@types/web-push": "3.6.4",
+    "aedes": "1.2.0",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "embedded-postgres": "18.4.0-beta.17",
