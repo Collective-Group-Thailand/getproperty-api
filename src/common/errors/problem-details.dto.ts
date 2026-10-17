@@ -31,6 +31,9 @@ export interface ProblemExtensions {
   evaluationId?: string;
   /** `compliance.acknowledgement_required` only: the values the warning shows (rate, cap, units, tariff version). */
   shown?: Record<string, unknown>;
+  /** `compliance.acknowledgement_required` only: the warning text to show and acknowledge (key + version). */
+  legalTextKey?: string;
+  legalTextVersion?: number;
 }
 
 /** RFC 9457 problem details, served as `application/problem+json` (contract §3). */
@@ -107,6 +110,20 @@ export class ProblemDetails {
     description: '`compliance.acknowledgement_required` only: the values shown in the warning (D-021a)',
   })
   shown?: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    example: 'compliance.tariff_cap.warning',
+    description:
+      '`compliance.acknowledgement_required` only: key of the warning text the Owner acknowledges (send it with the acknowledgement)',
+  })
+  legalTextKey?: string;
+
+  @ApiPropertyOptional({
+    type: 'integer',
+    example: 1,
+    description: '`compliance.acknowledgement_required` only: version of that warning text',
+  })
+  legalTextVersion?: number;
 
   @ApiProperty({ example: '6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e' })
   requestId!: string;

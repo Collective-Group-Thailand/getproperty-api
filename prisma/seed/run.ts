@@ -16,6 +16,16 @@ import { PERMISSIONS, ROLE_PERMISSIONS, ROLES, splitPermission } from '../../src
 import { SETTINGS } from '../../src/core/settings/catalogue';
 import { WORKFLOW_DEFINITIONS } from '../../src/core/workflow/definitions';
 import { specToRow } from '../../src/core/workflow/engine';
+import {
+  CLAUSE_SCHEMA,
+  FORBIDDEN_CLAUSE_TYPES,
+  STANDARD_TEMPLATE_BODY,
+  STANDARD_TEMPLATE_EFFECTIVE_FROM,
+  STANDARD_TEMPLATE_KEY,
+  STANDARD_TEMPLATE_LEGAL_REF,
+  STANDARD_TEMPLATE_NAME,
+  STANDARD_TEMPLATE_VERSION,
+} from '../../src/modules/ops-leases/contract-template';
 import { HOLIDAYS } from './data/holidays';
 import { NOTIFICATION_ROUTES, NOTIFICATION_TEMPLATES } from './data/notifications';
 import { CONSENT_PURPOSES, RETENTION_POLICIES } from './data/privacy';
@@ -32,6 +42,9 @@ export const DEV = {
   legalPartyId: '0199f2a0-0000-7000-8000-000000000002',
   propertyId: '0199f2a0-0000-7000-8000-000000000003',
   buildingId: '0199f2a0-0000-7000-8000-000000000004',
+  /** B2.3 sample lease on A-101 with a fake resident (signed on paper, active). */
+  residentPartyId: '0199f2a0-0000-7000-8000-000000000005',
+  leaseId: '0199f2a0-0000-7000-8000-000000000006',
   users: {
     owner: '0199f2a0-0000-7000-8000-0000000000a1',
     manager: '0199f2a0-0000-7000-8000-0000000000a2',
@@ -84,6 +97,7 @@ export async function runSeed(
   await tx(db, () => seedNotificationRoutes(db));
   await tx(db, () => seedFeatureFlags(db));
   await tx(db, () => seedWorkflowDefinitions(db));
+  await tx(db, () => seedLeaseTemplates(db));
   if (mode === 'dev') await tx(db, () => seedDev(db));
 
   const counts = await countRows(db);
@@ -293,6 +307,99 @@ async function seedWorkflowDefinitions(db: ClientBase): Promise<void> {
   }
 }
 
+/** The platform สคบ. 2568 standard contract (D-020), version 1 — tenant_id NULL, published. */
+async function seedLeaseTemplates(db: ClientBase): Promise<void> {
+  await db.query(
+    `INSERT INTO ops.lease_template (tenant_id, key, name) VALUES (NULL, $1, $2)
+     ON CONFLICT (tenant_id, key) DO NOTHING`,
+    [STANDARD_TEMPLATE_KEY, STANDARD_TEMPLATE_NAME],
+  );
+  await db.query(
+    `INSERT INTO ops.lease_template_version (template_id, tenant_id, version, language, body_html, clause_schema,
+                                            forbidden_clause_types, legal_ref, state, effective_from, published_at)
+     SELECT t.id, NULL, $2, 'th', $3, $4::jsonb, $5::text[], $6, 'published', $7, now()
+       FROM ops.lease_template t
+      WHERE t.tenant_id IS NULL AND t.key = $1
+        AND NOT EXISTS (SELECT 1 FROM ops.lease_template_version v WHERE v.template_id = t.id AND v.language = 'th' AND v.version = $2)`,
+    [
+      STANDARD_TEMPLATE_KEY,
+      STANDARD_TEMPLATE_VERSION,
+      STANDARD_TEMPLATE_BODY,
+      JSON.stringify(CLAUSE_SCHEMA),
+      [...FORBIDDEN_CLAUSE_TYPES],
+      STANDARD_TEMPLATE_LEGAL_REF,
+      STANDARD_TEMPLATE_EFFECTIVE_FROM,
+    ],
+  );
+}
+
+/**
+ * B2.3 development lease: a fake resident (no ID number — sealing needs the tenant key, enter it in the console)
+ * renting A-101 from 2026-10-01 for 12 months, signed on paper (no e-signature rows), active: occupancy, unit
+ * occupied, current lease, contract number CTR-2026-00001 taken from the series.
+ */
+async function seedDevLease(db: ClientBase): Promise<void> {
+  await db.query(
+    `INSERT INTO core.party (id, tenant_id, type, display_name, first_name, last_name, phone_e164, language, nationality)
+     VALUES ($1, $2, 'person', 'ผู้เช่า ตัวอย่าง (ทดสอบ)', 'ผู้เช่า', 'ตัวอย่าง', '+660000000011', 'th', 'TH')
+     ON CONFLICT (id) DO NOTHING`,
+    [DEV.residentPartyId, DEV.tenantId],
+  );
+  await db.query(
+    `INSERT INTO ops.document_series (tenant_id, doc_type, fiscal_year, prefix, next_number)
+     VALUES ($1, 'contract', 2026, 'CTR', 2)
+     ON CONFLICT (tenant_id, doc_type, fiscal_year) DO NOTHING`,
+    [DEV.tenantId],
+  );
+  await db.query(
+    `INSERT INTO ops.lease (id, tenant_id, building_id, unit_id, lessee_party_id, template_version_id, number, status,
+                            start_date, end_date, months, move_in_at, rent, deposit_amount, advance_rent_amount,
+                            advance_rent_months, billing_day, utility_billing_mode, keys_count, terms, addendum,
+                            sent_for_signature_at, activated_at, compliance_snapshot)
+     SELECT $1, $2, $3, u.id, $4, v.id, 'CTR-2026-00001', 'active', '2026-10-01', '2027-09-30', 12,
+            '2026-10-01T10:00:00+07:00', 4500, 4500, 4500, 1, 5, 'metered', 2,
+            '{"signedOnPaper": true, "source": "dev seed"}'::jsonb, '[]'::jsonb,
+            '2026-09-25T10:00:00+07:00', '2026-09-25T10:00:00+07:00', '{"inScope": true, "checks": [], "seeded": true}'::jsonb
+       FROM core.unit u, ops.lease_template_version v JOIN ops.lease_template t ON t.id = v.template_id
+      WHERE u.building_id = $3 AND u.unit_no = 'A-101' AND t.tenant_id IS NULL AND t.key = $5 AND v.version = 1
+     ON CONFLICT (id) DO NOTHING`,
+    [DEV.leaseId, DEV.tenantId, DEV.buildingId, DEV.residentPartyId, STANDARD_TEMPLATE_KEY],
+  );
+  await db.query(
+    `INSERT INTO ops.lease_party (tenant_id, lease_id, party_id, role, is_signer) VALUES ($1, $2, $3, 'lessee', true)
+     ON CONFLICT (lease_id, party_id) DO NOTHING`,
+    [DEV.tenantId, DEV.leaseId, DEV.residentPartyId],
+  );
+  await db.query(
+    `INSERT INTO ops.lease_line (tenant_id, lease_id, kind, description, amount, recurrence, effective_from)
+     SELECT $1, $2, 'internet', 'อินเทอร์เน็ต', 300, 'monthly', '2026-10-01'
+      WHERE NOT EXISTS (SELECT 1 FROM ops.lease_line WHERE lease_id = $2)`,
+    [DEV.tenantId, DEV.leaseId],
+  );
+  await db.query(
+    `INSERT INTO core.occupancy (tenant_id, building_id, unit_id, party_id, role, lease_id, valid_from, moved_in_at)
+     SELECT l.tenant_id, l.building_id, l.unit_id, $2, 'tenant', l.id, l.start_date, l.move_in_at FROM ops.lease l
+      WHERE l.id = $1 AND NOT EXISTS (SELECT 1 FROM core.occupancy o WHERE o.lease_id = $1)`,
+    [DEV.leaseId, DEV.residentPartyId],
+  );
+  await db.query(
+    `UPDATE core.unit u SET status = 'occupied', status_changed_at = '2026-10-01T10:00:00+07:00'
+       FROM ops.lease l WHERE l.id = $1 AND u.id = l.unit_id AND u.status <> 'occupied'`,
+    [DEV.leaseId],
+  );
+  await db.query(
+    `UPDATE ops.unit_detail d SET current_lease_id = $1 FROM ops.lease l
+      WHERE l.id = $1 AND d.unit_id = l.unit_id AND d.current_lease_id IS DISTINCT FROM $1`,
+    [DEV.leaseId],
+  );
+  await db.query(
+    `INSERT INTO ops.lease_event (tenant_id, lease_id, type, occurred_at, actor, data)
+     SELECT $1, $2, 'activated', '2026-09-25T10:00:00+07:00', '{"type":"system","name":"seed"}', '{"signedOnPaper": true}'
+      WHERE NOT EXISTS (SELECT 1 FROM ops.lease_event WHERE lease_id = $2)`,
+    [DEV.tenantId, DEV.leaseId],
+  );
+}
+
 /** Development data: one apartment tenant "หอพักตัวอย่าง" with obviously fake people (+66 0… numbers). */
 async function seedDev(db: ClientBase): Promise<void> {
   const users: [string, string, string, string][] = [
@@ -380,6 +487,7 @@ async function seedDev(db: ClientBase): Promise<void> {
     [DEV.tenantId, DEV.buildingId],
   );
   await seedDevUnits(db);
+  await seedDevLease(db);
   for (const [user, role] of [
     [DEV.users.platformAdmin, 'platform_admin'],
     [DEV.users.support, 'support'],
@@ -514,6 +622,11 @@ const COUNTED_TABLES = [
   'core.meter_assignment',
   'ops.unit_profile',
   'ops.unit_detail',
+  'ops.lease_template',
+  'ops.lease_template_version',
+  'ops.lease',
+  'ops.lease_party',
+  'core.occupancy',
 ];
 
 export async function countRows(db: ClientBase): Promise<Record<string, number>> {

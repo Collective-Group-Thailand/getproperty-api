@@ -19,7 +19,14 @@ import { DomainEvents } from '../events/domain-events';
 import { COMPLIANCE_RULES } from './rules';
 
 /** Version of the warning text shown with an acknowledgement (legal-reference §4; ⚖ wording, D-021a). */
-export const LEGAL_TEXT_VERSIONS: Record<string, number> = { 'compliance.tariff_cap.warning': 1 };
+export const LEGAL_TEXT_VERSIONS: Record<string, number> = {
+  'compliance.tariff_cap.warning': 1,
+  // B2.3/B2.4: warnings of lease notices and deposit refunds (legal-reference §1; ⚖ wording)
+  'compliance.notice_period.warning': 1,
+  'compliance.termination_notice.warning': 1,
+  'compliance.water_minimum.warning': 1,
+  'compliance.deposit_deadline.warning': 1,
+};
 
 export interface EvaluationInput {
   ruleId: string;

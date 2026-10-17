@@ -1,0 +1,312 @@
+// ops — A1 leases: สคบ. standard contract templates, leases, parties, lines, e-signatures, history
+// (B2.3; schema-design v2 §3.3.3; D-020, D-023, D-062).
+
+enum LeaseStatus {
+  draft
+  pending_signature
+  active
+  notice_given
+  ending
+  ended
+  terminated
+  cancelled
+
+  @@map("lease_status")
+  @@schema("ops")
+}
+
+enum UtilityBillingMode {
+  metered
+  included
+
+  @@map("utility_billing_mode")
+  @@schema("ops")
+}
+
+enum NoticeParty {
+  lessee
+  lessor
+
+  @@map("notice_party")
+  @@schema("ops")
+}
+
+enum LeasePartyRole {
+  lessee
+  co_tenant
+  guarantor
+  occupant
+
+  @@map("lease_party_role")
+  @@schema("ops")
+}
+
+enum LeaseLineKind {
+  internet
+  parking
+  cleaning
+  furniture
+  common_fee
+  water_minimum
+  other_fixed
+
+  @@map("lease_line_kind")
+  @@schema("ops")
+}
+
+enum LineRecurrence {
+  monthly
+  once
+
+  @@map("line_recurrence")
+  @@schema("ops")
+}
+
+enum SignerRole {
+  lessee
+  co_tenant
+  lessor
+  witness
+
+  @@map("signer_role")
+  @@schema("ops")
+}
+
+enum SignatureMethod {
+  draw_liff
+  draw_web
+  scan_upload
+
+  @@map("signature_method")
+  @@schema("ops")
+}
+
+/// Contract templates; tenant_id NULL = the platform สคบ. standard contract.
+model LeaseTemplate {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String?  @map("tenant_id") @db.Uuid
+  key       String
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  tenant   Tenant?                @relation("LeaseTemplateTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_template_tenant_id_fkey")
+  versions LeaseTemplateVersion[]
+
+  @@unique([tenantId, key], map: "lease_template_tenant_id_key_key")
+  @@map("lease_template")
+  @@schema("ops")
+}
+
+/// Versioned Handlebars contract text.
+model LeaseTemplateVersion {
+  id                   String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  templateId           String               @map("template_id") @db.Uuid
+  tenantId             String?              @map("tenant_id") @db.Uuid
+  version              Int
+  language             String               @default("th") @db.Char(2)
+  bodyHtml             String               @map("body_html")
+  clauseSchema         Json                 @default("{}") @map("clause_schema")
+  forbiddenClauseTypes String[]             @default([]) @map("forbidden_clause_types")
+  legalRef             String               @map("legal_ref")
+  state                TemplateVersionState @default(draft)
+  effectiveFrom        DateTime             @map("effective_from") @db.Date
+  publishedBy          String?              @map("published_by") @db.Uuid
+  publishedAt          DateTime?            @map("published_at") @db.Timestamptz(6)
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy            String?              @map("created_by") @db.Uuid
+  updatedAt            DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy            String?              @map("updated_by") @db.Uuid
+
+  template LeaseTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "lease_template_version_template_id_fkey")
+  tenant   Tenant?       @relation("LeaseTemplateVersionTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_template_version_tenant_id_fkey")
+  leases   Lease[]
+
+  @@unique([templateId, language, version], map: "lease_template_version_template_id_language_version_key")
+  @@index([tenantId], map: "lease_template_version_tenant_id_idx")
+  @@map("lease_template_version")
+  @@schema("ops")
+}
+
+/// A rental contract on a unit (D-020).
+model Lease {
+  id                             String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                       String             @map("tenant_id") @db.Uuid
+  buildingId                     String             @map("building_id") @db.Uuid
+  unitId                         String             @map("unit_id") @db.Uuid
+  lesseePartyId                  String             @map("lessee_party_id") @db.Uuid
+  templateVersionId              String             @map("template_version_id") @db.Uuid
+  number                         String?            @db.Citext
+  status                         LeaseStatus        @default(draft)
+  startDate                      DateTime           @map("start_date") @db.Date
+  endDate                        DateTime           @map("end_date") @db.Date
+  months                         Int                @db.SmallInt
+  moveInAt                       DateTime?          @map("move_in_at") @db.Timestamptz(6)
+  moveOutAt                      DateTime?          @map("move_out_at") @db.Timestamptz(6)
+  rent                           Decimal            @db.Decimal(14, 2)
+  depositAmount                  Decimal            @default(0) @map("deposit_amount") @db.Decimal(14, 2)
+  advanceRentAmount              Decimal            @default(0) @map("advance_rent_amount") @db.Decimal(14, 2)
+  advanceRentMonths              Decimal            @default(0) @map("advance_rent_months") @db.Decimal(3, 1)
+  billingDay                     Int?               @map("billing_day") @db.SmallInt
+  utilityBillingMode             UtilityBillingMode @default(metered) @map("utility_billing_mode")
+  powerRatePlanId                String?            @map("power_rate_plan_id") @db.Uuid
+  waterRatePlanId                String?            @map("water_rate_plan_id") @db.Uuid
+  keysCount                      Int                @default(0) @map("keys_count") @db.SmallInt
+  parkingSlots                   Int                @default(0) @map("parking_slots") @db.SmallInt
+  terms                          Json               @default("{}")
+  addendum                       Json?
+  rentIncreaseRecorded           Json?              @map("rent_increase_recorded")
+  sentForSignatureAt             DateTime?          @map("sent_for_signature_at") @db.Timestamptz(6)
+  activatedAt                    DateTime?          @map("activated_at") @db.Timestamptz(6)
+  noticeGivenAt                  DateTime?          @map("notice_given_at") @db.Timestamptz(6)
+  noticeBy                       NoticeParty?       @map("notice_by")
+  noticeReasonCode               String?            @map("notice_reason_code")
+  noticeEffectiveDate            DateTime?          @map("notice_effective_date") @db.Date
+  noticeEvidenceDocumentIds      String[]           @default([]) @map("notice_evidence_document_ids") @db.Uuid
+  endedAt                        DateTime?          @map("ended_at") @db.Timestamptz(6)
+  terminatedAt                   DateTime?          @map("terminated_at") @db.Timestamptz(6)
+  terminationReasonCode          String?            @map("termination_reason_code")
+  terminationNotes               String?            @map("termination_notes")
+  terminationEvidenceDocumentIds String[]           @default([]) @map("termination_evidence_document_ids") @db.Uuid
+  cancelledAt                    DateTime?          @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason                   String?            @map("cancel_reason")
+  renewedFromLeaseId             String?            @map("renewed_from_lease_id") @db.Uuid
+  contractDocumentId             String?            @map("contract_document_id") @db.Uuid
+  signedDocumentId               String?            @map("signed_document_id") @db.Uuid
+  contractSha256                 Bytes?             @map("contract_sha256")
+  complianceSnapshot             Json               @default("{}") @map("compliance_snapshot")
+  createdAt                      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                      String?            @map("created_by") @db.Uuid
+  updatedAt                      DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy                      String?            @map("updated_by") @db.Uuid
+  version                        Int                @default(1)
+
+  tenant           Tenant               @relation("LeaseTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_tenant_id_fkey")
+  building         Building             @relation("LeaseBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_building_id_fkey")
+  unit             Unit                 @relation("LeaseUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_unit_id_fkey")
+  lessee           Party                @relation("LeaseLessee", fields: [lesseePartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_lessee_party_id_fkey")
+  templateVersion  LeaseTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_template_version_id_fkey")
+  renewedFrom      Lease?               @relation("LeaseRenewal", fields: [renewedFromLeaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_renewed_from_lease_id_fkey")
+  renewals         Lease[]              @relation("LeaseRenewal")
+  contractDocument Document?            @relation("LeaseContractDocument", fields: [contractDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_contract_document_id_fkey")
+  signedDocument   Document?            @relation("LeaseSignedDocument", fields: [signedDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_signed_document_id_fkey")
+  parties          LeaseParty[]
+  lines            LeaseLine[]
+  signatures       LeaseSignature[]
+  events           LeaseEvent[]
+  invitations      Invitation[]
+  currentForUnits  UnitDetail[]
+
+  @@unique([tenantId, number], map: "lease_tenant_id_number_key")
+  @@index([tenantId, buildingId, status], map: "lease_tenant_id_building_id_status_idx")
+  @@index([unitId, status], map: "lease_unit_id_status_idx")
+  @@index([lesseePartyId], map: "lease_lessee_party_id_idx")
+  @@index([tenantId, endDate], map: "lease_tenant_id_end_date_idx", where: raw("(status = ANY (ARRAY['active'::ops.lease_status, 'notice_given'::ops.lease_status, 'ending'::ops.lease_status]))"))
+  @@index([renewedFromLeaseId], map: "lease_renewed_from_lease_id_idx")
+  @@map("lease")
+  @@schema("ops")
+}
+
+model LeaseParty {
+  id        String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String         @map("tenant_id") @db.Uuid
+  leaseId   String         @map("lease_id") @db.Uuid
+  partyId   String         @map("party_id") @db.Uuid
+  role      LeasePartyRole
+  isSigner  Boolean        @default(false) @map("is_signer")
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?        @map("created_by") @db.Uuid
+  updatedAt DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?        @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation("LeasePartyTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_party_tenant_id_fkey")
+  lease  Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "lease_party_lease_id_fkey")
+  party  Party  @relation("LeasePartyParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_party_party_id_fkey")
+
+  @@unique([leaseId, partyId], map: "lease_party_lease_id_party_id_key")
+  @@index([partyId], map: "lease_party_party_id_idx")
+  @@map("lease_party")
+  @@schema("ops")
+}
+
+model LeaseLine {
+  id            String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  leaseId       String         @map("lease_id") @db.Uuid
+  kind          LeaseLineKind
+  description   String
+  amount        Decimal        @db.Decimal(14, 2)
+  recurrence    LineRecurrence @default(monthly)
+  effectiveFrom DateTime       @map("effective_from") @db.Date
+  effectiveTo   DateTime?      @map("effective_to") @db.Date
+  sortOrder     Int            @default(0) @map("sort_order") @db.SmallInt
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?        @map("created_by") @db.Uuid
+  updatedAt     DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?        @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation("LeaseLineTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_line_tenant_id_fkey")
+  lease  Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "lease_line_lease_id_fkey")
+
+  @@index([leaseId], map: "lease_line_lease_id_idx")
+  @@map("lease_line")
+  @@schema("ops")
+}
+
+/// E-signature evidence (D-062).
+model LeaseSignature {
+  id                       String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                 String          @map("tenant_id") @db.Uuid
+  leaseId                  String          @map("lease_id") @db.Uuid
+  signerRole               SignerRole      @map("signer_role")
+  partyId                  String?         @map("party_id") @db.Uuid
+  userId                   String?         @map("user_id") @db.Uuid
+  method                   SignatureMethod
+  otpChallengeId           String?         @map("otp_challenge_id") @db.Uuid
+  lineUserId               String?         @map("line_user_id")
+  signatureImageDocumentId String          @map("signature_image_document_id") @db.Uuid
+  signedPdfDocumentId      String?         @map("signed_pdf_document_id") @db.Uuid
+  pdfSha256                Bytes           @map("pdf_sha256")
+  signedAt                 DateTime        @map("signed_at") @db.Timestamptz(6)
+  ip                       String?         @db.Inet
+  userAgent                String?         @map("user_agent")
+  createdAt                DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                String?         @map("created_by") @db.Uuid
+  updatedAt                DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy                String?         @map("updated_by") @db.Uuid
+
+  tenant         Tenant        @relation("LeaseSignatureTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_signature_tenant_id_fkey")
+  lease          Lease         @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_signature_lease_id_fkey")
+  party          Party?        @relation("LeaseSignatureParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_signature_party_id_fkey")
+  user           UserAccount?  @relation("LeaseSignatureUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_signature_user_id_fkey")
+  otpChallenge   OtpChallenge? @relation(fields: [otpChallengeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_signature_otp_challenge_id_fkey")
+  signatureImage Document      @relation("LeaseSignatureImage", fields: [signatureImageDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_signature_image_fkey")
+  signedPdf      Document?     @relation("LeaseSignaturePdf", fields: [signedPdfDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_signature_pdf_fkey")
+
+  @@unique([leaseId, signerRole, partyId, userId], map: "lease_signature_lease_id_signer_role_party_id_user_id_key")
+  @@index([tenantId], map: "lease_signature_tenant_id_idx")
+  @@map("lease_signature")
+  @@schema("ops")
+}
+
+/// Append-only lease history.
+model LeaseEvent {
+  id            String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  leaseId       String   @map("lease_id") @db.Uuid
+  type          String
+  occurredAt    DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  actor         Json
+  data          Json     @default("{}")
+  domainEventId String?  @map("domain_event_id") @db.Uuid
+
+  tenant Tenant @relation("LeaseEventTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_event_tenant_id_fkey")
+  lease  Lease  @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_event_lease_id_fkey")
+
+  @@index([leaseId, occurredAt], map: "lease_event_lease_id_occurred_at_idx")
+  @@index([tenantId], map: "lease_event_tenant_id_idx")
+  @@map("lease_event")
+  @@schema("ops")
+}

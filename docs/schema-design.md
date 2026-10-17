@@ -1476,7 +1476,7 @@ Forward references across deliverables use **nullable columns without FK** at cr
 9. **`ops.receivable_balance` per (party, unit)** instead of per lease — needed for condo co-owners and landlords paying common fees; apartments get the same numbers (one lessee per unit). Confirm.
 10. **v1 migration files** in `prisma/migrations/` are superseded and must not be applied; B1.2 step 2b deletes them and starts the history from §7.2 (they were never applied anywhere).
 
-### 7.5 Implementation notes — B1.2 step 2 and B1.3 (2026-10-17, v2.2)
+### 7.5 Implementation notes — B1.2 step 2, B1.3 and B2 (2026-10-17, v2.2)
 Applied by `collective-asset-core` v0.1.0 and getproperty-api migrations 0001–0009. The founder accepted every §7.4
 proposal (singular names, uuidv7-only ids, `adjustment` source type, `meter_assignment` in core, RLS on hypertables
 verified in B3.2, owner-stamped rows via `acts_for`, platform-only `user_account`, cycles per property, receivables per
@@ -1510,6 +1510,8 @@ verified in B3.2, owner-stamped rows via `acts_for`, platform-only `user_account
 | 24 | `ops.utility_account` (B2.1) | CHECK utility ↔ provider (`electric` → mea/pea, `water` → mwa/pwa) and customer number format | defence in depth |
 | 25 | `core` 0.3.0 (asset-core, B2) | `document_kind.signature`; partial index `occupancy_lease_id_idx` | e-signature evidence (D-062), occupancies per lease |
 | 26 | `ops.occupant_profile` (B2.2, migration 0012) | + `occupation text` (TM30 / tenant screening field kept with the resident, not on the party); CHECKs on country code and lengths | the TM30 data pack (D-052) and the contract annex use it |
+| 27 | `ops.lease*` (B2.3, migration 0013) | `lease_template_version` + `tenant_id` (RLS without a join) and its `state` reuses `platform.template_version_state`; published versions are immutable (trigger); `ops.lease` + lifecycle columns `sent_for_signature_at`, `activated_at`, `ended_at`, `cancelled_at`, `cancel_reason`, `contract_document_id` (the unsigned PDF residents sign; `signed_document_id` = the countersigned version), `notice_evidence_document_ids uuid[]`, `termination_evidence_document_ids uuid[]`; exclusion `lease_no_overlap` on `(unit_id, daterange(start_date, end_date, '[]'))` for `active/notice_given/ending`; `lease_signature` UQ … `NULLS NOT DISTINCT` (instead of coalesce); `lease_event` append-only incl. TRUNCATE; child tables (`lease_party`, `lease_line`, `lease_signature`, `lease_event`) carry `tenant_id` and RLS through their lease; FKs `platform.invitation.lease_id` and `ops.unit_detail.current_lease_id` added | D-062, D-173, D-174 |
+| 28 | activation (B2.3) | occupancies, unit status and current lease are written by the countersignature transaction, not by a subscriber (§3.3.3 comment) | D-173 |
 
 ---
 

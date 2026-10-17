@@ -18,10 +18,12 @@ import { AuditQueryService } from './audit/audit-query.service';
 import { BusinessCalendarService } from './calendar/business-calendar.service';
 import { CLOCK, type Clock, SystemClock } from './clock/clock';
 import { ComplianceAcknowledgementService } from './compliance/compliance-acknowledgement.service';
+import { ComplianceGate } from './compliance/compliance-gate.service';
 import { DeviceBootstrapService } from './devices/device-bootstrap.service';
 import { DeviceCaService } from './devices/device-ca.service';
 import { DeviceRegistryService } from './devices/device-registry.service';
 import { DocumentsService } from './documents/documents.service';
+import { DocumentNumbering } from './documents/numbering.service';
 import { DomainEvents } from './events/domain-events';
 import { EventConsumer } from './events/event-consumer.service';
 import { OutboxAdminService } from './events/outbox-admin.service';
@@ -106,6 +108,8 @@ const SERVICES = [
   GrantService,
   UtilityTariffsService,
   ComplianceAcknowledgementService,
+  ComplianceGate,
+  DocumentNumbering,
   DeviceCaService,
   DeviceRegistryService,
   DeviceBootstrapService,

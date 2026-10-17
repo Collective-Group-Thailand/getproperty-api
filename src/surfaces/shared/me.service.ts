@@ -135,7 +135,32 @@ export class MeService {
         orderBy: { validFrom: 'asc' },
       });
     });
-    const tenants = [...new Set(units.map((u) => u.tenantId))];
+    const leases = await this.db.platform(async (tx) => {
+      const links = await tx.partyUserLink.findMany({
+        where: { userId, state: 'active' },
+        select: { partyId: true },
+      });
+      if (!links.length) return [];
+      return tx.leaseParty.findMany({
+        where: {
+          partyId: { in: links.map((l) => l.partyId) },
+          lease: {
+            status: { in: ['pending_signature', 'active', 'notice_given', 'ending', 'ended', 'terminated'] },
+          },
+        },
+        include: {
+          lease: {
+            include: {
+              unit: { select: { unitNo: true } },
+              building: { select: { name: true } },
+              tenant: { select: { displayName: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    });
+    const tenants = [...new Set([...units.map((u) => u.tenantId), ...leases.map((l) => l.tenantId)])];
     const purposes = await this.consents.purposes(
       ['resident'],
       dto.language,
@@ -155,7 +180,17 @@ export class MeService {
         role: o.role,
         validFrom: dateOnly(o.validFrom)!,
       })),
-      leaseIds: [],
+      leaseIds: [...new Set(leases.map((l) => l.leaseId))],
+      leases: leases.map((l) => ({
+        leaseId: l.leaseId,
+        number: l.lease.number,
+        status: l.lease.status,
+        tenantId: l.tenantId,
+        tenantName: l.lease.tenant.displayName,
+        unitNo: l.lease.unit.unitNo,
+        buildingName: l.lease.building.name,
+        role: l.role,
+      })),
       consents: purposes.map((p) => ({
         purposeKey: p.key,
         required: p.required,

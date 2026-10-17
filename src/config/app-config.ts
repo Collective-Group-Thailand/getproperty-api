@@ -29,6 +29,11 @@ export class AppConfig {
     return (this.env.OBJECT_STORAGE_MODE ?? this.env.INTEGRATIONS_MODE) === IntegrationsMode.Fake;
   }
 
+  /** The PDF renderer is the deterministic fake (no browser): `PDF_RENDERER_MODE`, else `INTEGRATIONS_MODE`. */
+  get useFakePdfRenderer(): boolean {
+    return (this.env.PDF_RENDERER_MODE ?? this.env.INTEGRATIONS_MODE) === IntegrationsMode.Fake;
+  }
+
   /** PostgreSQL, Redis and MQTT are in-memory fakes (no connection is ever opened). */
   get useFakeDataStores(): boolean {
     return this.env.DATA_STORES_MODE === DataStoresMode.Fake;

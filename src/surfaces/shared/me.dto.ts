@@ -195,6 +195,32 @@ export class ResidentConsentStateDto {
   granted!: boolean | null;
 }
 
+export class ResidentLeaseSummaryDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  leaseId!: string;
+
+  @ApiProperty({ type: String, nullable: true, example: 'CTR-2026-00001' })
+  number!: string | null;
+
+  @ApiProperty({ example: 'active', description: 'LeaseStatus.' })
+  status!: string;
+
+  @ApiProperty({ format: 'uuid', example: FAKE.tenantId })
+  tenantId!: string;
+
+  @ApiProperty({ example: FAKE.propertyName })
+  tenantName!: string;
+
+  @ApiProperty({ example: FAKE.unitCode })
+  unitNo!: string;
+
+  @ApiProperty({ example: 'อาคาร A' })
+  buildingName!: string;
+
+  @ApiProperty({ example: 'lessee', description: 'My role on the lease (LeasePartyRole).' })
+  role!: string;
+}
+
 export class ResidentMeDto {
   @ApiProperty({ type: () => MeUserDto })
   user!: MeUserDto;
@@ -202,8 +228,11 @@ export class ResidentMeDto {
   @ApiProperty({ type: () => [ResidentUnitDto] })
   units!: ResidentUnitDto[];
 
-  @ApiProperty({ type: [String], example: [], description: 'Lease ids (from B2.3).' })
+  @ApiProperty({ type: [String], example: [FAKE.uuid], description: 'Leases I can open (B2.3).' })
   leaseIds!: string[];
+
+  @ApiProperty({ type: () => [ResidentLeaseSummaryDto], description: 'My leases in every tenant (D-061).' })
+  leases!: ResidentLeaseSummaryDto[];
 
   @ApiProperty({ type: () => [ResidentConsentStateDto] })
   consents!: ResidentConsentStateDto[];

@@ -24,7 +24,7 @@ export interface Subject {
  * (memberships and occupancies may have changed). All queries run in a platform transaction (identity lookups).
  * - operator: `tenant:<id>` per active membership, `building:<id>` for Staff limited to buildings; roles and
  *   permissions are listed when the operator has exactly one tenant (otherwise per tenant via `/me`);
- * - resident: `unit:<id>` for each current occupancy of a linked party (`lease:<id>` scopes arrive with leases, B2.3);
+ * - resident: `lease:<id>` for each lease of a linked party (after the draft), `unit:<id>` for each current occupancy;
  * - technician: `work_order:<id>` (none until B5);
  * - platform: role keys and their permissions;
  * - device: `device:<id>`, `tenant:<id>`, `building:<id>`.
@@ -78,13 +78,30 @@ export class SubjectService {
         })
       : [];
     const units = [...new Set(occupancies.map((o) => o.unitId))];
+    // B2.3: leases of the linked parties a resident may open (not drafts, not cancelled) — contract §8 lease scopes.
+    const leases = links.length
+      ? await tx.leaseParty.findMany({
+          where: {
+            partyId: { in: links.map((l) => l.partyId) },
+            lease: {
+              status: {
+                in: ['pending_signature', 'active', 'notice_given', 'ending', 'ended', 'terminated'],
+              },
+            },
+          },
+          select: { leaseId: true },
+        })
+      : [];
     return {
       id: userId,
       type: 'user',
       audience: 'resident',
       roles: [],
       permissions: [],
-      scopes: units.map((u) => `unit:${u}`),
+      scopes: [
+        ...[...new Set(leases.map((l) => l.leaseId))].map((l) => `lease:${l}`),
+        ...units.map((u) => `unit:${u}`),
+      ],
     };
   }
 

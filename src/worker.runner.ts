@@ -9,6 +9,7 @@ import { QUEUE, QUEUE_NAMES, type QueueJob, type QueuePort } from '@core/queue/q
 import { SupportGrantService } from '@core/tenancy/support-grant.service';
 import { WorkflowTimers } from '@core/workflow/workflow-timers.service';
 import { BULLMQ_REDIS, type RedisClient } from '@database/redis.module';
+import { LeasesService } from '@modules/ops-leases/leases.service';
 import {
   Inject,
   Injectable,
@@ -24,6 +25,7 @@ export const MAINTENANCE_JOBS = {
   'notifications-release': 60_000,
   'support-grants-expire': 300_000,
   retention: 86_400_000,
+  'lease-lifecycle': 3_600_000,
 } as const;
 type MaintenanceJob = keyof typeof MAINTENANCE_JOBS;
 
@@ -50,6 +52,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly delivery: NotificationDelivery,
     private readonly supportGrants: SupportGrantService,
     private readonly retention: RetentionService,
+    private readonly leases: LeasesService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -92,6 +95,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'retention':
         await this.retention.run();
+        break;
+      case 'lease-lifecycle':
+        await this.leases.sweep();
         break;
       default:
         this.logger.warn(`unknown maintenance job ${job.name}`);
