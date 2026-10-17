@@ -6,7 +6,7 @@ description: >-
 inputs:
   asset-core-ref:
     description: Git ref of collective-asset-core matching package.json
-    default: v0.2.1
+    default: v0.3.0
   asset-core-token:
     description: Token with read access to collective-group/collective-asset-core
     required: true

@@ -12,6 +12,18 @@ import {
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import {
+  OwnerAssetItemsController,
+  OwnerBuildingsController,
+  OwnerFloorsController,
+  OwnerMetersController,
+  OwnerPropertiesController,
+  OwnerUnitBoardController,
+  OwnerUnitImportsController,
+  OwnerUnitProfilesController,
+  OwnerUnitsController,
+  OwnerUtilityAccountsController,
+} from './assets.controller';
+import {
   OwnerAssetGrantsController,
   OwnerAuditLogController,
   OwnerDsrController,
@@ -30,7 +42,7 @@ import {
   OwnerTenantController,
 } from './tenancy.controller';
 
-/** `/v1/owner/*` (contract §2): owner console — B1.3 identity, tenancy, settings, tariffs, governance, files. */
+/** `/v1/owner/*` (contract §2): owner console — B1.3 identity, tenancy, settings, tariffs, governance, files; B2.1 properties, buildings, floors, units, board, profiles, utility accounts, meters, asset items, Excel import. */
 @Module({
   controllers: [
     systemPingController(SURFACES.owner),
@@ -48,6 +60,16 @@ import {
     OwnerDsrController,
     OwnerNotificationRoutesController,
     OwnerConsentsController,
+    OwnerPropertiesController,
+    OwnerBuildingsController,
+    OwnerFloorsController,
+    OwnerUnitBoardController,
+    OwnerUnitsController,
+    OwnerUnitProfilesController,
+    OwnerUtilityAccountsController,
+    OwnerMetersController,
+    OwnerAssetItemsController,
+    OwnerUnitImportsController,
     filesController(SURFACES.owner),
     notificationsController(SURFACES.owner),
     pushSubscriptionsController(SURFACES.owner),

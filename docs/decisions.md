@@ -146,6 +146,12 @@
 | D-168 | **Time**: every database session of the app runs with `TimeZone=UTC` (the Prisma pg adapter drops the offset of `timestamptz` text); grant validity defaults to database time because RLS compares it with `now()`. Business rules still use Asia/Bangkok in code. | Accepted (founder pre-approved recommendation) |
 | D-169 | **Tenant data keys** are created at onboarding and, for tenants that predate keys (seeded development data), lazily on first encryption in their own platform transaction. | Accepted (founder pre-approved recommendation) |
 
+## B2 implementation decisions (2026-10-17, founder pre-approved recommendations)
+| ID | Decision | Status |
+|---|---|---|
+| D-170 | **Unit Excel import is stateless and two-step** (B2.1): the owner uploads the xlsx through `files/presign` (kind `other`), `preview` validates every row and column and returns the plan (create / update / unchanged / error, floors to create) with a `previewToken` = hash of the plan; `commit` (Idempotency-Key) parses the same immutable file again and writes only when the token still matches, all rows in one transaction. Existing unit numbers are **updated**, missing floors are created only when asked, limits 2,000 rows and 5 MB. The export uses the same columns. | Accepted (founder pre-approved recommendation) |
+| D-171 | **Asset-core writes belong to the building's owner or operator** (B2.1): a tenant that sees a building or unit only through an `asset_access_grant` reads it but gets 403 `asset.read_only` on changes; creating a unit in a building the tenant owns records the tenant's legal party as its 100 % owner (`core.unit_ownership`, the blueprint rule for apartments); the manual unit-status override is limited to `vacant ↔ inactive \| maintenance` with a reason (audited `unit.status_changed`); the subscription unit count is the tenant's own units whose status is not `inactive` (D-082, D-156). | Accepted (founder pre-approved recommendation) |
+
 ## Open
 | ID | Question | Owner |
 |---|---|---|

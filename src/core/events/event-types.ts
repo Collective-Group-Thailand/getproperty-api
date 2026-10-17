@@ -40,6 +40,13 @@ export const DOMAIN_EVENT_TYPES = {
   'notification.route_changed': 'A tenant changed a channel of the resident routing matrix.',
   'notification.template_published': 'A notification template version was published.',
   'notification.test_requested': 'A platform admin asked for a test send of a template.',
+  // B2.1 units
+  'unit_profile.changed': 'A unit profile (room type) was created, updated or deleted (B2.1).',
+  'utility_account.changed':
+    'A building utility account (MEA/PEA/MWA/PWA) was created, updated or deleted (D-032).',
+  'meter_assignment.changed':
+    'A meter was bound to a unit or common area, or its assignment closed (B2.1, D-012).',
+  'asset_item.changed': 'An appliance, furniture or other asset item of a unit changed (B2.1).',
 } as const;
 export type DomainEventType = keyof typeof DOMAIN_EVENT_TYPES;
 

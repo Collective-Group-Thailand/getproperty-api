@@ -272,6 +272,105 @@ export class DocumentsService extends TenantScopedRepository {
   }
 
   /**
+   * The bytes of an uploaded file for server-side processing (Excel imports, B2.1): only clean files (scan done)
+   * of the given kinds and MIME types, at most `maxBytes`; the stored sha256 is checked again.
+   */
+  async readBytes(
+    ctx: TenantContext,
+    id: string,
+    options: { kinds: DocumentKind[]; mimeTypes: string[]; maxBytes: number },
+  ): Promise<{ document: Document; body: Buffer }> {
+    const doc = await this.db.tenant(ctx, async (tx) => this.found(await this.findOwn(tx, ctx, id)));
+    if (!options.kinds.includes(doc.kind) || !options.mimeTypes.includes(doc.mimeType))
+      throw new DomainException('document.type_not_allowed');
+    if (doc.uploadState === 'presigned') throw new DomainException('document.not_uploaded');
+    if (doc.scanStatus === 'pending') throw new DomainException('document.scan_pending');
+    if (doc.scanStatus !== 'clean' && doc.scanStatus !== 'skipped')
+      throw new DomainException('document.infected');
+    if (Number(doc.sizeBytes) > options.maxBytes)
+      throw new DomainException('validation.failed', {
+        errors: [
+          { path: 'fileId', code: 'max', message: `the file is larger than ${options.maxBytes} bytes` },
+        ],
+      });
+    const chunks: Buffer[] = [];
+    for await (const chunk of await this.storage.getStream(doc.storageKey))
+      chunks.push(Buffer.from(chunk as Buffer));
+    const body = Buffer.concat(chunks);
+    if (!createHash('sha256').update(body).digest().equals(Buffer.from(doc.sha256)))
+      throw new DomainException('document.infected');
+    return { document: doc, body };
+  }
+
+  /**
+   * Stores a file the platform generated (contract PDF, statements, reports) inside the caller's transaction:
+   * object first, then the `core.document` row (verified, scan `skipped` — the platform wrote it). A rollback
+   * leaves an orphan object, never a row without its object; the retention job sweeps orphans by key prefix.
+   */
+  async storeGenerated(
+    tx: Tx,
+    input: {
+      tenantId: string;
+      kind: DocumentKind;
+      scopeType: DocumentScope;
+      scopeId: string | null;
+      buildingId: string | null;
+      title: string;
+      mimeType: string;
+      body: Buffer;
+      retentionClass?: string;
+      versionOfDocumentId?: string | null;
+    },
+  ): Promise<Document> {
+    const now = this.clock.now();
+    const id = uuidv7(now.getTime());
+    const ym = now.toISOString().slice(0, 7).replace('-', '/');
+    const storageKey = `t/${input.tenantId}/${input.kind}/${ym}/${id}`;
+    await this.storage.put(storageKey, input.body, input.mimeType);
+    return tx.document.create({
+      data: {
+        id,
+        tenantId: input.tenantId,
+        scopeType: input.scopeType,
+        scopeId: input.scopeId,
+        buildingId: input.buildingId,
+        kind: input.kind,
+        title: input.title.slice(0, 200),
+        storageBucket: this.config.get('S3_BUCKET'),
+        storageKey,
+        mimeType: input.mimeType,
+        sizeBytes: BigInt(input.body.length),
+        sha256: new Uint8Array(createHash('sha256').update(input.body).digest()),
+        retentionClass: input.retentionClass ?? DOCUMENT_POLICY[input.kind]?.retentionClass ?? 'other',
+        uploadState: 'verified',
+        uploadedAt: now,
+        scanStatus: 'skipped',
+        scannedAt: now,
+        versionOfDocumentId: input.versionOfDocumentId ?? null,
+        createdBy: userIdOf(RequestContext.actor()),
+      },
+    });
+  }
+
+  /** The stored bytes of a document the caller may already see (inside its transaction). */
+  async bytesOf(document: Pick<Document, 'storageKey'>): Promise<Buffer> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of await this.storage.getStream(document.storageKey))
+      chunks.push(Buffer.from(chunk as Buffer));
+    return Buffer.concat(chunks);
+  }
+
+  /** Signed URL of a document already authorised by the caller (resident contract download, B2.3). */
+  async signedUrl(document: Pick<Document, 'id' | 'storageKey' | 'title' | 'mimeType'>) {
+    const url = await this.storage.presignGet(document.storageKey, {
+      expiresInSeconds: DOWNLOAD_URL_TTL_SECONDS,
+      fileName: document.title ?? document.id,
+      contentType: document.mimeType,
+    });
+    return { url, expiresAt: new Date(this.clock.now().getTime() + DOWNLOAD_URL_TTL_SECONDS * 1000) };
+  }
+
+  /**
    * Worker (`document-scan` subscriber): streams the object through the virus scanner, checks the sha256, makes a
    * 320 px WebP thumbnail of clean images. Runs in the subscriber's transaction.
    */

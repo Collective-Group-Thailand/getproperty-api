@@ -17,6 +17,7 @@ import { HealthModule } from '@core/health/health.module';
 import { DatabaseModule } from '@database/database.module';
 import { RedisModule } from '@database/redis.module';
 import { IntegrationsModule } from '@integrations/integrations.module';
+import { OpsModule } from '@modules/ops.module';
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { seconds, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -58,6 +59,7 @@ import { SurfacesModule } from './surfaces/surfaces.module';
     IntegrationsModule,
     IdempotencyModule,
     CoreModule,
+    OpsModule,
     HealthModule,
     SurfacesModule,
   ],
