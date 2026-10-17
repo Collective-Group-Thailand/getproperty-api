@@ -20,15 +20,15 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
     await db.drop();
   });
 
-  it('applies the package migrations, then all nine app migrations', async () => {
+  it('applies the package migrations (0.2.1: nine), then all ten app migrations', async () => {
     const core = await assetCoreMigrate({ client: db.admin });
-    expect(core.applied).toHaveLength(7);
+    expect(core.applied).toHaveLength(9);
     const applied = await applyPrismaMigrations(db.admin);
     expect(applied).toEqual(listMigrations().map((m) => m.name));
-    expect(applied).toHaveLength(9);
+    expect(applied).toHaveLength(10);
   });
 
-  it('creates exactly the tables of schema-design §7.1/§7.2: core 18, platform 39, ops 5, bridge 1, smart/juristic empty', async () => {
+  it('creates exactly the tables of schema-design §7.1/§7.2 (+ B1.3 §7.5 rows 17–20): core 18, platform 40, ops 5, bridge 1, smart 4, juristic empty', async () => {
     const { rows } = await db.admin.query<{ schema: string; n: number }>(
       `SELECT n.nspname AS schema, count(c.oid)::int AS n
          FROM pg_namespace n LEFT JOIN pg_class c ON c.relnamespace = n.oid AND c.relkind = 'r' AND c.relname NOT LIKE '\\_%'
@@ -39,8 +39,8 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
       core: 18,
       juristic: 0,
       ops: 5,
-      platform: 39,
-      smart: 0,
+      platform: 40,
+      smart: 4,
     });
     const view = await db.admin.query(
       `SELECT to_regclass('platform.v_consent_state') IS NOT NULL AS present`,
@@ -52,7 +52,7 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
     const { rows } = await db.admin.query<{ table: string }>(
       `SELECT n.nspname || '.' || c.relname AS table
          FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE c.relkind = 'r' AND n.nspname IN ('core', 'platform', 'ops', 'bridge') AND c.relname NOT LIKE '\\_%'
+        WHERE c.relkind = 'r' AND n.nspname IN ('core', 'platform', 'ops', 'bridge', 'smart') AND c.relname NOT LIKE '\\_%'
           AND NOT (c.relrowsecurity AND c.relforcerowsecurity)`,
     );
     expect(rows).toEqual([]);
