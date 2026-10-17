@@ -1,8 +1,6 @@
 import { type TenantContext } from '@common/context/tenant-context';
 import { ComplianceException } from '@common/errors/compliance.exception';
 import { DomainException } from '@common/errors/domain.exception';
-import { type ComplianceCode } from '@common/errors/error-codes';
-import { type ProblemFieldError } from '@common/errors/problem-details.dto';
 import { TenantTx } from '@database/tenant-tx';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -10,19 +8,43 @@ import { CLOCK, type Clock } from '../clock/clock';
 import { SETTINGS } from '../settings/catalogue';
 import { SettingsService } from '../settings/settings.service';
 import { ComplianceAcknowledgementService, LEGAL_TEXT_VERSIONS } from './compliance-acknowledgement.service';
+import { type RuleCheck } from './evaluators';
 import { COMPLIANCE_RULES } from './rules';
 
-/** One rule checked against one subject (a pure evaluator returns these). */
-export interface RuleCheck {
-  ruleId: ComplianceCode;
-  /** true = the rule is broken by the subject. */
-  violated: boolean;
-  /** Values compared (recorded with the evaluation as evidence). */
-  context: Record<string, unknown>;
-  /** Field errors for a refusal (problem `errors[]`). */
-  errors?: ProblemFieldError[];
-  /** What a warning shows the Owner (acknowledgement). */
-  shown?: Record<string, unknown>;
+export type { RuleCheck } from './evaluators';
+
+export type ComplianceSeverityName = 'warn' | 'block';
+export type ComplianceOutcomeName = 'pass' | 'warn' | 'block';
+
+/** Setting holding the platform admin's per-rule severity overrides (platform-wide or per tenant, D-021a). */
+export const SEVERITY_OVERRIDES_KEY = 'compliance.severity_overrides';
+
+/**
+ * The D-021a semantics in one pure function (ADR-0007): a rule that is not broken passes; a broken `block` rule is
+ * refused; a broken `warn` rule warns (the Owner acknowledges it and repeats the request) unless the actor cannot
+ * acknowledge (`refuseWarnings`, e.g. residents), when it is refused too.
+ */
+export function outcomeOf(
+  violated: boolean,
+  severity: ComplianceSeverityName,
+  options: { refuseWarnings?: boolean } = {},
+): ComplianceOutcomeName {
+  if (!violated) return 'pass';
+  return severity === 'warn' && !options.refuseWarnings ? 'warn' : 'block';
+}
+
+/** The severity in force: a rule-specific setting (`<ruleId>.severity`), the overrides map, else the default. */
+export function effectiveSeverity(
+  ruleId: string,
+  sources: { specific?: unknown; overrides?: unknown },
+): ComplianceSeverityName {
+  if (sources.specific === 'warn' || sources.specific === 'block') return sources.specific;
+  const o = sources.overrides as Record<string, unknown> | null | undefined;
+  const fromMap = o && typeof o === 'object' ? o[ruleId] : undefined;
+  if (fromMap === 'warn' || fromMap === 'block') return fromMap;
+  const rule = COMPLIANCE_RULES.find((r) => r.id === ruleId);
+  if (!rule) throw new Error(`unknown compliance rule ${ruleId}`);
+  return rule.defaultSeverity;
 }
 
 export interface GateResult {
@@ -60,15 +82,28 @@ export class ComplianceGate {
     return v?.value !== false;
   }
 
-  async severity(ruleId: string, tenantId: string, at: Date): Promise<'warn' | 'block'> {
+  /**
+   * Effective severity of a rule for a tenant at an instant (D-021a): the rule's own setting where the catalogue has
+   * one (`compliance.tariff_cap.severity`), else the platform admin's `compliance.severity_overrides` map (tenant
+   * version over platform version), else the registry default.
+   */
+  async severity(ruleId: string, tenantId: string, at: Date): Promise<ComplianceSeverityName> {
     const key = `${ruleId}.severity`;
-    if (SETTINGS.some((s) => s.key === key)) {
-      const v = await this.settings.at(key, at, { tenantId });
-      if (v?.value === 'warn' || v?.value === 'block') return v.value;
-    }
-    const rule = COMPLIANCE_RULES.find((r) => r.id === ruleId);
-    if (!rule) throw new Error(`unknown compliance rule ${ruleId}`);
-    return rule.defaultSeverity;
+    const specific = SETTINGS.some((s) => s.key === key)
+      ? (await this.settings.at(key, at, { tenantId }))?.value
+      : undefined;
+    const overrides = (await this.settings.at(SEVERITY_OVERRIDES_KEY, at, { tenantId }))?.value;
+    return effectiveSeverity(ruleId, { specific, overrides });
+  }
+
+  /** Severity in force platform-wide (no tenant version), for the admin view. */
+  async platformSeverity(ruleId: string, at: Date): Promise<ComplianceSeverityName> {
+    const key = `${ruleId}.severity`;
+    const specific = SETTINGS.some((s) => s.key === key)
+      ? (await this.settings.at(key, at))?.value
+      : undefined;
+    const overrides = (await this.settings.at(SEVERITY_OVERRIDES_KEY, at))?.value;
+    return effectiveSeverity(ruleId, { specific, overrides });
   }
 
   /**
@@ -102,7 +137,7 @@ export class ComplianceGate {
           result.checks.push({ ruleId: check.ruleId, outcome: 'pass', severity });
           continue;
         }
-        const warn = severity === 'warn' && !input.refuseWarnings;
+        const warn = outcomeOf(true, severity, input) === 'warn';
         let ackId: string | undefined;
         if (warn)
           for (const id of input.acknowledgementIds ?? []) {

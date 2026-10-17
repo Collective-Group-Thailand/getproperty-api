@@ -24,6 +24,7 @@ import {
   OwnerUnitsController,
   OwnerUtilityAccountsController,
 } from './assets.controller';
+import { OwnerComplianceController } from './compliance.controller';
 import { inspectionsController, OwnerDepositsController } from './deposits.controller';
 import {
   OwnerAssetGrantsController,
@@ -67,6 +68,7 @@ import {
     OwnerSettingsController,
     OwnerUtilityTariffsController,
     OwnerComplianceAcknowledgementsController,
+    OwnerComplianceController,
     OwnerSupportGrantsController,
     OwnerAssetGrantsController,
     OwnerAuditLogController,

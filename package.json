@@ -38,6 +38,7 @@
     "db:seed": "pnpm build:fast && node dist/prisma/seed/run.js reference",
     "db:seed:dev": "pnpm build:fast && node dist/prisma/seed/run.js dev",
     "rbac:build": "pnpm build:fast && node dist/scripts/rbac-build.js",
+    "compliance:report": "pnpm build:fast && node dist/scripts/compliance-report.js",
     "sim:gateway": "node scripts/sim-gateway.mjs"
   },
   "dependencies": {

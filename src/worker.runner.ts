@@ -1,4 +1,5 @@
 import { AppConfig } from '@config/app-config';
+import { ComplianceScoreService } from '@core/compliance/compliance-score.service';
 import { type DispatchJob, EventConsumer, type SubscriberJob } from '@core/events/event-consumer.service';
 import { OutboxRelay } from '@core/events/outbox-relay.service';
 import { type DeliveryJob, NotificationService } from '@core/notifications/notification.service';
@@ -37,6 +38,8 @@ export const MAINTENANCE_JOBS = {
   'meter-health': 300_000,
   'config-drift': 300_000,
   'device-commands': 30_000,
+  // B4 billing & compliance
+  'compliance-score': 86_400_000,
 } as const;
 type MaintenanceJob = keyof typeof MAINTENANCE_JOBS;
 
@@ -68,6 +71,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly meterHealth: MeterHealthService,
     private readonly configs: GatewayConfigService,
     private readonly commands: DeviceCommandsService,
+    private readonly complianceScores: ComplianceScoreService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -131,6 +135,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'device-commands':
         await this.commands.sweep();
+        break;
+      case 'compliance-score':
+        await this.complianceScores.runAll();
         break;
       default:
         this.logger.warn(`unknown maintenance job ${job.name}`);

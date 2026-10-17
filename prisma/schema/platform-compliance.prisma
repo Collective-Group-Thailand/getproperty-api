@@ -103,3 +103,29 @@ model ComplianceAcknowledgement {
   @@map("compliance_acknowledgement")
   @@schema("platform")
 }
+
+/// Tenant compliance score per month (B4.1, ADR-0007).
+model ComplianceScore {
+  id                         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                   String   @map("tenant_id") @db.Uuid
+  month                      DateTime @db.Date
+  score                      Decimal  @db.Decimal(5, 2)
+  invoicesTotal              Int      @default(0) @map("invoices_total")
+  invoicesWithinRate         Int      @default(0) @map("invoices_within_rate")
+  linesAboveCap              Int      @default(0) @map("lines_above_cap")
+  linesAboveCapAcknowledged  Int      @default(0) @map("lines_above_cap_acknowledged")
+  depositsDue                Int      @default(0) @map("deposits_due")
+  depositsRefundedOnTime     Int      @default(0) @map("deposits_refunded_on_time")
+  leasesTotal                Int      @default(0) @map("leases_total")
+  leasesOnStandardTemplate   Int      @default(0) @map("leases_on_standard_template")
+  details                    Json     @default("{}")
+  computedAt                 DateTime @map("computed_at") @db.Timestamptz(6)
+  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation("ComplianceScoreTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "compliance_score_tenant_id_fkey")
+
+  @@unique([tenantId, month], map: "compliance_score_tenant_id_month_key")
+  @@map("compliance_score")
+  @@schema("platform")
+}

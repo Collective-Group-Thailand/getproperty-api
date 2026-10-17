@@ -145,6 +145,11 @@ export const ERROR_CODES = {
   'utility_invoice.duplicate': HttpStatus.CONFLICT,
   'utility_invoice.unreadable': HttpStatus.UNPROCESSABLE_ENTITY,
   'loss.no_invoice': HttpStatus.CONFLICT,
+  'compliance.scope': HttpStatus.UNPROCESSABLE_ENTITY,
+  'compliance.invoice_lead_time': HttpStatus.UNPROCESSABLE_ENTITY,
+  'compliance.entry_notice': HttpStatus.UNPROCESSABLE_ENTITY,
+  'compliance.no_cutoff': HttpStatus.UNPROCESSABLE_ENTITY,
+  'compliance.invoice_immutable': HttpStatus.CONFLICT,
   'internal.unexpected': HttpStatus.INTERNAL_SERVER_ERROR,
 } as const satisfies Record<string, HttpStatus>;
 

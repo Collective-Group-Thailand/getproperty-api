@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AdminComplianceController } from '../owner/compliance.controller';
 import { AdminMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
 import {
@@ -39,6 +40,7 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
     AdminSupportGrantsController,
     AdminPlatformUsersController,
     AdminSettingsController,
+    AdminComplianceController,
     AdminFeatureFlagsController,
     AdminAuditLogController,
     AdminDsrController,
