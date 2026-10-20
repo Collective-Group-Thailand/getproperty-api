@@ -1,4 +1,5 @@
 import { bangkokDate } from '@common/time/bangkok';
+import { AppConfig } from '@config/app-config';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { type DomainEventEnvelope } from '@core/events/domain-events';
 import { type EventSubscriber, EventSubscriberRegistry } from '@core/events/subscribers';
@@ -38,8 +39,14 @@ export class CommunitySubscribers implements EventSubscriber, OnModuleInit {
     private readonly registry: EventSubscriberRegistry,
     private readonly parcels: ParcelsService,
     private readonly rules: BuildingRulesService,
+    private readonly config: AppConfig,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
+
+  /** LIFF #28 (D-218): the screen of the resident app a LINE message opens. */
+  private link(path: string): string {
+    return `${this.config.get('PUBLIC_RESIDENT_APP_URL')}${path}`;
+  }
 
   onModuleInit(): void {
     this.registry.register(this);
@@ -62,6 +69,7 @@ export class CommunitySubscribers implements EventSubscriber, OnModuleInit {
         data: {
           tenant: { name: await tenantName(tx, e.tenantId) },
           announcement: { title: a.title, excerpt: a.bodyTh.slice(0, 160) },
+          link: this.link(`/announcements/${a.id}`),
         },
         consentPurpose: 'resident.service',
       };
@@ -91,6 +99,7 @@ export class CommunitySubscribers implements EventSubscriber, OnModuleInit {
         data: {
           tenant: { name: await tenantName(tx, e.tenantId) },
           parcel: { unitNo: parcel.unit.unitNo, carrier: parcel.carrier ?? '-' },
+          link: this.link('/parcels'),
         },
         consentPurpose: 'resident.service',
       };

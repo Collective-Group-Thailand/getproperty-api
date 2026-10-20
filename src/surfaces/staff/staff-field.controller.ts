@@ -9,11 +9,11 @@ import { StaffFieldService } from '@modules/smart-devices/staff-field.service';
 import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
-import { type UtilityName } from '../owner/assets.dto';
+import { type UnitStatusName, type UnitTypeName, type UtilityName } from '../owner/assets.dto';
 import { METER_EXAMPLE, meterDto } from '../owner/assets.mappers';
 import { BusTypeName } from '../shared/smart.dto';
 import { ApiSurface, SURFACES } from '../surfaces';
-import { MeterDriversDto, StaffBuildingsDto, StaffMeterPointsDto } from './staff.dto';
+import { MeterDriversDto, StaffBuildingsDto, StaffMeterPointsDto, StaffUnitsDto } from './staff.dto';
 
 const T = ['tenant.context_required', 'tenant.context_invalid', 'tenant.not_in_scope'] as const;
 
@@ -49,6 +49,47 @@ export class StaffFieldController {
   @ApiStandardErrors('validation.failed', ...T)
   async buildings(@CurrentTenant() ctx: TenantContext): Promise<StaffBuildingsDto> {
     return { data: await this.field.buildings(ctx) };
+  }
+
+  @Get('buildings/:buildingId/units')
+  @TenantScoped()
+  @Can('unit.read')
+  @ApiEndpoint({
+    id: 'staff.field.units',
+    summary: 'Units of a building',
+    description:
+      'Every unit of a building of my scope (D-090) with its floor and status, by floor level then unit number — for the parcel intake and other unit pickers of the staff PWA (web F4 4.4, D-218). Another tenant’s building or one outside my limit is a 404.',
+    implements: ['D-090', 'D-218'],
+  })
+  @ApiSuccess(200, {
+    description: 'Units',
+    type: StaffUnitsDto,
+    example: {
+      data: [
+        {
+          id: FAKE.uuid,
+          unitNo: FAKE.unitCode,
+          floorId: FAKE.uuid,
+          floorName: 'ชั้น 2',
+          floorLevel: 2,
+          status: 'occupied',
+          type: 'room',
+        },
+      ],
+    },
+  })
+  @ApiStandardErrors('http.not_found', 'validation.failed', ...T)
+  async units(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('buildingId', ParseUUIDPipe) buildingId: string,
+  ): Promise<StaffUnitsDto> {
+    return {
+      data: (await this.field.units(ctx, buildingId)).map((u) => ({
+        ...u,
+        status: u.status as UnitStatusName,
+        type: u.type as UnitTypeName,
+      })),
+    };
   }
 
   @Get('buildings/:buildingId/meters')

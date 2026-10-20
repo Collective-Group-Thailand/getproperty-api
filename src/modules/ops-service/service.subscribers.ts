@@ -1,6 +1,7 @@
 import { systemTenantContext } from '@common/context/tenant-context';
 import { FieldEncryption } from '@common/crypto/field-encryption';
 import { uuidv7 } from '@common/ids/uuidv7';
+import { AppConfig } from '@config/app-config';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { DocumentsService } from '@core/documents/documents.service';
 import { type DomainEventEnvelope } from '@core/events/domain-events';
@@ -76,14 +77,36 @@ async function requestData(tx: Tx, id: string) {
   };
 }
 
+/** The logins linked to parties (realtime `user:` channels). */
+async function linkedUsers(tx: Tx, partyIds: string[]): Promise<string[]> {
+  if (!partyIds.length) return [];
+  const links = await tx.partyUserLink.findMany({
+    where: { partyId: { in: partyIds }, state: 'active' },
+    select: { userId: true },
+  });
+  return links.map((l) => l.userId);
+}
+
+const strings = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+
 /**
  * Notifications and realtime channels of B5.1 (D-072): the resident on each state change of their request (LINE,
  * quiet hours and consent apply, topic `service_requests`), the operators when a request arrives, the assignee
  * (staff login or technician party) on assignment; the owner on an SLA breach comes from `workflow.sla_breached`.
  * Realtime: request events go to `unit:<id>` and the requester's logins; work-order events to the assignee's logins.
+ * LIFF #28 (D-218): every resident / technician LINE message carries `link`, the screen of the app it opens
+ * (`PUBLIC_RESIDENT_APP_URL/requests/{id}`, `…/technician/work-orders/{id}`). LIFF #23 / #24: a message in a thread
+ * tells the resident and the technicians who did not write it; a confirmed visit tells the technician.
  */
 @Injectable()
 export class ServiceNotifications implements OnModuleInit {
+  constructor(private readonly config: AppConfig) {}
+
+  private link(path: string): string {
+    return `${this.config.get('PUBLIC_RESIDENT_APP_URL')}${path}`;
+  }
+
   onModuleInit(): void {
     registerNotifiable('service_request.created', async (tx, e) => {
       if (!e.tenantId) return null;
@@ -109,6 +132,7 @@ export class ServiceNotifications implements OnModuleInit {
         data: {
           tenant: { name: await tenantName(tx, e.tenantId) },
           request: { ...r.data, statusTh: label.th, statusEn: label.en },
+          link: this.link(`/requests/${r.sr.id}`),
         },
         consentPurpose: 'resident.service',
       };
@@ -139,11 +163,86 @@ export class ServiceNotifications implements OnModuleInit {
             place: wo.unit?.unitNo ?? wo.building.name,
             scheduledAt: wo.scheduledAt?.toISOString() ?? '-',
           },
+          link: this.link(`/technician/work-orders/${wo.id}`),
+        },
+        consentPurpose: 'resident.service',
+      };
+    });
+    registerNotifiable('service_request.message', async (tx, e) => {
+      if (!e.tenantId) return null;
+      const p = e.payload;
+      const author = p.authorKind as string;
+      const requestId = typeof p.serviceRequestId === 'string' ? p.serviceRequestId : null;
+      const sr = requestId ? await requestData(tx, requestId) : null;
+      const recipients: Recipient[] = [];
+      // the resident who reported it, unless they wrote it
+      if (
+        sr &&
+        author !== 'resident' &&
+        sr.sr.reporterKind === 'resident' &&
+        typeof p.requesterPartyId === 'string'
+      )
+        recipients.push(...(await billedParty(tx, p.requesterPartyId)));
+      // the technicians of the thread's active work orders, unless they wrote it
+      for (const partyId of strings(p.assigneePartyIds))
+        if (partyId !== p.authorPartyId) recipients.push(...(await technicianParty(tx, partyId)));
+      if (!recipients.length) return null;
+      const message = await tx.serviceMessage.findUnique({ where: { id: p.messageId as string } });
+      if (!message) return null;
+      const workOrderId = (p.workOrderId as string | null) ?? strings(p.workOrderIds)[0] ?? null;
+      return {
+        recipients,
+        data: {
+          tenant: { name: await tenantName(tx, e.tenantId) },
+          request: sr?.data ?? { ref: (workOrderId ?? '').slice(-6).toUpperCase(), unitNo: '-' },
+          message: { authorName: message.authorName, excerpt: message.body.slice(0, 120) },
+          link: requestId
+            ? this.link(`/requests/${requestId}`)
+            : this.link(`/technician/work-orders/${workOrderId}`),
+          technicianLink: workOrderId ? this.link(`/technician/work-orders/${workOrderId}`) : null,
+        },
+        consentPurpose: 'resident.service',
+      };
+    });
+    registerNotifiable('service_request.visit_confirmed', async (tx, e) => {
+      const partyId = e.payload.assigneePartyId as string | null;
+      if (!e.tenantId || !partyId) return null;
+      const r = await requestData(tx, e.payload.serviceRequestId as string);
+      if (!r) return null;
+      return {
+        recipients: await technicianParty(tx, partyId),
+        data: {
+          tenant: { name: await tenantName(tx, e.tenantId) },
+          request: r.data,
+          visit: { scheduledAt: e.payload.scheduledAt as string },
+          link: this.link(`/technician/work-orders/${e.payload.workOrderId as string}`),
         },
         consentPurpose: 'resident.service',
       };
     });
 
+    // LIFF #23 / #24: messages and visit confirmations reach the unit, the requester's and the assignees' logins
+    registerRealtimeChannels(
+      ['service_request.message', 'service_request.visit_confirmed'],
+      async (tx, e) => {
+        const p = e.payload;
+        const channels: string[] = [];
+        if (typeof p.unitId === 'string') channels.push(`unit:${p.unitId}`);
+        const workOrders = [...strings(p.workOrderIds), ...strings([p.workOrderId])];
+        channels.push(...new Set(workOrders.map((w) => `work_order:${w}`)));
+        const parties = [
+          ...(typeof p.requesterPartyId === 'string' ? [p.requesterPartyId] : []),
+          ...strings(p.assigneePartyIds),
+          ...strings([p.assigneePartyId]),
+        ];
+        const users = [
+          ...(await linkedUsers(tx, parties)),
+          ...strings(p.assigneeUserIds),
+          ...strings([p.assigneeUserId]),
+        ];
+        return [...channels, ...new Set(users.map((u) => `user:${u}`))];
+      },
+    );
     registerRealtimeChannels(
       ['service_request.created', 'service_request.changed', 'service_request.rated'],
       async (tx, e) => {

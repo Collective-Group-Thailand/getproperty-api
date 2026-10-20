@@ -26,6 +26,7 @@ import {
 } from '@modules/ops-service/field-access.service';
 import { MaintenancePlansService } from '@modules/ops-service/maintenance-plans.service';
 import { ServiceCategoriesService } from '@modules/ops-service/service-categories.service';
+import { ServiceMessagesService } from '@modules/ops-service/service-messages.service';
 import {
   SERVICE_REQUEST_SUBJECT,
   type ServiceRequestRow,
@@ -73,6 +74,9 @@ import {
   ServiceCategoriesDto,
   ServiceCategoryDto,
   ServiceCategoryPutDto,
+  ServiceMessageCreateDto,
+  ServiceMessageDto,
+  ServiceMessagesDto,
   ServiceRatingDto,
   ServiceRequestCreateDto,
   ServiceRequestDto,
@@ -96,9 +100,11 @@ import {
   categoryDto,
   MAINTENANCE_PLAN_EXAMPLE,
   maintenancePlanDto,
+  MESSAGE_EXAMPLE,
   RESIDENT_REQUEST_EXAMPLE,
   residentServiceRequestDto,
   SERVICE_REQUEST_EXAMPLE,
+  serviceMessageDto,
   serviceRequestDto,
   technicianWorkOrderDto,
   WORK_ORDER_EXAMPLE,
@@ -122,7 +128,15 @@ const TECH_EXAMPLE = {
   categoryKey: 'plumbing',
   requestPhotoIds: [FAKE.uuid],
   buildingName: 'อาคาร A',
+  photos: [
+    { id: FAKE.uuid, role: 'report', url: 'https://storage.example.com/service-photo?X-Amz-Signature=abc' },
+  ],
+  rating: null,
+  ratingComment: null,
+  preferredVisit: 'afternoon',
 };
+const MESSAGE_ERRORS = ['http.not_found', 'http.bad_request', 'validation.failed'] as const;
+const me = (): string | null => userIdOf(RequestContext.actor());
 
 /** Operator next actions of a request (static definition v1 + the instance state). */
 function srActions(r: ServiceRequestRow): string[] {
@@ -173,6 +187,7 @@ export function serviceRequestsController(surface: Extract<Surface, 'owner' | 's
     constructor(
       readonly requests: ServiceRequestsService,
       readonly workOrders: WorkOrdersService,
+      readonly messages: ServiceMessagesService,
     ) {}
 
     @Get()
@@ -401,6 +416,55 @@ export function serviceRequestsController(surface: Extract<Surface, 'owner' | 's
       const row = await this.workOrders.create(ctx, { ...woInput(body), serviceRequestId: id });
       return (await woDtos(this.requests, ctx, [row]))[0]!;
     }
+
+    @Get(':serviceRequestId/messages')
+    @TenantScoped()
+    @Can('service_request.read')
+    @ApiEndpoint({
+      id: `${surface}.serviceRequests.messages`,
+      summary: 'Message thread of a request',
+      description:
+        'The resident, the office and the assigned technician talk inside the apps — no phone numbers are exchanged (D-072, D-218). Oldest first.',
+      implements: ['D-072', 'D-218'],
+    })
+    @ApiSuccess(200, {
+      description: 'Messages',
+      type: ServiceMessagesDto,
+      example: { data: [MESSAGE_EXAMPLE] },
+    })
+    @ApiStandardErrors('http.not_found', 'validation.failed', ...T)
+    async listMessages(
+      @CurrentTenant() ctx: TenantContext,
+      @Param('serviceRequestId', ParseUUIDPipe) id: string,
+    ): Promise<ServiceMessagesDto> {
+      return { data: (await this.messages.listForRequest(ctx, id)).map((m) => serviceMessageDto(m, me())) };
+    }
+
+    @Post(':serviceRequestId/messages')
+    @TenantScoped()
+    @Can('service_request.handle')
+    @Idempotent({ optional: true })
+    @ApiEndpoint({
+      id: `${surface}.serviceRequests.postMessage`,
+      summary: 'Write to the resident and the technician',
+      description:
+        'As the office (my display name). The resident and the assigned technician are told on LINE (quiet hours apply) and in realtime (`service_request.message`); 409 once the request is closed or cancelled.',
+      implements: ['D-072', 'D-218'],
+    })
+    @ApiJsonBody(ServiceMessageCreateDto, { body: 'ช่างจะเข้าไปพรุ่งนี้ 10 โมงนะคะ' })
+    @ApiSuccess(201, {
+      description: 'Posted',
+      type: ServiceMessageDto,
+      example: { ...MESSAGE_EXAMPLE, mine: true },
+    })
+    @ApiStandardErrors(...WRITE, 'service_request.invalid_state')
+    async postMessage(
+      @CurrentTenant() ctx: TenantContext,
+      @Param('serviceRequestId', ParseUUIDPipe) id: string,
+      @Body() body: ServiceMessageCreateDto,
+    ): Promise<ServiceMessageDto> {
+      return serviceMessageDto(await this.messages.postToRequest(ctx, id, body.body), me());
+    }
   }
   return ServiceRequestsController;
 }
@@ -418,7 +482,57 @@ export function workOrdersController(surface: Extract<Surface, 'owner' | 'staff'
     constructor(
       readonly workOrders: WorkOrdersService,
       readonly requests: ServiceRequestsService,
+      readonly messages: ServiceMessagesService,
     ) {}
+
+    @Get(':workOrderId/messages')
+    @TenantScoped()
+    @Can('service_request.read')
+    @ApiEndpoint({
+      id: `${surface}.workOrders.messages`,
+      summary: 'Message thread of a work order',
+      description:
+        'The thread of its request (resident, office, technician) or, for a work order without a request, the office ↔ technician thread (D-072, D-218). Oldest first.',
+      implements: ['D-072', 'D-218'],
+    })
+    @ApiSuccess(200, {
+      description: 'Messages',
+      type: ServiceMessagesDto,
+      example: { data: [MESSAGE_EXAMPLE] },
+    })
+    @ApiStandardErrors('http.not_found', 'validation.failed', ...T)
+    async listMessages(
+      @CurrentTenant() ctx: TenantContext,
+      @Param('workOrderId', ParseUUIDPipe) id: string,
+    ): Promise<ServiceMessagesDto> {
+      return { data: (await this.messages.listForWorkOrder(ctx, id)).map((m) => serviceMessageDto(m, me())) };
+    }
+
+    @Post(':workOrderId/messages')
+    @TenantScoped()
+    @Can('service_request.handle')
+    @Idempotent({ optional: true })
+    @ApiEndpoint({
+      id: `${surface}.workOrders.postMessage`,
+      summary: 'Write into a work order’s thread',
+      description:
+        'As the office. 409 once the request ended or the work order was cancelled. The technician (and the resident, for a request) are told.',
+      implements: ['D-072', 'D-218'],
+    })
+    @ApiJsonBody(ServiceMessageCreateDto, { body: 'กุญแจห้องอยู่ที่สำนักงานนะคะ' })
+    @ApiSuccess(201, {
+      description: 'Posted',
+      type: ServiceMessageDto,
+      example: { ...MESSAGE_EXAMPLE, mine: true },
+    })
+    @ApiStandardErrors(...WRITE, 'service_request.invalid_state', 'work_order.invalid_state')
+    async postMessage(
+      @CurrentTenant() ctx: TenantContext,
+      @Param('workOrderId', ParseUUIDPipe) id: string,
+      @Body() body: ServiceMessageCreateDto,
+    ): Promise<ServiceMessageDto> {
+      return serviceMessageDto(await this.messages.postToWorkOrder(ctx, id, body.body), me());
+    }
 
     private async one(ctx: TenantContext, row: WorkOrderRow): Promise<WorkOrderDto> {
       return (await woDtos(this.requests, ctx, [row]))[0]!;
@@ -972,7 +1086,7 @@ export class ResidentServiceRequestsController {
     const out: ResidentServiceRequestDto[] = [];
     for (const r of rows) {
       const one = await this.requests.get(r.id);
-      out.push(residentServiceRequestDto(one.row, one.photoIds, one.nextActions));
+      out.push(residentServiceRequestDto(one.row, one.photoIds, one.nextActions, one.detail));
     }
     return paginated(out, total, q);
   }
@@ -991,6 +1105,7 @@ export class ResidentServiceRequestsController {
     categoryId: FAKE.uuid,
     description: 'ก๊อกน้ำอ่างล้างหน้ารั่ว',
     photoDocumentIds: [FAKE.uuid],
+    preferredVisit: 'afternoon',
   })
   @ApiSuccess(201, {
     description: 'Reported',
@@ -1000,14 +1115,15 @@ export class ResidentServiceRequestsController {
   @ApiStandardErrors('http.not_found', 'http.bad_request', 'validation.failed')
   async create(@Body() body: ResidentServiceRequestCreateDto): Promise<ResidentServiceRequestDto> {
     const r = await this.requests.create(body);
-    return residentServiceRequestDto(r.row, r.photoIds, r.nextActions);
+    return residentServiceRequestDto(r.row, r.photoIds, r.nextActions, r.detail);
   }
 
   @Get('service-requests/:serviceRequestId')
   @ApiEndpoint({
     id: 'resident.serviceRequests.get',
     summary: 'One of my repair requests',
-    description: 'Status, planned visit and photos; 404 when it is not of my unit nor reported by me.',
+    description:
+      'Status, planned visit (and whether I confirmed it), my photos and the technician’s before / after photos (5-minute links), the status history and the SLA (D-159); 404 when it is not of my unit nor reported by me.',
     implements: ['D-072'],
   })
   @ApiSuccess(200, {
@@ -1018,7 +1134,7 @@ export class ResidentServiceRequestsController {
   @ApiStandardErrors('http.not_found', 'validation.failed')
   async get(@Param('serviceRequestId', ParseUUIDPipe) id: string): Promise<ResidentServiceRequestDto> {
     const r = await this.requests.get(id);
-    return residentServiceRequestDto(r.row, r.photoIds, r.nextActions);
+    return residentServiceRequestDto(r.row, r.photoIds, r.nextActions, r.detail);
   }
 
   @Post('service-requests/:serviceRequestId/actions/cancel')
@@ -1041,7 +1157,7 @@ export class ResidentServiceRequestsController {
     @Body() body: ReasonDto,
   ): Promise<ResidentServiceRequestDto> {
     const r = await this.requests.cancel(id, body.reason);
-    return residentServiceRequestDto(r.row, r.photoIds, r.nextActions);
+    return residentServiceRequestDto(r.row, r.photoIds, r.nextActions, r.detail);
   }
 
   @Post('service-requests/:serviceRequestId/actions/rate')
@@ -1064,7 +1180,76 @@ export class ResidentServiceRequestsController {
     @Body() body: ServiceRatingDto,
   ): Promise<ResidentServiceRequestDto> {
     const r = await this.requests.rate(id, body.rating, body.comment ?? null);
-    return residentServiceRequestDto(r.row, r.photoIds, r.nextActions);
+    return residentServiceRequestDto(r.row, r.photoIds, r.nextActions, r.detail);
+  }
+
+  @Post('service-requests/:serviceRequestId/actions/confirm-visit')
+  @HttpCode(200)
+  @ApiEndpoint({
+    id: 'resident.serviceRequests.confirmVisit',
+    summary: 'Confirm the planned visit',
+    description:
+      'Offered in `nextActions` while the scheduled visit (`visitAt`) waits for me and the technician has not started; a moved visit asks again. The technician and the office are told (D-072, D-218).',
+    implements: ['D-072', 'D-218'],
+  })
+  @ApiSuccess(200, {
+    description: 'Confirmed',
+    type: ResidentServiceRequestDto,
+    example: {
+      ...RESIDENT_REQUEST_EXAMPLE,
+      status: 'assigned',
+      nextActions: [],
+      visitAt: FAKE.dateTime,
+      visitConfirmedAt: FAKE.dateTime,
+    },
+  })
+  @ApiStandardErrors('http.not_found', 'validation.failed', ...SR_STATE, 'concurrency.stale')
+  async confirmVisit(
+    @Param('serviceRequestId', ParseUUIDPipe) id: string,
+  ): Promise<ResidentServiceRequestDto> {
+    const r = await this.requests.confirmVisit(id);
+    return residentServiceRequestDto(r.row, r.photoIds, r.nextActions, r.detail);
+  }
+
+  @Get('service-requests/:serviceRequestId/messages')
+  @ApiEndpoint({
+    id: 'resident.serviceRequests.messages',
+    summary: 'Messages with the office and the technician',
+    description:
+      'The thread of my request, oldest first — nobody’s phone number is shown (D-072, D-218); 404 when the request is not mine.',
+    implements: ['D-072', 'D-218'],
+  })
+  @ApiSuccess(200, {
+    description: 'Messages',
+    type: ServiceMessagesDto,
+    example: { data: [MESSAGE_EXAMPLE] },
+  })
+  @ApiStandardErrors('http.not_found', 'validation.failed')
+  async messages(@Param('serviceRequestId', ParseUUIDPipe) id: string): Promise<ServiceMessagesDto> {
+    return { data: (await this.requests.messages(id)).map((m) => serviceMessageDto(m, me())) };
+  }
+
+  @Post('service-requests/:serviceRequestId/messages')
+  @Idempotent({ optional: true })
+  @ApiEndpoint({
+    id: 'resident.serviceRequests.postMessage',
+    summary: 'Write to the office',
+    description:
+      'At most 2000 characters; the office sees it at once and the assigned technician is told (`service_request.message` on `user:` / `unit:`). 409 once the request is closed or cancelled.',
+    implements: ['D-072', 'D-218'],
+  })
+  @ApiJsonBody(ServiceMessageCreateDto, { body: 'สะดวกช่วงบ่ายค่ะ' })
+  @ApiSuccess(201, {
+    description: 'Posted',
+    type: ServiceMessageDto,
+    example: { ...MESSAGE_EXAMPLE, author: 'resident', authorName: FAKE.nameTh, mine: true },
+  })
+  @ApiStandardErrors(...MESSAGE_ERRORS, 'service_request.invalid_state')
+  async postMessage(
+    @Param('serviceRequestId', ParseUUIDPipe) id: string,
+    @Body() body: ServiceMessageCreateDto,
+  ): Promise<ServiceMessageDto> {
+    return serviceMessageDto(await this.requests.postMessage(id, body.body), me());
   }
 }
 
@@ -1081,10 +1266,11 @@ export class TechnicianWorkOrdersController {
   constructor(private readonly work: TechnicianWorkOrdersService) {}
 
   private async one(id: string): Promise<TechnicianWorkOrderDto> {
-    const [row, photos, request] = await Promise.all([
+    const [row, photos, request, extras] = await Promise.all([
       this.work.get(id),
       this.work.photos(id),
       this.work.request(id),
+      this.work.detail(id),
     ]);
     return technicianWorkOrderDto(
       row,
@@ -1097,6 +1283,7 @@ export class TechnicianWorkOrdersController {
             photoIds: request.photoIds,
           }
         : null,
+      extras,
     );
   }
 
@@ -1111,18 +1298,7 @@ export class TechnicianWorkOrdersController {
   @ApiSuccess(200, {
     description: 'Work orders',
     type: TechnicianWorkOrdersDto,
-    example: {
-      data: [
-        {
-          ...WORK_ORDER_EXAMPLE,
-          nextActions: ['accept', 'check-in', 'complete'],
-          requestDescription: 'ก๊อกน้ำอ่างล้างหน้ารั่ว',
-          categoryKey: 'plumbing',
-          requestPhotoIds: [FAKE.uuid],
-          buildingName: 'อาคาร A',
-        },
-      ],
-    },
+    example: { data: [TECH_EXAMPLE] },
   })
   @ApiStandardErrors('validation.failed')
   async list(): Promise<TechnicianWorkOrdersDto> {
@@ -1135,19 +1311,13 @@ export class TechnicianWorkOrdersController {
     id: 'technician.workOrders.get',
     summary: 'One of my work orders',
     description:
-      'The place, the problem with its photos, the visit window, my photos and costs; 404 when not mine.',
+      'The place, the problem with its photos, the visit window and the resident’s preferred time, my photos and costs, all photos with 5-minute links, and the resident’s rating once the request is closed; 404 when not mine.',
     implements: ['D-072', 'D-154'],
   })
   @ApiSuccess(200, {
     description: 'The work order',
     type: TechnicianWorkOrderDto,
-    example: {
-      ...WORK_ORDER_EXAMPLE,
-      requestDescription: 'ก๊อกน้ำอ่างล้างหน้ารั่ว',
-      categoryKey: 'plumbing',
-      requestPhotoIds: [FAKE.uuid],
-      buildingName: 'อาคาร A',
-    },
+    example: { ...TECH_EXAMPLE, nextActions: WORK_ORDER_EXAMPLE.nextActions },
   })
   @ApiStandardErrors('http.not_found', 'validation.failed')
   get(@Param('workOrderId', ParseUUIDPipe) id: string): Promise<TechnicianWorkOrderDto> {
@@ -1317,5 +1487,46 @@ export class TechnicianWorkOrdersController {
   ): Promise<TechnicianWorkOrderDto> {
     await this.work.addCost(id, body);
     return this.one(id);
+  }
+
+  @Get(':workOrderId/messages')
+  @ApiEndpoint({
+    id: 'technician.workOrders.messages',
+    summary: 'Messages with the office and the resident',
+    description:
+      'The thread of the work order’s request (or, without a request, with the office), oldest first — no phone numbers are exchanged (D-072, D-218); 404 when not mine.',
+    implements: ['D-072', 'D-154', 'D-218'],
+  })
+  @ApiSuccess(200, {
+    description: 'Messages',
+    type: ServiceMessagesDto,
+    example: { data: [MESSAGE_EXAMPLE] },
+  })
+  @ApiStandardErrors('http.not_found', 'validation.failed')
+  async messages(@Param('workOrderId', ParseUUIDPipe) id: string): Promise<ServiceMessagesDto> {
+    return { data: (await this.work.messages(id)).map((m) => serviceMessageDto(m, me())) };
+  }
+
+  @Post(':workOrderId/messages')
+  @Idempotent({ optional: true })
+  @ApiEndpoint({
+    id: 'technician.workOrders.postMessage',
+    summary: 'Write to the office and the resident',
+    description:
+      'As the technician (my name, never my phone); the resident is told on LINE and the office sees it at once. 409 once the request ended or the work order was cancelled.',
+    implements: ['D-072', 'D-154', 'D-218'],
+  })
+  @ApiJsonBody(ServiceMessageCreateDto, { body: 'ถึงหน้าห้องแล้วครับ' })
+  @ApiSuccess(201, {
+    description: 'Posted',
+    type: ServiceMessageDto,
+    example: { ...MESSAGE_EXAMPLE, author: 'technician', authorName: 'ช่างประปา', mine: true },
+  })
+  @ApiStandardErrors(...MESSAGE_ERRORS, 'service_request.invalid_state', 'work_order.invalid_state')
+  async postMessage(
+    @Param('workOrderId', ParseUUIDPipe) id: string,
+    @Body() body: ServiceMessageCreateDto,
+  ): Promise<ServiceMessageDto> {
+    return serviceMessageDto(await this.work.postMessage(id, body.body), me());
   }
 }

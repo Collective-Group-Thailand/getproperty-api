@@ -4,6 +4,7 @@ import { bangkokDate } from '@common/time/bangkok';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { ComplianceScoreService, monthWindow } from '@core/compliance/compliance-score.service';
 import { TenantTx } from '@database/tenant-tx';
+import { OPEN_REQUEST_STATUSES } from '@modules/ops-service/service-rules';
 import { Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
@@ -31,7 +32,12 @@ export interface Dashboard {
   };
   arrears: { balance: string; invoices: number; parties: number; aging: AgingBuckets; credit: string };
   dueToday: { balance: string; invoices: number };
-  attention: { slipsToReview: number; draftsToReview: number };
+  attention: {
+    slipsToReview: number;
+    draftsToReview: number;
+    serviceRequestsOverdue: number;
+    parcelsWaiting: number;
+  };
   cycles: {
     propertyId: string;
     propertyName: string;
@@ -91,67 +97,89 @@ export class DashboardService {
         if (!b) throw new DomainException('http.not_found');
       }
       const todayDate = new Date(`${today}T00:00:00Z`);
-      const [received, byMethod, issued, overdue, overdueParties, dueToday, balances, slips, drafts, loss] =
-        await Promise.all([
-          tx.payment.aggregate({
-            where: {
-              ...scope,
-              status: 'confirmed',
-              method: { not: 'offset' },
-              paidAt: { gte: w.start, lt: w.end },
-            },
-            _sum: { amount: true },
-            _count: true,
-          }),
-          tx.payment.groupBy({
-            by: ['method'],
-            where: {
-              ...scope,
-              status: 'confirmed',
-              method: { not: 'offset' },
-              paidAt: { gte: w.start, lt: w.end },
-            },
-            _sum: { amount: true },
-            _count: true,
-            orderBy: { method: 'asc' },
-          }),
-          tx.invoice.aggregate({
-            where: { ...scope, issuedAt: { gte: w.start, lt: w.end }, status: { not: 'void' } },
-            _sum: { total: true, paidTotal: true, creditedTotal: true, debitedTotal: true, balance: true },
-            _count: true,
-          }),
-          tx.invoice.aggregate({
-            where: { ...scope, status: 'overdue', balance: { gt: 0 } },
-            _sum: { balance: true },
-            _count: true,
-          }),
-          tx.invoice.groupBy({
-            by: ['billedPartyId'],
-            where: { ...scope, status: 'overdue', balance: { gt: 0 } },
-          }),
-          tx.invoice.aggregate({
-            where: {
-              ...scope,
-              status: { in: ['issued', 'partially_paid'] },
-              balance: { gt: 0 },
-              dueDate: todayDate,
-            },
-            _sum: { balance: true },
-            _count: true,
-          }),
-          tx.receivableBalance.findMany({
-            where: { ...scope, OR: [{ balance: { not: 0 } }, { openInvoicesCount: { gt: 0 } }] },
-            select: { balance: true, creditBalance: true, aging: true },
-          }),
-          tx.slipReview.count({ where: { ...scope, status: { in: ['pending_review', 'duplicate'] } } }),
-          tx.invoice.count({ where: { ...scope, status: 'draft' } }),
-          tx.lossReport.findMany({
-            where: scope,
-            orderBy: [{ periodStart: 'desc' }, { computedAt: 'desc' }],
-            include: { building: { select: { name: true } } },
-            take: 200,
-          }),
-        ]);
+      const [
+        received,
+        byMethod,
+        issued,
+        overdue,
+        overdueParties,
+        dueToday,
+        balances,
+        slips,
+        drafts,
+        loss,
+        requestsOverdue,
+        parcelsWaiting,
+      ] = await Promise.all([
+        tx.payment.aggregate({
+          where: {
+            ...scope,
+            status: 'confirmed',
+            method: { not: 'offset' },
+            paidAt: { gte: w.start, lt: w.end },
+          },
+          _sum: { amount: true },
+          _count: true,
+        }),
+        tx.payment.groupBy({
+          by: ['method'],
+          where: {
+            ...scope,
+            status: 'confirmed',
+            method: { not: 'offset' },
+            paidAt: { gte: w.start, lt: w.end },
+          },
+          _sum: { amount: true },
+          _count: true,
+          orderBy: { method: 'asc' },
+        }),
+        tx.invoice.aggregate({
+          where: { ...scope, issuedAt: { gte: w.start, lt: w.end }, status: { not: 'void' } },
+          _sum: { total: true, paidTotal: true, creditedTotal: true, debitedTotal: true, balance: true },
+          _count: true,
+        }),
+        tx.invoice.aggregate({
+          where: { ...scope, status: 'overdue', balance: { gt: 0 } },
+          _sum: { balance: true },
+          _count: true,
+        }),
+        tx.invoice.groupBy({
+          by: ['billedPartyId'],
+          where: { ...scope, status: 'overdue', balance: { gt: 0 } },
+        }),
+        tx.invoice.aggregate({
+          where: {
+            ...scope,
+            status: { in: ['issued', 'partially_paid'] },
+            balance: { gt: 0 },
+            dueDate: todayDate,
+          },
+          _sum: { balance: true },
+          _count: true,
+        }),
+        tx.receivableBalance.findMany({
+          where: { ...scope, OR: [{ balance: { not: 0 } }, { openInvoicesCount: { gt: 0 } }] },
+          select: { balance: true, creditBalance: true, aging: true },
+        }),
+        tx.slipReview.count({ where: { ...scope, status: { in: ['pending_review', 'duplicate'] } } }),
+        tx.invoice.count({ where: { ...scope, status: 'draft' } }),
+        tx.lossReport.findMany({
+          where: scope,
+          orderBy: [{ periodStart: 'desc' }, { computedAt: 'desc' }],
+          include: { building: { select: { name: true } } },
+          take: 200,
+        }),
+        // web F2 2.7 Today queue: open repair requests past their SLA (the engine's breach, D-159) …
+        tx.serviceRequest.count({
+          where: {
+            ...scope,
+            status: { in: [...OPEN_REQUEST_STATUSES] },
+            workflowInstance: { slaBreachedAt: { not: null } },
+          },
+        }),
+        // … and parcels at the desk (received or notified, not picked up / returned, D-073)
+        tx.parcel.count({ where: { ...scope, status: { in: ['received', 'notified'] } } }),
+      ]);
       const properties = await tx.property.findMany({
         where: {
           tenantId: ctx.tenantId,
@@ -198,6 +226,8 @@ export class DashboardService {
         balances,
         slips,
         drafts,
+        requestsOverdue,
+        parcelsWaiting,
         cycles,
         latest,
       };
@@ -245,7 +275,12 @@ export class DashboardService {
         credit: totals.creditBalance,
       },
       dueToday: { balance: m2(data.dueToday._sum.balance), invoices: data.dueToday._count },
-      attention: { slipsToReview: data.slips, draftsToReview: data.drafts },
+      attention: {
+        slipsToReview: data.slips,
+        draftsToReview: data.drafts,
+        serviceRequestsOverdue: data.requestsOverdue,
+        parcelsWaiting: data.parcelsWaiting,
+      },
       cycles: data.cycles,
       compliance: {
         score: score.score.toFixed(2),

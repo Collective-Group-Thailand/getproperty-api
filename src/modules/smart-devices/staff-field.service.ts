@@ -12,6 +12,17 @@ export interface StaffBuilding {
   unitCount: number;
 }
 
+/** A unit as the staff PWA chooses it (web F4 4.4 parcel intake, D-218). */
+export interface StaffUnit {
+  id: string;
+  unitNo: string;
+  floorId: string | null;
+  floorName: string | null;
+  floorLevel: number | null;
+  status: string;
+  type: string;
+}
+
 export interface MeterPointChannel {
   channelId: string;
   gatewayDeviceId: string;
@@ -66,6 +77,45 @@ export class StaffFieldService extends TenantScopedRepository {
         floorsCount: b.floorsCount,
         unitCount: byBuilding.get(b.id) ?? 0,
       }));
+    });
+  }
+
+  /**
+   * The units of a building of my scope (web F4 4.4, D-218): every unit not deleted with its floor, by floor level and
+   * unit number — the parcel intake and other staff pickers choose from it (not only units with a meter).
+   */
+  units(ctx: TenantContext, buildingId: string): Promise<StaffUnit[]> {
+    return this.db.tenant(ctx, async (tx) => {
+      await visibleBuilding(tx, ctx, buildingId);
+      const [units, floors] = await Promise.all([
+        tx.unit.findMany({
+          where: { buildingId, deletedAt: null },
+          select: { id: true, unitNo: true, floorId: true, status: true, type: true },
+        }),
+        tx.floor.findMany({
+          where: { buildingId, deletedAt: null },
+          select: { id: true, name: true, level: true },
+        }),
+      ]);
+      const floorOf = new Map(floors.map((f) => [f.id, f]));
+      return units
+        .map((u) => {
+          const f = u.floorId ? floorOf.get(u.floorId) : undefined;
+          return {
+            id: u.id,
+            unitNo: u.unitNo,
+            floorId: u.floorId,
+            floorName: f?.name ?? null,
+            floorLevel: f?.level ?? null,
+            status: u.status,
+            type: u.type,
+          };
+        })
+        .sort(
+          (a, b) =>
+            (a.floorLevel ?? Number.MAX_SAFE_INTEGER) - (b.floorLevel ?? Number.MAX_SAFE_INTEGER) ||
+            a.unitNo.localeCompare(b.unitNo, 'th', { numeric: true }),
+        );
     });
   }
 

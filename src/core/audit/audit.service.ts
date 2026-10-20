@@ -158,6 +158,8 @@ export const AUDIT_ACTIONS = [
   'haas.transitioned',
   // B5 operations
   'service_request.cancelled',
+  'service_request.visit_confirmed',
+  'service_request.message_posted',
   'work_order.cost_changed',
   'work_order.verified',
   'access.credential_issued',

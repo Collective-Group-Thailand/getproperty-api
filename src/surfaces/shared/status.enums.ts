@@ -142,6 +142,10 @@ export enum ResidentEntitlement {
   Lease = 'lease',
   Announcements = 'announcements',
   Parcels = 'parcels',
+  /** Facility bookings (B5.3): module.community and a bookable facility in one of my buildings (LIFF #27). */
+  Facilities = 'facilities',
+  /** Door codes and unlock log (B5.2): module.smart_access and an active lock on one of my units (LIFF #27). */
+  Access = 'access',
 }
 
 // ------------------------------------------------------------------------------------------- B4 billing & payments

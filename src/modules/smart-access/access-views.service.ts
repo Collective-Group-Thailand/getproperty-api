@@ -1,19 +1,30 @@
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
+import { CLOCK, type Clock } from '@core/clock/clock';
+import { SettingsService } from '@core/settings/settings.service';
 import { TenantTx } from '@database/tenant-tx';
 import { type AccessEvent } from '@generated/prisma/client';
 import { TechnicianWorkOrdersService } from '@modules/ops-service/field-access.service';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import {
   AccessCredentialsService,
   CREDENTIAL_INCLUDE,
   type CredentialRow,
 } from './access-credentials.service';
-import { LIVE_STATUSES } from './access-rules';
+import { LIVE_STATUSES, validWindow } from './access-rules';
 
 export type RevealedCredential = CredentialRow & { pin: string | null };
+
+/** What the operator lets residents do with visitor codes (LIFF #26, D-218). */
+export interface VisitorPolicy {
+  allowed: boolean;
+  maxHours: number;
+}
+
+/** A resident visitor code may never exceed 31 days (`validWindow`), whatever the setting says. */
+const VISITOR_HOURS_CAP = 31 * 24;
 
 function actorUser(): { userId: string; scopes: readonly string[] } {
   const actor = RequestContext.actor();
@@ -32,7 +43,107 @@ export class AccessViewsService {
     private readonly db: TenantTx,
     private readonly credentials: AccessCredentialsService,
     private readonly technicians: TechnicianWorkOrdersService,
+    private readonly settings: SettingsService,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
+
+  /** My units (`unit:` scopes of my token) with their tenant, property and active unit locks. */
+  private async myUnits() {
+    const { scopes } = actorUser();
+    const ids = scopes.filter((s) => s.startsWith('unit:')).map((s) => s.slice('unit:'.length));
+    if (!ids.length) return [];
+    return this.db.platform((tx) =>
+      tx.unit.findMany({
+        where: { id: { in: ids }, deletedAt: null },
+        select: {
+          id: true,
+          tenantId: true,
+          buildingId: true,
+          building: { select: { propertyId: true } },
+          lockUnit: {
+            where: { scope: 'unit', isActive: true },
+            select: { id: true },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+      }),
+    );
+  }
+
+  /** The visitor-code policy in force for a unit's tenant / property (settings with effective dates). */
+  private async policyOf(unit: {
+    tenantId: string;
+    building: { propertyId: string };
+  }): Promise<VisitorPolicy> {
+    const now = this.clock.now();
+    const scope = { tenantId: unit.tenantId, propertyId: unit.building.propertyId };
+    const allowed = await this.settings.valueAt<boolean>('access.resident_visitor_codes', now, scope);
+    const hours = await this.settings.valueAt<number>('access.resident_visitor_max_hours', now, scope);
+    return {
+      allowed: allowed === true,
+      maxHours: Math.max(1, Math.min(VISITOR_HOURS_CAP, Number(hours) || 1)),
+    };
+  }
+
+  /**
+   * `RevealedCredentialsDto.visitorPolicy` (LIFF #26): allowed when the operator of one of my units with an active
+   * unit lock lets residents create visitor codes; `maxHours` = the shortest limit among those units (the form never
+   * offers more than every unit accepts).
+   */
+  async visitorPolicy(): Promise<VisitorPolicy> {
+    const policies: VisitorPolicy[] = [];
+    for (const u of await this.myUnits()) if (u.lockUnit.length) policies.push(await this.policyOf(u));
+    const allowed = policies.filter((p) => p.allowed);
+    if (!allowed.length) return { allowed: false, maxHours: 0 };
+    return { allowed: true, maxHours: Math.min(...allowed.map((p) => p.maxHours)) };
+  }
+
+  /**
+   * `POST /v1/resident/access/visitor-codes` (LIFF #26, D-070, D-218): a time-boxed keypad code on my unit's lock for a
+   * named visitor, within the operator's policy — 404 for a unit outside my scopes, 403 `access.visitor_codes_disabled`
+   * when the operator does not allow it, 422 beyond `maxHours`, 409 `access.invalid_state` for a unit without an
+   * active lock. The PIN is answered this once (give it to the visitor); the issue is audited with me as the issuer.
+   */
+  async createVisitorCode(input: {
+    unitId: string;
+    visitorName: string;
+    validFrom: Date;
+    validTo: Date;
+  }): Promise<CredentialRow & { pin: string }> {
+    const unit = (await this.myUnits()).find((u) => u.id === input.unitId);
+    if (!unit) throw new DomainException('http.not_found');
+    const policy = await this.policyOf(unit);
+    if (!policy.allowed) throw new DomainException('access.visitor_codes_disabled');
+    const name = input.visitorName.trim();
+    if (!name)
+      throw new DomainException('validation.failed', {
+        errors: [{ path: 'visitorName', code: 'required', message: 'the visitor’s name' }],
+      });
+    const problem = validWindow(input.validFrom, input.validTo, this.clock.now());
+    if (problem)
+      throw new DomainException('validation.failed', {
+        errors: [{ path: 'validTo', code: 'window', message: problem }],
+      });
+    if (input.validTo.getTime() - input.validFrom.getTime() > policy.maxHours * 3_600_000)
+      throw new DomainException('validation.failed', {
+        errors: [{ path: 'validTo', code: 'maxHours', message: `at most ${policy.maxHours} hours` }],
+      });
+    if (!unit.lockUnit.length)
+      throw new DomainException('access.invalid_state', { params: { status: 'no_lock' } });
+    const ctx: TenantContext = { tenantId: unit.tenantId, source: 'path' };
+    const issued = await this.db.tenant(ctx, async (tx) => {
+      const lock = await tx.lock.findFirst({ where: { id: unit.lockUnit[0]!.id, isActive: true } });
+      if (!lock) throw new DomainException('access.invalid_state', { params: { status: 'no_lock' } });
+      return this.credentials.issueIn(tx, {
+        lock,
+        holderKind: 'visitor',
+        holderName: name,
+        validFrom: input.validFrom,
+        validTo: input.validTo,
+      });
+    });
+    return { ...(await this.credentials.get(ctx, issued.id)), pin: issued.pin };
+  }
 
   private async reveal(rows: CredentialRow[], purpose: string): Promise<RevealedCredential[]> {
     const out: RevealedCredential[] = [];

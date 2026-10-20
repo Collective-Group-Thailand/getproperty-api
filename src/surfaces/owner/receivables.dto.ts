@@ -386,6 +386,16 @@ export class DashboardAttentionDto {
 
   @ApiProperty({ example: 0 })
   draftsToReview!: number;
+
+  @ApiProperty({
+    example: 1,
+    description:
+      'Open repair requests whose SLA breached (D-159) — `GET …/service-requests?open=true&slaBreached=true`.',
+  })
+  serviceRequestsOverdue!: number;
+
+  @ApiProperty({ example: 3, description: 'Parcels at the desk (received or notified, D-073).' })
+  parcelsWaiting!: number;
 }
 
 export class DashboardCycleDto {

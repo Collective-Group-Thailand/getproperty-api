@@ -1,4 +1,5 @@
 import { FAKE } from '@common/openapi/examples';
+import { PERMISSIONS } from '@core/rbac/catalogue';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -188,6 +189,31 @@ export class TenantUpdateDto {
   @IsOptional()
   @IsIn(['th', 'en'])
   defaultLanguage?: string;
+}
+
+/** Permission keys of the operator surfaces (owner console, staff PWA) — the member filter accepts only these. */
+export const OPERATOR_PERMISSION_KEYS: readonly string[] = PERMISSIONS.filter((p) =>
+  p.surfaces.some((x) => x === 'owner' || x === 'staff'),
+).map((p) => p.key);
+
+export class MemberListQuery {
+  @ApiPropertyOptional({
+    example: 'service_request.handle',
+    description:
+      'Only active members whose role holds this permission (an operator permission key of the RBAC catalogue, D-090).',
+  })
+  @IsOptional()
+  @IsIn(OPERATOR_PERMISSION_KEYS)
+  permission?: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'Only active members who may work in this building (no building limit, or a limit including it).',
+  })
+  @IsOptional()
+  @IsUUID()
+  buildingId?: string;
 }
 
 export class MemberDto {

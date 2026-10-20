@@ -194,6 +194,7 @@ export const ERROR_CODES = {
   'work_order.invalid_state': HttpStatus.CONFLICT,
   'work_order.photo_required': HttpStatus.UNPROCESSABLE_ENTITY,
   'access.invalid_state': HttpStatus.CONFLICT,
+  'access.visitor_codes_disabled': HttpStatus.FORBIDDEN,
   'lock.exists': HttpStatus.CONFLICT,
   'announcement.published': HttpStatus.CONFLICT,
   'parcel.invalid_state': HttpStatus.CONFLICT,

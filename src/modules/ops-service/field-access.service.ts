@@ -1,18 +1,30 @@
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
+import { CLOCK, type Clock } from '@core/clock/clock';
 import { DocumentsService } from '@core/documents/documents.service';
 import { TenantTx } from '@database/tenant-tx';
-import { type ServicePriority, type WorkOrder } from '@generated/prisma/client';
-import { Injectable } from '@nestjs/common';
+import {
+  type ServicePriority,
+  type ServiceRequest,
+  type VisitPreference,
+  type WorkOrder,
+} from '@generated/prisma/client';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { ServiceCategoriesService } from './service-categories.service';
+import { ServiceMessagesService } from './service-messages.service';
 import {
   SERVICE_REQUEST_INCLUDE,
   type ServiceRequestRow,
   ServiceRequestsService,
 } from './service-requests.service';
-import { requestResidentActions, TECHNICIAN_VISIBLE_STATUSES } from './service-rules';
+import {
+  requestResidentActions,
+  slaView,
+  TECHNICIAN_VISIBLE_STATUSES,
+  visitConfirmation,
+} from './service-rules';
 import {
   type CostLineInput,
   WORK_ORDER_INCLUDE,
@@ -22,6 +34,21 @@ import {
 } from './work-orders.service';
 
 const PHOTO_MAX_BYTES = 10_000_000;
+
+/** A photo of a request or work order with its 5-minute link (null while the file is not scanned clean). */
+export interface PhotoLink {
+  id: string;
+  role: 'report' | 'before' | 'after';
+  url: string | null;
+}
+
+/** What the resident sees beyond the request row (LIFF #22, #24). */
+export interface ResidentRequestDetail {
+  photos: PhotoLink[];
+  events: { status: ServiceRequest['status']; at: Date }[];
+  sla: ReturnType<typeof slaView>;
+  visitConfirmedAt: Date | null;
+}
 
 function actorUser(): { userId: string; scopes: readonly string[] } {
   const actor = RequestContext.actor();
@@ -43,6 +70,7 @@ export class TechnicianWorkOrdersService {
     private readonly workOrders: WorkOrdersService,
     private readonly requests: ServiceRequestsService,
     private readonly documents: DocumentsService,
+    private readonly messagesService: ServiceMessagesService,
   ) {}
 
   private async parties(userId: string): Promise<string[]> {
@@ -168,6 +196,55 @@ export class TechnicianWorkOrdersService {
     return this.get(id);
   }
 
+  /**
+   * LIFF #25 (D-218): the report photos of the request and my before / after photos of this work order with 5-minute
+   * links, the resident's rating once given, and when the resident prefers the visit.
+   */
+  async detail(id: string): Promise<{
+    photos: PhotoLink[];
+    rating: number | null;
+    ratingComment: string | null;
+    preferredVisit: VisitPreference | null;
+  }> {
+    const { ctx, wo } = await this.access(id);
+    return this.db.tenant(ctx, async (tx) => {
+      const sr = wo.serviceRequestId
+        ? await tx.serviceRequest.findUnique({ where: { id: wo.serviceRequestId } })
+        : null;
+      return {
+        photos: await this.requests.photoLinks(tx, sr?.id ?? null, [wo.id]),
+        rating: sr?.ratedAt ? sr.rating : null,
+        ratingComment: sr?.ratedAt ? sr.ratingComment : null,
+        preferredVisit: sr?.preferredVisit ?? null,
+      };
+    });
+  }
+
+  /** The thread of my work order (its request's thread when it has one; LIFF #23). */
+  async messages(id: string) {
+    const { ctx } = await this.access(id);
+    return this.db.tenant(ctx, async (tx) =>
+      this.messagesService.list(tx, await this.messagesService.workOrderThread(tx, id)),
+    );
+  }
+
+  /** Writes into the thread as the technician (my party's name; never a phone number). */
+  async postMessage(id: string, body: string) {
+    const { userId } = actorUser();
+    const { ctx, wo } = await this.access(id);
+    const party = await this.db.platform((tx) =>
+      tx.party.findUnique({ where: { id: wo.assigneePartyId! }, select: { displayName: true } }),
+    );
+    return this.db.tenant(ctx, async (tx) =>
+      this.messagesService.post(
+        tx,
+        await this.messagesService.workOrderThread(tx, id),
+        { kind: 'technician', userId, partyId: wo.assigneePartyId, name: party?.displayName ?? 'ช่าง' },
+        body,
+      ),
+    );
+  }
+
   /** Photos of the work order (before / after). */
   async photos(id: string): Promise<Map<string, string[]>> {
     const { ctx } = await this.access(id);
@@ -192,6 +269,8 @@ export class ResidentServiceRequestsService {
     private readonly requests: ServiceRequestsService,
     private readonly categories: ServiceCategoriesService,
     private readonly documents: DocumentsService,
+    private readonly messagesService: ServiceMessagesService,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   private units(): string[] {
@@ -302,14 +381,69 @@ export class ResidentServiceRequestsService {
 
   async get(id: string) {
     const { ctx, row } = await this.access(id);
-    const photos = await this.db.tenant(ctx, (tx) =>
-      this.requests.photos(tx, 'ops.service_request', [row.id]),
+    return this.db.tenant(ctx, async (tx) => {
+      const photos = await this.requests.photos(tx, 'ops.service_request', [row.id]);
+      const visit = visitConfirmation(row.workOrders, {
+        at: row.visitConfirmedAt,
+        for: row.visitConfirmedFor,
+      });
+      const detail: ResidentRequestDetail = {
+        photos: await this.requests.photoLinks(
+          tx,
+          row.id,
+          row.workOrders.filter((w) => w.status !== 'cancelled').map((w) => w.id),
+        ),
+        events: await this.requests.history(tx, row),
+        sla: slaView(row.workflowInstance, this.clock.now()),
+        visitConfirmedAt: visit.confirmedAt,
+      };
+      return {
+        row,
+        photoIds: photos.get(row.id)?.get('report') ?? [],
+        nextActions: requestResidentActions(row.status, row.ratedAt !== null, visit.due),
+        detail,
+      };
+    });
+  }
+
+  /** LIFF #24: I confirm the visit the office scheduled (`confirm-visit` in `nextActions`, else 409). */
+  async confirmVisit(id: string) {
+    const { ctx, row } = await this.access(id);
+    await this.db.tenant(ctx, async (tx) => {
+      const fresh = await tx.serviceRequest.findUniqueOrThrow({ where: { id: row.id } });
+      await this.requests.confirmVisitIn(tx, fresh);
+    });
+    return this.get(id);
+  }
+
+  /** LIFF #23: the request's thread (resident, office, technician). */
+  async messages(id: string) {
+    const { ctx, row } = await this.access(id);
+    return this.db.tenant(ctx, async (tx) =>
+      this.messagesService.list(tx, await this.messagesService.requestThread(tx, row.id)),
     );
-    return {
-      row,
-      photoIds: photos.get(row.id)?.get('report') ?? [],
-      nextActions: requestResidentActions(row.status, row.ratedAt !== null),
-    };
+  }
+
+  /** Writes into the request's thread as myself (my party's name in that tenant, else my login's). */
+  async postMessage(id: string, body: string) {
+    const { userId } = actorUser();
+    const { ctx, row } = await this.access(id);
+    const partyId = row.unitId ? await this.myParty(ctx, row.unitId) : null;
+    const name = await this.db.platform(async (tx) => {
+      const party = partyId
+        ? await tx.party.findUnique({ where: { id: partyId }, select: { displayName: true } })
+        : null;
+      const user = await tx.userAccount.findUnique({ where: { id: userId }, select: { displayName: true } });
+      return party?.displayName || user?.displayName || 'ผู้เช่า';
+    });
+    return this.db.tenant(ctx, async (tx) =>
+      this.messagesService.post(
+        tx,
+        await this.messagesService.requestThread(tx, row.id),
+        { kind: 'resident', userId, partyId, name },
+        body,
+      ),
+    );
   }
 
   async create(input: {
@@ -318,6 +452,7 @@ export class ResidentServiceRequestsService {
     description: string;
     priority?: ServicePriority;
     photoDocumentIds?: string[];
+    preferredVisit?: VisitPreference | null;
   }) {
     const { ctx, unit } = await this.unit(input.unitId);
     const { userId } = actorUser();
@@ -335,6 +470,7 @@ export class ResidentServiceRequestsService {
           requesterPartyId: requester,
           reporterKind: 'resident',
           photoDocumentIds: input.photoDocumentIds ?? [],
+          preferredVisit: input.preferredVisit ?? null,
         },
         { userId },
       ),

@@ -38,13 +38,18 @@ import {
 import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { type Response } from 'express';
 
+import { dateOnly } from '../shared/mappers';
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
   AmenityCreateDto,
   AmenityDto,
   AmenityRetireDto,
   AmenityUpdateDto,
+  type AssetCategoryName,
+  type AssetStatusName,
   BoardDto,
+  BuildingAssetItemQuery,
+  BuildingAssetItemsDto,
   BuildingCreateDto,
   BuildingDto,
   BuildingUpdateDto,
@@ -968,6 +973,63 @@ export class OwnerMetersController {
 @Controller('owner')
 export class OwnerAssetItemsController {
   constructor(private readonly amenities: AmenitiesService) {}
+
+  @Get('buildings/:buildingId/asset-items')
+  @TenantScoped()
+  @Can('asset_item.read')
+  @ApiEndpoint({
+    id: 'owner.assetItems.listForBuilding',
+    summary: 'Asset items of a building',
+    description:
+      'Building equipment (pumps, lifts, water tanks, generators, gateways, locks …) and the items of its units — the asset items a maintenance plan is set on (web F2 2.7, D-210, D-218). Filters: category, status, unit. Another tenant’s building is a 404.',
+    implements: ['D-151', 'D-210', 'D-218'],
+  })
+  @ApiSuccess(200, {
+    description: 'Items',
+    type: BuildingAssetItemsDto,
+    example: {
+      data: [
+        {
+          id: FAKE.uuid,
+          category: 'pump',
+          name: 'ปั๊มน้ำหลัก',
+          unitId: null,
+          floorId: null,
+          location: 'ห้องเครื่องชั้นดาดฟ้า',
+          manufacturer: 'ตัวอย่างยี่ห้อ',
+          model: null,
+          serial: null,
+          installDate: null,
+          warrantyUntil: FAKE.date,
+          status: 'active',
+        },
+      ],
+    },
+  })
+  @ApiStandardErrors('http.not_found', 'validation.failed', ...T)
+  async listForBuilding(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('buildingId', ParseUUIDPipe) buildingId: string,
+    @Query() q: BuildingAssetItemQuery,
+  ): Promise<BuildingAssetItemsDto> {
+    const rows = await this.amenities.listForBuilding(ctx, buildingId, q);
+    return {
+      data: rows.map((i) => ({
+        id: i.id,
+        category: i.category as AssetCategoryName,
+        name: i.name,
+        unitId: i.unitId,
+        floorId: i.floorId,
+        location: i.location,
+        manufacturer: i.manufacturer,
+        model: i.model,
+        serial: i.serial,
+        installDate: dateOnly(i.installDate),
+        warrantyUntil: dateOnly(i.warrantyUntil),
+        status: i.status as AssetStatusName,
+      })),
+    };
+  }
 
   @Get('units/:unitId/asset-items')
   @TenantScoped()

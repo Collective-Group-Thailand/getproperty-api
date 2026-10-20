@@ -12,7 +12,8 @@ Commit ids: **A** = `13be5a7` (`feat(contract): consumer contract requests for B
 `cc49ff5` (`feat(contract): consumer contract requests before B6`, D-203) · **B6.1** = the commit
 `feat(platform): B6.1 subscriptions, platform billing, HaaS, pilots, console; B6.5 launch` (D-204–D-207) · **F2** = the commit
 `feat(contract): consumer contract requests before B5` (D-208, D-209) · **F5** = the commit
-`feat(contract): consumer contract requests of 2026-10-20` (D-214).
+`feat(contract): consumer contract requests of 2026-10-20` (D-214) · **F6** = the commit
+`feat(contract): consumer contract requests before release` (D-218, migration 0032).
 
 ## getproperty-edge (`docs/contract-requests.md` CR-001…CR-011)
 
@@ -72,7 +73,7 @@ Re-checked 2026-10-20 (F5): no open request.
 | `TariffEnterDto.sourceDocumentId` | `sourceDocumentId: uuid \| null` on the entry and on `TariffVersionDto`; the file is a platform upload through the new **`/v1/admin/files`** (`presign` → PUT → `actions/complete` → `GET {fileId}`), kinds `tariff_source` (new upload kind), `contract`, `other`; a tenant file, an unfinished upload or an infected one is 422. `DocumentScope` gains `platform` (response only; tenant surfaces answer 404 for it). | **done** in F5 (D-214) |
 | `GET /v1/admin/site-surveys` query `state` | `SiteSurveyListQuery.state: SiteSurveyState` (`requested \| scheduled \| done \| cancelled`) and the filter is applied (it was ignored). | **done** in F5 (D-214) |
 
-## getproperty-liff (`docs/contract-requests.md` #1…#21)
+## getproperty-liff (`docs/contract-requests.md` #1…#28)
 
 Re-checked 2026-10-20 (F5): no open row — #7–#21 still say "Requested" in the LIFF file but were closed here (A6, F2); the app updates its file at its next `pnpm gen:api --adopt`.
 
@@ -99,3 +100,45 @@ Re-checked 2026-10-20 (F5): no open row — #7–#21 still say "Requested" in th
 | 19 | Receipts of an invoice, `GET /v1/resident/receipts/{receiptId}` | `ResidentInvoiceDto.receipts: [{ id, number }]` (not voided, payments allocated to it); `ResidentReceiptDetailDto` = `ResidentReceiptDto` + `invoices: [{ id, number }]` + `hasDocument`; 404 when not mine. | **done** in F2 (D-208) |
 | 20 | Full account number + bank code | `ResidentAccountDto.accountNo` (digits, only while something is due, else null) and `bankCode`; every reveal audited `pii.decrypted` (purpose `resident_transfer`). | **done** in F2 (D-209) |
 | 21 | Lease dates on `/me` | `ResidentLeaseSummaryDto.startDate`, `endDate` (null = open-ended). | **done** in F2 (D-208) |
+
+## F6 — requests of 2026-10-21 and rows still open in the consumer files (D-218)
+
+Re-checked 2026-10-21 before release. Every row below is implemented in getproperty-api; the consumer sessions close
+their rows (and drop the `// CONTRACT-REQUEST` mocks) at their next `pnpm gen:api --adopt` / `pnpm gen:protocol`.
+getproperty-edge: no open row (CR-001…CR-011 all done since A / B3) — nothing to close.
+
+### getproperty-liff #22–#28 (new, done in F6)
+
+| # | Request | What the API did (path / schema) | Status |
+|---|---|---|---|
+| 22 | Request photos, status history, SLA | `GET /v1/resident/service-requests/{id}` (and the list, create, cancel, rate answers) → `ResidentServiceRequestDto.photos: ServicePhotoDto[]` (`{ id, role: ServicePhotoRole report\|before\|after, url }`, 5-minute links; `url: null` while a file is not scanned clean; report photos first, then before / after of the work orders not cancelled), `events: ServiceStatusEventDto[]` (`{ status: ServiceRequestStatus, at }`, oldest first, one per status change), `sla: ServiceSlaDto \| null` (`{ dueAt \| null, state: ServiceSlaState on_track\|at_risk\|breached\|paused\|none }`). | **done** F6 |
+| 23 | Message threads | `GET/POST /v1/resident/service-requests/{id}/messages`, `GET/POST /v1/technician/work-orders/{id}/messages` (+ office side `GET/POST /v1/{owner,staff}/service-requests/{id}/messages` and `…/work-orders/{id}/messages`) → `ServiceMessagesDto { data: ServiceMessageDto[] }` (`{ id, author: ServiceMessageAuthor resident\|office\|technician\|system, authorName, body, createdAt, mine }`); `POST { body ≤ 2000 }` with optional `Idempotency-Key` → 201 the message; 404 outside my scopes, 409 `service_request.invalid_state` once the request is closed / cancelled; realtime `service_request.message` on `unit:`, `work_order:` and the requester's / assignees' `user:` channels; LINE to the resident / technician who did not write it. One thread per request shared by the three parties. | **done** F6 |
+| 24 | Preferred visit + confirmation | `preferredVisit?: VisitPreference (anytime\|morning\|afternoon\|evening)` on `ResidentServiceRequestCreateDto` / `ServiceRequestCreateDto` and on `ResidentServiceRequestDto`, `ServiceRequestDto`, `TechnicianWorkOrderDto`; `confirm-visit` in `nextActions` while the planned visit (`visitAt`) has not started and is not confirmed; `POST /v1/resident/service-requests/{id}/actions/confirm-visit` → the request with `visitConfirmedAt` (409 otherwise). A moved visit clears the confirmation (asked again). | **done** F6 |
+| 25 | Technician photos + rating | `GET /v1/technician/work-orders/{id}` (and list / actions) → `TechnicianWorkOrderDto.photos: ServicePhotoDto[]` (the request's report photos + this work order's before / after), `rating`, `ratingComment` (once the resident rated), `preferredVisit`. | **done** F6 |
+| 26 | Resident visitor codes | `RevealedCredentialsDto.visitorPolicy?: VisitorPolicyDto { allowed, maxHours }` on `GET /v1/resident/access/credentials`; `POST /v1/resident/access/visitor-codes` `ResidentVisitorCodeCreateDto { unitId, visitorName, validFrom, validTo }` (`Idempotency-Key` required) → 201 `IssuedCredentialDto` (`id`, `pin`, `validFrom`, `validTo`, `lockId` …); 403 `access.visitor_codes_disabled`, 422 beyond `maxHours`, 409 `access.invalid_state` without a unit lock, 404 not my unit. Policy = settings `access.resident_visitor_codes` (default **off**) / `access.resident_visitor_max_hours` (24). | **done** F6 |
+| 27 | `facilities`, `access` entitlements | `ResidentEntitlement` + `facilities` (module.community and an active facility in a building of my units) and `access` (module.smart_access and an active lock on one of my units) on `GET /v1/resident/me`. | **done** F6 |
+| 28 | LINE deep links | Template version 2 of `service_request.changed` → `PUBLIC_RESIDENT_APP_URL/requests/{id}`, `announcement.published` → `/announcements/{id}`, `parcel.received` (the row's `parcel.notified`; the API's event is `parcel.received`) → `/parcels`, `work_order.assigned` (technician) → `/technician/work-orders/{id}`; the new `service_request.message` / `service_request.visit_confirmed` messages link the same screens. | **done** F6 |
+
+### getproperty-web rows of 2026-10-21 (new, done in F6)
+
+| Request | What the API did (path / schema) | Status |
+|---|---|---|
+| `DashboardDto.attention.serviceRequestsOverdue`, `.parcelsWaiting` | `GET /v1/owner/dashboard` → `DashboardAttentionDto.serviceRequestsOverdue` (open requests whose SLA breached, D-159) and `.parcelsWaiting` (received / notified), for the focused building or all; also `?slaBreached=true\|false` on `GET /v1/{owner,staff}/service-requests`. | **done** F6 |
+| `GET /v1/staff/buildings/{buildingId}/units` | `staff.field.units` → `StaffUnitsDto { data: [{ id, unitNo, floorId, floorName, floorLevel, status: UnitStatus, type: UnitType }] }`, by floor level then unit number; my buildings only (D-090), 404 otherwise. | **done** F6 |
+| `GET /v1/owner/buildings/{buildingId}/asset-items` | `owner.assetItems.listForBuilding` → `BuildingAssetItemsDto { data: [{ id, category: AssetCategory, name, unitId, floorId, location, manufacturer, model, serial, installDate, warrantyUntil, status: AssetStatus }] }`; filters `category`, `status`, `unitId`. | **done** F6 |
+| `GET /v1/owner/members?permission=&buildingId=` | `owner.members.list` takes `MemberListQuery { permission?, buildingId? }`: active members of active logins whose role holds the permission and whose building limit includes the building (the assignment's own test); unknown permission 422, another tenant's building 404. | **done** F6 |
+
+### Rows still marked open in the consumer files, implemented earlier (close them)
+
+| Repo | Row | Done with | Status |
+|---|---|---|---|
+| web | 2026-10-20 `GET /v1/admin/utility-tariffs/versions/{versionId}/charge?units=` | `admin.utilityTariffs.sampleCharge` → `TariffChargeDto` | **done** F5 `ebcaa7e` |
+| web | 2026-10-20 `GET /v1/owner/pilot-kpis?window=` | `owner.insights.pilotKpis` → `PilotKpisDto` (404 without a pilot agreement) | **done** F5 `ebcaa7e` |
+| web | 2026-10-20 `GET /v1/admin/integration-events` | `admin.integrationEvents.list` (paged, filters `state`, `system`, `direction`, `tenantId`, `q`) | **done** F5 `ebcaa7e` |
+| web | 2026-10-20 `GET /v1/admin/tenants/{tenantId}/buildings` | `admin.tenants.buildings` | **done** F5 `ebcaa7e` |
+| web | 2026-10-20 `POST /v1/admin/data-subject-requests/{requestId}/actions/{action}` | `admin.dataSubjectRequests.transition` (`DsrActionDto` → `DsrDto`, platform-level requests) | **done** F5 `ebcaa7e` |
+| web | 2026-10-20 `GET /v1/owner/settings/{key}/versions` | `owner.settings.versions` | **done** F5 `ebcaa7e` |
+| web | 2026-10-20 `TariffEnterDto.sourceDocumentId` | `sourceDocumentId` + `/v1/admin/files` (presign → complete → get) | **done** F5 `ebcaa7e` |
+| web | 2026-10-20 `GET /v1/admin/site-surveys` query `state` | `SiteSurveyListQuery.state: SiteSurveyState` | **done** F5 `ebcaa7e` |
+| liff | #1–#21 | all marked Done in the LIFF file already | nothing to close |
+| edge | CR-001–CR-011 | all done (A `13be5a7`, B3 `e00cfae`) | nothing to close |

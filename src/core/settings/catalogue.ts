@@ -270,6 +270,26 @@ export const SETTINGS: readonly SettingDef[] = [
     reason: 'seed: B5.2 founder pre-approved recommendation (D-211)',
   },
   {
+    key: 'access.resident_visitor_codes',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-070 / D-218 (LIFF #26): residents may create time-boxed visitor codes for their own unit’s lock in the app. Off by default — the operator opts in (the owner surface always may issue them).',
+    editableBy: OWNER_SETTINGS,
+    value: false,
+    reason: 'seed: D-218 founder pre-approved recommendation (opt-in, most conservative)',
+  },
+  {
+    key: 'access.resident_visitor_max_hours',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-070 / D-218 (LIFF #26): the longest visitor code a resident may create (hours, 1–744); longer windows are refused (422).',
+    editableBy: OWNER_SETTINGS,
+    value: 24,
+    reason: 'seed: D-218 founder pre-approved recommendation',
+  },
+  {
     key: 'access.battery_low_pct',
     valueType: 'int',
     scopeAllowed: ['platform', 'tenant'],

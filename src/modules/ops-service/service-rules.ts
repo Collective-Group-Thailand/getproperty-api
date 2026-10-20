@@ -69,12 +69,112 @@ export function requestOperatorActions(
   return out;
 }
 
-/** Resident actions: cancel before work starts, rate once the work is done. */
-export function requestResidentActions(status: ServiceRequestStatus, rated: boolean): string[] {
-  if (status === 'new' || status === 'triaged') return ['cancel'];
-  if (status === 'done' && !rated) return ['rate'];
-  return [];
+/**
+ * Resident actions: cancel before work starts, rate once the work is done, and `confirm-visit` while a scheduled
+ * visit waits for the resident's confirmation (LIFF #24, D-218).
+ */
+export function requestResidentActions(
+  status: ServiceRequestStatus,
+  rated: boolean,
+  visitToConfirm = false,
+): string[] {
+  const out: string[] = [];
+  if (status === 'new' || status === 'triaged') out.push('cancel');
+  if (visitToConfirm && OPEN_REQUEST_STATUSES.includes(status)) out.push('confirm-visit');
+  if (status === 'done' && !rated) out.push('rate');
+  return out;
 }
+
+/** Work-order statuses before the technician starts: the visit can still be confirmed (or moved). */
+export const VISIT_PENDING_STATUSES: readonly WorkOrderStatus[] = ['assigned', 'accepted'];
+
+export interface VisitCandidate {
+  id: string;
+  status: WorkOrderStatus;
+  scheduledAt: Date | null;
+}
+
+/** The request's planned visit: the earliest scheduled work order that is not cancelled (null without one). */
+export function plannedVisit<T extends VisitCandidate>(workOrders: readonly T[]): T | null {
+  return (
+    [...workOrders]
+      .filter((w) => w.scheduledAt && w.status !== 'cancelled')
+      .sort((a, b) => a.scheduledAt!.getTime() - b.scheduledAt!.getTime())[0] ?? null
+  );
+}
+
+/**
+ * The resident's visit confirmation (LIFF #24): it counts only for the visit start it confirmed — a rescheduled visit
+ * asks again. Returns the confirmation time in force and whether a confirmation is due now.
+ */
+export function visitConfirmation(
+  workOrders: readonly VisitCandidate[],
+  confirmed: { at: Date | null; for: Date | null },
+): { visit: VisitCandidate | null; confirmedAt: Date | null; due: boolean } {
+  const visit = plannedVisit(workOrders);
+  const confirmedAt =
+    visit && confirmed.at && confirmed.for && confirmed.for.getTime() === visit.scheduledAt!.getTime()
+      ? confirmed.at
+      : null;
+  return {
+    visit,
+    confirmedAt,
+    due: !!visit && !confirmedAt && VISIT_PENDING_STATUSES.includes(visit.status),
+  };
+}
+
+export type SlaState = 'on_track' | 'at_risk' | 'breached' | 'paused' | 'none';
+
+/** Workflow states of `service_request` without an SLA clock (D-159): referred to the warranty, done, ended. */
+const NO_CLOCK_STATES = new Set(['referred', 'done', 'closed', 'cancelled']);
+/** The definition warns 2 h before the due time (`warnBefore: PT2H`). */
+const AT_RISK_MS = 2 * 3_600_000;
+
+/**
+ * The SLA as the resident sees it (LIFF #22, D-159): `breached` once breached (kept), `paused` while referred to the
+ * developer's warranty (D-153), `none` once the work is done or the request ended, else `at_risk` within the warning
+ * window (or once warned) and `on_track` before it. Null without a workflow instance.
+ */
+export function slaView(
+  instance: {
+    state: string;
+    slaDueAt: Date | null;
+    slaWarnedAt?: Date | null;
+    slaBreachedAt: Date | null;
+  } | null,
+  now: Date,
+): { dueAt: Date | null; state: SlaState } | null {
+  if (!instance) return null;
+  if (instance.slaBreachedAt) return { dueAt: instance.slaDueAt, state: 'breached' };
+  if (instance.state === 'referred') return { dueAt: null, state: 'paused' };
+  if (NO_CLOCK_STATES.has(instance.state) || !instance.slaDueAt) return { dueAt: null, state: 'none' };
+  if (instance.slaDueAt.getTime() <= now.getTime()) return { dueAt: instance.slaDueAt, state: 'breached' };
+  const atRisk = !!instance.slaWarnedAt || instance.slaDueAt.getTime() - now.getTime() <= AT_RISK_MS;
+  return { dueAt: instance.slaDueAt, state: atRisk ? 'at_risk' : 'on_track' };
+}
+
+/**
+ * The status history of a request from its workflow events, oldest first (LIFF #22): one entry per change of the
+ * mirrored status (SLA timer events and moves that keep the status are left out).
+ */
+export function statusHistory(
+  events: readonly { toState: string; occurredAt: Date }[],
+): { status: ServiceRequestStatus; at: Date }[] {
+  const out: { status: ServiceRequestStatus; at: Date }[] = [];
+  for (const e of [...events].sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime())) {
+    let status: ServiceRequestStatus;
+    try {
+      status = requestStatusOf(e.toState);
+    } catch {
+      continue;
+    }
+    if (out.at(-1)?.status !== status) out.push({ status, at: e.occurredAt });
+  }
+  return out;
+}
+
+/** Message bodies (LIFF #23): trimmed, 1–2000 characters. */
+export const MESSAGE_MAX_LENGTH = 2000;
 
 export type WorkOrderAction =
   'assign' | 'accept' | 'check-in' | 'wait-parts' | 'resume' | 'complete' | 'verify' | 'cancel';

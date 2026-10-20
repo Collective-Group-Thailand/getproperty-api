@@ -13,9 +13,13 @@ import {
   inWarranty,
   nextDueOn,
   planDue,
+  plannedVisit,
   requestOperatorActions,
   requestResidentActions,
   requestStatusOf,
+  slaView,
+  statusHistory,
+  visitConfirmation,
   workOrderActions,
 } from './service-rules';
 
@@ -173,5 +177,82 @@ describe('automatic requests and preventive plans', () => {
     expect(planDue('2026-11-10', 7, '2026-11-02')).toBe(false);
     expect(planDue('2026-11-10', 7, '2026-11-03')).toBe(true);
     expect(nextDueOn('2026-11-10', 90)).toBe('2027-02-08');
+  });
+});
+
+describe('resident view of a request (LIFF #22, #24, D-218)', () => {
+  const at = (h: number) => new Date(Date.UTC(2026, 10, 1, h));
+
+  it('offers confirm-visit only while a scheduled visit waits for the resident', () => {
+    expect(requestResidentActions('assigned', false, true)).toEqual(['confirm-visit']);
+    expect(requestResidentActions('triaged', false, true)).toEqual(['cancel', 'confirm-visit']);
+    expect(requestResidentActions('done', false, true)).toEqual(['rate']);
+    expect(requestResidentActions('closed', true, true)).toEqual([]);
+  });
+
+  it('the planned visit is the earliest scheduled work order that is not cancelled', () => {
+    const wos = [
+      { id: 'a', status: 'cancelled' as const, scheduledAt: at(1) },
+      { id: 'b', status: 'assigned' as const, scheduledAt: at(5) },
+      { id: 'c', status: 'open' as const, scheduledAt: null },
+      { id: 'd', status: 'assigned' as const, scheduledAt: at(3) },
+    ];
+    expect(plannedVisit(wos)?.id).toBe('d');
+    expect(plannedVisit([])).toBeNull();
+  });
+
+  it('a confirmation counts for the visit start it confirmed; a moved visit asks again', () => {
+    const wo = { id: 'w', status: 'assigned' as const, scheduledAt: at(9) };
+    expect(visitConfirmation([wo], { at: null, for: null })).toMatchObject({ confirmedAt: null, due: true });
+    expect(visitConfirmation([wo], { at: at(2), for: at(9) })).toMatchObject({
+      confirmedAt: at(2),
+      due: false,
+    });
+    expect(visitConfirmation([{ ...wo, scheduledAt: at(10) }], { at: at(2), for: at(9) })).toMatchObject({
+      confirmedAt: null,
+      due: true,
+    });
+    // once the technician started there is nothing to confirm
+    expect(visitConfirmation([{ ...wo, status: 'in_progress' }], { at: null, for: null }).due).toBe(false);
+    expect(visitConfirmation([], { at: null, for: null })).toEqual({
+      visit: null,
+      confirmedAt: null,
+      due: false,
+    });
+  });
+
+  it('SLA state: on track, at risk 2 h before (or once warned), breached, paused when referred, none when done', () => {
+    const due = at(12);
+    const base = { state: 'assigned', slaDueAt: due, slaWarnedAt: null, slaBreachedAt: null };
+    expect(slaView(null, at(0))).toBeNull();
+    expect(slaView(base, at(9))).toEqual({ dueAt: due, state: 'on_track' });
+    expect(slaView(base, at(10))).toEqual({ dueAt: due, state: 'at_risk' });
+    expect(slaView({ ...base, slaWarnedAt: at(9) }, at(9))).toEqual({ dueAt: due, state: 'at_risk' });
+    expect(slaView(base, at(12))).toEqual({ dueAt: due, state: 'breached' });
+    expect(slaView({ ...base, state: 'closed', slaBreachedAt: at(12) }, at(20))).toEqual({
+      dueAt: due,
+      state: 'breached',
+    });
+    expect(slaView({ ...base, state: 'referred' }, at(9))).toEqual({ dueAt: null, state: 'paused' });
+    expect(slaView({ ...base, state: 'done' }, at(9))).toEqual({ dueAt: null, state: 'none' });
+    expect(slaView({ ...base, state: 'waiting_parts' }, at(1))).toEqual({ dueAt: due, state: 'on_track' });
+  });
+
+  it('status history: one entry per change of the mirrored status, oldest first', () => {
+    expect(
+      statusHistory([
+        { toState: 'assigned', occurredAt: at(3) },
+        { toState: 'new', occurredAt: at(1) },
+        { toState: 'triaged', occurredAt: at(2) },
+        { toState: 'assigned', occurredAt: at(4) },
+        { toState: 'referred', occurredAt: at(5) },
+        { toState: 'nonsense', occurredAt: at(6) },
+      ]).map((e) => [e.status, e.at.getUTCHours()]),
+    ).toEqual([
+      ['new', 1],
+      ['triaged', 2],
+      ['assigned', 3],
+      ['triaged', 5],
+    ]);
   });
 });

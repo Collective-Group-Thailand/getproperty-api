@@ -7,7 +7,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
 import { CLOCK, type Clock } from '../clock/clock';
 import { DomainEvents } from '../events/domain-events';
-import { AccessService } from './access.service';
+import { AccessService, permissionsOf } from './access.service';
 import { type TenantRole } from './invitation.service';
 
 /**
@@ -47,6 +47,47 @@ export class MembershipService extends TenantScopedRepository {
       ...m,
       user: byId.get(m.userId) ?? { id: m.userId, displayName: '', phoneE164: null, email: null },
     }));
+  }
+
+  /**
+   * Members who may do something in a building (web F2 2.7 assignee list, D-218): with `permission`, the active
+   * members (active login) whose role holds it; with `buildingId`, the active members whose building limit includes
+   * that building (or who have none) — the same test the work-order assignment applies (422 otherwise). A building
+   * this tenant neither owns nor operates, or outside my own limit, is a 404.
+   */
+  async listHolding(ctx: TenantContext, f: { permission?: string; buildingId?: string }) {
+    if (f.buildingId) {
+      const building = await this.db.tenant(ctx, (tx) =>
+        tx.building.findFirst({
+          where: {
+            id: f.buildingId,
+            deletedAt: null,
+            OR: [{ operatorTenantId: ctx.tenantId }, { ownerTenantId: ctx.tenantId }],
+          },
+          select: { id: true },
+        }),
+      );
+      if (!building || (ctx.buildingIds && !ctx.buildingIds.includes(f.buildingId)))
+        throw new DomainException('http.not_found');
+    }
+    const rows = await this.list(ctx);
+    if (!f.permission && !f.buildingId) return rows;
+    const active = new Set(
+      (
+        await this.db.platform((tx) =>
+          tx.userAccount.findMany({
+            where: { id: { in: rows.map((m) => m.userId) }, status: 'active' },
+            select: { id: true },
+          }),
+        )
+      ).map((u) => u.id),
+    );
+    return rows.filter((m) => {
+      if (m.status !== 'active' || !active.has(m.userId)) return false;
+      if (f.permission && !permissionsOf([m.role]).has(f.permission)) return false;
+      const limit = ((m.moduleScopes ?? {}) as { buildingIds?: unknown }).buildingIds;
+      return !f.buildingId || !Array.isArray(limit) || limit.includes(f.buildingId);
+    });
   }
 
   private async otherActiveOwners(tx: Tx, ctx: TenantContext, exceptId: string): Promise<number> {
