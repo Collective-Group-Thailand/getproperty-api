@@ -190,7 +190,7 @@ export class ResidentAuthController {
     id: 'auth.residentOtp.verify',
     summary: 'Sign in a resident with the SMS code',
     description:
-      'Checks the code, creates the account on first use and links the parties that carry the verified phone in any tenant (`phone_match`, D-061). Returns `resident` tokens.',
+      'Checks the code and creates the account on first use. A verified phone that matches parties an operator entered (any tenant) does **not** link them: each match becomes a link request the tenant’s Owner confirms (`/v1/owner/party-link-requests`, D-226) — until then the login sees none of those parties (leases, bills, door codes); `ResidentMeDto.linkRequestsPending` counts them. An invitation code (D-175) or LINE sign-in of an invited party links at once. Returns `resident` tokens.',
     implements: ['D-060', 'D-061', 'ADR-0003'],
   })
   @ApiJsonBody(OtpVerifyDto, { challengeId: '3b241101-e2bb-4255-8caf-4136c566a962', code: '123456' })
@@ -267,7 +267,7 @@ export class TechnicianAuthController {
     id: 'auth.technicianOtp.verify',
     summary: 'Sign in a technician with the SMS code',
     description:
-      'Checks the code, creates the account on first use and links the parties carrying the verified phone (`phone_match`); the `technician` token carries `work_order:<uuid>` for the work orders assigned to them (B5.1).',
+      'Checks the code and creates the account on first use. Parties carrying the verified phone are not linked automatically: each match is a link request the tenant’s Owner confirms (D-226); once linked (or when the work order carries the technician’s LINE id), the `technician` token carries `work_order:<uuid>` for the work orders assigned to them (B5.1) from the next refresh.',
     implements: ['D-072', 'D-154', 'ADR-0003'],
   })
   @ApiJsonBody(OtpVerifyDto, { challengeId: '3b241101-e2bb-4255-8caf-4136c566a962', code: '123456' })

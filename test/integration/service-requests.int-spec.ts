@@ -12,7 +12,15 @@ import { MaintenancePlansService } from '@modules/ops-service/maintenance-plans.
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';
-import { adminToken, bearer, idem, onboardTenant, operatorToken, ownerToken } from '../support/int-auth';
+import {
+  adminToken,
+  bearer,
+  idem,
+  onboardTenant,
+  operatorToken,
+  otpSignIn,
+  ownerToken,
+} from '../support/int-auth';
 import { createIntDatabase, type IntDatabase } from '../support/int-db';
 import { uploadFile } from '../support/int-files';
 
@@ -249,17 +257,11 @@ describe('B5.1 service requests & work orders (real PostgreSQL)', () => {
     ids.otherWo = another.body.id as string;
 
     // the technician signs in by SMS: the token covers exactly the assigned work order
-    const challenge = await t.http
-      .post('/v1/auth/technician/otp/request')
-      .send({ phone: TECH_PHONE })
-      .expect(200);
-    const signed = await t.http
-      .post('/v1/auth/technician/otp/verify')
-      .send({ challengeId: challenge.body.challengeId, code: t.sms.lastCodeTo(TECH_PHONE) })
-      .expect(200);
+    // (D-226: the phone the owner typed only requests the link — the owner confirms it)
+    const signed = { body: await otpSignIn(t, 'technician', TECH_PHONE, owner) };
     expect(signed.body.subject.scopes).toEqual([`work_order:${ids.wo}`]);
-    const TECH = bearer(signed.body.accessToken as string);
-    ids.techToken = signed.body.accessToken as string;
+    const TECH = bearer(signed.body.accessToken);
+    ids.techToken = signed.body.accessToken;
     const list = await t.http.get('/v1/technician/work-orders').set(TECH).expect(200);
     expect(list.body.data).toHaveLength(1);
     expect(list.body.data[0]).toMatchObject({

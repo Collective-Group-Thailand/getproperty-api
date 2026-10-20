@@ -1,5 +1,6 @@
 import { RequestContext } from '@common/context/request-context';
 import { DomainException } from '@common/errors/domain.exception';
+import { bangkokDate } from '@common/time/bangkok';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { FeatureFlagsService } from '@core/feature-flags/feature-flags.service';
 import { ConsentService } from '@core/privacy/consent.service';
@@ -148,7 +149,8 @@ export class MeService {
   async resident(): Promise<ResidentMeDto> {
     const userId = this.userId();
     const { dto } = await this.user(userId);
-    const today = new Date(this.clock.now().toISOString().slice(0, 10));
+    // occupancy dates are Bangkok business dates (review #15)
+    const today = new Date(bangkokDate(this.clock.now()));
     const units = await this.db.platform(async (tx) => {
       const links = await tx.partyUserLink.findMany({
         where: { userId, state: 'active' },
@@ -236,6 +238,9 @@ export class MeService {
         tenants,
       ),
       scopes: actor && 'scopes' in actor ? [...actor.scopes] : [],
+      linkRequestsPending: await this.db.platform((tx) =>
+        tx.partyLinkRequest.count({ where: { userId, state: 'pending' } }),
+      ),
     };
   }
 

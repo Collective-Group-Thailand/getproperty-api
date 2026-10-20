@@ -437,4 +437,116 @@ export class PartiesService extends TenantScopedRepository {
       return updated;
     });
   }
+
+  // ------------------------------------------------------------------------------------------- link requests
+
+  /**
+   * D-226 (review #6): SMS-OTP logins whose verified phone matches one of my parties, waiting for the Owner. The
+   * login's display name and LINE flag come from the identity rows (platform transaction, these users only).
+   */
+  async linkRequests(
+    ctx: TenantContext,
+    q: { state?: 'pending' | 'confirmed' | 'rejected'; partyId?: string; skip: number; take: number },
+  ) {
+    const { rows, total } = await this.db.tenant(ctx, async (tx) => {
+      const where: Prisma.PartyLinkRequestWhereInput = {
+        tenantId: ctx.tenantId,
+        ...(q.state ? { state: q.state } : {}),
+        ...(q.partyId ? { partyId: q.partyId } : {}),
+      };
+      const [list, count] = await Promise.all([
+        tx.partyLinkRequest.findMany({
+          where,
+          include: { party: { select: { id: true, displayName: true, phoneE164: true } } },
+          orderBy: [{ requestedAt: 'desc' }, { id: 'desc' }],
+          skip: q.skip,
+          take: q.take,
+        }),
+        tx.partyLinkRequest.count({ where }),
+      ]);
+      return { rows: list, total: count };
+    });
+    const users = rows.length
+      ? await this.db.platform((tx) =>
+          tx.userAccount.findMany({
+            where: { id: { in: [...new Set(rows.map((r) => r.userId))] } },
+            select: { id: true, displayName: true, lineUserId: true },
+          }),
+        )
+      : [];
+    const byId = new Map(users.map((u) => [u.id, u]));
+    return { rows: rows.map((r) => ({ request: r, user: byId.get(r.userId) ?? null })), total };
+  }
+
+  /**
+   * The Owner confirms a phone-match link request (D-226): the login is linked to the party (`linked_via admin` —
+   * linked by the tenant after checking who signed in); the new scopes arrive with the next token refresh. Audited
+   * `party.linked`, event `party.link_changed`.
+   */
+  async decideLinkRequest(
+    ctx: TenantContext,
+    id: string,
+    input: { action: 'confirm' } | { action: 'reject'; reason: string },
+  ) {
+    await this.db.tenant(ctx, async (tx) => {
+      await tx.$queryRaw`SELECT id FROM ops.party_link_request WHERE id = ${id}::uuid FOR UPDATE`;
+      const req = this.found(await tx.partyLinkRequest.findFirst({ where: this.own(ctx, { id }) }));
+      if (req.state !== 'pending')
+        throw new DomainException('party.link_request_not_pending', { params: { state: req.state } });
+      const now = this.clock.now();
+      if (input.action === 'reject') {
+        await tx.partyLinkRequest.update({
+          where: { id },
+          data: { state: 'rejected', decidedAt: now, decidedBy: by(), rejectReason: input.reason },
+        });
+        await this.audit.record(tx, {
+          action: 'party.link_rejected',
+          tenantId: ctx.tenantId,
+          subjectType: 'ops.party_link_request',
+          subjectId: id,
+          metadata: { partyId: req.partyId, userId: req.userId, reason: input.reason },
+        });
+        return;
+      }
+      const existing = await tx.partyUserLink.findFirst({
+        where: { partyId: req.partyId, userId: req.userId, state: 'active' },
+      });
+      const link =
+        existing ??
+        (await tx.partyUserLink.create({
+          data: {
+            tenantId: req.tenantId,
+            partyId: req.partyId,
+            userId: req.userId,
+            linkedAt: now,
+            linkedVia: 'admin',
+            createdBy: by(),
+          },
+        }));
+      await tx.partyLinkRequest.update({
+        where: { id },
+        data: { state: 'confirmed', decidedAt: now, decidedBy: by(), linkId: link.id },
+      });
+      await this.audit.record(tx, {
+        action: 'party.linked',
+        tenantId: ctx.tenantId,
+        subjectType: 'core.party_user_link',
+        subjectId: link.id,
+        metadata: { partyId: req.partyId, userId: req.userId, via: 'phone_match_confirmed', requestId: id },
+      });
+      await this.events.record(tx, {
+        type: 'party.link_changed',
+        aggregateType: 'party',
+        aggregateId: req.partyId,
+        tenantId: ctx.tenantId,
+        payload: { partyId: req.partyId, linkId: link.id, userId: req.userId, change: 'linked' },
+      });
+    });
+    return this.db.tenant(ctx, async (tx) =>
+      tx.partyLinkRequest.findFirstOrThrow({
+        where: this.own(ctx, { id }),
+        include: { party: { select: { id: true, displayName: true, phoneE164: true } } },
+      }),
+    );
+  }
 }

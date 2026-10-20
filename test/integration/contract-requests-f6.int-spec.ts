@@ -8,7 +8,15 @@ import { OBJECT_STORAGE } from '@integrations/s3/object-storage.port';
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';
-import { adminToken, bearer, idem, onboardTenant, operatorToken, ownerToken } from '../support/int-auth';
+import {
+  adminToken,
+  bearer,
+  idem,
+  onboardTenant,
+  operatorToken,
+  otpSignIn,
+  ownerToken,
+} from '../support/int-auth';
 import { createIntDatabase, type IntDatabase } from '../support/int-db';
 import { uploadFile } from '../support/int-files';
 
@@ -261,15 +269,7 @@ describe('contract requests F6 (real PostgreSQL)', () => {
       .expect(404);
 
     // the technician signs in: report photo with a link, the preferred time, no rating yet
-    const challenge = await t.http
-      .post('/v1/auth/technician/otp/request')
-      .send({ phone: TECH_PHONE })
-      .expect(200);
-    const signed = await t.http
-      .post('/v1/auth/technician/otp/verify')
-      .send({ challengeId: challenge.body.challengeId, code: t.sms.lastCodeTo(TECH_PHONE) })
-      .expect(200);
-    tech = signed.body.accessToken as string;
+    tech = (await otpSignIn(t, 'technician', TECH_PHONE, owner)).accessToken; // owner confirms the match (D-226)
     const view = await t.http.get(`/v1/technician/work-orders/${ids.wo}`).set(TECH()).expect(200);
     expect(view.body).toMatchObject({ preferredVisit: 'afternoon', rating: null, ratingComment: null });
     expect(view.body.photos).toEqual([

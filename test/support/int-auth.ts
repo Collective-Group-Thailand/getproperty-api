@@ -81,3 +81,42 @@ export async function onboardTenant(
 
 /** A fresh Idempotency-Key header. */
 export const idem = () => ({ 'Idempotency-Key': randomUUID() });
+
+/**
+ * SMS-OTP sign-in of a resident or technician whose phone an operator entered on a party (D-226): the verified phone
+ * only requests the link; the tenant's Owner (`owner` token) confirms it, and the refreshed tokens carry the party's
+ * scopes. Returns the refreshed token pair (with `subject`).
+ */
+export async function otpSignIn(
+  t: IntApp,
+  audience: 'resident' | 'technician',
+  phone: string,
+  owner: string,
+): Promise<{ accessToken: string; refreshToken: string; subject: { id: string; scopes: string[] } }> {
+  const challenge = await t.http.post(`/v1/auth/${audience}/otp/request`).send({ phone }).expect(200);
+  const signed = await t.http
+    .post(`/v1/auth/${audience}/otp/verify`)
+    .send({ challengeId: challenge.body.challengeId, code: t.sms.lastCodeTo(phone) })
+    .expect(200);
+  const userId = signed.body.subject.id as string;
+  const pending = await t.http
+    .get('/v1/owner/party-link-requests?state=pending&perPage=100')
+    .set(bearer(owner))
+    .expect(200);
+  for (const r of pending.body.data as { id: string; userId: string }[])
+    if (r.userId === userId)
+      await t.http
+        .post(`/v1/owner/party-link-requests/${r.id}/actions/confirm`)
+        .set(bearer(owner))
+        .set(idem())
+        .expect(200);
+  const refreshed = await t.http
+    .post('/v1/auth/refresh')
+    .send({ refreshToken: signed.body.refreshToken })
+    .expect(200);
+  return refreshed.body as {
+    accessToken: string;
+    refreshToken: string;
+    subject: { id: string; scopes: string[] };
+  };
+}

@@ -152,9 +152,16 @@ export class AccessViewsService {
     return out;
   }
 
+  /**
+   * Parties of my confirmed links (review #6, D-226): a door code is revealed only through a link the tenant made or
+   * confirmed — an invitation, a LINE-id match or the Owner's confirmation — never through an unconfirmed phone match.
+   */
   private async myParties(userId: string): Promise<string[]> {
     const links = await this.db.platform((tx) =>
-      tx.partyUserLink.findMany({ where: { userId, state: 'active' }, select: { partyId: true } }),
+      tx.partyUserLink.findMany({
+        where: { userId, state: 'active', linkedVia: { not: 'phone_match' } },
+        select: { partyId: true },
+      }),
     );
     return links.map((l) => l.partyId);
   }

@@ -4,6 +4,7 @@ import { type TenantContext } from '@common/context/tenant-context';
 import { etagOf } from '@common/etag/etag';
 import { IfMatch, UseEtag } from '@common/etag/etag.interceptor';
 import { AcceptLanguage, resolveLanguage } from '@common/i18n/language';
+import { Idempotent } from '@common/idempotency/idempotent.decorator';
 import {
   ApiConcurrency,
   ApiEndpoint,
@@ -44,11 +45,15 @@ import {
   PartyCreateDto,
   PartyDto,
   PartyLinkDto,
+  PartyLinkRequestDto,
+  PartyLinkRequestListQuery,
+  type PartyLinkRequestStateName,
   type PartyLinkStateName,
   type PartyLinkViaName,
   PartyListQuery,
   type PartyTypeName,
   PartyUpdateDto,
+  RejectLinkRequestDto,
   type ResidentLanguageName,
   ResidentPrivacyDto,
   RevealedPiiDto,
@@ -483,4 +488,149 @@ export class ResidentPrivacyController {
       requests: o.requests.map(dsrDto),
     };
   }
+}
+
+const LINK_REQUEST_EXAMPLE = {
+  id: FAKE.uuid,
+  partyId: FAKE.uuid,
+  partyDisplayName: FAKE.nameTh,
+  userId: FAKE.uuid,
+  userDisplayName: FAKE.nameTh,
+  lineLinked: false,
+  via: 'phone_match',
+  state: 'pending',
+  requestedAt: FAKE.dateTime,
+  decidedAt: null,
+  rejectReason: null,
+  linkId: null,
+};
+
+/**
+ * D-226 (review #6): SMS-OTP logins whose verified phone matches a party an operator entered. A phone typed by the
+ * office proves nothing about who signed in, so the Owner confirms each match before the login sees the party's
+ * leases, bills, payment account or door codes.
+ */
+@ApiTags('owner.parties')
+@ApiSurface(SURFACES.owner)
+@Controller('owner/party-link-requests')
+export class OwnerPartyLinkRequestsController {
+  constructor(private readonly parties: PartiesService) {}
+
+  @Get()
+  @TenantScoped()
+  @Can('party.read')
+  @ApiEndpoint({
+    id: 'owner.parties.listLinkRequests',
+    summary: 'Logins waiting to be linked to a party',
+    description:
+      'A resident or technician who signed in with an SMS code sent to a phone an operator entered on a party is not linked automatically: the match waits here for the Owner (`pending`), newest first; `state` and `partyId` filter (D-226). Confirm only after checking who signed in (in person, by a call to the number on file).',
+    implements: ['D-061', 'D-226'],
+  })
+  @ApiPaginated(PartyLinkRequestDto, { example: LINK_REQUEST_EXAMPLE })
+  @ApiStandardErrors('validation.failed', ...T)
+  async list(
+    @CurrentTenant() ctx: TenantContext,
+    @Query() q: PartyLinkRequestListQuery,
+  ): Promise<Page<PartyLinkRequestDto>> {
+    const { rows, total } = await this.parties.linkRequests(ctx, {
+      state: q.state,
+      partyId: q.partyId,
+      ...toSkipTake(q),
+    });
+    return paginated(
+      rows.map(({ request, user }) => linkRequestDto(request, user)),
+      total,
+      q,
+    );
+  }
+
+  @Post(':requestId/actions/confirm')
+  @HttpCode(200)
+  @Idempotent()
+  @TenantScoped()
+  @Can('party.link.manage')
+  @ApiEndpoint({
+    id: 'owner.parties.confirmLinkRequest',
+    summary: 'Confirm a phone-match link',
+    description:
+      'The Owner confirms that the login is the party (D-226): it is linked (`linkedVia: admin`) and sees the party’s leases, bills and door codes from its next token refresh. Audited (`party.linked`).',
+    implements: ['D-061', 'D-226'],
+  })
+  @ApiSuccess(200, {
+    description: 'Confirmed',
+    type: PartyLinkRequestDto,
+    example: { ...LINK_REQUEST_EXAMPLE, state: 'confirmed', decidedAt: FAKE.dateTime, linkId: FAKE.uuid },
+  })
+  @ApiStandardErrors('party.link_request_not_pending', ...PARTY_ERRORS)
+  async confirm(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('requestId', ParseUUIDPipe) id: string,
+  ): Promise<PartyLinkRequestDto> {
+    const r = await this.parties.decideLinkRequest(ctx, id, { action: 'confirm' });
+    return linkRequestDto(r, null);
+  }
+
+  @Post(':requestId/actions/reject')
+  @HttpCode(200)
+  @Idempotent()
+  @TenantScoped()
+  @Can('party.link.manage')
+  @ApiEndpoint({
+    id: 'owner.parties.rejectLinkRequest',
+    summary: 'Reject a phone-match link',
+    description:
+      'The login is not the party (mistyped or recycled number, D-226): nothing is linked; the reason is audited (`party.link_rejected`).',
+    implements: ['D-061', 'D-226'],
+  })
+  @ApiJsonBody(RejectLinkRequestDto, { reason: 'ไม่ใช่ผู้เช่าห้องนี้ เบอร์โทรพิมพ์ผิด' })
+  @ApiSuccess(200, {
+    description: 'Rejected',
+    type: PartyLinkRequestDto,
+    example: {
+      ...LINK_REQUEST_EXAMPLE,
+      state: 'rejected',
+      decidedAt: FAKE.dateTime,
+      rejectReason: 'ไม่ใช่ผู้เช่าห้องนี้ เบอร์โทรพิมพ์ผิด',
+    },
+  })
+  @ApiStandardErrors('party.link_request_not_pending', ...PARTY_ERRORS)
+  async reject(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('requestId', ParseUUIDPipe) id: string,
+    @Body() body: RejectLinkRequestDto,
+  ): Promise<PartyLinkRequestDto> {
+    const r = await this.parties.decideLinkRequest(ctx, id, { action: 'reject', reason: body.reason });
+    return linkRequestDto(r, null);
+  }
+}
+
+function linkRequestDto(
+  r: {
+    id: string;
+    partyId: string;
+    userId: string;
+    via: string;
+    state: string;
+    requestedAt: Date;
+    decidedAt: Date | null;
+    rejectReason: string | null;
+    linkId: string | null;
+    party: { displayName: string };
+  },
+  user: { displayName: string | null; lineUserId: string | null } | null,
+): PartyLinkRequestDto {
+  return {
+    id: r.id,
+    partyId: r.partyId,
+    partyDisplayName: r.party.displayName,
+    userId: r.userId,
+    userDisplayName: user?.displayName ?? null,
+    lineLinked: Boolean(user?.lineUserId),
+    via: r.via,
+    state: r.state as PartyLinkRequestStateName,
+    requestedAt: iso(r.requestedAt),
+    decidedAt: isoOrNull(r.decidedAt),
+    rejectReason: r.rejectReason,
+    linkId: r.linkId,
+  };
 }
