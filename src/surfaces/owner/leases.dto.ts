@@ -1,3 +1,4 @@
+import { ProblemFieldError } from '@common/errors/problem-details.dto';
 import { FAKE } from '@common/openapi/examples';
 import { PageQuery } from '@common/pagination/pagination.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -563,6 +564,110 @@ export class LeaseComplianceViewDto {
 
   @ApiProperty({ type: () => [ComplianceCheckViewDto] })
   checks!: ComplianceCheckViewDto[];
+}
+
+export class LeasePreviewCheckDto {
+  @ApiProperty({ example: 'compliance.deposit_cap' })
+  ruleId!: string;
+
+  @ApiProperty({
+    enum: ComplianceOutcomeName,
+    enumName: 'ComplianceOutcome',
+    example: ComplianceOutcomeName.Pass,
+    description:
+      'What `POST /v1/owner/leases` would do with this rule now: pass, warn (acknowledge) or block.',
+  })
+  outcome!: ComplianceOutcomeName;
+
+  @ApiProperty({
+    enum: ComplianceSeverityName,
+    enumName: 'ComplianceSeverity',
+    example: ComplianceSeverityName.Block,
+  })
+  severity!: ComplianceSeverityName;
+
+  @ApiProperty({ example: 'ประกาศ สคบ. 2568 ข้อ 4 (3)' })
+  legalRef!: string;
+
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: true,
+    example: { depositAmount: '13500.00', capAmount: '9000.00' },
+    description: 'The values the rule compared.',
+  })
+  context!: Record<string, unknown>;
+}
+
+export class LeasePreviewProblemDto {
+  @ApiProperty({
+    example: 'compliance.deposit_cap',
+    description: 'The problem code the create would answer.',
+  })
+  code!: string;
+
+  @ApiProperty({ type: 'integer', example: 422 })
+  status!: number;
+
+  @ApiProperty({ type: String, nullable: true, example: 'compliance.deposit_cap' })
+  ruleId!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: 'ประกาศ สคบ. 2568 ข้อ 4 (3)' })
+  legalRef!: string | null;
+
+  @ApiProperty({
+    type: () => [ProblemFieldError],
+    example: [{ path: 'depositAmount', code: 'max', message: 'deposit + advance exceed 3 months of rent' }],
+  })
+  errors!: ProblemFieldError[];
+}
+
+export class LeasePreviewDefaultsDto {
+  @MoneyOutput({
+    example: '4500.00',
+    description: 'Rent used (given, else the unit base rent or room type).',
+  })
+  rent!: string;
+
+  @MoneyOutput({
+    example: '4500.00',
+    description: 'Deposit the API applies when none is given (room type months).',
+  })
+  depositAmount!: string;
+
+  @MoneyOutput({ example: '4500.00', description: 'Advance rent the API applies when none is given.' })
+  advanceRentAmount!: string;
+
+  @ApiProperty({ type: 'integer', nullable: true, example: null })
+  billingDay!: number | null;
+
+  @ApiProperty({ type: 'integer', example: 12 })
+  months!: number;
+
+  @ApiProperty({ format: 'date', example: '2027-10-31' })
+  endDate!: string;
+
+  @ApiProperty({
+    type: () => [LeaseLineInputDto],
+    description: 'Fixed lines (given, else the room type defaults).',
+  })
+  lines!: LeaseLineInputDto[];
+}
+
+export class LeaseCompliancePreviewDto {
+  @ApiProperty({ example: true, description: 'The tenant is in scope of the announcement (D-158).' })
+  inScope!: boolean;
+
+  @ApiProperty({ type: () => [LeasePreviewCheckDto] })
+  checks!: LeasePreviewCheckDto[];
+
+  @ApiProperty({
+    type: () => [LeasePreviewProblemDto],
+    description: 'What the create would refuse or ask to acknowledge; empty = it would be written as is.',
+  })
+  problems!: LeasePreviewProblemDto[];
+
+  @ApiProperty({ type: () => LeasePreviewDefaultsDto, nullable: true })
+  defaults!: LeasePreviewDefaultsDto | null;
 }
 
 export class LeaseContractViewDto {

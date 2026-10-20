@@ -92,6 +92,8 @@ const RESIDENT_ME_EXAMPLE: ResidentMeDto = {
       unitNo: FAKE.unitCode,
       buildingName: 'อาคาร A',
       role: 'lessee' as never,
+      startDate: '2026-11-01',
+      endDate: '2027-10-31',
     },
   ],
   consents: [{ purposeKey: 'resident.service', required: true, version: 1, granted: true }],

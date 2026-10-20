@@ -119,11 +119,92 @@ export class CacheInvalidationSubscriber implements EventSubscriber, OnModuleIni
   }
 }
 
+/**
+ * Billing events a resident hears on their own channels (LIFF #16, D-208): the unit of the invoice and the logins
+ * linked to the billed / paying party. Ids and type only, like every realtime message (contract §6).
+ */
+export const RESIDENT_REALTIME_EVENTS: readonly string[] = [
+  'invoice.issued',
+  'invoice.paid',
+  'invoice.partially_paid',
+  'invoice.balance_changed',
+  'invoice.overdue',
+  'invoice.voided',
+  'payment.confirmed',
+  'payment.failed',
+  'payment.reversed',
+  'receipt.issued',
+  'receipt.voided',
+  'tax_invoice.issued',
+  'slip.review_requested',
+  'slip.reviewed',
+];
+
+/** Extra realtime channels of an event, resolved inside the subscriber's transaction (modules may add resolvers). */
+export type RealtimeChannelResolver = (tx: Tx, event: DomainEventEnvelope) => Promise<string[]>;
+const CHANNEL_RESOLVERS = new Map<string, RealtimeChannelResolver[]>();
+
+/** Modules add channels for their event types (e.g. B5 service requests → `unit:` / `work_order:`). */
+export function registerRealtimeChannels(types: readonly string[], resolver: RealtimeChannelResolver): void {
+  for (const t of types) CHANNEL_RESOLVERS.set(t, [...(CHANNEL_RESOLVERS.get(t) ?? []), resolver]);
+}
+
+const asIds = (v: unknown): string[] =>
+  (Array.isArray(v) ? v : [v]).filter((x): x is string => typeof x === 'string' && x.length === 36);
+
+/** `unit:` of the invoices and `user:` of the logins of the billed / paying parties of a billing event. */
+export const residentBillingChannels: RealtimeChannelResolver = async (tx, event) => {
+  const p = event.payload;
+  const invoiceIds = new Set([...asIds(p.invoiceId), ...asIds(p.invoiceIds)]);
+  const partyIds = new Set([...asIds(p.payerPartyId), ...asIds(p.billedPartyId)]);
+  const unitIds = new Set(asIds(p.unitId));
+  for (const id of asIds(p.paymentId)) {
+    const payment = await tx.payment.findUnique({
+      where: { id },
+      select: { payerPartyId: true, unitId: true, allocations: { select: { invoiceId: true } } },
+    });
+    if (payment?.payerPartyId) partyIds.add(payment.payerPartyId);
+    if (payment?.unitId) unitIds.add(payment.unitId);
+    for (const a of payment?.allocations ?? []) invoiceIds.add(a.invoiceId);
+  }
+  for (const id of asIds(p.slipReviewId)) {
+    const slip = await tx.slipReview.findUnique({
+      where: { id },
+      select: { invoiceId: true, payerPartyId: true, unitId: true },
+    });
+    if (slip) {
+      invoiceIds.add(slip.invoiceId);
+      partyIds.add(slip.payerPartyId);
+      if (slip.unitId) unitIds.add(slip.unitId);
+    }
+  }
+  if (invoiceIds.size) {
+    const invoices = await tx.invoice.findMany({
+      where: { id: { in: [...invoiceIds] } },
+      select: { unitId: true, billedPartyId: true },
+    });
+    for (const i of invoices) {
+      if (i.unitId) unitIds.add(i.unitId);
+      partyIds.add(i.billedPartyId);
+    }
+  }
+  const users = partyIds.size
+    ? await tx.partyUserLink.findMany({
+        where: { partyId: { in: [...partyIds] }, state: 'active' },
+        select: { userId: true },
+      })
+    : [];
+  return [...[...unitIds].map((u) => `unit:${u}`), ...new Set(users.map((u) => `user:${u.userId}`))];
+};
+registerRealtimeChannels(RESIDENT_REALTIME_EVENTS, residentBillingChannels);
+
 /** Every event → realtime channels with ids and type only (contract §6). */
 @Injectable()
 export class RealtimeSubscriber implements EventSubscriber, OnModuleInit {
   readonly name = 'realtime';
   readonly eventTypes = ['*'];
+  private readonly extra = new Map<string, string[]>();
+  private readonly logger = new Logger(RealtimeSubscriber.name);
 
   constructor(
     private readonly registry: EventSubscriberRegistry,
@@ -134,8 +215,19 @@ export class RealtimeSubscriber implements EventSubscriber, OnModuleInit {
     this.registry.register(this);
   }
 
-  handle(): Promise<void> {
-    return Promise.resolve();
+  async handle(event: DomainEventEnvelope, tx: Tx): Promise<void> {
+    const resolvers = CHANNEL_RESOLVERS.get(event.type);
+    if (!resolvers?.length) return;
+    const channels = new Set<string>();
+    for (const resolve of resolvers) {
+      try {
+        for (const c of await resolve(tx, event)) channels.add(c);
+      } catch (error) {
+        // a realtime hint is never worth failing the event for
+        this.logger.warn(`realtime channels of ${event.type}: ${(error as Error).message}`);
+      }
+    }
+    if (channels.size) this.extra.set(event.id, [...channels]);
   }
 
   async afterCommit(event: DomainEventEnvelope): Promise<void> {
@@ -144,6 +236,8 @@ export class RealtimeSubscriber implements EventSubscriber, OnModuleInit {
       channels.push(`building:${event.buildingId}`, `tenant:${event.tenantId}:buildings`);
     else if (event.tenantId) channels.push(`tenant:${event.tenantId}`);
     else channels.push('platform');
+    channels.push(...(this.extra.get(event.id) ?? []));
+    this.extra.delete(event.id);
     await this.hub.publish({
       type: event.type,
       ids: { eventId: event.id, aggregateType: event.aggregateType, aggregateId: event.aggregateId },

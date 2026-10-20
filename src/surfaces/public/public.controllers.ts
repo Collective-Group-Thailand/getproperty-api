@@ -2,15 +2,15 @@ import { Public } from '@common/auth/auth.decorators';
 import { ApiEndpoint, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { bangkokDate } from '@common/time/bangkok';
 import { CLOCK, type Clock } from '@core/clock/clock';
-import { SettingsService } from '@core/settings/settings.service';
 import { UtilityTariffsService } from '@core/utility-tariffs/utility-tariffs.service';
+import { TenantTx } from '@database/tenant-tx';
 import { Controller, Get, Header, Inject, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 import { type UtilityName, type UtilityProviderName } from '../owner/assets.dto';
 import { dateOnly } from '../shared/mappers';
 import { ApiSurface, SURFACES } from '../surfaces';
-import { publicPlans } from './plans';
+import { publicPlansFromCatalogue } from './plans';
 import { PublicPlansDto, PublicTariffDto, PublicTariffQuery } from './public.dto';
 
 const CACHE = 'public, max-age=300, stale-while-revalidate=600';
@@ -20,7 +20,7 @@ const CACHE = 'public, max-age=300, stale-while-revalidate=600';
 @Controller('public/plans')
 export class PublicPlansController {
   constructor(
-    private readonly settings: SettingsService,
+    private readonly db: TenantTx,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
@@ -31,8 +31,8 @@ export class PublicPlansController {
     id: 'public.plans.list',
     summary: 'Price plans for the pricing page',
     description:
-      'The price plans in force, read from the platform setting `pricing.price_plans` (THB, VAT excluded). While D-156 is Proposed every plan says `status: proposed` and quoted ranges come as `priceFrom`/`priceTo`. Anonymous and cacheable (5 min).',
-    implements: ['D-156'],
+      'The price-plan catalogue (`platform.price_plan_version`, the prices billing uses, D-204): per plan the published version in force today (`sold: true`), else its newest draft shown as a proposal (`sold: false`) — THB, VAT excluded. While D-156 is Proposed every plan says `status: proposed`; quoted ranges come as `priceFrom`/`priceTo`. Anonymous and cacheable (5 min). D-208.',
+    implements: ['D-156', 'D-204', 'D-208'],
   })
   @ApiSuccess(200, {
     description: 'Plans',
@@ -54,14 +54,18 @@ export class PublicPlansController {
           vatIncluded: false,
           status: 'proposed',
           features: ['A1', 'A2', 'A4', 'resident_liff', 'promptpay'],
+          sold: true,
+          effectiveFrom: '2026-01-01',
         },
       ],
     },
   })
   @ApiStandardErrors()
   async list(): Promise<PublicPlansDto> {
-    const value = await this.settings.valueAt<unknown>('pricing.price_plans', this.clock.now());
-    return { data: publicPlans(value) };
+    const plans = await this.db.platform((tx) =>
+      tx.pricePlan.findMany({ include: { versions: true }, orderBy: { createdAt: 'asc' } }),
+    );
+    return { data: publicPlansFromCatalogue(plans, bangkokDate(this.clock.now())) };
   }
 }
 

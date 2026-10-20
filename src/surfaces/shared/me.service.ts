@@ -220,6 +220,8 @@ export class MeService {
         unitNo: l.lease.unit.unitNo,
         buildingName: l.lease.building.name,
         role: l.role as LeasePartyRoleName,
+        startDate: dateOnly(l.lease.startDate)!,
+        endDate: dateOnly(l.lease.endDate),
       })),
       consents: purposes.map((p) => ({
         purposeKey: p.key,

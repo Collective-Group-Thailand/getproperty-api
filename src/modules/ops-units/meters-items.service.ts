@@ -203,6 +203,69 @@ export class MetersService extends TenantScopedRepository {
     });
   }
 
+  /**
+   * The meter of an asset item (web F2 meter page, D-208): its open assignment, else the latest closed one; 404
+   * outside the tenant's visible buildings (contract §8).
+   */
+  getByAssetItem(ctx: TenantContext, assetItemId: string) {
+    return this.db.tenant(ctx, async (tx) => {
+      const m = this.found(
+        await tx.meterAssignment.findFirst({
+          where: { assetItemId },
+          include: METER_INCLUDE,
+          orderBy: [{ validTo: { sort: 'desc', nulls: 'first' } }, { validFrom: 'desc' }],
+        }),
+      );
+      await visibleBuilding(tx, ctx, m.buildingId);
+      return m;
+    });
+  }
+
+  /** Health and last accepted reading per meter (`smart.meter_status`, D-034) for the meter lists (web F2 2.5). */
+  async status(
+    ctx: TenantContext,
+    assetItemIds: string[],
+  ): Promise<
+    Map<
+      string,
+      {
+        health: string;
+        lastReading: {
+          id: string;
+          register: string;
+          readAt: Date;
+          source: string;
+          photoDocumentId: string | null;
+        } | null;
+      }
+    >
+  > {
+    if (!assetItemIds.length) return new Map();
+    const rows = await this.db.tenant(ctx, (tx) =>
+      tx.meterStatus.findMany({
+        where: { assetItemId: { in: [...new Set(assetItemIds)] } },
+        include: { lastReading: true },
+      }),
+    );
+    return new Map(
+      rows.map((r) => [
+        r.assetItemId,
+        {
+          health: r.health,
+          lastReading: r.lastReading
+            ? {
+                id: r.lastReading.id,
+                register: r.lastReading.register.toFixed(3),
+                readAt: r.lastReading.readAt,
+                source: r.lastReading.source,
+                photoDocumentId: r.lastReading.evidenceDocumentId,
+              }
+            : null,
+        },
+      ]),
+    );
+  }
+
   listForUnit(ctx: TenantContext, unitId: string) {
     return this.db.tenant(ctx, async (tx) => {
       await visibleUnit(tx, ctx, unitId);

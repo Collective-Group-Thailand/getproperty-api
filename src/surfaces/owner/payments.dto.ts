@@ -15,6 +15,7 @@ import {
 
 import { MoneyInput, MoneyOutput } from '../shared/fields';
 import { PaymentStatusName } from '../shared/status.enums';
+import { DocumentRefDto } from './billing.dto';
 
 /** `ops.payment_method` (D-042, D-043). */
 export enum PaymentMethodName {
@@ -50,6 +51,16 @@ export enum SlipStatusName {
   Approved = 'approved',
   Rejected = 'rejected',
   Duplicate = 'duplicate',
+}
+
+/** Why a slip was not confirmed automatically (`ops.slip_review.reasons`, D-043, D-198). */
+export enum SlipReasonName {
+  NotRecognised = 'not_recognised',
+  DuplicateReference = 'duplicate_reference',
+  ReceiverMismatch = 'receiver_mismatch',
+  AmountAboveDue = 'amount_above_due',
+  AmountBelowDue = 'amount_below_due',
+  AmountUnreadable = 'amount_unreadable',
 }
 
 /** `ops.receipt_kind` (D-044). */
@@ -608,6 +619,21 @@ export class ResidentAccountDto {
 
   @ApiProperty({ example: 'xxx-x-x1234-x' })
   accountNoMasked!: string;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '1234567890',
+    description:
+      'The landlord’s receiving account in full (digits), for typing into a banking app — only while something is due; every reveal is audited (`pii.decrypted`, purpose `resident_transfer`; D-043, D-209). Null when nothing is due.',
+  })
+  accountNo!: string | null;
+
+  @ApiProperty({
+    example: '004',
+    description: 'Bank code (Bank of Thailand), to offer that bank’s app first.',
+  })
+  bankCode!: string;
 }
 
 export class ResidentPaymentDto {
@@ -699,6 +725,51 @@ export class ResidentReceiptDto {
 
   @ApiProperty({ example: false })
   voided!: boolean;
+}
+
+export class ResidentReceiptDetailDto extends ResidentReceiptDto {
+  @ApiProperty({
+    type: () => [DocumentRefDto],
+    description: 'The invoices the payment of this receipt paid (LIFF #19).',
+  })
+  invoices!: DocumentRefDto[];
+
+  @ApiProperty({ example: true, description: 'The PDF is ready (`GET …/receipts/{id}/document`).' })
+  hasDocument!: boolean;
+}
+
+export class ResidentSlipOutcomeDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({ enum: SlipStatusName, enumName: 'SlipStatus', example: SlipStatusName.PendingReview })
+  status!: SlipStatusName;
+
+  @ApiProperty({
+    enum: SlipReasonName,
+    enumName: 'SlipReason',
+    isArray: true,
+    example: [SlipReasonName.AmountBelowDue],
+    description: 'Why the office checks it (empty when confirmed automatically).',
+  })
+  reasons!: SlipReasonName[];
+
+  @ApiProperty({ format: 'date-time', example: FAKE.dateTime })
+  uploadedAt!: string;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    example: null,
+    description: 'When it was confirmed, approved, rejected or found a duplicate; null while it waits.',
+  })
+  decidedAt!: string | null;
+}
+
+export class ResidentSlipOutcomesDto {
+  @ApiProperty({ type: () => [ResidentSlipOutcomeDto] })
+  data!: ResidentSlipOutcomeDto[];
 }
 
 export class WebhookAckDto {

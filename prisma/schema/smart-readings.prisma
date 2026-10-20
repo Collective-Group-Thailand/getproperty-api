@@ -164,6 +164,8 @@ model MeterReading {
 
   @@unique([assetItemId, readAt, source], map: "meter_reading_asset_item_id_read_at_source_key", where: raw("(review_state = ANY (ARRAY['accepted'::smart.reading_review_state, 'pending_review'::smart.reading_review_state]))"))
   @@unique([deviceId, seq], map: "meter_reading_device_id_seq_key", where: raw("(seq IS NOT NULL)"))
+  readingRequests ReadingRequest[] @relation("ReadingRequestFulfilled")
+
   @@index([tenantId, buildingId, assetItemId, readAt(sort: Desc)], map: "meter_reading_accepted_idx", where: raw("(review_state = 'accepted'::smart.reading_review_state)"))
   @@index([meterAssignmentId, readAt(sort: Desc)], map: "meter_reading_meter_assignment_id_read_at_idx")
   @@index([tenantId, reviewState], map: "meter_reading_pending_idx", where: raw("(review_state = 'pending_review'::smart.reading_review_state)"))
@@ -206,5 +208,54 @@ model MeterReadingReview {
   @@index([tenantId, status, createdAt], map: "meter_reading_review_tenant_id_status_created_at_idx")
   @@index([buildingId], map: "meter_reading_review_building_id_idx")
   @@map("meter_reading_review")
+  @@schema("smart")
+}
+
+enum ReadingRequestStatus {
+  open
+  fulfilled
+  cancelled
+
+  @@map("reading_request_status")
+  @@schema("smart")
+}
+
+/// The owner asked staff to read a meter (web F2, D-208); fulfilled by the next accepted or pending reading.
+model ReadingRequest {
+  id                 String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String               @map("tenant_id") @db.Uuid
+  buildingId         String               @map("building_id") @db.Uuid
+  billingCycleId     String?              @map("billing_cycle_id") @db.Uuid
+  meterAssignmentId  String               @map("meter_assignment_id") @db.Uuid
+  assetItemId        String               @map("asset_item_id") @db.Uuid
+  assigneeUserId     String?              @map("assignee_user_id") @db.Uuid
+  status             ReadingRequestStatus @default(open)
+  requestedAt        DateTime             @default(now()) @map("requested_at") @db.Timestamptz(6)
+  dueAt              DateTime?            @map("due_at") @db.Timestamptz(6)
+  fulfilledReadingId String?              @map("fulfilled_reading_id") @db.Uuid
+  fulfilledAt        DateTime?            @map("fulfilled_at") @db.Timestamptz(6)
+  cancelledAt        DateTime?            @map("cancelled_at") @db.Timestamptz(6)
+  note               String?
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          String?              @map("created_by") @db.Uuid
+  updatedAt          DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy          String?              @map("updated_by") @db.Uuid
+
+  tenant           Tenant          @relation("ReadingRequestTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "reading_request_tenant_id_fkey")
+  building         Building        @relation("ReadingRequestBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "reading_request_building_id_fkey")
+  billingCycle     BillingCycle?   @relation(fields: [billingCycleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "reading_request_billing_cycle_id_fkey")
+  assignment       MeterAssignment @relation("ReadingRequestAssignment", fields: [meterAssignmentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "reading_request_meter_assignment_id_fkey")
+  assetItem        AssetItem       @relation("ReadingRequestAssetItem", fields: [assetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "reading_request_asset_item_id_fkey")
+  assignee         UserAccount?    @relation("ReadingRequestAssignee", fields: [assigneeUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "reading_request_assignee_user_id_fkey")
+  fulfilledReading MeterReading?   @relation("ReadingRequestFulfilled", fields: [fulfilledReadingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "reading_request_fulfilled_reading_id_fkey")
+
+  @@unique([meterAssignmentId], map: "reading_request_open_key", where: raw("(status = 'open'::smart.reading_request_status)"))
+  @@index([tenantId, buildingId, status], map: "reading_request_tenant_id_building_id_status_idx")
+  @@index([buildingId], map: "reading_request_building_id_idx")
+  @@index([billingCycleId], map: "reading_request_billing_cycle_id_idx")
+  @@index([assetItemId], map: "reading_request_asset_item_id_idx")
+  @@index([assigneeUserId, status], map: "reading_request_assignee_user_id_status_idx")
+  @@index([fulfilledReadingId], map: "reading_request_fulfilled_reading_id_idx")
+  @@map("reading_request")
   @@schema("smart")
 }

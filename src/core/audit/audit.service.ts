@@ -79,6 +79,7 @@ export const AUDIT_ACTIONS = [
   'reading.submitted',
   'reading.reviewed',
   'reading.exported',
+  'reading.requested',
   'utility_invoice.created',
   'utility_invoice.updated',
   'loss_report.computed',

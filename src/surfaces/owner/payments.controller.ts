@@ -41,6 +41,7 @@ import { iso, isoOrNull } from '../shared/mappers';
 import { type PaymentStatusName } from '../shared/status.enums';
 import { ApiSurface, SURFACES } from '../surfaces';
 import { DocumentDownloadDto } from './deposits.dto';
+import { ReceiptResendResultDto } from './documents.dto';
 import { ReasonDto } from './governance.dto';
 import {
   ManualPaymentDto,
@@ -56,13 +57,16 @@ import {
   RefundCreateDto,
   RefundResultDto,
   ResidentPaymentDto,
+  ResidentReceiptDetailDto,
   ResidentReceiptDto,
   ResidentSlipDto,
+  ResidentSlipOutcomesDto,
   ResidentSlipResultDto,
   SettlementFileDto,
   type SettlementFileStatusName,
   SettlementUploadDto,
   SlipDecisionDto,
+  type SlipReasonName,
   SlipReviewDto,
   SlipReviewListQuery,
   type SlipStatusName,
@@ -559,6 +563,32 @@ export class OwnerPaymentsController {
     };
   }
 
+  @Post('receipts/:receiptId/actions/resend')
+  @HttpCode(200)
+  @Idempotent()
+  @TenantScoped()
+  @Can('receipt.issue')
+  @ApiEndpoint({
+    id: 'owner.receipts.resend',
+    summary: 'Send a receipt to the payer again',
+    description:
+      'The receipt LINE Flex message (number, amount, link) goes to the payer again — quiet hours and consent apply; audited `document.resent` (web F2 documents archive: a resident lost a receipt). Voided receipts are not sent (409 `payment.invalid_state`). D-044, D-208.',
+    implements: ['D-044', 'D-025', 'D-208'],
+  })
+  @ApiSuccess(200, {
+    description: 'Queued',
+    type: ReceiptResendResultDto,
+    example: { receiptId: FAKE.uuid, channel: 'line', requestedAt: FAKE.dateTime },
+  })
+  @ApiStandardErrors('payment.invalid_state', 'http.not_found', 'validation.failed', ...T)
+  async receiptResend(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('receiptId', ParseUUIDPipe) id: string,
+  ): Promise<ReceiptResendResultDto> {
+    const r = await this.receipts.resend(ctx, id);
+    return { receiptId: r.receiptId, channel: 'line', requestedAt: iso(r.requestedAt) };
+  }
+
   @Get('payer-credits')
   @TenantScoped()
   @Can('payment.read')
@@ -665,8 +695,8 @@ export class ResidentPaymentsController {
     id: 'resident.invoices.payment',
     summary: 'Pay an invoice: Thai QR and account',
     description:
-      'What is due now (this invoice and earlier unpaid ones, oldest paid first, D-193), the Thai QR for it (Tag 30, created when missing, expired or for another amount — the money goes to the landlord’s own account, D-042), the account for a plain transfer, and whether slips and partial payments are accepted.',
-    implements: ['D-042', 'D-043', 'D-154'],
+      'What is due now (this invoice and earlier unpaid ones, oldest paid first, D-193), the Thai QR for it (Tag 30, created when missing, expired or for another amount — the money goes to the landlord’s own account, D-042), the account for a plain transfer (in full with its bank code while something is due — the reveal is audited, D-209), and whether slips and partial payments are accepted.',
+    implements: ['D-042', 'D-043', 'D-154', 'D-209'],
   })
   @ApiSuccess(200, {
     description: 'Payment',
@@ -685,6 +715,8 @@ export class ResidentPaymentsController {
         bankNameTh: 'ธนาคารตัวอย่าง',
         accountName: 'บริษัท ตัวอย่าง จำกัด',
         accountNoMasked: 'xxxxxx1234',
+        accountNo: '1234561234',
+        bankCode: '004',
       },
       allowSlip: true,
       allowPartial: false,
@@ -710,6 +742,8 @@ export class ResidentPaymentsController {
             bankNameTh: r.account.bankNameTh,
             accountName: r.account.accountName,
             accountNoMasked: r.account.accountNoMasked,
+            accountNo: r.account.accountNo,
+            bankCode: r.account.bankCode,
           }
         : null,
       allowSlip: r.allowSlip,
@@ -717,13 +751,53 @@ export class ResidentPaymentsController {
     };
   }
 
+  @Get('invoices/:invoiceId/slips')
+  @ApiEndpoint({
+    id: 'resident.invoices.slips',
+    summary: 'My slips of an invoice and their outcome',
+    description:
+      'The slips I sent for this invoice, newest first: confirmed automatically, waiting for the office with the reasons (amount above / below what is due, receiving account mismatch, unreadable, not recognised), duplicate, approved or rejected (D-043, D-198, D-208). 404 when the invoice is not mine.',
+    implements: ['D-043', 'D-154', 'D-208'],
+  })
+  @ApiSuccess(200, {
+    description: 'My slips',
+    type: ResidentSlipOutcomesDto,
+    example: {
+      data: [
+        {
+          id: FAKE.uuid,
+          status: 'pending_review',
+          reasons: ['amount_below_due'],
+          uploadedAt: FAKE.dateTime,
+          decidedAt: null,
+        },
+      ],
+    },
+  })
+  @ApiStandardErrors('auth.unauthenticated', 'http.not_found', 'validation.failed')
+  async slipOutcomes(@Param('invoiceId', ParseUUIDPipe) id: string): Promise<ResidentSlipOutcomesDto> {
+    const rows = await this.payments.slips(id);
+    return {
+      data: rows.map((r) => ({
+        id: r.id,
+        status: r.status as SlipStatusName,
+        reasons: r.reasons as SlipReasonName[],
+        uploadedAt: iso(r.uploadedAt),
+        decidedAt: isoOrNull(
+          r.reviewedAt ?? (['auto_confirmed', 'duplicate'].includes(r.status) ? r.updatedAt : null),
+        ),
+      })),
+    };
+  }
+
   @Post('invoices/:invoiceId/slips')
+  @Idempotent({ optional: true })
   @ApiEndpoint({
     id: 'resident.invoices.uploadSlip',
     summary: 'Send the slip of a transfer',
     description:
-      'The fallback when paying by transfer instead of QR (D-043, `payments.allow_slip`): the slip is verified; it is confirmed automatically when it is real, unused, to the landlord’s account and for what is due — otherwise the landlord reviews it.',
-    implements: ['D-043', 'D-154'],
+      'The fallback when paying by transfer instead of QR (D-043, `payments.allow_slip`): the slip is verified; it is confirmed automatically when it is real, unused, to the landlord’s account and for what is due — otherwise the landlord reviews it. An optional `Idempotency-Key` makes a retry on a flaky connection answer the first slip instead of creating another (LIFF #18).',
+    implements: ['D-043', 'D-154', 'D-208'],
   })
   @ApiJsonBody(ResidentSlipDto, { image: 'iVBORw0KGgo=', mimeType: 'image/jpeg' })
   @ApiSuccess(201, {
@@ -786,6 +860,47 @@ export class ResidentPaymentsController {
       total,
       q,
     );
+  }
+
+  @Get('receipts/:receiptId')
+  @ApiEndpoint({
+    id: 'resident.receipts.get',
+    summary: 'One of my receipts',
+    description:
+      'The receipt with the invoices its payment paid (the LINE receipt message links here, LIFF #19); 404 when it is not mine (D-044, D-208).',
+    implements: ['D-044', 'D-154', 'D-208'],
+  })
+  @ApiSuccess(200, {
+    description: 'The receipt',
+    type: ResidentReceiptDetailDto,
+    example: {
+      id: FAKE.uuid,
+      number: 'RCP-2026-00001',
+      kind: 'payment',
+      amount: '5344.00',
+      issuedAt: FAKE.dateTime,
+      issuerName: 'หอพักตัวอย่าง',
+      unitNo: FAKE.unitCode,
+      voided: false,
+      invoices: [{ id: FAKE.uuid, number: 'INV-2026-00042' }],
+      hasDocument: true,
+    },
+  })
+  @ApiStandardErrors('auth.unauthenticated', 'http.not_found', 'validation.failed')
+  async receipt(@Param('receiptId', ParseUUIDPipe) id: string): Promise<ResidentReceiptDetailDto> {
+    const { receipt: r, invoices } = await this.payments.receipt(id);
+    return {
+      id: r.id,
+      number: r.number,
+      kind: r.kind as ReceiptKindName,
+      amount: m2(r.amount),
+      issuedAt: iso(r.issuedAt),
+      issuerName: r.tenant.displayName,
+      unitNo: r.unit?.unitNo ?? null,
+      voided: r.voidedAt !== null,
+      invoices,
+      hasDocument: r.documentId !== null,
+    };
   }
 
   @Get('receipts/:receiptId/document')

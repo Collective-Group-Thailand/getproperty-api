@@ -107,6 +107,36 @@ export class ComplianceGate {
   }
 
   /**
+   * Dry run of `enforce` (web F2 lease wizard, D-208): the outcome each check would have now — severity in force,
+   * legal reference, field errors — without recording an evaluation or asking for an acknowledgement.
+   */
+  async preview(
+    tenantId: string,
+    checks: RuleCheck[],
+  ): Promise<{
+    inScope: boolean;
+    checks: (RuleCheck & {
+      outcome: ComplianceOutcomeName;
+      severity: ComplianceSeverityName;
+      legalRef: string;
+    })[];
+  }> {
+    const now = this.clock.now();
+    const inScope = await this.inScope(tenantId, now);
+    const out = [];
+    for (const check of checks) {
+      const severity = await this.severity(check.ruleId, tenantId, now);
+      out.push({
+        ...check,
+        outcome: inScope ? outcomeOf(check.violated, severity) : ('pass' as const),
+        severity,
+        legalRef: ComplianceAcknowledgementService.legalRef(check.ruleId),
+      });
+    }
+    return { inScope, checks: out };
+  }
+
+  /**
    * Checks, records and enforces. `acknowledgementIds` are the client's acknowledgements of earlier warnings for the
    * same subject. `refuseWarnings` turns warnings into refusals (actors who cannot acknowledge, e.g. residents).
    */

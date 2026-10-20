@@ -1773,6 +1773,14 @@ export class RoundLastReadingDto {
   photoDocumentId!: string | null;
 }
 
+export class RoundAssigneeDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  userId!: string;
+
+  @ApiProperty({ example: 'สมศรี ใจดี' })
+  displayName!: string;
+}
+
 export class RoundItemDto {
   @ApiProperty({ format: 'uuid', example: FAKE.meterId })
   assetItemId!: string;
@@ -1806,6 +1814,17 @@ export class RoundItemDto {
 
   @ApiProperty({ type: () => RoundLastReadingDto, nullable: true })
   lastReading!: RoundLastReadingDto | null;
+
+  @ApiProperty({
+    type: () => RoundAssigneeDto,
+    nullable: true,
+    description:
+      'The staff login the owner assigned the reading to (`request-readings`, D-208); null = anyone.',
+  })
+  assignee!: RoundAssigneeDto | null;
+
+  @ApiProperty({ example: false, description: 'The owner asked for this reading (an open reading request).' })
+  requested!: boolean;
 }
 
 export class RoundFloorDto {

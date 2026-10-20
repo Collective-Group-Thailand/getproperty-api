@@ -172,13 +172,28 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
       'Billing cycle {{cycle.periodKey}} of {{property.name}}: {{cycle.drafts}} invoice draft(s) ready to review and issue ({{cycle.needsReview}} need review).',
     ],
   },
+  {
+    key: 'reading.requested',
+    description: 'Staff: the owner asked for meter readings of a billing cycle (web F2, D-208)',
+    th: [
+      'มีคำขอให้จดเลขมิเตอร์',
+      '{{tenant.name}} ขอให้จดเลขมิเตอร์ {{request.count}} จุด สำหรับรอบบิล {{request.periodKey}} — ดูรายการในรอบการจด',
+    ],
+    en: [
+      'Meter readings requested',
+      '{{tenant.name}} asks for {{request.count}} meter reading(s) for billing period {{request.periodKey}} — see the reading round.',
+    ],
+  },
 ];
 
 /** Operator audiences per event: workflow → owner + manager; device/meter health → owner + manager + staff. */
 const operatorAudiences = (key: string): string[] =>
   key.startsWith('workflow.') || key === 'billing_cycle.computed' || key === 'slip.review_requested'
     ? ['owner', 'manager']
-    : key.startsWith('meter.') || key.startsWith('device.') || key === 'billing_cycle.readings_requested'
+    : key.startsWith('meter.') ||
+        key.startsWith('device.') ||
+        key === 'billing_cycle.readings_requested' ||
+        key === 'reading.requested'
       ? ['owner', 'manager', 'staff']
       : ['owner'];
 

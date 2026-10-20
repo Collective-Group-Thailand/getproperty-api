@@ -290,6 +290,46 @@ export class ReceiptsService extends TenantScopedRepository implements EventSubs
     });
   }
 
+  /**
+   * `POST /v1/owner/receipts/{id}/actions/resend` (web F2, D-208): the receipt Flex goes to the payer again
+   * (`receipt.resent`, same template and quiet hours / consent as the first message); audited. A voided receipt is
+   * not sent (409 `payment.invalid_state`).
+   */
+  async resend(ctx: TenantContext, id: string): Promise<{ receiptId: string; requestedAt: Date }> {
+    const now = this.clock.now();
+    await this.db.tenant(ctx, async (tx) => {
+      const r = this.found(await tx.receipt.findFirst({ where: this.own(ctx, { id }) }));
+      if (ctx.buildingIds && !ctx.buildingIds.includes(r.buildingId))
+        throw new DomainException('http.not_found');
+      if (r.voidedAt) throw new DomainException('payment.invalid_state', { params: { status: 'void' } });
+      await this.audit.record(tx, {
+        action: 'document.resent',
+        tenantId: ctx.tenantId,
+        buildingId: r.buildingId,
+        subjectType: 'ops.receipt',
+        subjectId: r.id,
+        metadata: { number: r.number, channel: 'line' },
+      });
+      await this.events.record(tx, {
+        type: 'receipt.resent',
+        aggregateType: 'receipt',
+        aggregateId: r.id,
+        tenantId: ctx.tenantId,
+        buildingId: r.buildingId,
+        payload: {
+          receiptId: r.id,
+          kind: 'receipt',
+          number: r.number,
+          paymentId: r.paymentId,
+          payerPartyId: r.payerPartyId,
+          unitId: r.unitId,
+          amount: r.amount.toFixed(2),
+        },
+      });
+    });
+    return { receiptId: id, requestedAt: now };
+  }
+
   async document(ctx: TenantContext, id: string) {
     return this.db.tenant(ctx, async (tx) => {
       const r = this.found(

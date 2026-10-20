@@ -84,8 +84,10 @@ interface Billable {
 export function cycleNextActions(c: Pick<BillingCycle, 'status'>): string[] {
   switch (c.status) {
     case 'open':
-    case 'readings_pending':
       return ['compute', 'issue'];
+    case 'readings_pending':
+      // web F2 (D-208): ask staff for the readings still missing, per meter or all at once
+      return ['compute', 'issue', 'request-readings'];
     case 'computed':
       return ['compute', 'issue'];
     case 'issued':

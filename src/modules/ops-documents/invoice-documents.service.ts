@@ -121,6 +121,30 @@ export class InvoiceDocumentsService extends TenantScopedRepository {
     return { invoiceId, requestedAt: now };
   }
 
+  /**
+   * The delivery log of an invoice (web F2, D-208): every message planned for it — the first send once payable
+   * (`invoice.payment_ready` → `issue`), the owner's resends (`invoice.resent` → `resend`) and the payment reminders
+   * (`invoice.reminder_sent` → `reminder`) — per channel, with its state and failure reason, oldest first.
+   */
+  async deliveries(ctx: TenantContext, invoiceId: string) {
+    await this.invoices.get(ctx, invoiceId);
+    return this.db.tenant(ctx, (tx) =>
+      tx.notification.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          recipientType: { in: ['party', 'user'] },
+          event: {
+            aggregateType: 'invoice',
+            aggregateId: invoiceId,
+            type: { in: ['invoice.payment_ready', 'invoice.resent', 'invoice.reminder_sent'] },
+          },
+        },
+        include: { event: { select: { type: true, occurredAt: true } } },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+    );
+  }
+
   /** Generated financial documents of a Bangkok month (owner archive view). */
   list(
     ctx: TenantContext,

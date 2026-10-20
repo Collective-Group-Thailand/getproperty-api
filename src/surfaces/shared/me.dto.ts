@@ -271,6 +271,22 @@ export class ResidentLeaseSummaryDto {
     description: 'My role on the lease.',
   })
   role!: LeasePartyRoleName;
+
+  @ApiProperty({
+    format: 'date',
+    example: '2026-11-01',
+    description: 'First day of the lease term (LIFF #21).',
+  })
+  startDate!: string;
+
+  @ApiProperty({
+    type: String,
+    format: 'date',
+    nullable: true,
+    example: '2027-10-31',
+    description: 'Last day of the term; null for an open-ended lease.',
+  })
+  endDate!: string | null;
 }
 
 export class ResidentMeDto {
