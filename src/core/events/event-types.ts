@@ -155,6 +155,10 @@ export const DOMAIN_EVENT_TYPES = {
     'A payment was confirmed (webhook, settlement file, slip or manual) and allocated (D-042).',
   'payment.failed': 'A provider reported a failed payment.',
   'payment.reversed': 'A confirmed payment was reversed (chargeback or owner correction).',
+  'payment.held':
+    'A provider payment looked like a transfer already booked (QR already paid, or a slip of the same amount) and waits for the owner instead of being booked (D-220).',
+  'payment.dismissed':
+    'The owner dismissed a held provider payment as the same transfer already booked (D-220).',
   'payment.refunded': 'An overpayment or credit was refunded to the payer with evidence (D-044).',
   'receipt.issued': 'A receipt (payment, deposit or advance) was numbered and issued (D-044).',
   'receipt.resent': 'The owner sent an issued receipt to the payer again (LINE Flex, D-208).',

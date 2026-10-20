@@ -894,7 +894,11 @@ export class InvoicesService extends TenantScopedRepository {
     const paid = D(inv.paidTotal.toString()).plus(delta.paid ?? 0);
     const credited = D(inv.creditedTotal.toString()).plus(delta.credited ?? 0);
     const debited = D(inv.debitedTotal.toString()).plus(delta.debited ?? 0);
-    const balance = Decimal.max(0, D(inv.total.toString()).plus(debited).minus(credited).minus(paid));
+    const raw = D(inv.total.toString()).plus(debited).minus(credited).minus(paid);
+    // a payment never allocates beyond what is owed (review #3): the excess is the payer's credit, not a lost amount
+    if (delta.paid && D(delta.paid).gt(0) && raw.lt(0))
+      throw new Error(`invoice ${invoiceId}: allocation of ${D(delta.paid).toFixed(2)} exceeds its balance`);
+    const balance = Decimal.max(0, raw);
     const now = delta.at ?? this.clock.now();
     const status = statusFor(
       { ...inv, balance, paidTotal: paid, creditedTotal: credited },

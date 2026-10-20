@@ -61,6 +61,14 @@ export enum SlipReasonName {
   AmountAboveDue = 'amount_above_due',
   AmountBelowDue = 'amount_below_due',
   AmountUnreadable = 'amount_unreadable',
+  /** D-220: a QR payment of the same amount for the same payer × unit was already booked around the slip's time. */
+  PossibleQrDuplicate = 'possible_qr_duplicate',
+}
+
+/** Why a provider payment was held for the owner instead of booked (`ops.payment.held_reason`, D-220). */
+export enum PaymentHeldReasonName {
+  QrAlreadyPaid = 'qr_already_paid',
+  PossibleDuplicateTransfer = 'possible_duplicate_transfer',
 }
 
 /** `ops.receipt_kind` (D-044). */
@@ -180,13 +188,42 @@ export class PaymentDto {
   @ApiProperty({ type: String, nullable: true, example: null })
   reverseReason!: string | null;
 
+  @ApiProperty({
+    enum: PaymentHeldReasonName,
+    enumName: 'PaymentHeldReason',
+    nullable: true,
+    example: null,
+    description:
+      'D-220: set on a provider payment (QR callback or settlement file) held `pending` because it looks like a transfer already booked — its QR was already paid, or a slip / hand-recorded transfer of the same amount for the same payer × unit was booked within `payments.duplicate_window_hours`. A held payment is not allocated, credited or receipted until the owner confirms it (`confirm`) or dismisses it (`dismiss`).',
+  })
+  heldReason!: PaymentHeldReasonName | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: null,
+    description: 'D-220: the booked payment this held one probably duplicates.',
+  })
+  duplicateOfPaymentId!: string | null;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
+  dismissedAt!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: null })
+  dismissReason!: string | null;
+
   @ApiProperty({ type: [PaymentAllocationDto] })
   allocations!: PaymentAllocationDto[];
 
   @ApiProperty({ type: [PaymentReceiptRefDto] })
   receipts!: PaymentReceiptRefDto[];
 
-  @ApiProperty({ type: [String], example: ['reverse'] })
+  @ApiProperty({
+    type: [String],
+    example: ['reverse'],
+    description: '`reverse` (confirmed), `confirm` and `dismiss` (held, D-220).',
+  })
   nextActions!: string[];
 
   @ApiProperty({ type: 'integer', example: 1 })
@@ -302,7 +339,7 @@ export class SlipReviewDto {
     type: [String],
     example: ['amount_below_due'],
     description:
-      'Why it was not confirmed automatically: `not_recognised`, `duplicate_reference`, `receiver_mismatch`, `amount_above_due`, `amount_below_due`, `amount_unreadable`.',
+      'Why it was not confirmed automatically: `not_recognised`, `duplicate_reference`, `receiver_mismatch`, `amount_above_due`, `amount_below_due`, `amount_unreadable`, `possible_qr_duplicate` (a QR payment of the same amount was already booked, D-220).',
   })
   reasons!: string[];
 

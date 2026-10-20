@@ -40,7 +40,7 @@ describe('lease termination with a future effective date (real PostgreSQL)', () 
   };
   const vendor = () => t.app.get<FakeLockVendors>(LOCK_VENDORS).adapter('ttlock');
   const today = () => new Date(t.clock.now().getTime() + 7 * 3_600_000).toISOString().slice(0, 10);
-  const creds = (leaseId: string) =>
+  const creds = (leaseId: string | undefined) =>
     q<{ status: string }>(
       `SELECT status::text FROM smart.access_credential WHERE lease_id = $1 ORDER BY created_at`,
       [leaseId],

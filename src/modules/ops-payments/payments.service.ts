@@ -63,7 +63,15 @@ export interface ConfirmInput {
   whtAmount?: string;
   /** Allocate to this invoice only and never create a credit (payments from the payer's credit). */
   onlyInvoiceId?: string;
+  /**
+   * D-220: store the payment `pending` for the owner instead of booking it (a provider payment that looks like a
+   * transfer already booked) — no allocation, no credit, no receipt.
+   */
+  hold?: { reason: HeldReason; duplicateOfPaymentId: string | null };
 }
+
+/** Why a provider payment waits for the owner (D-220). */
+export type HeldReason = 'qr_already_paid' | 'possible_duplicate_transfer';
 
 /**
  * Payments (B4.4, D-042, D-044, D-193): a confirmed payment is allocated to the payer's open invoices of the unit
@@ -192,8 +200,21 @@ export class PaymentsService extends TenantScopedRepository {
 
   // ------------------------------------------------------------------------------------------- confirm
 
+  /**
+   * Serialises every allocation for one payer × unit (review #3): open balances are read and paid under the same
+   * advisory lock as the payer's credit, so concurrent confirmations never allocate the same balance twice and the
+   * excess always becomes credit. Advisory transaction locks are re-entrant (applyCredit already holds it).
+   */
+  async lockPayer(
+    tx: Tx,
+    input: { payerPartyId: string | null; unitId: string | null; invoiceId: string | null },
+  ) {
+    await this.lockCredit(tx, input.payerPartyId ?? `invoice-${input.invoiceId ?? '-'}`, input.unitId);
+  }
+
   /** Records a confirmed payment and allocates it; a repeated provider reference returns the first payment. */
   async confirm(tx: Tx, input: ConfirmInput): Promise<{ payment: Payment; duplicate: boolean }> {
+    await this.lockPayer(tx, input);
     if (input.provider && input.providerRef) {
       const existing = await tx.payment.findFirst({
         where: { provider: input.provider, providerRef: input.providerRef },
@@ -201,6 +222,7 @@ export class PaymentsService extends TenantScopedRepository {
       if (existing) return { payment: existing, duplicate: true };
     }
     const now = this.clock.now();
+    if (input.hold) return { payment: await this.holdPayment(tx, input, input.hold), duplicate: false };
     const payment = await tx.payment.create({
       data: {
         tenantId: input.tenantId,
@@ -229,9 +251,22 @@ export class PaymentsService extends TenantScopedRepository {
         createdBy: by(),
       },
     });
-    const split = await this.allocate(tx, payment, input.onlyInvoiceId);
+    return {
+      payment: await this.book(tx, payment, input.confirmedVia, input.onlyInvoiceId),
+      duplicate: false,
+    };
+  }
+
+  /** Allocation, audit and `payment.confirmed` (→ receipt) of a confirmed payment row. */
+  private async book(
+    tx: Tx,
+    payment: Payment,
+    confirmedVia: PaymentConfirmation,
+    onlyInvoiceId?: string,
+  ): Promise<Payment> {
+    const split = await this.allocate(tx, payment, onlyInvoiceId);
     await this.audit.record(tx, {
-      action: input.confirmedVia === 'manual' ? 'payment.recorded' : 'payment.confirmed',
+      action: confirmedVia === 'manual' ? 'payment.recorded' : 'payment.confirmed',
       tenantId: payment.tenantId,
       buildingId: payment.buildingId,
       subjectType: 'ops.payment',
@@ -239,7 +274,7 @@ export class PaymentsService extends TenantScopedRepository {
       metadata: {
         amount: payment.amount.toFixed(2),
         method: payment.method,
-        via: input.confirmedVia,
+        via: confirmedVia,
         providerRef: payment.providerRef,
         allocations: split.allocations,
         credited: split.credited,
@@ -258,12 +293,177 @@ export class PaymentsService extends TenantScopedRepository {
         unitId: payment.unitId,
         amount: payment.amount.toFixed(2),
         method: payment.method,
-        via: input.confirmedVia,
+        via: confirmedVia,
         allocations: split.allocations,
         credited: split.credited,
       },
     });
-    return { payment: await tx.payment.findUniqueOrThrow({ where: { id: payment.id } }), duplicate: false };
+    return tx.payment.findUniqueOrThrow({ where: { id: payment.id } });
+  }
+
+  /** D-220: a provider payment stored `pending` for the owner — nothing allocated, credited or receipted. */
+  private async holdPayment(
+    tx: Tx,
+    input: ConfirmInput,
+    hold: { reason: HeldReason; duplicateOfPaymentId: string | null },
+  ): Promise<Payment> {
+    const payment = await tx.payment.create({
+      data: {
+        tenantId: input.tenantId,
+        buildingId: input.buildingId,
+        unitId: input.unitId,
+        invoiceId: input.invoiceId,
+        payerPartyId: input.payerPartyId,
+        leaseId: input.leaseId,
+        amount: D(input.amount).toFixed(2),
+        method: input.method,
+        provider: input.provider ?? null,
+        providerRef: input.providerRef ?? null,
+        providerPayload: (input.providerPayload ?? undefined) as Prisma.InputJsonValue | undefined,
+        bankAccountId: input.bankAccountId ?? null,
+        qrCodeId: input.qrCodeId ?? null,
+        status: 'pending',
+        paidAt: input.paidAt,
+        confirmedVia: input.confirmedVia,
+        heldReason: hold.reason,
+        duplicateOfPaymentId: hold.duplicateOfPaymentId,
+        notes: input.notes ?? null,
+        createdBy: by(),
+      },
+    });
+    await this.audit.record(tx, {
+      action: 'payment.held',
+      tenantId: payment.tenantId,
+      buildingId: payment.buildingId,
+      subjectType: 'ops.payment',
+      subjectId: payment.id,
+      metadata: {
+        amount: payment.amount.toFixed(2),
+        via: input.confirmedVia,
+        providerRef: payment.providerRef,
+        reason: hold.reason,
+        duplicateOf: hold.duplicateOfPaymentId,
+      },
+    });
+    await this.events.record(tx, {
+      type: 'payment.held',
+      aggregateType: 'payment',
+      aggregateId: payment.id,
+      tenantId: payment.tenantId,
+      buildingId: payment.buildingId,
+      payload: {
+        paymentId: payment.id,
+        invoiceId: payment.invoiceId,
+        unitId: payment.unitId,
+        amount: payment.amount.toFixed(2),
+        reason: hold.reason,
+        duplicateOfPaymentId: hold.duplicateOfPaymentId,
+      },
+    });
+    return payment;
+  }
+
+  /**
+   * The confirmed payment that most likely is the same bank transfer (D-220): a payment by one of `methods` for the
+   * same invoice (made for it, or allocated to it), of the same amount, for the same payer × unit, paid within
+   * `payments.duplicate_window_hours`. Null when none.
+   */
+  async sameTransfer(
+    tx: Tx,
+    input: {
+      tenantId: string;
+      invoiceId: string;
+      payerPartyId: string;
+      unitId: string | null;
+      amount: string;
+      paidAt: Date;
+    },
+    methods: PaymentMethod[],
+  ): Promise<Payment | null> {
+    const hours = await this.settings.valueAt<number>('payments.duplicate_window_hours', this.clock.now(), {
+      tenantId: input.tenantId,
+    });
+    const window = Number(hours) * 3_600_000;
+    return tx.payment.findFirst({
+      where: {
+        tenantId: input.tenantId,
+        payerPartyId: input.payerPartyId,
+        unitId: input.unitId,
+        status: 'confirmed',
+        method: { in: methods },
+        OR: [{ invoiceId: input.invoiceId }, { allocations: { some: { invoiceId: input.invoiceId } } }],
+        amount: D(input.amount).toFixed(2),
+        paidAt: {
+          gte: new Date(input.paidAt.getTime() - window),
+          lte: new Date(input.paidAt.getTime() + window),
+        },
+      },
+      orderBy: { paidAt: 'asc' },
+    });
+  }
+
+  /** The owner books a held payment after all (it was a second transfer): allocated, credited, receipted. */
+  async confirmHeld(ctx: TenantContext, paymentId: string): Promise<PaymentRow> {
+    await this.db.tenant(ctx, async (tx) => {
+      await tx.$queryRaw`SELECT id FROM ops.payment WHERE id = ${paymentId}::uuid FOR UPDATE`;
+      const p = await this.load(tx, ctx, paymentId);
+      if (p.tenantId !== ctx.tenantId) throw new DomainException('asset.read_only');
+      if (p.status !== 'pending' || !p.heldReason)
+        throw new DomainException('payment.invalid_state', { params: { status: p.status } });
+      await this.lockPayer(tx, p);
+      const confirmed = await tx.payment.update({
+        where: { id: p.id },
+        data: {
+          status: 'confirmed',
+          confirmedAt: this.clock.now(),
+          recordedBy: by(),
+          updatedBy: by(),
+          version: { increment: 1 },
+        },
+      });
+      await this.book(tx, confirmed, p.confirmedVia ?? 'manual');
+    });
+    return this.get(ctx, paymentId);
+  }
+
+  /** The owner dismisses a held payment: the same transfer was already booked — never allocated or receipted. */
+  async dismissHeld(ctx: TenantContext, paymentId: string, reason: string): Promise<PaymentRow> {
+    await this.db.tenant(ctx, async (tx) => {
+      await tx.$queryRaw`SELECT id FROM ops.payment WHERE id = ${paymentId}::uuid FOR UPDATE`;
+      const p = await this.load(tx, ctx, paymentId);
+      if (p.tenantId !== ctx.tenantId) throw new DomainException('asset.read_only');
+      if (p.status !== 'pending' || !p.heldReason)
+        throw new DomainException('payment.invalid_state', { params: { status: p.status } });
+      const now = this.clock.now();
+      await tx.payment.update({
+        where: { id: p.id },
+        data: {
+          status: 'failed',
+          dismissedAt: now,
+          dismissedBy: by(),
+          dismissReason: reason,
+          updatedBy: by(),
+          version: { increment: 1 },
+        },
+      });
+      await this.audit.record(tx, {
+        action: 'payment.dismissed',
+        tenantId: p.tenantId,
+        buildingId: p.buildingId,
+        subjectType: 'ops.payment',
+        subjectId: p.id,
+        metadata: { reason, amount: p.amount.toFixed(2), duplicateOf: p.duplicateOfPaymentId },
+      });
+      await this.events.record(tx, {
+        type: 'payment.dismissed',
+        aggregateType: 'payment',
+        aggregateId: p.id,
+        tenantId: p.tenantId,
+        buildingId: p.buildingId,
+        payload: { paymentId: p.id, amount: p.amount.toFixed(2), reason },
+      });
+    });
+    return this.get(ctx, paymentId);
   }
 
   private async allocate(
@@ -287,7 +487,11 @@ export class PaymentsService extends TenantScopedRepository {
     const allocations: { invoiceId: string; number: string | null; amount: string }[] = [];
     for (const inv of targets) {
       if (remaining.lte(0)) break;
-      const take = Decimal.min(remaining, D(inv.balance));
+      // the balance as of now, under the row lock (review #3): never what an earlier read saw
+      const [locked] = await tx.$queryRaw<{ balance: string; status: string }[]>`
+        SELECT balance::text AS balance, status::text AS status FROM ops.invoice WHERE id = ${inv.id}::uuid FOR UPDATE`;
+      if (!locked || !OPEN.includes(locked.status as Invoice['status'])) continue;
+      const take = Decimal.min(remaining, D(locked.balance));
       if (take.lte(0)) continue;
       await tx.paymentAllocation.create({
         data: {

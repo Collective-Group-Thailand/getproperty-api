@@ -49,6 +49,7 @@ import {
   PayerCreditQuery,
   type PaymentConfirmationName,
   PaymentDto,
+  PaymentHeldReasonName,
   PaymentListQuery,
   type PaymentMethodName,
   ReceiptDto,
@@ -112,6 +113,10 @@ export function paymentDto(p: PaymentRow): PaymentDto {
     notes: p.notes,
     reversedAt: isoOrNull(p.reversedAt),
     reverseReason: p.reverseReason,
+    heldReason: (p.heldReason as PaymentHeldReasonName | null) ?? null,
+    duplicateOfPaymentId: p.duplicateOfPaymentId,
+    dismissedAt: isoOrNull(p.dismissedAt),
+    dismissReason: p.dismissReason,
     allocations: p.allocations.map((a) => ({
       invoiceId: a.invoiceId,
       invoiceNumber: a.invoice.number,
@@ -124,7 +129,12 @@ export function paymentDto(p: PaymentRow): PaymentDto {
       kind: r.kind as ReceiptKindName,
       voided: r.voidedAt !== null,
     })),
-    nextActions: p.status === 'confirmed' ? ['reverse'] : [],
+    nextActions:
+      p.status === 'confirmed'
+        ? ['reverse']
+        : p.status === 'pending' && p.heldReason
+          ? ['confirm', 'dismiss']
+          : [],
     version: p.version,
   };
 }
@@ -178,6 +188,10 @@ const PAYMENT_EXAMPLE: PaymentDto = {
   notes: null,
   reversedAt: null,
   reverseReason: null,
+  heldReason: null,
+  duplicateOfPaymentId: null,
+  dismissedAt: null,
+  dismissReason: null,
   allocations: [
     { invoiceId: FAKE.uuid, invoiceNumber: 'INV-2026-00042', amount: '5344.00', reversedAt: null },
   ],
@@ -374,6 +388,68 @@ export class OwnerPaymentsController {
     @Body() body: ReasonDto,
   ): Promise<PaymentDto> {
     return paymentDto(await this.payments.reverse(ctx, id, body.reason));
+  }
+
+  @Post('payments/:paymentId/actions/confirm')
+  @HttpCode(200)
+  @Idempotent()
+  @TenantScoped()
+  @Can('payment.record')
+  @ApiEndpoint({
+    id: 'owner.payments.confirmHeld',
+    summary: 'Book a held payment',
+    description:
+      'A provider payment held as a possible duplicate (`heldReason`, D-220) was in fact a second transfer: it is booked now — allocated to the payer’s open invoices of the unit oldest first, the rest as their credit — and the receipt follows. Only a held `pending` payment (`payment.invalid_state` otherwise). Audited.',
+    implements: ['D-042', 'D-044', 'D-220'],
+  })
+  @ApiSuccess(200, {
+    description: 'Booked',
+    type: PaymentDto,
+    example: { ...PAYMENT_EXAMPLE, nextActions: ['reverse'] },
+  })
+  @ApiStandardErrors('payment.invalid_state', ...WRITE)
+  async confirmHeld(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('paymentId', ParseUUIDPipe) id: string,
+  ): Promise<PaymentDto> {
+    return paymentDto(await this.payments.confirmHeld(ctx, id));
+  }
+
+  @Post('payments/:paymentId/actions/dismiss')
+  @HttpCode(200)
+  @Idempotent()
+  @TenantScoped()
+  @Can('payment.record')
+  @ApiEndpoint({
+    id: 'owner.payments.dismissHeld',
+    summary: 'Dismiss a held payment',
+    description:
+      'A provider payment held as a possible duplicate (D-220) is the same bank transfer already booked (by slip or by hand): it is closed `failed` with the reason and never allocated, credited or receipted. Only a held `pending` payment. Audited.',
+    implements: ['D-042', 'D-220'],
+  })
+  @ApiJsonBody(ReasonDto, { reason: 'โอนครั้งเดียวกับสลิปที่อนุมัติแล้ว' })
+  @ApiSuccess(200, {
+    description: 'Dismissed',
+    type: PaymentDto,
+    example: {
+      ...PAYMENT_EXAMPLE,
+      status: 'failed' as PaymentStatusName,
+      allocatedTotal: '0.00',
+      allocations: [],
+      receipts: [],
+      heldReason: PaymentHeldReasonName.PossibleDuplicateTransfer,
+      dismissedAt: FAKE.dateTime,
+      dismissReason: 'โอนครั้งเดียวกับสลิปที่อนุมัติแล้ว',
+      nextActions: [],
+    },
+  })
+  @ApiStandardErrors('payment.invalid_state', ...WRITE)
+  async dismissHeld(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('paymentId', ParseUUIDPipe) id: string,
+    @Body() body: ReasonDto,
+  ): Promise<PaymentDto> {
+    return paymentDto(await this.payments.dismissHeld(ctx, id, body.reason));
   }
 
   @Get('slip-reviews')

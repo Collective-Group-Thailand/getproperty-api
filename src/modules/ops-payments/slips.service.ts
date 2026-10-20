@@ -167,12 +167,28 @@ export class SlipsService extends TenantScopedRepository implements EventSubscri
         digits(a.accountNoMasked).slice(-4) === receiver.slice(-4),
     );
     if (v.valid && !receiverOk) reasons.push('receiver_mismatch');
+    // serialised with every other confirmation of this payer × unit (review #3) before reading what is due
+    await this.payments.lockPayer(tx, slip);
     const due = await this.payments.dueFor(tx, slip.invoice);
     const amount = v.amount ? new Decimal(v.amount) : null;
     if (v.valid && amount) {
       if (amount.gt(due)) reasons.push('amount_above_due');
       else if (amount.lt(due) && !(await this.payments.allowPartial(slip.tenantId)))
         reasons.push('amount_below_due');
+      // D-220 (review #2): the same transfer already booked through the QR → the owner decides, never booked twice
+      const qrPaid = await this.payments.sameTransfer(
+        tx,
+        {
+          tenantId: slip.tenantId,
+          invoiceId: slip.invoiceId,
+          payerPartyId: slip.payerPartyId,
+          unitId: slip.unitId,
+          amount: amount.toFixed(2),
+          paidAt: v.paidAt ?? slip.uploadedAt,
+        },
+        ['qr'],
+      );
+      if (qrPaid) reasons.push('possible_qr_duplicate');
     } else if (v.valid) reasons.push('amount_unreadable');
     const status: SlipStatus = duplicateOf
       ? 'duplicate'
