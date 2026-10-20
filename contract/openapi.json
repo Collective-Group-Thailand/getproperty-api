@@ -155333,7 +155333,7 @@
     },
     "/v1/resident/facility-bookings": {
       "get": {
-        "description": "Bookings of my units, newest first.\n\nImplements: D-073.",
+        "description": "Bookings of my units made since my current occupancy began (D-224), newest first.\n\nImplements: D-073, D-224.",
         "operationId": "resident.community.bookings",
         "parameters": [
           {
@@ -161846,7 +161846,7 @@
     },
     "/v1/resident/parcels": {
       "get": {
-        "description": "Newest first, with the pick-up PIN while the parcel waits at the desk.\n\nImplements: D-073.",
+        "description": "Parcels of my units received since my current occupancy began (a former occupant’s parcels are never shown, D-224), newest first, with the pick-up PIN while the parcel waits at the desk.\n\nImplements: D-073, D-224.",
         "operationId": "resident.community.parcels",
         "parameters": [
           {
@@ -163728,7 +163728,7 @@
     },
     "/v1/resident/service-requests": {
       "get": {
-        "description": "Requests of the units I occupy and the ones I reported, newest first.\n\nImplements: D-072.",
+        "description": "Requests of the units I occupy reported since my current occupancy began (never a former occupant’s, D-224) and the ones I reported, newest first. The detail and actions follow the same rule (404 otherwise).\n\nImplements: D-072, D-224.",
         "operationId": "resident.serviceRequests.list",
         "parameters": [
           {

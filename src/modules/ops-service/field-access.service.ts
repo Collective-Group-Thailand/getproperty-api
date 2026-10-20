@@ -3,6 +3,8 @@ import { type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { DocumentsService } from '@core/documents/documents.service';
+import { occupancyWindows } from '@core/identity/occupancy-windows';
+import { type Tx } from '@database/prisma.service';
 import { TenantTx } from '@database/tenant-tx';
 import {
   type ServicePriority,
@@ -279,6 +281,11 @@ export class ResidentServiceRequestsService {
       .map((s) => s.slice('unit:'.length));
   }
 
+  /** Review #9 (D-224): a unit's requests are visible from the start of my current occupancy of it. */
+  private unitWindows(tx: Tx, units: string[]): Promise<Map<string, Date>> {
+    return occupancyWindows(tx, { userId: actorUser().userId, unitIds: units, now: this.clock.now() });
+  }
+
   /** The unit of a resident action → its tenant (404 outside my unit scopes). */
   async unit(unitId: string): Promise<{ ctx: TenantContext; unit: { id: string; buildingId: string } }> {
     if (!this.units().includes(unitId)) throw new DomainException('http.not_found');
@@ -329,11 +336,12 @@ export class ResidentServiceRequestsService {
         where: { userId, state: 'active' },
         select: { partyId: true },
       });
+      const windows = await this.unitWindows(tx, units);
       const where = {
         AND: [
           {
             OR: [
-              ...(units.length ? [{ unitId: { in: units } }] : []),
+              ...[...windows].map(([unitId, since]) => ({ unitId, createdAt: { gte: since } })),
               ...(links.length ? [{ requesterPartyId: { in: links.map((l) => l.partyId) } }] : []),
             ],
           },
@@ -346,7 +354,7 @@ export class ResidentServiceRequestsService {
             : {},
         ],
       };
-      if (!units.length && !links.length) return { rows: [], total: 0 };
+      if (!windows.size && !links.length) return { rows: [], total: 0 };
       const [rows, total] = await Promise.all([
         tx.serviceRequest.findMany({
           where: where as never,
@@ -369,12 +377,17 @@ export class ResidentServiceRequestsService {
       tx.serviceRequest.findUnique({ where: { id }, include: SERVICE_REQUEST_INCLUDE }),
     );
     if (!row) throw new DomainException('http.not_found');
-    const mine =
-      (row.unitId && units.includes(row.unitId)) ||
-      (row.requesterPartyId &&
-        (await this.db.platform((tx) =>
-          tx.partyUserLink.count({ where: { userId, partyId: row.requesterPartyId!, state: 'active' } }),
-        )) > 0);
+    const mine = await this.db.platform(async (tx) => {
+      const links = await tx.partyUserLink.findMany({
+        where: { userId, state: 'active' },
+        select: { partyId: true },
+      });
+      const partyIds = links.map((l) => l.partyId);
+      if (row.requesterPartyId && partyIds.includes(row.requesterPartyId)) return true;
+      if (!row.unitId || !units.includes(row.unitId)) return false;
+      const since = (await this.unitWindows(tx, [row.unitId])).get(row.unitId);
+      return Boolean(since && row.createdAt.getTime() >= since.getTime());
+    });
     if (!mine) throw new DomainException('http.not_found');
     return { ctx: { tenantId: row.tenantId, source: 'path' }, row };
   }

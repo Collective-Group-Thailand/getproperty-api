@@ -1076,8 +1076,9 @@ export class ResidentServiceRequestsController {
   @ApiEndpoint({
     id: 'resident.serviceRequests.list',
     summary: 'My repair requests',
-    description: 'Requests of the units I occupy and the ones I reported, newest first.',
-    implements: ['D-072'],
+    description:
+      'Requests of the units I occupy reported since my current occupancy began (never a former occupant’s, D-224) and the ones I reported, newest first. The detail and actions follow the same rule (404 otherwise).',
+    implements: ['D-072', 'D-224'],
   })
   @ApiPaginated(ResidentServiceRequestDto, { example: RESIDENT_REQUEST_EXAMPLE })
   @ApiStandardErrors('validation.failed')

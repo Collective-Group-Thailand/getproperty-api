@@ -3,6 +3,8 @@ import { type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
 import { bangkokDate } from '@common/time/bangkok';
 import { CLOCK, type Clock } from '@core/clock/clock';
+import { occupancyWindows } from '@core/identity/occupancy-windows';
+import { type Tx } from '@database/prisma.service';
 import { TenantTx } from '@database/tenant-tx';
 import { type Announcement } from '@generated/prisma/client';
 import { Inject, Injectable } from '@nestjs/common';
@@ -57,6 +59,14 @@ export class ResidentCommunityService {
         select: { id: true, unitNo: true, tenantId: true, buildingId: true, floorId: true },
       }),
     );
+  }
+
+  private windows(tx: Tx, units: { id: string }[]): Promise<Map<string, Date>> {
+    return occupancyWindows(tx, {
+      userId: actorUser().userId,
+      unitIds: units.map((u) => u.id),
+      now: this.clock.now(),
+    });
   }
 
   async unit(unitId: string) {
@@ -185,8 +195,12 @@ export class ResidentCommunityService {
     const units = await this.myUnits();
     if (!units.length) return [];
     return this.db.platform(async (tx) => {
+      // review #9 (D-224): only parcels received since my current occupancy of the unit (never a former
+      // occupant's parcel or its pick-up PIN)
+      const windows = await this.windows(tx, units);
+      if (!windows.size) return [];
       const rows = await tx.parcel.findMany({
-        where: { unitId: { in: units.map((u) => u.id) } },
+        where: { OR: [...windows].map(([unitId, since]) => ({ unitId, receivedAt: { gte: since } })) },
         include: PARCEL_INCLUDE,
         orderBy: { receivedAt: 'desc' },
         take: 100,
@@ -268,14 +282,17 @@ export class ResidentCommunityService {
   async myBookings(): Promise<BookingRow[]> {
     const units = await this.myUnits();
     if (!units.length) return [];
-    return this.db.platform((tx) =>
-      tx.facilityBooking.findMany({
-        where: { unitId: { in: units.map((u) => u.id) } },
+    return this.db.platform(async (tx) => {
+      // review #9 (D-224): bookings made since my current occupancy of the unit
+      const windows = await this.windows(tx, units);
+      if (!windows.size) return [];
+      return tx.facilityBooking.findMany({
+        where: { OR: [...windows].map(([unitId, since]) => ({ unitId, createdAt: { gte: since } })) },
         include: BOOKING_INCLUDE,
         orderBy: { startsAt: 'desc' },
         take: 100,
-      }),
-    );
+      });
+    });
   }
 
   async booking(id: string): Promise<BookingRow> {
