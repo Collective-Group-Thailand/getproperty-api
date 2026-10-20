@@ -898,5 +898,15 @@
       "title": "Task cannot be completed here",
       "detail": "This kind of task ({type}) is completed by Collective field engineers, not on the staff app."
     }
+  },
+  "dsr": {
+    "tenant_controlled": {
+      "title": "Handled by the tenant",
+      "detail": "This request is addressed to a tenant (the controller of its residents' data); that tenant handles it."
+    },
+    "erasure_blocked": {
+      "title": "Account still in use",
+      "detail": "The login still works for a tenant (membership or linked resident); that tenant must end it before the account can be erased."
+    }
   }
 }

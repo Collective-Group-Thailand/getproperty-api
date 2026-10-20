@@ -15,6 +15,7 @@ import { Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
 import { AuditService } from '../audit/audit.service';
+import { DocumentsService } from '../documents/documents.service';
 import { DomainEvents } from '../events/domain-events';
 import { type TariffCharge, utilityCharge } from './tariff-math';
 import { type UtilityTariffStructure, validateTariffStructure } from './tariff-structure';
@@ -48,6 +49,7 @@ export class UtilityTariffsService {
     private readonly audit: AuditService,
     private readonly events: DomainEvents,
     private readonly bus: InvalidationBus,
+    private readonly documents: DocumentsService,
   ) {}
 
   /** The version of `provider`/`tariffCode` in force on `date` (published or superseded). */
@@ -137,6 +139,29 @@ export class UtilityTariffsService {
     });
   }
 
+  /**
+   * The sample bill of any version — entered, verified, published or superseded — for `units` (web F5: the checker
+   * compares it with the notice before publishing). TOU structures need a per-period split: 422.
+   */
+  async sampleCharge(versionId: string, units: string): Promise<TariffCharge> {
+    const v = await this.getVersion(versionId);
+    const structure = v.structure as unknown as UtilityTariffStructure;
+    if (structure.kind === 'tou' || !new Decimal(units).gt(0))
+      throw new DomainException('validation.failed', {
+        errors: [
+          {
+            path: structure.kind === 'tou' ? 'versionId' : 'units',
+            code: structure.kind === 'tou' ? 'tou' : 'min',
+            message:
+              structure.kind === 'tou'
+                ? 'a time-of-use tariff has no single sample bill (on-peak / off-peak units are needed)'
+                : 'units must be greater than 0',
+          },
+        ],
+      });
+    return utilityCharge(structure, { units });
+  }
+
   /** Maker: enters a version (`entered`); the structure is validated and its ceiling copied to the column. */
   async enter(
     tariffId: string,
@@ -145,6 +170,8 @@ export class UtilityTariffsService {
       structure: UtilityTariffStructure;
       sourceUrl: string;
       sourcePublishedAt?: string | null;
+      /** An uploaded platform file with the published notice (web F5, D-214). */
+      sourceDocumentId?: string | null;
       notes?: string | null;
     },
   ) {
@@ -167,6 +194,7 @@ export class UtilityTariffsService {
             },
           ],
         });
+      if (input.sourceDocumentId) await this.documents.platformSource(tx, input.sourceDocumentId);
       const effectiveFrom = new Date(`${input.effectiveFrom}T00:00:00.000Z`);
       if (await tx.utilityTariffVersion.findFirst({ where: { utilityTariffId: tariffId, effectiveFrom } }))
         throw new DomainException('http.conflict');
@@ -177,6 +205,7 @@ export class UtilityTariffsService {
           structure: input.structure as unknown as Prisma.InputJsonValue,
           ceilingPerUnit: input.structure.ceilingPerUnit,
           sourceUrl: input.sourceUrl,
+          sourceDocumentId: input.sourceDocumentId ?? null,
           sourcePublishedAt: input.sourcePublishedAt
             ? new Date(`${input.sourcePublishedAt}T00:00:00.000Z`)
             : null,
@@ -196,6 +225,7 @@ export class UtilityTariffsService {
           provider: tariff.provider,
           tariffCode: tariff.tariffCode,
           effectiveFrom: input.effectiveFrom,
+          sourceDocumentId: input.sourceDocumentId ?? null,
         },
       });
       return version;

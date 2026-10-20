@@ -40,6 +40,8 @@ import {
   CurrentTariffDto,
   type PaymentProviderName,
   SettingDto,
+  SettingHistoryEntryDto,
+  SettingHistoryQuery,
   type SettingScopeName,
   SettingsQuery,
   SettingUpdateDto,
@@ -304,6 +306,55 @@ export class OwnerSettingsController {
       });
     }
     return out;
+  }
+
+  @Get('settings/:key/versions')
+  @TenantScoped()
+  @Can('tenant.settings.read')
+  @ApiParam({ name: 'key', example: 'reminders.schedule', description: 'Setting key (catalogue).' })
+  @ApiEndpoint({
+    id: 'owner.settings.versions',
+    summary: 'Version history of a setting',
+    description:
+      'Every version that applies to my tenant — the platform defaults, my tenant’s and my properties’ (one property with `propertyId`) — newest effective date first, including **scheduled** versions that are not in force yet (web F2, D-214, ADR-0004). Keys without a tenant or property scope are `settings.unknown_key`.',
+    implements: ['D-144', 'D-214', 'ADR-0004'],
+  })
+  @ApiSuccess(200, {
+    description: 'Versions',
+    type: [SettingHistoryEntryDto],
+    example: [
+      {
+        versionId: FAKE.uuid,
+        scope: 'tenant',
+        propertyId: null,
+        value: [1, 3, 7],
+        effectiveFrom: '2026-12-01T00:00:00+07:00',
+        effectiveTo: null,
+        scheduled: true,
+        reason: 'ส่งแจ้งเตือนวันที่ 1, 3, 7',
+        createdBy: FAKE.uuid,
+        createdAt: FAKE.dateTime,
+      },
+    ],
+  })
+  @ApiStandardErrors('validation.failed', 'http.not_found', 'settings.unknown_key', ...TENANT_ERRORS)
+  async versions(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('key') key: string,
+    @Query() query: SettingHistoryQuery,
+  ): Promise<SettingHistoryEntryDto[]> {
+    return (await this.settings.history(ctx, key, query.propertyId ?? null)).map((v) => ({
+      versionId: v.id,
+      scope: v.scope as SettingScopeName,
+      propertyId: v.propertyId,
+      value: v.value,
+      effectiveFrom: iso(v.effectiveFrom),
+      effectiveTo: isoOrNull(v.effectiveTo),
+      scheduled: v.scheduled,
+      reason: v.reason,
+      createdBy: v.createdBy,
+      createdAt: iso(v.createdAt),
+    }));
   }
 
   @Put('settings/:key')

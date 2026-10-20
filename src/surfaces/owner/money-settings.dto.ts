@@ -314,6 +314,49 @@ export class SettingVersionDto {
   effectiveFrom!: string;
 }
 
+export class SettingHistoryQuery {
+  @ApiPropertyOptional({
+    format: 'uuid',
+    example: FAKE.propertyId,
+    description: 'Only this property’s overrides (default: every property of my tenant).',
+  })
+  @IsOptional()
+  @IsUUID()
+  propertyId?: string;
+}
+
+export class SettingHistoryEntryDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  versionId!: string;
+
+  @ApiProperty({ enum: SettingScopeName, enumName: 'SettingScope', example: SettingScopeName.Tenant })
+  scope!: SettingScopeName;
+
+  @ApiProperty({ type: String, format: 'uuid', nullable: true, example: null })
+  propertyId!: string | null;
+
+  @ApiProperty({ oneOf: ANY_JSON, example: [1, 3, 7], description: 'The value (JSON) of this version.' })
+  value!: unknown;
+
+  @ApiProperty({ format: 'date-time', example: '2026-12-01T00:00:00+07:00' })
+  effectiveFrom!: string;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
+  effectiveTo!: string | null;
+
+  @ApiProperty({ example: true, description: 'Effective in the future (not in force yet).' })
+  scheduled!: boolean;
+
+  @ApiProperty({ example: 'ส่งแจ้งเตือนวันที่ 1, 3, 7' })
+  reason!: string;
+
+  @ApiProperty({ type: String, format: 'uuid', nullable: true, example: FAKE.uuid })
+  createdBy!: string | null;
+
+  @ApiProperty({ format: 'date-time', example: FAKE.dateTime })
+  createdAt!: string;
+}
+
 export class SettingsQuery {
   @ApiPropertyOptional({
     type: String,

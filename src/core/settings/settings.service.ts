@@ -142,6 +142,54 @@ export class SettingsService implements OnModuleInit {
     return versions;
   }
 
+  /**
+   * Every version of `key` that applies to the tenant — platform defaults, the tenant's own and its properties'
+   * (one property with `propertyId`) — newest effective date first, scheduled (future) ones included (web F2, D-214).
+   * Keys that never have a tenant or property value are `settings.unknown_key` for operators.
+   */
+  async history(ctx: TenantContext, key: string, propertyId?: string | null) {
+    const def = this.definition(key);
+    if (!def.scopeAllowed.includes('tenant') && !def.scopeAllowed.includes('property'))
+      throw new DomainException('settings.unknown_key', { params: { key } });
+    const select = {
+      id: true,
+      value: true,
+      effectiveFrom: true,
+      effectiveTo: true,
+      reason: true,
+      createdBy: true,
+      createdAt: true,
+    } as const;
+    const platform = await this.db.platform((tx) =>
+      tx.settingVersion.findMany({ where: { setting: { key } }, select }),
+    );
+    const own = await this.db.tenant(ctx, async (tx) => {
+      if (
+        propertyId &&
+        !(await tx.property.findFirst({ where: { id: propertyId, tenantId: ctx.tenantId, deletedAt: null } }))
+      )
+        throw new DomainException('http.not_found');
+      return {
+        tenant: await tx.tenantSettingVersion.findMany({
+          where: { tenantId: ctx.tenantId, setting: { key } },
+          select,
+        }),
+        property: await tx.propertySettingVersion.findMany({
+          where: { tenantId: ctx.tenantId, setting: { key }, ...(propertyId ? { propertyId } : {}) },
+          select: { ...select, propertyId: true },
+        }),
+      };
+    });
+    const now = this.clock.now().getTime();
+    return [
+      ...platform.map((v) => ({ ...v, scope: 'platform' as const, propertyId: null })),
+      ...own.tenant.map((v) => ({ ...v, scope: 'tenant' as const, propertyId: null })),
+      ...own.property.map((v) => ({ ...v, scope: 'property' as const })),
+    ]
+      .map((v) => ({ ...v, scheduled: v.effectiveFrom.getTime() > now }))
+      .sort((a, b) => b.effectiveFrom.getTime() - a.effectiveFrom.getTime() || (a.id < b.id ? 1 : -1));
+  }
+
   // ---------------------------------------------------------------------------------------------------------
   // Writes
 

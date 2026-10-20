@@ -66,7 +66,7 @@ export class PilotKpisService {
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
-  async compute(tenantId: string, window: KpiWindow = '90d') {
+  async compute(tenantId: string, window: KpiWindow = '90d', options: { requirePilot?: boolean } = {}) {
     const days = KPI_WINDOWS[window];
     if (!days)
       throw new DomainException('validation.failed', {
@@ -78,6 +78,8 @@ export class PilotKpisService {
       const tenant = await tx.tenant.findFirst({ where: { id: tenantId, deletedAt: null } });
       if (!tenant) throw new DomainException('http.not_found');
       const pilot = await tx.pilotAgreement.findUnique({ where: { tenantId } });
+      // the owner's own view (`/v1/owner/pilot-kpis`) exists only for a pilot (web F2, D-214)
+      if (!pilot && options.requirePilot) throw new DomainException('http.not_found');
       const current = await this.values(tx, tenantId, from, now);
       const acceptance = await this.acceptance(tx, tenantId, from, now);
       const baseline = (pilot?.baseline ?? {}) as PilotBaseline;

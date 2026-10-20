@@ -1347,6 +1347,18 @@ export class InstallOrderListQuery extends PageQuery {
   kind?: InstallOrderKindName;
 }
 
+export class SiteSurveyListQuery extends PageQuery {
+  @ApiPropertyOptional({ format: 'uuid', example: FAKE.tenantId })
+  @IsOptional()
+  @IsUUID()
+  tenantId?: string;
+
+  @ApiPropertyOptional({ enum: SiteSurveyStateName, enumName: 'SiteSurveyState' })
+  @IsOptional()
+  @IsEnum(SiteSurveyStateName)
+  state?: SiteSurveyStateName;
+}
+
 export class StaffInstallItemDto {
   @ApiProperty({
     enum: InstallItemKindName,

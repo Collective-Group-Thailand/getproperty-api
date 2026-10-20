@@ -25,6 +25,7 @@ import { ApiTags } from '@nestjs/swagger';
 
 import { type NotificationAudienceName } from '../owner/governance.dto';
 import {
+  TariffChargeDto,
   type TariffVersionStateName,
   type UtilityName,
   type UtilityProviderName,
@@ -52,6 +53,7 @@ import {
   ProvisioningCodeDto,
   RenderedMessageDto,
   TariffEnterDto,
+  TariffSampleQuery,
   TariffVerifyDto,
   TariffVersionDto,
   type TemplateFormatName,
@@ -72,6 +74,7 @@ const tariffVersionDto = (v: UtilityTariffVersion): TariffVersionDto => ({
   ceilingPerUnit: v.ceilingPerUnit.toFixed(4),
   needsCheck: v.needsCheck,
   sourceUrl: v.sourceUrl,
+  sourceDocumentId: v.sourceDocumentId,
   structure: v.structure as Record<string, unknown>,
   enteredBy: v.enteredBy,
   verifiedBy: v.verifiedBy,
@@ -88,6 +91,7 @@ const TARIFF_VERSION_EXAMPLE = {
   ceilingPerUnit: '4.6189',
   needsCheck: true,
   sourceUrl: 'https://www.mea.or.th/',
+  sourceDocumentId: null,
   structure: { kind: 'tiered', unit: 'kwh', currency: 'THB' },
   enteredBy: FAKE.uuid,
   verifiedBy: null,
@@ -179,9 +183,45 @@ export class AdminUtilityTariffsController {
         structure: body.structure as unknown as UtilityTariffStructure,
         sourceUrl: body.sourceUrl,
         sourcePublishedAt: body.sourcePublishedOn ?? null,
+        sourceDocumentId: body.sourceDocumentId ?? null,
         notes: body.notes ?? null,
       }),
     );
+  }
+
+  @Get('versions/:versionId/charge')
+  @Can('admin.utility_tariff.enter')
+  @ApiEndpoint({
+    id: 'admin.utilityTariffs.sampleCharge',
+    summary: 'Sample bill of a tariff version',
+    description:
+      'The bill for `units` under one version in any state (entered, verified, published, superseded) — what the checker compares with the notice before verifying and publishing (web F5, D-214). Same tariff math as `owner.utilityTariffs.current` (D-140); a time-of-use structure is 422.',
+    implements: ['D-021', 'D-140', 'D-214'],
+  })
+  @ApiSuccess(200, {
+    description: 'Sample bill',
+    type: TariffChargeDto,
+    example: {
+      units: '150',
+      totalExVat: '523.35',
+      effectiveAverageRate: '3.4890',
+      minimumApplied: false,
+      lines: [{ label: '0–150', units: '150', pricePerUnit: '3.2484', amount: '487.26' }],
+    },
+  })
+  @ApiStandardErrors('validation.failed', 'http.bad_request', 'http.not_found')
+  async sampleCharge(
+    @Param('versionId', ParseUUIDPipe) id: string,
+    @Query() query: TariffSampleQuery,
+  ): Promise<TariffChargeDto> {
+    const c = await this.tariffs.sampleCharge(id, query.units);
+    return {
+      units: c.units,
+      totalExVat: c.totalExVat,
+      effectiveAverageRate: c.effectiveAverageRate,
+      minimumApplied: c.minimumApplied,
+      lines: c.lines,
+    };
   }
 
   @Post('versions/:versionId/actions/verify')

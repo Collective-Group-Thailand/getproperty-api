@@ -18,6 +18,7 @@ import { CLOCK, type Clock } from '../clock/clock';
 import { DomainEvents } from '../events/domain-events';
 import { SettingsService } from '../settings/settings.service';
 import { TenantDataKeys } from '../tenancy/data-keys.service';
+import { workflowDefinition } from '../workflow/definitions';
 import { WorkflowService } from '../workflow/workflow.service';
 
 export const DSR_EVENTS = ['verify', 'start', 'fulfil', 'reject', 'withdraw'] as const;
@@ -201,6 +202,182 @@ export class DsrService extends TenantScopedRepository {
         payload: { dsrId: id, from: dsr.state, to: updated.state, kind: dsr.kind },
       });
       return updated;
+    });
+  }
+
+  /**
+   * Requests where Collective is the controller (`tenant_id` NULL: logins not linked to any tenant, platform users;
+   * web F5, D-214). Same state machine as the tenant workflow (definition `data_subject_request`) without a workflow
+   * instance (instances belong to a tenant); the due date is the one stored at receipt. `fulfil`: access /
+   * portability → a JSON export of the login (platform file); erasure → the login's contact data is anonymised and
+   * the login disabled — refused while it still works for a tenant (membership or linked party: that tenant is the
+   * controller of those records, 409 `dsr.erasure_blocked`). A tenant's request is 409 `dsr.tenant_controlled`.
+   */
+  async transitionPlatform(id: string, event: DsrEvent, notes?: string | null) {
+    const spec = workflowDefinition('data_subject_request');
+    return this.db.platform(async (tx) => {
+      const dsr = this.found(await tx.dataSubjectRequest.findUnique({ where: { id } }));
+      if (dsr.tenantId) throw new DomainException('dsr.tenant_controlled');
+      const terminal = new Set(spec.states.filter((st) => st.terminal).map((st) => st.key));
+      const t = spec.transitions.find(
+        (tr) =>
+          tr.event === event &&
+          (tr.from === '*'
+            ? !terminal.has(dsr.state)
+            : (Array.isArray(tr.from) ? tr.from : [tr.from]).includes(dsr.state)),
+      );
+      if (!t)
+        throw new DomainException('workflow.invalid_transition', { params: { event, state: dsr.state } });
+      const now = this.clock.now();
+      let exportDocumentId = dsr.exportDocumentId;
+      if (event === 'fulfil') {
+        if (dsr.kind === 'access' || dsr.kind === 'portability')
+          exportDocumentId = await this.exportPlatform(tx, dsr);
+        if (dsr.kind === 'erasure') await this.erasePlatform(tx, dsr);
+      }
+      const actor = userIdOf(RequestContext.actor());
+      const updated = await tx.dataSubjectRequest.update({
+        where: { id },
+        data: {
+          state: t.to as DsrState,
+          fulfilledAt: t.to === 'fulfilled' ? now : null,
+          handledBy: actor,
+          exportDocumentId,
+          notes: notes ?? dsr.notes,
+          updatedBy: actor,
+        },
+      });
+      await this.audit.record(tx, {
+        action: event === 'fulfil' ? 'dsr.fulfilled' : 'dsr.transitioned',
+        tenantId: null,
+        subjectType: SUBJECT_TYPE,
+        subjectId: id,
+        before: { state: dsr.state },
+        after: { state: updated.state, exportDocumentId, controller: 'platform' },
+      });
+      await this.events.record(tx, {
+        type: 'dsr.transitioned',
+        aggregateType: 'data_subject_request',
+        aggregateId: id,
+        tenantId: null,
+        payload: { dsrId: id, from: dsr.state, to: updated.state, kind: dsr.kind },
+      });
+      return updated;
+    });
+  }
+
+  private async exportPlatform(tx: Tx, dsr: DataSubjectRequest): Promise<string> {
+    const user = dsr.subjectId ? await tx.userAccount.findUnique({ where: { id: dsr.subjectId } }) : null;
+    const consents = dsr.subjectId
+      ? await tx.consent.findMany({ where: { tenantId: null, subjectId: dsr.subjectId } })
+      : [];
+    const memberships = dsr.subjectId
+      ? await tx.membership.findMany({
+          where: { userId: dsr.subjectId },
+          select: { tenantId: true, role: true, status: true },
+        })
+      : [];
+    const body = Buffer.from(
+      JSON.stringify(
+        {
+          generatedAt: this.clock.now().toISOString(),
+          controller: 'Collective Group (Thailand)',
+          requestId: dsr.id,
+          account: user
+            ? {
+                id: user.id,
+                displayName: user.displayName,
+                email: user.email,
+                phone: user.phoneE164,
+                lineUserId: user.lineUserId,
+                language: user.language,
+                status: user.status,
+                createdAt: user.createdAt,
+                lastLoginAt: user.lastLoginAt,
+              }
+            : null,
+          memberships,
+          consents: consents.map((c) => ({
+            purposeVersionId: c.purposeVersionId,
+            granted: c.granted,
+            at: c.capturedAt,
+          })),
+        },
+        null,
+        2,
+      ),
+    );
+    const id = uuidv7();
+    const key = `p/export/${this.clock.now().toISOString().slice(0, 7).replace('-', '/')}/${id}.json`;
+    await this.storage.put(key, body, 'application/json');
+    await tx.document.create({
+      data: {
+        id,
+        tenantId: null,
+        scopeType: 'platform',
+        scopeId: null,
+        kind: 'export',
+        title: `dsr-${dsr.id}.json`,
+        storageBucket: this.config.get('S3_BUCKET'),
+        storageKey: key,
+        mimeType: 'application/json',
+        sizeBytes: BigInt(body.length),
+        sha256: new Uint8Array(createHash('sha256').update(body).digest()),
+        retentionClass: 'export',
+        scanStatus: 'skipped',
+        uploadState: 'verified',
+        uploadedAt: this.clock.now(),
+        createdBy: userIdOf(RequestContext.actor()),
+      },
+    });
+    await this.audit.record(tx, {
+      action: 'export.created',
+      tenantId: null,
+      subjectType: 'core.document',
+      subjectId: id,
+      metadata: { reason: 'dsr', dsrId: dsr.id },
+    });
+    return id;
+  }
+
+  private async erasePlatform(tx: Tx, dsr: DataSubjectRequest): Promise<void> {
+    if (!dsr.subjectId) return;
+    const working =
+      (await tx.membership.count({ where: { userId: dsr.subjectId, status: 'active', deletedAt: null } })) +
+      (await tx.partyUserLink.count({ where: { userId: dsr.subjectId, state: 'active' } }));
+    if (working > 0) throw new DomainException('dsr.erasure_blocked');
+    const now = this.clock.now();
+    await tx.userAccount.update({
+      where: { id: dsr.subjectId },
+      data: {
+        displayName: 'ลบข้อมูลแล้ว (PDPA)',
+        // the account must keep one contact (core CHECK): a non-routable tombstone, unique and without PII
+        email: `erased+${dsr.subjectId}@erased.invalid`,
+        emailVerifiedAt: null,
+        phoneE164: null,
+        phoneHash: null,
+        phoneVerifiedAt: null,
+        lineUserId: null,
+        status: 'disabled',
+        disabledAt: now,
+        disabledReason: `dsr:${dsr.id}`,
+        updatedBy: userIdOf(RequestContext.actor()),
+      },
+    });
+    const identities = await tx.userIdentity.findMany({ where: { userId: dsr.subjectId } });
+    for (const i of identities)
+      await tx.userIdentity.update({
+        where: { id: i.id },
+        data: {
+          providerSubject: `erased:${i.id}`,
+          displayName: null,
+          pictureUrl: null,
+          rawClaims: {},
+        },
+      });
+    await tx.authSession.updateMany({
+      where: { userId: dsr.subjectId, revokedAt: null },
+      data: { revokedAt: now },
     });
   }
 
