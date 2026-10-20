@@ -8,6 +8,7 @@ import { type UnitRow } from '@modules/ops-units/units.service';
 
 import { dateOnly, iso, isoOrNull } from '../shared/mappers';
 import { unitActions } from '../shared/next-actions';
+import { type MeterHealthName, type ReadingSourceName } from '../shared/smart.dto';
 import { LeaseStatusName } from '../shared/status.enums';
 import {
   type ActiveStatusName,
@@ -145,7 +146,19 @@ export const utilityAccountDto = (a: UtilityAccount): UtilityAccountDto => ({
   label: a.label,
 });
 
-export const meterDto = (m: MeterRow): MeterDto => ({
+/** What `smart.meter_status` adds to a meter (web F2 2.5, D-208). */
+export interface MeterStatusView {
+  health: string;
+  lastReading: {
+    id: string;
+    register: string;
+    readAt: Date;
+    source: string;
+    photoDocumentId: string | null;
+  } | null;
+}
+
+export const meterDto = (m: MeterRow, status?: MeterStatusView | null): MeterDto => ({
   id: m.id,
   assetItemId: m.assetItemId,
   unitId: m.unitId,
@@ -160,6 +173,15 @@ export const meterDto = (m: MeterRow): MeterDto => ({
   multiplier: m.multiplier.toFixed(6),
   validFrom: iso(m.validFrom),
   validTo: isoOrNull(m.validTo),
+  buildingId: m.buildingId,
+  health: (status?.health ?? null) as MeterHealthName | null,
+  lastReading: status?.lastReading
+    ? {
+        ...status.lastReading,
+        readAt: iso(status.lastReading.readAt),
+        source: status.lastReading.source as ReadingSourceName,
+      }
+    : null,
 });
 
 export const amenityDto = (a: AssetItem): AmenityDto => ({
@@ -297,6 +319,15 @@ export const METER_EXAMPLE: MeterDto = {
   multiplier: '1.000000',
   validFrom: FAKE.dateTime,
   validTo: null,
+  buildingId: FAKE.buildingId,
+  health: 'ok' as MeterHealthName,
+  lastReading: {
+    id: FAKE.uuid,
+    register: '1234.500',
+    readAt: FAKE.dateTime,
+    source: 'ocr' as ReadingSourceName,
+    photoDocumentId: FAKE.uuid,
+  },
 };
 
 export const AMENITY_EXAMPLE: AmenityDto = {

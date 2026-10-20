@@ -5,6 +5,7 @@ import { Type } from 'class-transformer';
 import { IsEnum, IsOptional, IsUUID, Matches, ValidateNested } from 'class-validator';
 
 import { DocumentKindName } from '../shared/status.enums';
+import { UtilityName } from './assets.dto';
 
 /** Paper of a billing document (B4.3): A4, or the 80 mm roll of receipt printers (invoices and receipts). */
 export enum DocumentPaperName {
@@ -24,6 +25,72 @@ export class ResendResultDto {
   invoiceId!: string;
 
   @ApiProperty({ example: 'line', description: 'The billed party receives the invoice Flex message again.' })
+  channel!: string;
+
+  @ApiProperty({ format: 'date-time', example: FAKE.dateTime })
+  requestedAt!: string;
+}
+
+export enum InvoiceDeliveryKindName {
+  Issue = 'issue',
+  Resend = 'resend',
+  Reminder = 'reminder',
+}
+
+/** Delivery state of one message (`platform.notification.state` grouped for the console). */
+export enum InvoiceDeliveryStatusName {
+  Queued = 'queued',
+  Held = 'held',
+  Sent = 'sent',
+  Delivered = 'delivered',
+  Failed = 'failed',
+  Cancelled = 'cancelled',
+}
+
+export class InvoiceDeliveryDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({ example: 'line', description: 'line, sms, email, in_app or web_push.' })
+  channel!: string;
+
+  @ApiProperty({
+    enum: InvoiceDeliveryKindName,
+    enumName: 'InvoiceDeliveryKind',
+    example: InvoiceDeliveryKindName.Issue,
+  })
+  kind!: InvoiceDeliveryKindName;
+
+  @ApiProperty({
+    enum: InvoiceDeliveryStatusName,
+    enumName: 'InvoiceDeliveryStatus',
+    example: InvoiceDeliveryStatusName.Delivered,
+    description:
+      "`held` = waiting for quiet hours to end or for the resident's consent (D-025, D-063); `delivered` includes read; `cancelled` = not sent on purpose (no address, channel or topic switched off).",
+  })
+  status!: InvoiceDeliveryStatusName;
+
+  @ApiProperty({
+    format: 'date-time',
+    example: FAKE.dateTime,
+    description: 'Sent, delivered or failed at; else planned for.',
+  })
+  at!: string;
+
+  @ApiProperty({ type: String, nullable: true, example: null })
+  error!: string | null;
+}
+
+export class InvoiceDeliveriesDto {
+  @ApiProperty({ type: () => [InvoiceDeliveryDto] })
+  data!: InvoiceDeliveryDto[];
+}
+
+export class ReceiptResendResultDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  receiptId!: string;
+
+  @ApiProperty({ example: 'line', description: 'The payer receives the receipt Flex message again.' })
   channel!: string;
 
   @ApiProperty({ format: 'date-time', example: FAKE.dateTime })
@@ -88,6 +155,7 @@ export enum ExportKindName {
   Tm30 = 'tm30',
   UnitsXlsx = 'units_xlsx',
   TaxAnnualSummary = 'tax_annual_summary',
+  LossReportCsv = 'loss_report_csv',
 }
 
 /** `ops.job_status`. */
@@ -120,6 +188,16 @@ export class ExportParamsDto {
   @IsOptional()
   @IsUUID()
   buildingId?: string;
+
+  @ApiPropertyOptional({
+    enum: UtilityName,
+    enumName: 'Utility',
+    example: UtilityName.Electric,
+    description: 'The utility of a `loss_report_csv` (with `buildingId` and the billing period).',
+  })
+  @IsOptional()
+  @IsEnum(UtilityName)
+  utility?: UtilityName;
 }
 
 export class ExportCreateDto {

@@ -13,6 +13,7 @@ enum ExportKind {
   tm30
   units_xlsx
   tax_annual_summary
+  loss_report_csv
 
   @@map("export_kind")
   @@schema("ops")

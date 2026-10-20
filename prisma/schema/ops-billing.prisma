@@ -226,6 +226,7 @@ model BillingCycle {
   charges        InvoiceCharge[]
   lossReports    LossReport[]
   readingBatches ReadingBatch[]
+  readingRequests ReadingRequest[]
 
   @@unique([propertyId, periodStart], map: "billing_cycle_property_id_period_start_key")
   @@unique([propertyId, periodKey], map: "billing_cycle_property_id_period_key_key")

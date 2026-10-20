@@ -111,6 +111,8 @@ export const DOMAIN_EVENT_TYPES = {
   'reading.accepted': 'A meter reading was accepted into smart.meter_reading (D-012, D-030).',
   'reading.review_requested': 'A reading waits in the owner review queue (D-035).',
   'reading.reviewed': 'The owner accepted, corrected (superseding row, D-142) or rejected a reading.',
+  'reading.requested':
+    'The owner asked staff to read meters of a billing cycle, optionally assigned to one login (web F2, D-208).',
   // B3.4 health and loss
   'meter.stale': 'A meter has no reading for longer than health.stale_after (D-034).',
   'meter.silent': 'A meter has no reading for longer than the silent threshold (D-034).',
@@ -155,6 +157,7 @@ export const DOMAIN_EVENT_TYPES = {
   'payment.reversed': 'A confirmed payment was reversed (chargeback or owner correction).',
   'payment.refunded': 'An overpayment or credit was refunded to the payer with evidence (D-044).',
   'receipt.issued': 'A receipt (payment, deposit or advance) was numbered and issued (D-044).',
+  'receipt.resent': 'The owner sent an issued receipt to the payer again (LINE Flex, D-208).',
   'tax_invoice.issued':
     'A tax invoice / receipt-tax invoice was issued for a VAT-registered tenant (D-050, O-004).',
   'slip.uploaded': 'A resident uploaded a transfer slip for an invoice (D-043).',

@@ -231,11 +231,11 @@ describe('B4.4 payments, slips, settlement, receipts (real PostgreSQL)', () => {
       number: inv.number,
       due: '5344.00',
       qr: { payload: qr[0]!.payload, amount: '5344.00', reference: inv.ref },
-      account: { accountNoMasked: expect.stringMatching(/7890$/) },
+      // LIFF #20 (D-209): the full receiving account and its bank while something is due (the reveal is audited)
+      account: { accountNoMasked: expect.stringMatching(/7890$/), accountNo: '1234567890', bankCode: '004' },
       allowSlip: true,
       allowPartial: false,
     });
-    expect(JSON.stringify(page.body)).not.toContain('1234567890');
   });
 
   it('provider callback → paid → receipt; a repeated callback is ignored; a bad signature is refused', async () => {

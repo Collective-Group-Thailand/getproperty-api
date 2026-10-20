@@ -6958,6 +6958,25 @@
         ],
         "type": "string"
       },
+      "DocumentRefDto": {
+        "properties": {
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "number": {
+            "description": "Document number.",
+            "example": "RC-2026-00042",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number"
+        ],
+        "type": "object"
+      },
       "DocumentSample": {
         "enum": [
           "invoice",
@@ -7542,7 +7561,8 @@
           "readings_csv",
           "tm30",
           "units_xlsx",
-          "tax_annual_summary"
+          "tax_annual_summary",
+          "loss_report_csv"
         ],
         "type": "string"
       },
@@ -7563,6 +7583,15 @@
             "description": "Bangkok month (YYYY-MM).",
             "example": "2026-11",
             "type": "string"
+          },
+          "utility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Utility"
+              }
+            ],
+            "description": "The utility of a `loss_report_csv` (with `buildingId` and the billing period).",
+            "example": "electric"
           }
         },
         "type": "object"
@@ -10405,6 +10434,93 @@
         ],
         "type": "string"
       },
+      "InvoiceDeliveriesDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceDeliveryDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "InvoiceDeliveryDto": {
+        "properties": {
+          "at": {
+            "description": "Sent, delivered or failed at; else planned for.",
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "channel": {
+            "description": "line, sms, email, in_app or web_push.",
+            "example": "line",
+            "type": "string"
+          },
+          "error": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InvoiceDeliveryKind"
+              }
+            ],
+            "example": "issue"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InvoiceDeliveryStatus"
+              }
+            ],
+            "description": "`held` = waiting for quiet hours to end or for the resident's consent (D-025, D-063); `delivered` includes read; `cancelled` = not sent on purpose (no address, channel or topic switched off).",
+            "example": "delivered"
+          }
+        },
+        "required": [
+          "id",
+          "channel",
+          "kind",
+          "status",
+          "at",
+          "error"
+        ],
+        "type": "object"
+      },
+      "InvoiceDeliveryKind": {
+        "enum": [
+          "issue",
+          "resend",
+          "reminder"
+        ],
+        "type": "string"
+      },
+      "InvoiceDeliveryStatus": {
+        "description": "`held` = waiting for quiet hours to end or for the resident's consent (D-025, D-063); `delivered` includes read; `cancelled` = not sent on purpose (no address, channel or topic switched off).",
+        "enum": [
+          "queued",
+          "held",
+          "sent",
+          "delivered",
+          "failed",
+          "cancelled"
+        ],
+        "type": "string"
+      },
       "InvoiceDto": {
         "properties": {
           "amountDue": {
@@ -10577,6 +10693,14 @@
               "null"
             ]
           },
+          "qrPayload": {
+            "description": "EMVCo payload of the active Thai QR of the invoice (render it as a QR code); null without a QR (no provider, paid, void). D-042, D-208.",
+            "example": "00020101021230...6304ABCD",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "replacedByInvoiceId": {
             "example": null,
             "format": "uuid",
@@ -10709,6 +10833,7 @@
           "replacesInvoiceId",
           "replacedByInvoiceId",
           "promptpayRef",
+          "qrPayload",
           "snapshotSha256",
           "nextActions"
         ],
@@ -11484,6 +11609,45 @@
           "en"
         ],
         "type": "string"
+      },
+      "LeaseCompliancePreviewDto": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/LeasePreviewCheckDto"
+            },
+            "type": "array"
+          },
+          "defaults": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LeasePreviewDefaultsDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "inScope": {
+            "description": "The tenant is in scope of the announcement (D-158).",
+            "example": true,
+            "type": "boolean"
+          },
+          "problems": {
+            "description": "What the create would refuse or ask to acknowledge; empty = it would be written as is.",
+            "items": {
+              "$ref": "#/components/schemas/LeasePreviewProblemDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "inScope",
+          "checks",
+          "problems",
+          "defaults"
+        ],
+        "type": "object"
       },
       "LeaseComplianceViewDto": {
         "properties": {
@@ -12395,6 +12559,155 @@
           "role",
           "isSigner",
           "signedAt"
+        ],
+        "type": "object"
+      },
+      "LeasePreviewCheckDto": {
+        "properties": {
+          "context": {
+            "additionalProperties": true,
+            "description": "The values the rule compared.",
+            "example": {
+              "capAmount": "9000.00",
+              "depositAmount": "13500.00"
+            },
+            "type": "object"
+          },
+          "legalRef": {
+            "example": "ประกาศ สคบ. 2568 ข้อ 4 (3)",
+            "type": "string"
+          },
+          "outcome": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ComplianceOutcome"
+              }
+            ],
+            "description": "What `POST /v1/owner/leases` would do with this rule now: pass, warn (acknowledge) or block.",
+            "example": "pass"
+          },
+          "ruleId": {
+            "example": "compliance.deposit_cap",
+            "type": "string"
+          },
+          "severity": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ComplianceSeverity"
+              }
+            ],
+            "example": "block"
+          }
+        },
+        "required": [
+          "ruleId",
+          "outcome",
+          "severity",
+          "legalRef",
+          "context"
+        ],
+        "type": "object"
+      },
+      "LeasePreviewDefaultsDto": {
+        "properties": {
+          "advanceRentAmount": {
+            "description": "Advance rent the API applies when none is given. Unit: THB, decimal string (D-046).",
+            "example": "4500.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "billingDay": {
+            "example": null,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "depositAmount": {
+            "description": "Deposit the API applies when none is given (room type months). Unit: THB, decimal string (D-046).",
+            "example": "4500.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "endDate": {
+            "example": "2027-10-31",
+            "format": "date",
+            "type": "string"
+          },
+          "lines": {
+            "description": "Fixed lines (given, else the room type defaults).",
+            "items": {
+              "$ref": "#/components/schemas/LeaseLineInputDto"
+            },
+            "type": "array"
+          },
+          "months": {
+            "example": 12,
+            "type": "integer"
+          },
+          "rent": {
+            "description": "Rent used (given, else the unit base rent or room type). Unit: THB, decimal string (D-046).",
+            "example": "4500.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rent",
+          "depositAmount",
+          "advanceRentAmount",
+          "billingDay",
+          "months",
+          "endDate",
+          "lines"
+        ],
+        "type": "object"
+      },
+      "LeasePreviewProblemDto": {
+        "properties": {
+          "code": {
+            "description": "The problem code the create would answer.",
+            "example": "compliance.deposit_cap",
+            "type": "string"
+          },
+          "errors": {
+            "example": [
+              {
+                "code": "max",
+                "message": "deposit + advance exceed 3 months of rent",
+                "path": "depositAmount"
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProblemFieldError"
+            },
+            "type": "array"
+          },
+          "legalRef": {
+            "example": "ประกาศ สคบ. 2568 ข้อ 4 (3)",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ruleId": {
+            "example": "compliance.deposit_cap",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "example": 422,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "status",
+          "ruleId",
+          "legalRef",
+          "errors"
         ],
         "type": "object"
       },
@@ -13674,6 +13987,11 @@
             "format": "uuid",
             "type": "string"
           },
+          "buildingId": {
+            "example": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+            "format": "uuid",
+            "type": "string"
+          },
           "code": {
             "example": "A-201-E",
             "type": "string"
@@ -13685,6 +14003,18 @@
               "null"
             ]
           },
+          "health": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeterHealth"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Health of the meter (D-034); null before its first reading or telemetry.",
+            "example": "ok"
+          },
           "id": {
             "description": "core.meter_assignment id.",
             "example": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -13695,6 +14025,17 @@
             "description": "Register at installation (kWh / m³), decimal string.",
             "example": "0.000",
             "type": "string"
+          },
+          "lastReading": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoundLastReadingDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last accepted reading (D-012), with its photo when it has one."
           },
           "multiplier": {
             "description": "CT ratio / scaling, decimal string.",
@@ -13771,11 +14112,15 @@
           "initialReading",
           "multiplier",
           "validFrom",
-          "validTo"
+          "validTo",
+          "buildingId",
+          "health",
+          "lastReading"
         ],
         "type": "object"
       },
       "MeterHealth": {
+        "description": "Health of the meter (D-034); null before its first reading or telemetry.",
         "enum": [
           "ok",
           "stale",
@@ -14170,6 +14515,15 @@
       },
       "MeterSegmentEndDto": {
         "properties": {
+          "photoDocumentId": {
+            "description": "The evidence photo of the reading (`core.document`, download through `files/{id}`); null for IoT readings and older invoices (D-012, D-208).",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "readAt": {
             "example": "2026-10-25T23:59:00+07:00",
             "format": "date-time",
@@ -14198,7 +14552,8 @@
           "readingId",
           "register",
           "readAt",
-          "source"
+          "source",
+          "photoDocumentId"
         ],
         "type": "object"
       },
@@ -18492,7 +18847,8 @@
           "building_month",
           "building_year",
           "month",
-          "report"
+          "report",
+          "meter_point_month"
         ],
         "type": "string"
       },
@@ -18883,6 +19239,15 @@
             "example": "THB",
             "type": "string"
           },
+          "effectiveFrom": {
+            "description": "Effective date of the price version in force; null for a proposal.",
+            "example": "2026-01-01",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "features": {
             "description": "Modules included in the plan (D-150, D-156).",
             "example": [
@@ -18953,6 +19318,11 @@
             ],
             "example": "unit_month"
           },
+          "sold": {
+            "description": "A published price version is in force and the plan is sold now; false = a proposal (draft version) shown for information (D-204, D-208).",
+            "example": true,
+            "type": "boolean"
+          },
           "status": {
             "allOf": [
               {
@@ -18998,7 +19368,9 @@
           "currency",
           "vatIncluded",
           "status",
-          "features"
+          "features",
+          "sold",
+          "effectiveFrom"
         ],
         "type": "object"
       },
@@ -19424,6 +19796,120 @@
         ],
         "type": "string"
       },
+      "ReadingRequestCreateDto": {
+        "properties": {
+          "assigneeUserId": {
+            "description": "A staff login who captures readings on those buildings; omitted = any staff.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "meterAssignmentIds": {
+            "description": "Meter assignments to read (of the cycle’s buildings); omitted = every meter still missing in the round.",
+            "example": [
+              "3b241101-e2bb-4255-8caf-4136c566a962"
+            ],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "note": {
+            "example": "ห้อง A-305 มิเตอร์อยู่หลังตู้",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ReadingRequestDto": {
+        "properties": {
+          "assetItemId": {
+            "example": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+            "format": "uuid",
+            "type": "string"
+          },
+          "assigneeUserId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "example": "A-305-E",
+            "type": "string"
+          },
+          "dueAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "meterAssignmentId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReadingRequestStatus"
+              }
+            ],
+            "example": "open"
+          }
+        },
+        "required": [
+          "id",
+          "meterAssignmentId",
+          "assetItemId",
+          "code",
+          "assigneeUserId",
+          "status",
+          "dueAt"
+        ],
+        "type": "object"
+      },
+      "ReadingRequestStatus": {
+        "enum": [
+          "open",
+          "fulfilled",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "ReadingRequestsDto": {
+        "properties": {
+          "billingCycleId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "requests": {
+            "items": {
+              "$ref": "#/components/schemas/ReadingRequestDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "billingCycleId",
+          "requests"
+        ],
+        "type": "object"
+      },
       "ReadingReviewDto": {
         "properties": {
           "bandHigh": {
@@ -19777,6 +20263,31 @@
           "advance"
         ],
         "type": "string"
+      },
+      "ReceiptResendResultDto": {
+        "properties": {
+          "channel": {
+            "description": "The payer receives the receipt Flex message again.",
+            "example": "line",
+            "type": "string"
+          },
+          "receiptId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "requestedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "receiptId",
+          "channel",
+          "requestedAt"
+        ],
+        "type": "object"
       },
       "ReceivableDto": {
         "properties": {
@@ -20380,8 +20891,21 @@
             "example": "บริษัท ตัวอย่าง จำกัด",
             "type": "string"
           },
+          "accountNo": {
+            "description": "The landlord’s receiving account in full (digits), for typing into a banking app — only while something is due; every reveal is audited (`pii.decrypted`, purpose `resident_transfer`; D-043, D-209). Null when nothing is due.",
+            "example": "1234567890",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "accountNoMasked": {
             "example": "xxx-x-x1234-x",
+            "type": "string"
+          },
+          "bankCode": {
+            "description": "Bank code (Bank of Thailand), to offer that bank’s app first.",
+            "example": "004",
             "type": "string"
           },
           "bankNameTh": {
@@ -20392,7 +20916,9 @@
         "required": [
           "bankNameTh",
           "accountName",
-          "accountNoMasked"
+          "accountNoMasked",
+          "accountNo",
+          "bankCode"
         ],
         "type": "object"
       },
@@ -20785,6 +21311,13 @@
             "pattern": "^-?\\d{1,12}\\.\\d{2}$",
             "type": "string"
           },
+          "receipts": {
+            "description": "Receipts of the payments allocated to this invoice (voided ones left out), LIFF #19.",
+            "items": {
+              "$ref": "#/components/schemas/DocumentRefDto"
+            },
+            "type": "array"
+          },
           "status": {
             "allOf": [
               {
@@ -20798,6 +21331,15 @@
             "example": "5344.00",
             "pattern": "^-?\\d{1,12}\\.\\d{2}$",
             "type": "string"
+          },
+          "unitId": {
+            "description": "The unit billed (match it with `me.units[].unitId` to pick the invoice of the selected unit, LIFF #15).",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "unitNo": {
             "example": "A-201",
@@ -20813,11 +21355,13 @@
           "status",
           "issuerName",
           "unitNo",
+          "unitId",
           "periodStart",
           "periodEnd",
           "issuedAt",
           "dueDate",
           "isFinal",
+          "receipts",
           "lines",
           "total",
           "priorBalance",
@@ -20829,6 +21373,11 @@
       },
       "ResidentInvoiceLineDto": {
         "properties": {
+          "aboveCap": {
+            "description": "The rate is above the utility’s effective rate; the owner acknowledged the warning (D-021a).",
+            "example": false,
+            "type": "boolean"
+          },
           "amount": {
             "description": "Amount. Unit: THB, decimal string (D-046).",
             "example": "840.00",
@@ -20874,6 +21423,23 @@
             "example": "120.000",
             "type": "string"
           },
+          "readAt": {
+            "description": "When the closing reading of a meter line was taken (D-012, D-022); null for other lines.",
+            "example": "2026-10-31T23:59:00+07:00",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "readingPhotoUrl": {
+            "description": "5-minute link to the photo of the closing reading (OCR / manual readings); null for IoT readings and lines without a meter.",
+            "example": "https://storage.example.com/meter-photo?X-Amz-Signature=abc",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "readingSource": {
             "description": "Reading source badge (D-012).",
             "example": "iot",
@@ -20898,6 +21464,15 @@
               "null"
             ]
           },
+          "sourceType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InvoiceLineSourceType"
+              }
+            ],
+            "description": "What the line is billed from (group the lines by it, LIFF #15).",
+            "example": "meter"
+          },
           "unit": {
             "example": "kwh",
             "type": [
@@ -20907,6 +21482,14 @@
           },
           "unitPrice": {
             "example": "7.0000",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "units": {
+            "description": "Units billed on a meter line.",
+            "example": "120.000",
             "type": [
               "string",
               "null"
@@ -20926,7 +21509,12 @@
           "registerFrom",
           "registerTo",
           "readingSource",
-          "isEstimated"
+          "isEstimated",
+          "sourceType",
+          "readAt",
+          "readingPhotoUrl",
+          "units",
+          "aboveCap"
         ],
         "type": "object"
       },
@@ -21127,6 +21715,15 @@
             "example": "อาคาร A",
             "type": "string"
           },
+          "endDate": {
+            "description": "Last day of the term; null for an open-ended lease.",
+            "example": "2027-10-31",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "leaseId": {
             "example": "3b241101-e2bb-4255-8caf-4136c566a962",
             "format": "uuid",
@@ -21147,6 +21744,12 @@
             ],
             "description": "My role on the lease.",
             "example": "lessee"
+          },
+          "startDate": {
+            "description": "First day of the lease term (LIFF #21).",
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
           },
           "status": {
             "allOf": [
@@ -21178,7 +21781,9 @@
           "tenantName",
           "unitNo",
           "buildingName",
-          "role"
+          "role",
+          "startDate",
+          "endDate"
         ],
         "type": "object"
       },
@@ -21487,6 +22092,78 @@
         ],
         "type": "object"
       },
+      "ResidentReceiptDetailDto": {
+        "properties": {
+          "amount": {
+            "description": "Received. Unit: THB, decimal string (D-046).",
+            "example": "5344.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "hasDocument": {
+            "description": "The PDF is ready (`GET …/receipts/{id}/document`).",
+            "example": true,
+            "type": "boolean"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "invoices": {
+            "description": "The invoices the payment of this receipt paid (LIFF #19).",
+            "items": {
+              "$ref": "#/components/schemas/DocumentRefDto"
+            },
+            "type": "array"
+          },
+          "issuedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "issuerName": {
+            "example": "หอพักตัวอย่าง",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReceiptKind"
+              }
+            ],
+            "example": "payment"
+          },
+          "number": {
+            "example": "RCP-2026-00001",
+            "type": "string"
+          },
+          "unitNo": {
+            "example": "A-201",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "voided": {
+            "example": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "kind",
+          "amount",
+          "issuedAt",
+          "issuerName",
+          "unitNo",
+          "voided",
+          "invoices",
+          "hasDocument"
+        ],
+        "type": "object"
+      },
       "ResidentReceiptDto": {
         "properties": {
           "amount": {
@@ -21642,6 +22319,69 @@
         "required": [
           "image",
           "mimeType"
+        ],
+        "type": "object"
+      },
+      "ResidentSlipOutcomeDto": {
+        "properties": {
+          "decidedAt": {
+            "description": "When it was confirmed, approved, rejected or found a duplicate; null while it waits.",
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "reasons": {
+            "description": "Why the office checks it (empty when confirmed automatically).",
+            "example": [
+              "amount_below_due"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/SlipReason"
+            },
+            "type": "array"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SlipStatus"
+              }
+            ],
+            "example": "pending_review"
+          },
+          "uploadedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "reasons",
+          "uploadedAt",
+          "decidedAt"
+        ],
+        "type": "object"
+      },
+      "ResidentSlipOutcomesDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ResidentSlipOutcomeDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
         ],
         "type": "object"
       },
@@ -22036,6 +22776,24 @@
         ],
         "type": "string"
       },
+      "RoundAssigneeDto": {
+        "properties": {
+          "displayName": {
+            "example": "สมศรี ใจดี",
+            "type": "string"
+          },
+          "userId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "displayName"
+        ],
+        "type": "object"
+      },
       "RoundBuildingDto": {
         "properties": {
           "batchId": {
@@ -22153,6 +22911,17 @@
             "format": "uuid",
             "type": "string"
           },
+          "assignee": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoundAssigneeDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The staff login the owner assigned the reading to (`request-readings`, D-208); null = anyone."
+          },
           "code": {
             "example": "E-A-201",
             "type": "string"
@@ -22196,6 +22965,11 @@
             ],
             "example": "unit"
           },
+          "requested": {
+            "description": "The owner asked for this reading (an open reading request).",
+            "example": false,
+            "type": "boolean"
+          },
           "unitId": {
             "example": "3b241101-e2bb-4255-8caf-4136c566a962",
             "format": "uuid",
@@ -22230,7 +23004,9 @@
           "unitNo",
           "iot",
           "health",
-          "lastReading"
+          "lastReading",
+          "assignee",
+          "requested"
         ],
         "type": "object"
       },
@@ -23200,6 +23976,18 @@
         ],
         "type": "string"
       },
+      "SlipReason": {
+        "description": "Why the office checks it (empty when confirmed automatically).",
+        "enum": [
+          "not_recognised",
+          "duplicate_reference",
+          "receiver_mismatch",
+          "amount_above_due",
+          "amount_below_due",
+          "amount_unreadable"
+        ],
+        "type": "string"
+      },
       "SlipReviewDto": {
         "properties": {
           "amountDetected": {
@@ -23710,6 +24498,11 @@
             "format": "uuid",
             "type": "string"
           },
+          "buildingId": {
+            "example": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+            "format": "uuid",
+            "type": "string"
+          },
           "channel": {
             "anyOf": [
               {
@@ -23739,6 +24532,18 @@
               "null"
             ]
           },
+          "health": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeterHealth"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Health of the meter (D-034); null before its first reading or telemetry.",
+            "example": "ok"
+          },
           "id": {
             "description": "core.meter_assignment id.",
             "example": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -23749,6 +24554,17 @@
             "description": "Register at installation (kWh / m³), decimal string.",
             "example": "0.000",
             "type": "string"
+          },
+          "lastReading": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoundLastReadingDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last accepted reading (D-012), with its photo when it has one."
           },
           "lastRegister": {
             "description": "Last accepted register (kWh / m³), estimates excluded; decimal string.",
@@ -23834,6 +24650,9 @@
           "multiplier",
           "validFrom",
           "validTo",
+          "buildingId",
+          "health",
+          "lastReading",
           "floorName",
           "lastRegister",
           "channel"
@@ -61202,6 +62021,283 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/billing-cycles/{billingCycleId}/actions/request-readings": {
+      "post": {
+        "description": "Turns missing readings into staff tasks (web F2 2.3): every meter of the cycle’s buildings still missing in the reading round, or the meter assignments given, get an open reading request — optionally assigned to one staff login (who must capture readings on that building) — due at the grace deadline. Repeating re-assigns the open requests. The next accepted or pending reading fulfils a request; the round shows `assignee` and the staff get `reading.requested` (D-031, D-035, D-208).\n\nImplements: D-031, D-035, D-208.",
+        "operationId": "owner.billingCycles.requestReadings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "billingCycleId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "assigneeUserId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "meterAssignmentIds": [
+                      "3b241101-e2bb-4255-8caf-4136c566a962"
+                    ]
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ReadingRequestCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "billingCycleId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "requests": [
+                    {
+                      "assetItemId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                      "assigneeUserId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "code": "A-305-E",
+                      "dueAt": "2026-11-01T00:15:00+07:00",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "meterAssignmentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "status": "open"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ReadingRequestsDto"
+                }
+              }
+            },
+            "description": "Open requests",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "asset.read_only": {
+                    "$ref": "#/components/examples/problem.asset.read_only"
+                  },
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `asset.read_only`, `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "billing_cycle.invalid_state": {
+                    "$ref": "#/components/examples/problem.billing_cycle.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `billing_cycle.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Ask staff to read meters of the cycle",
+        "tags": [
+          "owner.billing"
+        ],
+        "x-required-permissions": [
+          "invoice.issue"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/billing-documents": {
       "get": {
         "description": "Invoices, notes, receipts, tax invoices, deposit receipts and statements, contracts and reports generated in a Bangkok month — the archive view; download through `GET /v1/owner/files/{fileId}` or export the month as a ZIP (`POST /v1/owner/exports`, `document_archive_zip`, D-050).\n\nImplements: D-050, D-051.",
@@ -64409,10 +65505,19 @@
                 "example": [
                   {
                     "assetItemId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                    "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                     "code": "A-201-E",
                     "commonAreaLabel": null,
+                    "health": "ok",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "initialReading": "0.000",
+                    "lastReading": {
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "readAt": "2026-11-01T00:15:00+07:00",
+                      "register": "1234.500",
+                      "source": "ocr"
+                    },
                     "multiplier": "1.000000",
                     "name": "มิเตอร์ไฟฟ้า A-201",
                     "purpose": "unit",
@@ -64664,10 +65769,19 @@
               "application/json": {
                 "example": {
                   "assetItemId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "code": "MAIN-E",
                   "commonAreaLabel": null,
+                  "health": "ok",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "initialReading": "0.000",
+                  "lastReading": {
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "readAt": "2026-11-01T00:15:00+07:00",
+                    "register": "1234.500",
+                    "source": "ocr"
+                  },
                   "multiplier": "1.000000",
                   "name": "มิเตอร์ไฟฟ้า A-201",
                   "purpose": "main",
@@ -64945,10 +66059,19 @@
                 "example": [
                   {
                     "assetItemId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                    "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                     "code": "A-201-E",
                     "commonAreaLabel": null,
+                    "health": "ok",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "initialReading": "0.000",
+                    "lastReading": {
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "readAt": "2026-11-01T00:15:00+07:00",
+                      "register": "1234.500",
+                      "source": "ocr"
+                    },
                     "multiplier": "1.000000",
                     "name": "มิเตอร์ไฟฟ้า A-201",
                     "purpose": "unit",
@@ -82943,6 +84066,7 @@
                         {
                           "code": "A-101-E",
                           "from": {
+                            "photoDocumentId": null,
                             "readAt": "2026-09-30T23:59:00+07:00",
                             "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "register": "1114.500",
@@ -82950,10 +84074,11 @@
                           },
                           "meterAssignmentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                           "to": {
+                            "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "readAt": "2026-10-31T23:59:00+07:00",
                             "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "register": "1234.500",
-                            "source": "iot"
+                            "source": "ocr"
                           },
                           "units": "120.000"
                         }
@@ -82986,6 +84111,7 @@
                   "periodStart": "2026-10-01",
                   "priorBalance": "0.00",
                   "promptpayRef": "INV202600042",
+                  "qrPayload": "00020101021230...6304ABCD",
                   "replacedByInvoiceId": null,
                   "replacesInvoiceId": null,
                   "reviewFlags": [],
@@ -83279,6 +84405,7 @@
                         {
                           "code": "A-101-E",
                           "from": {
+                            "photoDocumentId": null,
                             "readAt": "2026-09-30T23:59:00+07:00",
                             "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "register": "1114.500",
@@ -83286,10 +84413,11 @@
                           },
                           "meterAssignmentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                           "to": {
+                            "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "readAt": "2026-10-31T23:59:00+07:00",
                             "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "register": "1234.500",
-                            "source": "iot"
+                            "source": "ocr"
                           },
                           "units": "120.000"
                         }
@@ -83322,6 +84450,7 @@
                   "periodStart": "2026-10-01",
                   "priorBalance": "0.00",
                   "promptpayRef": "INV202600042",
+                  "qrPayload": "00020101021230...6304ABCD",
                   "replacedByInvoiceId": null,
                   "replacesInvoiceId": null,
                   "reviewFlags": [],
@@ -83658,6 +84787,7 @@
                         {
                           "code": "A-101-E",
                           "from": {
+                            "photoDocumentId": null,
                             "readAt": "2026-09-30T23:59:00+07:00",
                             "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "register": "1114.500",
@@ -83665,10 +84795,11 @@
                           },
                           "meterAssignmentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                           "to": {
+                            "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "readAt": "2026-10-31T23:59:00+07:00",
                             "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "register": "1234.500",
-                            "source": "iot"
+                            "source": "ocr"
                           },
                           "units": "120.000"
                         }
@@ -83700,6 +84831,7 @@
                   "periodStart": "2026-10-01",
                   "priorBalance": "0.00",
                   "promptpayRef": null,
+                  "qrPayload": null,
                   "replacedByInvoiceId": null,
                   "replacesInvoiceId": null,
                   "reviewFlags": [],
@@ -84549,6 +85681,7 @@
                           {
                             "code": "A-101-E",
                             "from": {
+                              "photoDocumentId": null,
                               "readAt": "2026-09-30T23:59:00+07:00",
                               "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                               "register": "1114.500",
@@ -84556,10 +85689,11 @@
                             },
                             "meterAssignmentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "to": {
+                              "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                               "readAt": "2026-10-31T23:59:00+07:00",
                               "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                               "register": "1234.500",
-                              "source": "iot"
+                              "source": "ocr"
                             },
                             "units": "120.000"
                           }
@@ -84591,6 +85725,7 @@
                     "periodStart": "2026-10-01",
                     "priorBalance": "0.00",
                     "promptpayRef": null,
+                    "qrPayload": null,
                     "replacedByInvoiceId": null,
                     "replacesInvoiceId": null,
                     "reviewFlags": [],
@@ -84642,6 +85777,7 @@
                           {
                             "code": "A-101-E",
                             "from": {
+                              "photoDocumentId": null,
                               "readAt": "2026-09-30T23:59:00+07:00",
                               "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                               "register": "1114.500",
@@ -84649,10 +85785,11 @@
                             },
                             "meterAssignmentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "to": {
+                              "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                               "readAt": "2026-10-31T23:59:00+07:00",
                               "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                               "register": "1234.500",
-                              "source": "iot"
+                              "source": "ocr"
                             },
                             "units": "120.000"
                           }
@@ -84681,6 +85818,7 @@
                     "periodStart": "2026-10-01",
                     "priorBalance": "0.00",
                     "promptpayRef": "INV202600042",
+                    "qrPayload": "00020101021230...6304ABCD",
                     "replacedByInvoiceId": null,
                     "replacesInvoiceId": null,
                     "reviewFlags": [],
@@ -85022,6 +86160,7 @@
                         {
                           "code": "A-101-E",
                           "from": {
+                            "photoDocumentId": null,
                             "readAt": "2026-09-30T23:59:00+07:00",
                             "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "register": "1114.500",
@@ -85029,10 +86168,11 @@
                           },
                           "meterAssignmentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                           "to": {
+                            "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "readAt": "2026-10-31T23:59:00+07:00",
                             "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "register": "1234.500",
-                            "source": "iot"
+                            "source": "ocr"
                           },
                           "units": "120.000"
                         }
@@ -85065,6 +86205,7 @@
                   "periodStart": "2026-10-01",
                   "priorBalance": "0.00",
                   "promptpayRef": "INV202600042",
+                  "qrPayload": "00020101021230...6304ABCD",
                   "replacedByInvoiceId": null,
                   "replacesInvoiceId": null,
                   "reviewFlags": [],
@@ -85405,6 +86546,7 @@
                         {
                           "code": "A-101-E",
                           "from": {
+                            "photoDocumentId": null,
                             "readAt": "2026-09-30T23:59:00+07:00",
                             "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "register": "1114.500",
@@ -85412,10 +86554,11 @@
                           },
                           "meterAssignmentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                           "to": {
+                            "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "readAt": "2026-10-31T23:59:00+07:00",
                             "readingId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "register": "1234.500",
-                            "source": "iot"
+                            "source": "ocr"
                           },
                           "units": "120.000"
                         }
@@ -85448,6 +86591,7 @@
                   "periodStart": "2026-10-01",
                   "priorBalance": "0.00",
                   "promptpayRef": "INV202600042",
+                  "qrPayload": "00020101021230...6304ABCD",
                   "replacedByInvoiceId": null,
                   "replacesInvoiceId": null,
                   "reviewFlags": [],
@@ -85697,6 +86841,242 @@
         ],
         "x-required-permissions": [
           "invoice.void"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/invoices/{invoiceId}/deliveries": {
+      "get": {
+        "description": "Every message sent for the invoice, oldest first: the first send once it is payable (`issue`), the owner’s resends (`resend`) and the payment reminders (`reminder`), per channel (LINE, SMS, e-mail) with the delivery state and the failure reason (web F2; D-011, D-045, D-208). 404 for another tenant’s invoice.\n\nImplements: D-011, D-045, D-208.",
+        "operationId": "owner.invoices.deliveries",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoiceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "at": "2026-11-01T00:15:00+07:00",
+                      "channel": "line",
+                      "error": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "kind": "issue",
+                      "status": "delivered"
+                    },
+                    {
+                      "at": "2026-11-01T00:15:00+07:00",
+                      "channel": "line",
+                      "error": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "kind": "reminder",
+                      "status": "held"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDeliveriesDto"
+                }
+              }
+            },
+            "description": "Deliveries",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Delivery log of an invoice",
+        "tags": [
+          "owner.documents"
+        ],
+        "x-required-permissions": [
+          "invoice.read"
         ],
         "x-surface": "owner"
       }
@@ -87152,6 +88532,296 @@
           "compliance.no_midterm_increase",
           "compliance.no_renewal_fee",
           "compliance.water_minimum"
+        ],
+        "x-required-permissions": [
+          "lease.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/leases/compliance-preview": {
+      "post": {
+        "description": "The same body as `POST /v1/owner/leases`, nothing written and no evaluation recorded (web F2 lease wizard): each rule the create would apply (deposit cap, forbidden clauses, renewal fee, utility lines, rent changes, water minimum, late fee) with its outcome now (pass / warn / block), severity and legal reference; the problems the create would answer (a refusal, an acknowledgement to give, a unit that cannot be leased); and the defaults the API applies (rent, deposit and advance from the unit and its room type, end date, fixed lines). D-208.\n\nImplements: D-020, D-021a, D-158, D-208.",
+        "operationId": "owner.leases.previewCompliance",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "addendum": [
+                      {
+                        "text": "อนุญาตแมวได้ 1 ตัว ผู้เช่ารับผิดชอบความสะอาด",
+                        "title": "สัตว์เลี้ยง",
+                        "type": "pets"
+                      }
+                    ],
+                    "advanceRentAmount": "4500.00",
+                    "billingDay": 5,
+                    "depositAmount": "4500.00",
+                    "keysCount": 2,
+                    "lesseePartyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "months": 12,
+                    "rent": "4500.00",
+                    "startDate": "2026-11-01",
+                    "unitId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/LeaseCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "checks": [
+                    {
+                      "context": {
+                        "capAmount": "9000.00",
+                        "depositAmount": "13500.00"
+                      },
+                      "legalRef": "ประกาศ สคบ. 2568 ข้อ 4 (3)",
+                      "outcome": "block",
+                      "ruleId": "compliance.deposit_cap",
+                      "severity": "block"
+                    }
+                  ],
+                  "defaults": {
+                    "advanceRentAmount": "4500.00",
+                    "billingDay": 5,
+                    "depositAmount": "4500.00",
+                    "endDate": "2027-10-31",
+                    "lines": [
+                      {
+                        "amount": "300.00",
+                        "description": "อินเทอร์เน็ตไฟเบอร์",
+                        "kind": "internet",
+                        "recurrence": "monthly"
+                      }
+                    ],
+                    "months": 12,
+                    "rent": "4500.00"
+                  },
+                  "inScope": true,
+                  "problems": [
+                    {
+                      "code": "compliance.deposit_cap",
+                      "errors": [
+                        {
+                          "code": "max",
+                          "message": "deposit + advance exceed 3 months of rent",
+                          "path": "depositAmount"
+                        }
+                      ],
+                      "legalRef": "ประกาศ สคบ. 2568 ข้อ 4 (3)",
+                      "ruleId": "compliance.deposit_cap",
+                      "status": 422
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseCompliancePreviewDto"
+                }
+              }
+            },
+            "description": "Checks, problems and defaults",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Dry-run the compliance checks of a lease draft",
+        "tags": [
+          "owner.leases"
         ],
         "x-required-permissions": [
           "lease.manage"
@@ -94959,6 +96629,247 @@
         ],
         "x-required-permissions": [
           "reading.review"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/meters/{assetItemId}": {
+      "get": {
+        "description": "The meter (asset item) with its current assignment — or the latest one when it was unbound — its building, health and last accepted reading (web F2 meter page; D-012, D-034, D-208). 404 for another tenant’s meter.\n\nImplements: D-012, D-034, D-208.",
+        "operationId": "owner.meters.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assetItemId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "assetItemId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "code": "A-201-E",
+                  "commonAreaLabel": null,
+                  "health": "ok",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "initialReading": "0.000",
+                  "lastReading": {
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "readAt": "2026-11-01T00:15:00+07:00",
+                    "register": "1234.500",
+                    "source": "ocr"
+                  },
+                  "multiplier": "1.000000",
+                  "name": "มิเตอร์ไฟฟ้า A-201",
+                  "purpose": "unit",
+                  "serial": null,
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "unitNo": "A-201",
+                  "utility": "electric",
+                  "validFrom": "2026-11-01T00:15:00+07:00",
+                  "validTo": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MeterDto"
+                }
+              }
+            },
+            "description": "The meter",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "One meter",
+        "tags": [
+          "owner.meters"
+        ],
+        "x-required-permissions": [
+          "asset_item.read"
         ],
         "x-surface": "owner"
       }
@@ -104392,6 +106303,10 @@
                         "items": [
                           {
                             "assetItemId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                            "assignee": {
+                              "displayName": "สมศรี ใจดี",
+                              "userId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                            },
                             "code": "W-A-201",
                             "health": "no_device",
                             "iot": false,
@@ -104404,6 +106319,7 @@
                             },
                             "meterAssignmentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "purpose": "unit",
+                            "requested": true,
                             "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "unitNo": "A-201",
                             "utility": "water"
@@ -105237,6 +107153,265 @@
         ],
         "x-required-permissions": [
           "payment.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/receipts/{receiptId}/actions/resend": {
+      "post": {
+        "description": "The receipt LINE Flex message (number, amount, link) goes to the payer again — quiet hours and consent apply; audited `document.resent` (web F2 documents archive: a resident lost a receipt). Voided receipts are not sent (409 `payment.invalid_state`). D-044, D-208.\n\nImplements: D-044, D-025, D-208.",
+        "operationId": "owner.receipts.resend",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "channel": "line",
+                  "receiptId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "requestedAt": "2026-11-01T00:15:00+07:00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptResendResultDto"
+                }
+              }
+            },
+            "description": "Queued",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "payment.invalid_state": {
+                    "$ref": "#/components/examples/problem.payment.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `payment.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Send a receipt to the payer again",
+        "tags": [
+          "owner.payments"
+        ],
+        "x-required-permissions": [
+          "receipt.issue"
         ],
         "x-surface": "owner"
       }
@@ -111625,6 +113800,241 @@
         ],
         "x-surface": "owner"
       },
+      "get": {
+        "description": "The unit profile with its `ETag` for the `If-Match` of `PATCH /v1/owner/unit-profiles/{id}` (web F2 unit type editor; 404 for another tenant’s profile, contract §8).\n\nImplements: D-041, D-208.",
+        "operationId": "owner.unitProfiles.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unitProfileId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "areaSqm": "28.00",
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "defaultAdvanceRentMonths": "1.0",
+                  "defaultDepositMonths": "1.0",
+                  "defaultLeaseLines": [
+                    {
+                      "amount": "300.00",
+                      "description": "อินเทอร์เน็ตไฟเบอร์",
+                      "kind": "internet"
+                    }
+                  ],
+                  "defaultRent": "4500.00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "inspectionTemplateId": null,
+                  "name": "ห้องสตูดิโอ",
+                  "version": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnitProfileDto"
+                }
+              }
+            },
+            "description": "The profile",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "One room type",
+        "tags": [
+          "owner.unitProfiles"
+        ],
+        "x-required-permissions": [
+          "unit.read"
+        ],
+        "x-surface": "owner"
+      },
       "patch": {
         "description": "Changes apply to new leases only; signed leases keep their terms (D-020 no mid-term increase). Requires `If-Match`.\n\nImplements: D-020, D-041.",
         "operationId": "owner.unitProfiles.update",
@@ -114401,10 +116811,19 @@
                 "example": [
                   {
                     "assetItemId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                    "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                     "code": "A-201-E",
                     "commonAreaLabel": null,
+                    "health": "ok",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "initialReading": "0.000",
+                    "lastReading": {
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "readAt": "2026-11-01T00:15:00+07:00",
+                      "register": "1234.500",
+                      "source": "ocr"
+                    },
                     "multiplier": "1.000000",
                     "name": "มิเตอร์ไฟฟ้า A-201",
                     "purpose": "unit",
@@ -114654,10 +117073,19 @@
               "application/json": {
                 "example": {
                   "assetItemId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "code": "A-201-E",
                   "commonAreaLabel": null,
+                  "health": "ok",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "initialReading": "0.000",
+                  "lastReading": {
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "readAt": "2026-11-01T00:15:00+07:00",
+                    "register": "1234.500",
+                    "source": "ocr"
+                  },
                   "multiplier": "1.000000",
                   "name": "มิเตอร์ไฟฟ้า A-201",
                   "purpose": "unit",
@@ -115748,7 +118176,7 @@
     },
     "/v1/public/plans": {
       "get": {
-        "description": "The price plans in force, read from the platform setting `pricing.price_plans` (THB, VAT excluded). While D-156 is Proposed every plan says `status: proposed` and quoted ranges come as `priceFrom`/`priceTo`. Anonymous and cacheable (5 min).\n\nImplements: D-156.",
+        "description": "The price-plan catalogue (`platform.price_plan_version`, the prices billing uses, D-204): per plan the published version in force today (`sold: true`), else its newest draft shown as a proposal (`sold: false`) — THB, VAT excluded. While D-156 is Proposed every plan says `status: proposed`; quoted ranges come as `priceFrom`/`priceTo`. Anonymous and cacheable (5 min). D-208.\n\nImplements: D-156, D-204, D-208.",
         "operationId": "public.plans.list",
         "parameters": [
           {
@@ -115763,6 +118191,7 @@
                   "data": [
                     {
                       "currency": "THB",
+                      "effectiveFrom": "2026-01-01",
                       "features": [
                         "A1",
                         "A2",
@@ -115778,6 +118207,7 @@
                       "pricePerUnit": "25.00",
                       "priceTo": null,
                       "priceUnit": "unit_month",
+                      "sold": true,
                       "status": "proposed",
                       "summary": "ออกบิล เก็บเงิน และแจ้งผู้เช่าผ่าน LINE สำหรับหอพักที่จดมิเตอร์เอง",
                       "tenantType": "apartment",
@@ -118787,6 +121217,7 @@
                       "issuerName": "หอพักสุขใจ",
                       "lines": [
                         {
+                          "aboveCap": false,
                           "amount": "4500.00",
                           "description": "ค่าเช่าห้อง ต.ค. 2569",
                           "isEstimated": false,
@@ -118795,19 +121226,45 @@
                           "periodFrom": "2026-10-01",
                           "periodTo": "2026-10-31",
                           "quantity": "1.000",
+                          "readAt": null,
+                          "readingPhotoUrl": null,
                           "readingSource": null,
                           "registerFrom": null,
                           "registerTo": null,
+                          "sourceType": "rent",
                           "unit": null,
-                          "unitPrice": "4500.0000"
+                          "unitPrice": "4500.0000",
+                          "units": null
+                        },
+                        {
+                          "aboveCap": false,
+                          "amount": "840.00",
+                          "description": "ค่าไฟฟ้า 120 หน่วย × 7.0000",
+                          "isEstimated": false,
+                          "lineKind": "electricity",
+                          "lineNo": 2,
+                          "periodFrom": "2026-10-01",
+                          "periodTo": "2026-10-31",
+                          "quantity": "120.000",
+                          "readAt": "2026-10-31T18:05:00+07:00",
+                          "readingPhotoUrl": "https://storage.example.com/meter-photo?X-Amz-Signature=abc",
+                          "readingSource": "ocr",
+                          "registerFrom": "1114.500",
+                          "registerTo": "1234.500",
+                          "sourceType": "meter",
+                          "unit": "kwh",
+                          "unitPrice": "7.0000",
+                          "units": "120.000"
                         }
                       ],
                       "number": "INV-2026-00042",
                       "periodEnd": "2026-10-31",
                       "periodStart": "2026-10-01",
                       "priorBalance": "0.00",
+                      "receipts": [],
                       "status": "issued",
                       "total": "5344.00",
+                      "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "unitNo": "A-201"
                     }
                   ],
@@ -119004,6 +121461,7 @@
                   "issuerName": "หอพักสุขใจ",
                   "lines": [
                     {
+                      "aboveCap": false,
                       "amount": "4500.00",
                       "description": "ค่าเช่าห้อง ต.ค. 2569",
                       "isEstimated": false,
@@ -119012,19 +121470,45 @@
                       "periodFrom": "2026-10-01",
                       "periodTo": "2026-10-31",
                       "quantity": "1.000",
+                      "readAt": null,
+                      "readingPhotoUrl": null,
                       "readingSource": null,
                       "registerFrom": null,
                       "registerTo": null,
+                      "sourceType": "rent",
                       "unit": null,
-                      "unitPrice": "4500.0000"
+                      "unitPrice": "4500.0000",
+                      "units": null
+                    },
+                    {
+                      "aboveCap": false,
+                      "amount": "840.00",
+                      "description": "ค่าไฟฟ้า 120 หน่วย × 7.0000",
+                      "isEstimated": false,
+                      "lineKind": "electricity",
+                      "lineNo": 2,
+                      "periodFrom": "2026-10-01",
+                      "periodTo": "2026-10-31",
+                      "quantity": "120.000",
+                      "readAt": "2026-10-31T18:05:00+07:00",
+                      "readingPhotoUrl": "https://storage.example.com/meter-photo?X-Amz-Signature=abc",
+                      "readingSource": "ocr",
+                      "registerFrom": "1114.500",
+                      "registerTo": "1234.500",
+                      "sourceType": "meter",
+                      "unit": "kwh",
+                      "unitPrice": "7.0000",
+                      "units": "120.000"
                     }
                   ],
                   "number": "INV-2026-00042",
                   "periodEnd": "2026-10-31",
                   "periodStart": "2026-10-01",
                   "priorBalance": "0.00",
+                  "receipts": [],
                   "status": "issued",
                   "total": "5344.00",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitNo": "A-201"
                 },
                 "schema": {
@@ -119199,6 +121683,7 @@
                   "issuerName": "หอพักสุขใจ",
                   "lines": [
                     {
+                      "aboveCap": false,
                       "amount": "4500.00",
                       "description": "ค่าเช่าห้อง ต.ค. 2569",
                       "isEstimated": false,
@@ -119207,19 +121692,45 @@
                       "periodFrom": "2026-10-01",
                       "periodTo": "2026-10-31",
                       "quantity": "1.000",
+                      "readAt": null,
+                      "readingPhotoUrl": null,
                       "readingSource": null,
                       "registerFrom": null,
                       "registerTo": null,
+                      "sourceType": "rent",
                       "unit": null,
-                      "unitPrice": "4500.0000"
+                      "unitPrice": "4500.0000",
+                      "units": null
+                    },
+                    {
+                      "aboveCap": false,
+                      "amount": "840.00",
+                      "description": "ค่าไฟฟ้า 120 หน่วย × 7.0000",
+                      "isEstimated": false,
+                      "lineKind": "electricity",
+                      "lineNo": 2,
+                      "periodFrom": "2026-10-01",
+                      "periodTo": "2026-10-31",
+                      "quantity": "120.000",
+                      "readAt": "2026-10-31T18:05:00+07:00",
+                      "readingPhotoUrl": "https://storage.example.com/meter-photo?X-Amz-Signature=abc",
+                      "readingSource": "ocr",
+                      "registerFrom": "1114.500",
+                      "registerTo": "1234.500",
+                      "sourceType": "meter",
+                      "unit": "kwh",
+                      "unitPrice": "7.0000",
+                      "units": "120.000"
                     }
                   ],
                   "number": "INV-2026-00042",
                   "periodEnd": "2026-10-31",
                   "periodStart": "2026-10-01",
                   "priorBalance": "0.00",
+                  "receipts": [],
                   "status": "issued",
                   "total": "5344.00",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitNo": "A-201"
                 },
                 "schema": {
@@ -119579,7 +122090,7 @@
     },
     "/v1/resident/invoices/{invoiceId}/payment": {
       "get": {
-        "description": "What is due now (this invoice and earlier unpaid ones, oldest paid first, D-193), the Thai QR for it (Tag 30, created when missing, expired or for another amount — the money goes to the landlord’s own account, D-042), the account for a plain transfer, and whether slips and partial payments are accepted.\n\nImplements: D-042, D-043, D-154.",
+        "description": "What is due now (this invoice and earlier unpaid ones, oldest paid first, D-193), the Thai QR for it (Tag 30, created when missing, expired or for another amount — the money goes to the landlord’s own account, D-042), the account for a plain transfer (in full with its bank code while something is due — the reveal is audited, D-209), and whether slips and partial payments are accepted.\n\nImplements: D-042, D-043, D-154, D-209.",
         "operationId": "resident.invoices.payment",
         "parameters": [
           {
@@ -119601,7 +122112,9 @@
                 "example": {
                   "account": {
                     "accountName": "บริษัท ตัวอย่าง จำกัด",
+                    "accountNo": "1234561234",
                     "accountNoMasked": "xxxxxx1234",
+                    "bankCode": "004",
                     "bankNameTh": "ธนาคารตัวอย่าง"
                   },
                   "allowPartial": false,
@@ -119777,8 +122290,200 @@
       }
     },
     "/v1/resident/invoices/{invoiceId}/slips": {
+      "get": {
+        "description": "The slips I sent for this invoice, newest first: confirmed automatically, waiting for the office with the reasons (amount above / below what is due, receiving account mismatch, unreadable, not recognised), duplicate, approved or rejected (D-043, D-198, D-208). 404 when the invoice is not mine.\n\nImplements: D-043, D-154, D-208.",
+        "operationId": "resident.invoices.slips",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoiceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "decidedAt": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "reasons": [
+                        "amount_below_due"
+                      ],
+                      "status": "pending_review",
+                      "uploadedAt": "2026-11-01T00:15:00+07:00"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ResidentSlipOutcomesDto"
+                }
+              }
+            },
+            "description": "My slips",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "My slips of an invoice and their outcome",
+        "tags": [
+          "resident.payments"
+        ],
+        "x-surface": "resident"
+      },
       "post": {
-        "description": "The fallback when paying by transfer instead of QR (D-043, `payments.allow_slip`): the slip is verified; it is confirmed automatically when it is real, unused, to the landlord’s account and for what is due — otherwise the landlord reviews it.\n\nImplements: D-043, D-154.",
+        "description": "The fallback when paying by transfer instead of QR (D-043, `payments.allow_slip`): the slip is verified; it is confirmed automatically when it is real, unused, to the landlord’s account and for what is due — otherwise the landlord reviews it. An optional `Idempotency-Key` makes a retry on a flaky connection answer the first slip instead of creating another (LIFF #18).\n\nImplements: D-043, D-154, D-208.",
         "operationId": "resident.invoices.uploadSlip",
         "parameters": [
           {
@@ -119788,6 +122493,9 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
           },
           {
             "$ref": "#/components/parameters/AcceptLanguage"
@@ -119828,6 +122536,9 @@
             },
             "description": "Received",
             "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"
               },
@@ -119848,6 +122559,9 @@
                 "examples": {
                   "http.bad_request": {
                     "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
                   }
                 },
                 "schema": {
@@ -119855,7 +122569,7 @@
                 }
               }
             },
-            "description": "Problem: `http.bad_request`",
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -119929,6 +122643,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
                   "invoice.nothing_due": {
                     "$ref": "#/components/examples/problem.invoice.nothing_due"
                   },
@@ -119941,7 +122658,7 @@
                 }
               }
             },
-            "description": "Problem: `invoice.nothing_due`, `slip.not_allowed`",
+            "description": "Problem: `idempotency.in_progress`, `invoice.nothing_due`, `slip.not_allowed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -119972,6 +122689,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
                   }
@@ -119981,7 +122701,7 @@
                 }
               }
             },
-            "description": "Problem: `validation.failed`",
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -122373,9 +125093,11 @@
                   "leases": [
                     {
                       "buildingName": "อาคาร A",
+                      "endDate": "2027-10-31",
                       "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "number": "CTR-2026-00001",
                       "role": "lessee",
+                      "startDate": "2026-11-01",
                       "status": "active",
                       "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
                       "tenantName": "หอพักตัวอย่าง",
@@ -122596,9 +125318,11 @@
                   "leases": [
                     {
                       "buildingName": "อาคาร A",
+                      "endDate": "2027-10-31",
                       "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "number": "CTR-2026-00001",
                       "role": "lessee",
+                      "startDate": "2026-11-01",
                       "status": "active",
                       "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
                       "tenantName": "หอพักตัวอย่าง",
@@ -124916,6 +127640,204 @@
         "x-surface": "resident"
       }
     },
+    "/v1/resident/receipts/{receiptId}": {
+      "get": {
+        "description": "The receipt with the invoices its payment paid (the LINE receipt message links here, LIFF #19); 404 when it is not mine (D-044, D-208).\n\nImplements: D-044, D-154, D-208.",
+        "operationId": "resident.receipts.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receiptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "amount": "5344.00",
+                  "hasDocument": true,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "invoices": [
+                    {
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "number": "INV-2026-00042"
+                    }
+                  ],
+                  "issuedAt": "2026-11-01T00:15:00+07:00",
+                  "issuerName": "หอพักตัวอย่าง",
+                  "kind": "payment",
+                  "number": "RCP-2026-00001",
+                  "unitNo": "A-201",
+                  "voided": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ResidentReceiptDetailDto"
+                }
+              }
+            },
+            "description": "The receipt",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "One of my receipts",
+        "tags": [
+          "resident.payments"
+        ],
+        "x-surface": "resident"
+      }
+    },
     "/v1/resident/receipts/{receiptId}/document": {
       "get": {
         "description": "A 5-minute link; 404 when it is not mine (D-044, D-063).\n\nImplements: D-044, D-063, D-154.",
@@ -125598,6 +128520,7 @@
                   "data": [
                     {
                       "assetItemId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                      "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                       "channel": {
                         "address": 11,
                         "busId": "rs485-1",
@@ -125612,8 +128535,16 @@
                       "code": "A-201-E",
                       "commonAreaLabel": null,
                       "floorName": "ชั้น 2",
+                      "health": "ok",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "initialReading": "0.000",
+                      "lastReading": {
+                        "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                        "photoDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                        "readAt": "2026-11-01T00:15:00+07:00",
+                        "register": "1234.500",
+                        "source": "ocr"
+                      },
                       "lastRegister": "12345.678",
                       "multiplier": "1.000000",
                       "name": "มิเตอร์ไฟฟ้า A-201",
@@ -134207,6 +137138,10 @@
                         "items": [
                           {
                             "assetItemId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                            "assignee": {
+                              "displayName": "สมศรี ใจดี",
+                              "userId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                            },
                             "code": "W-A-201",
                             "health": "no_device",
                             "iot": false,
@@ -134219,6 +137154,7 @@
                             },
                             "meterAssignmentId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "purpose": "unit",
+                            "requested": true,
                             "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                             "unitNo": "A-201",
                             "utility": "water"

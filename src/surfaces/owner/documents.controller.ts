@@ -39,6 +39,9 @@ import {
   type ExportStatusName,
   FinancialDocumentDto,
   FinancialDocumentListQuery,
+  InvoiceDeliveriesDto,
+  InvoiceDeliveryKindName,
+  InvoiceDeliveryStatusName,
   ResendResultDto,
 } from './documents.dto';
 
@@ -196,6 +199,69 @@ export class OwnerBillingDocumentsController {
   ): Promise<ResendResultDto> {
     const r = await this.docs.resend(ctx, id);
     return { invoiceId: r.invoiceId, channel: 'line', requestedAt: iso(r.requestedAt) };
+  }
+
+  @Get('invoices/:invoiceId/deliveries')
+  @TenantScoped()
+  @Can('invoice.read')
+  @ApiEndpoint({
+    id: 'owner.invoices.deliveries',
+    summary: 'Delivery log of an invoice',
+    description:
+      'Every message sent for the invoice, oldest first: the first send once it is payable (`issue`), the owner’s resends (`resend`) and the payment reminders (`reminder`), per channel (LINE, SMS, e-mail) with the delivery state and the failure reason (web F2; D-011, D-045, D-208). 404 for another tenant’s invoice.',
+    implements: ['D-011', 'D-045', 'D-208'],
+  })
+  @ApiSuccess(200, {
+    description: 'Deliveries',
+    type: InvoiceDeliveriesDto,
+    example: {
+      data: [
+        {
+          id: FAKE.uuid,
+          channel: 'line',
+          kind: 'issue',
+          status: 'delivered',
+          at: FAKE.dateTime,
+          error: null,
+        },
+        { id: FAKE.uuid, channel: 'line', kind: 'reminder', status: 'held', at: FAKE.dateTime, error: null },
+      ],
+    },
+  })
+  @ApiStandardErrors('http.not_found', 'validation.failed', ...T)
+  async deliveries(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('invoiceId', ParseUUIDPipe) id: string,
+  ): Promise<InvoiceDeliveriesDto> {
+    const rows = await this.docs.deliveries(ctx, id);
+    const kind = (type: string): InvoiceDeliveryKindName =>
+      type === 'invoice.resent'
+        ? InvoiceDeliveryKindName.Resend
+        : type === 'invoice.reminder_sent'
+          ? InvoiceDeliveryKindName.Reminder
+          : InvoiceDeliveryKindName.Issue;
+    const status = (state: string): InvoiceDeliveryStatusName => {
+      switch (state) {
+        case 'held_quiet_hours':
+        case 'held_no_consent':
+          return InvoiceDeliveryStatusName.Held;
+        case 'read':
+        case 'delivered':
+          return InvoiceDeliveryStatusName.Delivered;
+        default:
+          return state as InvoiceDeliveryStatusName;
+      }
+    };
+    return {
+      data: rows.map((n) => ({
+        id: n.id,
+        channel: n.channel,
+        kind: kind(n.event?.type ?? ''),
+        status: status(n.state),
+        at: iso(n.deliveredAt ?? n.sentAt ?? (n.state === 'failed' ? n.updatedAt : n.scheduledFor)),
+        error: n.state === 'failed' || n.state === 'cancelled' ? n.failedReason : null,
+      })),
+    };
   }
 
   @Get('billing-documents')

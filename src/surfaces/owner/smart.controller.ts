@@ -295,6 +295,8 @@ const ROUND_EXAMPLE: RoundBuildingDto = {
             source: 'ocr' as ReadingSourceName,
             photoDocumentId: FAKE.uuid,
           },
+          assignee: { userId: FAKE.uuid, displayName: 'สมศรี ใจดี' },
+          requested: true,
         },
       ],
     },
@@ -771,6 +773,8 @@ export function meterReadingsController(surface: Extract<Surface, 'owner' | 'sta
                   photoDocumentId: i.lastReading.photoDocumentId,
                 }
               : null,
+            assignee: i.assignee,
+            requested: i.requested,
           })),
         })),
       }));

@@ -3,6 +3,7 @@ import { Can } from '@common/auth/can.decorator';
 import { type TenantContext } from '@common/context/tenant-context';
 import { ApiEndpoint, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { FAKE } from '@common/openapi/examples';
+import { MetersService } from '@modules/ops-units/meters-items.service';
 import { METER_DRIVERS } from '@modules/smart-devices/driver-catalogue';
 import { StaffFieldService } from '@modules/smart-devices/staff-field.service';
 import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
@@ -25,7 +26,10 @@ const T = ['tenant.context_required', 'tenant.context_invalid', 'tenant.not_in_s
 @ApiSurface(SURFACES.staff)
 @Controller('staff')
 export class StaffFieldController {
-  constructor(private readonly field: StaffFieldService) {}
+  constructor(
+    private readonly field: StaffFieldService,
+    private readonly meters: MetersService,
+  ) {}
 
   @Get('buildings')
   @TenantScoped()
@@ -86,9 +90,14 @@ export class StaffFieldController {
     @CurrentTenant() ctx: TenantContext,
     @Param('buildingId', ParseUUIDPipe) buildingId: string,
   ): Promise<StaffMeterPointsDto> {
+    const points = await this.field.meterPoints(ctx, buildingId);
+    const status = await this.meters.status(
+      ctx,
+      points.map((p) => p.meter.assetItemId),
+    );
     return {
-      data: (await this.field.meterPoints(ctx, buildingId)).map((p) => ({
-        ...meterDto(p.meter),
+      data: points.map((p) => ({
+        ...meterDto(p.meter, status.get(p.meter.assetItemId)),
         floorName: p.floorName,
         lastRegister: p.lastRegister,
         channel: p.channel ? { ...p.channel, busType: p.channel.busType as BusTypeName } : null,

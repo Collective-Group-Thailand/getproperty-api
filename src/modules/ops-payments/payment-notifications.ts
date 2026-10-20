@@ -43,6 +43,8 @@ export class PaymentNotifications implements OnModuleInit {
         };
       };
     registerNotifiable('receipt.issued', receipt('receipt'));
+    // web F2 (D-208): the owner sends a receipt again — same message as when it was issued
+    registerNotifiable('receipt.resent', receipt('receipt'));
     registerNotifiable('tax_invoice.issued', receipt('receipt_tax_invoice'));
     registerNotifiable('slip.review_requested', async (tx, e) =>
       e.tenantId

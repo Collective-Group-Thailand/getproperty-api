@@ -658,6 +658,26 @@ export class OwnerUnitProfilesController {
     return unitProfileDto(await this.profiles.create(ctx, buildingId, body));
   }
 
+  @Get('unit-profiles/:unitProfileId')
+  @TenantScoped()
+  @Can('unit.read')
+  @UseEtag((p: UnitProfileDto) => etagOf(p.id, p.version))
+  @ApiEndpoint({
+    id: 'owner.unitProfiles.get',
+    summary: 'One room type',
+    description:
+      'The unit profile with its `ETag` for the `If-Match` of `PATCH /v1/owner/unit-profiles/{id}` (web F2 unit type editor; 404 for another tenant’s profile, contract §8).',
+    implements: ['D-041', 'D-208'],
+  })
+  @ApiSuccess(200, { description: 'The profile', type: UnitProfileDto, example: UNIT_PROFILE_EXAMPLE })
+  @ApiStandardErrors('http.not_found', 'validation.failed', ...T)
+  async get(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('unitProfileId', ParseUUIDPipe) id: string,
+  ): Promise<UnitProfileDto> {
+    return unitProfileDto(await this.profiles.get(ctx, id));
+  }
+
   @Patch('unit-profiles/:unitProfileId')
   @TenantScoped()
   @Can('unit.manage')
@@ -818,7 +838,12 @@ export class OwnerMetersController {
     @CurrentTenant() ctx: TenantContext,
     @Param('buildingId', ParseUUIDPipe) buildingId: string,
   ): Promise<MeterDto[]> {
-    return (await this.meters.listForBuilding(ctx, buildingId)).map(meterDto);
+    const rows = await this.meters.listForBuilding(ctx, buildingId);
+    const status = await this.meters.status(
+      ctx,
+      rows.map((r) => r.assetItemId),
+    );
+    return rows.map((r) => meterDto(r, status.get(r.assetItemId)));
   }
 
   @Post('buildings/:buildingId/meters')
@@ -869,7 +894,28 @@ export class OwnerMetersController {
     @Param('buildingId', ParseUUIDPipe) buildingId: string,
     @Body() body: MissingMetersCreateDto,
   ): Promise<MeterDto[]> {
-    return (await this.meters.createMissing(ctx, buildingId, body)).map(meterDto);
+    return (await this.meters.createMissing(ctx, buildingId, body)).map((m) => meterDto(m));
+  }
+
+  @Get('meters/:assetItemId')
+  @TenantScoped()
+  @Can('asset_item.read')
+  @ApiEndpoint({
+    id: 'owner.meters.get',
+    summary: 'One meter',
+    description:
+      'The meter (asset item) with its current assignment — or the latest one when it was unbound — its building, health and last accepted reading (web F2 meter page; D-012, D-034, D-208). 404 for another tenant’s meter.',
+    implements: ['D-012', 'D-034', 'D-208'],
+  })
+  @ApiSuccess(200, { description: 'The meter', type: MeterDto, example: METER_EXAMPLE })
+  @ApiStandardErrors('http.not_found', 'validation.failed', ...T)
+  async get(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('assetItemId', ParseUUIDPipe) assetItemId: string,
+  ): Promise<MeterDto> {
+    const row = await this.meters.getByAssetItem(ctx, assetItemId);
+    const status = await this.meters.status(ctx, [row.assetItemId]);
+    return meterDto(row, status.get(row.assetItemId));
   }
 
   @Get('units/:unitId/meters')
@@ -887,7 +933,12 @@ export class OwnerMetersController {
     @CurrentTenant() ctx: TenantContext,
     @Param('unitId', ParseUUIDPipe) unitId: string,
   ): Promise<MeterDto[]> {
-    return (await this.meters.listForUnit(ctx, unitId)).map(meterDto);
+    const rows = await this.meters.listForUnit(ctx, unitId);
+    const status = await this.meters.status(
+      ctx,
+      rows.map((r) => r.assetItemId),
+    );
+    return rows.map((r) => meterDto(r, status.get(r.assetItemId)));
   }
 
   @Post('units/:unitId/meters')

@@ -22,6 +22,7 @@ import {
 } from 'class-validator';
 
 import { DecimalInput, MoneyInput, MoneyOutput } from '../shared/fields';
+import { MeterHealthName, RoundLastReadingDto } from '../shared/smart.dto';
 import { LeaseStatusName } from '../shared/status.enums';
 import { AddressDto } from './tenancy.dto';
 
@@ -886,6 +887,25 @@ export class MeterDto {
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
   validTo!: string | null;
+
+  @ApiProperty({ format: 'uuid', example: FAKE.buildingId })
+  buildingId!: string;
+
+  @ApiProperty({
+    enum: MeterHealthName,
+    enumName: 'MeterHealth',
+    nullable: true,
+    example: MeterHealthName.Ok,
+    description: 'Health of the meter (D-034); null before its first reading or telemetry.',
+  })
+  health!: MeterHealthName | null;
+
+  @ApiProperty({
+    type: () => RoundLastReadingDto,
+    nullable: true,
+    description: 'The last accepted reading (D-012), with its photo when it has one.',
+  })
+  lastReading!: RoundLastReadingDto | null;
 }
 
 export class MeterCreateDto {

@@ -27,6 +27,7 @@ import { type MeterSegment, type SegmentReading, segmentUnits } from '@modules/o
 import { type InvoiceRow, InvoicesService } from '@modules/ops-billing/invoices.service';
 import { type RatePlanRow, RatePlansService } from '@modules/ops-billing/rate-plans.service';
 import { ResidentInvoicesService } from '@modules/ops-billing/resident-invoices.service';
+import { ReadingRequestsService } from '@modules/smart-readings/reading-requests.service';
 import {
   Body,
   Controller,
@@ -81,6 +82,9 @@ import {
   RatePlanListQuery,
   RatePlanUpdateDto,
   RatePlanVersionCreateDto,
+  ReadingRequestCreateDto,
+  ReadingRequestsDto,
+  type ReadingRequestStatusName,
   ResidentInvoiceDto,
   ResidentInvoiceListQuery,
 } from './billing.dto';
@@ -211,7 +215,13 @@ function lineDto(l: InvoiceRow['lines'][number]): InvoiceLineDto {
 }
 
 function segmentEnd(r: SegmentReading) {
-  return { readingId: r.readingId, register: r.register, readAt: segmentAt(r.readAt), source: r.source };
+  return {
+    readingId: r.readingId,
+    register: r.register,
+    readAt: segmentAt(r.readAt),
+    source: r.source,
+    photoDocumentId: r.evidenceDocumentId ?? null,
+  };
 }
 
 /** Segment instants are stored as ISO strings; the wire shows them in Asia/Bangkok (contract §3). */
@@ -240,7 +250,7 @@ function noteDto(n: InvoiceRow['creditNotes'][number] | InvoiceRow['debitNotes']
   };
 }
 
-export function invoiceDto(i: InvoiceRow): InvoiceDto {
+export function invoiceDto(i: InvoiceRow, extras: { qrPayload?: string | null } = {}): InvoiceDto {
   return {
     ...invoiceSummaryDto(i),
     lines: i.lines.map(lineDto),
@@ -251,6 +261,7 @@ export function invoiceDto(i: InvoiceRow): InvoiceDto {
     replacesInvoiceId: i.replacesInvoiceId,
     replacedByInvoiceId: i.replacedByInvoiceId,
     promptpayRef: i.promptpayRef,
+    qrPayload: extras.qrPayload ?? null,
     snapshotSha256: i.snapshotSha256 ? Buffer.from(i.snapshotSha256).toString('hex') : null,
     nextActions: invoiceNextActions(i),
   };
@@ -314,8 +325,25 @@ function chargeDto(c: {
   };
 }
 
+/** What the resident view adds to the row (LIFF #15, #19): signed photo links and the receipts of the invoice. */
+export interface ResidentInvoiceExtras {
+  /** evidence document id → 5-minute link */
+  photoUrls: ReadonlyMap<string, string>;
+  receipts: { id: string; number: string }[];
+}
+
+/** The closing reading of a meter line: its time and evidence photo (the last segment's closing end). */
+export function closingReadingOf(l: Pick<InvoiceRow['lines'][number], 'meterSegments'>) {
+  const segments = (l.meterSegments ?? []) as unknown as MeterSegment[];
+  const last = [...segments].reverse().find((s) => s.to);
+  return last?.to ? { readAt: last.to.readAt, evidenceDocumentId: last.to.evidenceDocumentId ?? null } : null;
+}
+
 /** The resident view of an issued invoice, from its issue snapshot (§4.2.3) plus the live balance and status. */
-export function residentInvoiceDto(i: InvoiceRow): ResidentInvoiceDto {
+export function residentInvoiceDto(
+  i: InvoiceRow,
+  extras: ResidentInvoiceExtras = { photoUrls: new Map(), receipts: [] },
+): ResidentInvoiceDto {
   const snap = (i.snapshot ?? {}) as {
     tenant?: { displayName?: string; legalName?: string };
     unit?: { unitNo?: string } | null;
@@ -340,13 +368,16 @@ export function residentInvoiceDto(i: InvoiceRow): ResidentInvoiceDto {
     status: i.status as InvoiceStatusName,
     issuerName: snap.tenant?.displayName ?? snap.tenant?.legalName ?? '',
     unitNo: snap.unit?.unitNo ?? i.unit?.unitNo ?? null,
+    unitId: i.unitId,
     periodStart: day(i.periodStart)!,
     periodEnd: day(i.periodEnd)!,
     issuedAt: iso(i.issuedAt!),
     dueDate: day(i.dueDate)!,
     isFinal: i.isFinal,
+    receipts: extras.receipts,
     lines: (snap.lines ?? []).map((l) => {
       const m = live.get(l.lineNo);
+      const closing = m ? closingReadingOf(m) : null;
       return {
         lineNo: l.lineNo,
         lineKind: l.lineKind as InvoiceLineKindName,
@@ -361,6 +392,13 @@ export function residentInvoiceDto(i: InvoiceRow): ResidentInvoiceDto {
         registerTo: m?.registerTo?.toFixed(3) ?? null,
         readingSource: m?.readingSource ?? null,
         isEstimated: m?.isEstimated ?? false,
+        sourceType: (m?.sourceType ?? 'adjustment') as InvoiceLineSourceTypeName,
+        readAt: closing ? segmentAt(closing.readAt) : null,
+        readingPhotoUrl: closing?.evidenceDocumentId
+          ? (extras.photoUrls.get(closing.evidenceDocumentId) ?? null)
+          : null,
+        units: m?.units?.toFixed(3) ?? null,
+        aboveCap: m?.aboveCap ?? false,
       };
     }),
     total: snap.totals?.total ?? m2(i.total),
@@ -462,8 +500,15 @@ const LINE_EXAMPLE: InvoiceLineDto = {
         register: '1114.500',
         readAt: '2026-09-30T23:59:00+07:00',
         source: 'iot',
+        photoDocumentId: null,
       },
-      to: { readingId: FAKE.uuid, register: '1234.500', readAt: '2026-10-31T23:59:00+07:00', source: 'iot' },
+      to: {
+        readingId: FAKE.uuid,
+        register: '1234.500',
+        readAt: '2026-10-31T23:59:00+07:00',
+        source: 'ocr',
+        photoDocumentId: FAKE.uuid,
+      },
       units: '120.000',
     },
   ],
@@ -486,6 +531,7 @@ const INVOICE_EXAMPLE: InvoiceDto = {
   replacesInvoiceId: null,
   replacedByInvoiceId: null,
   promptpayRef: 'INV202600042',
+  qrPayload: '00020101021230...6304ABCD',
   snapshotSha256: 'a3f1c2…',
   nextActions: ['void', 'credit_note', 'debit_note'],
 };
@@ -496,6 +542,7 @@ const DRAFT_EXAMPLE: InvoiceDto = {
   issuedAt: null,
   dueDate: null,
   promptpayRef: null,
+  qrPayload: null,
   snapshotSha256: null,
   nextActions: ['issue', 'recompute'],
 };
@@ -544,11 +591,13 @@ const RESIDENT_INVOICE_EXAMPLE: ResidentInvoiceDto = {
   status: 'issued' as InvoiceStatusName,
   issuerName: 'หอพักสุขใจ',
   unitNo: FAKE.unitCode,
+  unitId: FAKE.uuid,
   periodStart: '2026-10-01',
   periodEnd: '2026-10-31',
   issuedAt: '2026-11-01T09:00:00+07:00',
   dueDate: '2026-11-05',
   isFinal: false,
+  receipts: [],
   lines: [
     {
       lineNo: 1,
@@ -564,6 +613,31 @@ const RESIDENT_INVOICE_EXAMPLE: ResidentInvoiceDto = {
       registerTo: null,
       readingSource: null,
       isEstimated: false,
+      sourceType: 'rent' as InvoiceLineSourceTypeName,
+      readAt: null,
+      readingPhotoUrl: null,
+      units: null,
+      aboveCap: false,
+    },
+    {
+      lineNo: 2,
+      lineKind: 'electricity' as InvoiceLineKindName,
+      description: 'ค่าไฟฟ้า 120 หน่วย × 7.0000',
+      quantity: '120.000',
+      unit: 'kwh',
+      unitPrice: '7.0000',
+      amount: '840.00',
+      periodFrom: '2026-10-01',
+      periodTo: '2026-10-31',
+      registerFrom: '1114.500',
+      registerTo: '1234.500',
+      readingSource: 'ocr',
+      isEstimated: false,
+      sourceType: 'meter' as InvoiceLineSourceTypeName,
+      readAt: '2026-10-31T18:05:00+07:00',
+      readingPhotoUrl: 'https://storage.example.com/meter-photo?X-Amz-Signature=abc',
+      units: '120.000',
+      aboveCap: false,
     },
   ],
   total: '5344.00',
@@ -754,7 +828,10 @@ export class OwnerRatePlansController {
 @ApiSurface(SURFACES.owner)
 @Controller('owner/billing-cycles')
 export class OwnerBillingCyclesController {
-  constructor(private readonly cycles: BillingCyclesService) {}
+  constructor(
+    private readonly cycles: BillingCyclesService,
+    private readonly requests: ReadingRequestsService,
+  ) {}
 
   @Get()
   @TenantScoped()
@@ -840,6 +917,57 @@ export class OwnerBillingCyclesController {
     return cycleDetailDto(await this.cycles.compute(ctx, id));
   }
 
+  @Post(':billingCycleId/actions/request-readings')
+  @HttpCode(200)
+  @TenantScoped()
+  @Can('invoice.issue')
+  @ApiEndpoint({
+    id: 'owner.billingCycles.requestReadings',
+    summary: 'Ask staff to read meters of the cycle',
+    description:
+      'Turns missing readings into staff tasks (web F2 2.3): every meter of the cycle’s buildings still missing in the reading round, or the meter assignments given, get an open reading request — optionally assigned to one staff login (who must capture readings on that building) — due at the grace deadline. Repeating re-assigns the open requests. The next accepted or pending reading fulfils a request; the round shows `assignee` and the staff get `reading.requested` (D-031, D-035, D-208).',
+    implements: ['D-031', 'D-035', 'D-208'],
+  })
+  @ApiJsonBody(ReadingRequestCreateDto, { meterAssignmentIds: [FAKE.uuid], assigneeUserId: FAKE.uuid })
+  @ApiSuccess(200, {
+    description: 'Open requests',
+    type: ReadingRequestsDto,
+    example: {
+      billingCycleId: FAKE.uuid,
+      requests: [
+        {
+          id: FAKE.uuid,
+          meterAssignmentId: FAKE.uuid,
+          assetItemId: FAKE.meterId,
+          code: 'A-305-E',
+          assigneeUserId: FAKE.uuid,
+          status: 'open',
+          dueAt: FAKE.dateTime,
+        },
+      ],
+    },
+  })
+  @ApiStandardErrors('billing_cycle.invalid_state', ...WRITE)
+  async requestReadings(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('billingCycleId', ParseUUIDPipe) id: string,
+    @Body() body: ReadingRequestCreateDto,
+  ): Promise<ReadingRequestsDto> {
+    const r = await this.requests.request(ctx, id, body);
+    return {
+      billingCycleId: r.cycle.id,
+      requests: r.requests.map((q) => ({
+        id: q.id,
+        meterAssignmentId: q.meterAssignmentId,
+        assetItemId: q.assetItemId,
+        code: q.code,
+        assigneeUserId: q.assigneeUserId,
+        status: q.status as ReadingRequestStatusName,
+        dueAt: isoOrNull(q.dueAt),
+      })),
+    };
+  }
+
   @Post(':billingCycleId/actions/issue')
   @HttpCode(200)
   @Idempotent()
@@ -910,6 +1038,11 @@ export class OwnerInvoicesController {
     private readonly cycles: BillingCyclesService,
   ) {}
 
+  /** The invoice with what the row does not carry: the EMVCo payload of its active Thai QR (web F2). */
+  private async full(ctx: TenantContext, row: InvoiceRow): Promise<InvoiceDto> {
+    return invoiceDto(row, { qrPayload: await this.invoices.activeQrPayload(ctx, row.id) });
+  }
+
   @Get()
   @TenantScoped()
   @Can('invoice.read')
@@ -957,7 +1090,7 @@ export class OwnerInvoicesController {
     @CurrentTenant() ctx: TenantContext,
     @Param('invoiceId', ParseUUIDPipe) id: string,
   ): Promise<InvoiceDto> {
-    return invoiceDto(await this.invoices.get(ctx, id));
+    return this.full(ctx, await this.invoices.get(ctx, id));
   }
 
   @Post(':invoiceId/actions/issue')
@@ -992,7 +1125,8 @@ export class OwnerInvoicesController {
     @Param('invoiceId', ParseUUIDPipe) id: string,
     @Body() body: IssueDto,
   ): Promise<InvoiceDto> {
-    return invoiceDto(
+    return this.full(
+      ctx,
       await this.invoices.issue(ctx, id, { acknowledgementIds: body.acknowledgementIds ?? [] }),
     );
   }
@@ -1014,7 +1148,7 @@ export class OwnerInvoicesController {
     @CurrentTenant() ctx: TenantContext,
     @Param('invoiceId', ParseUUIDPipe) id: string,
   ): Promise<InvoiceDto> {
-    return invoiceDto(await this.cycles.recomputeDraft(ctx, id));
+    return this.full(ctx, await this.cycles.recomputeDraft(ctx, id));
   }
 
   @Post(':invoiceId/actions/void')
@@ -1048,8 +1182,8 @@ export class OwnerInvoicesController {
     const voided = await this.invoices.get(ctx, id);
     const replacementId = voided.replacedByInvoiceId ?? r.replacement?.id ?? null;
     return {
-      voided: invoiceDto(voided),
-      replacement: replacementId ? invoiceDto(await this.invoices.get(ctx, replacementId)) : null,
+      voided: await this.full(ctx, voided),
+      replacement: replacementId ? await this.full(ctx, await this.invoices.get(ctx, replacementId)) : null,
     };
   }
 
@@ -1076,7 +1210,7 @@ export class OwnerInvoicesController {
     @Param('invoiceId', ParseUUIDPipe) id: string,
     @Body() body: NoteCreateDto,
   ): Promise<InvoiceDto> {
-    return invoiceDto(await this.invoices.note(ctx, 'credit', id, body));
+    return this.full(ctx, await this.invoices.note(ctx, 'credit', id, body));
   }
 
   @Post(':invoiceId/debit-notes')
@@ -1103,7 +1237,7 @@ export class OwnerInvoicesController {
     @Param('invoiceId', ParseUUIDPipe) id: string,
     @Body() body: NoteCreateDto,
   ): Promise<InvoiceDto> {
-    return invoiceDto(await this.invoices.note(ctx, 'debit', id, body));
+    return this.full(ctx, await this.invoices.note(ctx, 'debit', id, body));
   }
 }
 
@@ -1210,7 +1344,12 @@ export class ResidentInvoicesController {
       unpaid: q.unpaid,
       ...toSkipTake(q),
     });
-    return paginated(rows.map(residentInvoiceDto), total, q);
+    const extras = await this.invoices.extras(rows);
+    return paginated(
+      rows.map((r) => residentInvoiceDto(r, extras.get(r.id))),
+      total,
+      q,
+    );
   }
 
   @Get('by-number/:number')
@@ -1227,7 +1366,8 @@ export class ResidentInvoicesController {
   })
   @ApiStandardErrors('auth.unauthenticated', 'http.not_found')
   async byNumber(@Param('number') number: string): Promise<ResidentInvoiceDto> {
-    return residentInvoiceDto(await this.invoices.get({ number }));
+    const row = await this.invoices.get({ number });
+    return residentInvoiceDto(row, (await this.invoices.extras([row])).get(row.id));
   }
 
   @Get(':invoiceId')
@@ -1245,6 +1385,7 @@ export class ResidentInvoicesController {
   })
   @ApiStandardErrors('auth.unauthenticated', 'http.not_found', 'validation.failed')
   async get(@Param('invoiceId', ParseUUIDPipe) id: string): Promise<ResidentInvoiceDto> {
-    return residentInvoiceDto(await this.invoices.get({ id }));
+    const row = await this.invoices.get({ id });
+    return residentInvoiceDto(row, (await this.invoices.extras([row])).get(row.id));
   }
 }

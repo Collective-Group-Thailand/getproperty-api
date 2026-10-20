@@ -34,19 +34,24 @@ import {
   Res,
 } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import Decimal from 'decimal.js';
 import { type Response } from 'express';
 
 import { dateOnly, iso, isoOrNull } from '../shared/mappers';
 import { ApiSurface, SURFACES } from '../surfaces';
+import { LeaseLineKindName } from './assets.dto';
 import { ifMatchVersion } from './assets.mappers';
 import {
   type AddendumClauseTypeName,
   CancelLeaseDto,
   CompleteMoveOutDto,
+  ComplianceOutcomeName,
+  ComplianceSeverityName,
   ContractDownloadDto,
   CountersignDto,
   InvitationAcceptedDto,
   InvitationPreviewDto,
+  LeaseCompliancePreviewDto,
   LeaseCreateDto,
   LeaseDto,
   LeaseEventDto,
@@ -57,6 +62,7 @@ import {
   type LeaseStatusName,
   LeaseTemplateDto,
   LeaseUpdateDto,
+  LineRecurrenceName,
   RecordNoticeDto,
   RenewLeaseDto,
   ResidentLeaseDto,
@@ -202,6 +208,93 @@ export class OwnerLeasesController {
   @ApiStandardErrors('compliance.acknowledgement_required', 'lease.unit_unavailable', ...WRITE)
   async create(@CurrentTenant() ctx: TenantContext, @Body() body: LeaseCreateDto): Promise<LeaseDto> {
     return leaseDto(await this.leases.createDraft(ctx, body));
+  }
+
+  @Post('compliance-preview')
+  @HttpCode(200)
+  @TenantScoped()
+  @Can('lease.manage')
+  @ApiEndpoint({
+    id: 'owner.leases.previewCompliance',
+    summary: 'Dry-run the compliance checks of a lease draft',
+    description:
+      'The same body as `POST /v1/owner/leases`, nothing written and no evaluation recorded (web F2 lease wizard): each rule the create would apply (deposit cap, forbidden clauses, renewal fee, utility lines, rent changes, water minimum, late fee) with its outcome now (pass / warn / block), severity and legal reference; the problems the create would answer (a refusal, an acknowledgement to give, a unit that cannot be leased); and the defaults the API applies (rent, deposit and advance from the unit and its room type, end date, fixed lines). D-208.',
+    implements: ['D-020', 'D-021a', 'D-158', 'D-208'],
+  })
+  @ApiJsonBody(LeaseCreateDto, CREATE_EXAMPLE)
+  @ApiSuccess(200, {
+    description: 'Checks, problems and defaults',
+    type: LeaseCompliancePreviewDto,
+    example: {
+      inScope: true,
+      checks: [
+        {
+          ruleId: 'compliance.deposit_cap',
+          outcome: 'block',
+          severity: 'block',
+          legalRef: 'ประกาศ สคบ. 2568 ข้อ 4 (3)',
+          context: { depositAmount: '13500.00', capAmount: '9000.00' },
+        },
+      ],
+      problems: [
+        {
+          code: 'compliance.deposit_cap',
+          status: 422,
+          ruleId: 'compliance.deposit_cap',
+          legalRef: 'ประกาศ สคบ. 2568 ข้อ 4 (3)',
+          errors: [
+            { path: 'depositAmount', code: 'max', message: 'deposit + advance exceed 3 months of rent' },
+          ],
+        },
+      ],
+      defaults: {
+        rent: '4500.00',
+        depositAmount: '4500.00',
+        advanceRentAmount: '4500.00',
+        billingDay: 5,
+        months: 12,
+        endDate: '2027-10-31',
+        lines: [
+          { kind: 'internet', description: 'อินเทอร์เน็ตไฟเบอร์', amount: '300.00', recurrence: 'monthly' },
+        ],
+      },
+    },
+  })
+  @ApiStandardErrors('validation.failed', 'http.bad_request', 'http.not_found', ...T)
+  async previewCompliance(
+    @CurrentTenant() ctx: TenantContext,
+    @Body() body: LeaseCreateDto,
+  ): Promise<LeaseCompliancePreviewDto> {
+    const r = await this.leases.previewDraft(ctx, body);
+    return {
+      inScope: r.inScope,
+      checks: r.checks.map((c) => ({
+        ruleId: c.ruleId,
+        outcome: c.outcome as ComplianceOutcomeName,
+        severity: c.severity as ComplianceSeverityName,
+        legalRef: c.legalRef,
+        context: c.context,
+      })),
+      problems: r.problems.map((p) => ({
+        ...p,
+        errors: (p.errors as { path: string; code: string; message: string }[]).map((e) => ({
+          path: e.path,
+          code: e.code,
+          message: e.message,
+        })),
+      })),
+      defaults: r.defaults
+        ? {
+            ...r.defaults,
+            lines: r.defaults.lines.map((l) => ({
+              kind: l.kind as LeaseLineKindName,
+              description: l.description,
+              amount: new Decimal(l.amount).toFixed(2),
+              recurrence: (l.recurrence ?? 'monthly') as LineRecurrenceName,
+            })),
+          }
+        : null,
+    };
   }
 
   @Get(':leaseId')

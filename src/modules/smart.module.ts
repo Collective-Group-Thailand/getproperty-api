@@ -17,12 +17,14 @@ import { DeviceInstallsService } from './smart-devices/installs.service';
 import { OtaService } from './smart-devices/ota.service';
 import { StaffFieldService } from './smart-devices/staff-field.service';
 import { BILLED_UNITS } from './smart-health/billed-units.provider';
+import { LossReportExportBuilder } from './smart-health/loss-report-export.builder';
 import { MeterHealthService } from './smart-health/meter-health.service';
 import { UtilityLossService } from './smart-health/utility-loss.service';
 import { IngestPipeline } from './smart-ingest/ingest-pipeline.service';
 import { SeriesService } from './smart-ingest/series.service';
 import { TelemetryMaintenanceService } from './smart-ingest/telemetry-maintenance.service';
 import { MeterReadingsService } from './smart-readings/meter-readings.service';
+import { ReadingRequestsService } from './smart-readings/reading-requests.service';
 import { ReadingRoundsService } from './smart-readings/reading-rounds.service';
 
 const SERVICES = [
@@ -38,6 +40,7 @@ const SERVICES = [
   StaffFieldService,
   MeterReadingsService,
   ReadingRoundsService,
+  ReadingRequestsService,
   MeterHealthService,
   UtilityLossService,
 ];
@@ -59,6 +62,7 @@ const SERVICES = [
     LossRecomputeSubscriber,
     AutoServiceRequestSubscriber,
     InspectionReadingsHook,
+    LossReportExportBuilder,
   ],
   exports: [...SERVICES, BILLED_UNITS],
 })

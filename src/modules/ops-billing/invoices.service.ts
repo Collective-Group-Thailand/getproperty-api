@@ -236,6 +236,17 @@ export class InvoicesService extends TenantScopedRepository {
     return this.db.tenant(ctx, (tx) => this.load(tx, ctx, id));
   }
 
+  /** The EMVCo payload of the invoice's active Thai QR (web F2: show the payable QR at the front desk), or null. */
+  async activeQrPayload(ctx: TenantContext, invoiceId: string): Promise<string | null> {
+    const qr = await this.db.tenant(ctx, (tx) =>
+      tx.paymentQrCode.findFirst({
+        where: { tenantId: ctx.tenantId, invoiceId, status: 'active' },
+        select: { payload: true },
+      }),
+    );
+    return qr?.payload ?? null;
+  }
+
   list(
     ctx: TenantContext,
     q: {

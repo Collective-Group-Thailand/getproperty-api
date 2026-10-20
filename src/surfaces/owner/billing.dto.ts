@@ -254,6 +254,16 @@ export class MeterSegmentEndDto {
     description: 'Reading source (D-012); `assignment` = the register recorded when the meter was assigned.',
   })
   source!: string;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: FAKE.uuid,
+    description:
+      'The evidence photo of the reading (`core.document`, download through `files/{id}`); null for IoT readings and older invoices (D-012, D-208).',
+  })
+  photoDocumentId!: string | null;
 }
 
 export class MeterSegmentDto {
@@ -568,6 +578,15 @@ export class InvoiceDto extends InvoiceSummaryDto {
     description: 'Payment reference (QR).',
   })
   promptpayRef!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '00020101021230...6304ABCD',
+    description:
+      'EMVCo payload of the active Thai QR of the invoice (render it as a QR code); null without a QR (no provider, paid, void). D-042, D-208.',
+  })
+  qrPayload!: string | null;
 
   @ApiProperty({
     type: String,
@@ -907,6 +926,81 @@ export class BillingCycleIssueResultDto extends BillingCycleDetailDto {
   skipped!: Record<string, unknown>[];
 }
 
+// ------------------------------------------------------------------------------------------- reading requests
+
+export class ReadingRequestCreateDto {
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    example: [FAKE.uuid],
+    description:
+      'Meter assignments to read (of the cycle’s buildings); omitted = every meter still missing in the round.',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  @ArrayMaxSize(1000)
+  meterAssignmentIds?: string[];
+
+  @ApiPropertyOptional({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: FAKE.uuid,
+    description: 'A staff login who captures readings on those buildings; omitted = any staff.',
+  })
+  @IsOptional()
+  @IsUUID()
+  assigneeUserId?: string | null;
+
+  @ApiPropertyOptional({ example: 'ห้อง A-305 มิเตอร์อยู่หลังตู้' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+export enum ReadingRequestStatusName {
+  Open = 'open',
+  Fulfilled = 'fulfilled',
+  Cancelled = 'cancelled',
+}
+
+export class ReadingRequestDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  meterAssignmentId!: string;
+
+  @ApiProperty({ format: 'uuid', example: FAKE.meterId })
+  assetItemId!: string;
+
+  @ApiProperty({ example: 'A-305-E' })
+  code!: string;
+
+  @ApiProperty({ type: String, format: 'uuid', nullable: true, example: FAKE.uuid })
+  assigneeUserId!: string | null;
+
+  @ApiProperty({
+    enum: ReadingRequestStatusName,
+    enumName: 'ReadingRequestStatus',
+    example: ReadingRequestStatusName.Open,
+  })
+  status!: ReadingRequestStatusName;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: FAKE.dateTime })
+  dueAt!: string | null;
+}
+
+export class ReadingRequestsDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  billingCycleId!: string;
+
+  @ApiProperty({ type: () => [ReadingRequestDto] })
+  requests!: ReadingRequestDto[];
+}
+
 // ------------------------------------------------------------------------------------------- resident
 
 export class ResidentInvoiceLineDto {
@@ -958,6 +1052,56 @@ export class ResidentInvoiceLineDto {
 
   @ApiProperty({ example: false })
   isEstimated!: boolean;
+
+  @ApiProperty({
+    enum: InvoiceLineSourceTypeName,
+    enumName: 'InvoiceLineSourceType',
+    example: InvoiceLineSourceTypeName.Meter,
+    description: 'What the line is billed from (group the lines by it, LIFF #15).',
+  })
+  sourceType!: InvoiceLineSourceTypeName;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    example: '2026-10-31T23:59:00+07:00',
+    description: 'When the closing reading of a meter line was taken (D-012, D-022); null for other lines.',
+  })
+  readAt!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'https://storage.example.com/meter-photo?X-Amz-Signature=abc',
+    description:
+      '5-minute link to the photo of the closing reading (OCR / manual readings); null for IoT readings and lines without a meter.',
+  })
+  readingPhotoUrl!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '120.000',
+    description: 'Units billed on a meter line.',
+  })
+  units!: string | null;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'The rate is above the utility’s effective rate; the owner acknowledged the warning (D-021a).',
+  })
+  aboveCap!: boolean;
+}
+
+/** A numbered document (invoice, receipt) by id and number. */
+export class DocumentRefDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({ example: 'RC-2026-00042', description: 'Document number.' })
+  number!: string;
 }
 
 export class ResidentInvoiceDto {
@@ -976,6 +1120,16 @@ export class ResidentInvoiceDto {
   @ApiProperty({ type: String, nullable: true, example: FAKE.unitCode })
   unitNo!: string | null;
 
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: FAKE.uuid,
+    description:
+      'The unit billed (match it with `me.units[].unitId` to pick the invoice of the selected unit, LIFF #15).',
+  })
+  unitId!: string | null;
+
   @ApiProperty({ type: String, format: 'date', example: '2026-10-01' })
   periodStart!: string;
 
@@ -990,6 +1144,12 @@ export class ResidentInvoiceDto {
 
   @ApiProperty({ example: false })
   isFinal!: boolean;
+
+  @ApiProperty({
+    type: () => [DocumentRefDto],
+    description: 'Receipts of the payments allocated to this invoice (voided ones left out), LIFF #19.',
+  })
+  receipts!: DocumentRefDto[];
 
   @ApiProperty({ type: [ResidentInvoiceLineDto] })
   lines!: ResidentInvoiceLineDto[];

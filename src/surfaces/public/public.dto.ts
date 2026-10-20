@@ -16,6 +16,7 @@ export enum PriceUnit {
   BuildingYear = 'building_year',
   Month = 'month',
   Report = 'report',
+  MeterPointMonth = 'meter_point_month',
 }
 
 /**
@@ -111,6 +112,22 @@ export class PublicPlanDto {
     description: 'Modules included in the plan (D-150, D-156).',
   })
   features!: PlanModuleKey[];
+
+  @ApiProperty({
+    example: true,
+    description:
+      'A published price version is in force and the plan is sold now; false = a proposal (draft version) shown for information (D-204, D-208).',
+  })
+  sold!: boolean;
+
+  @ApiProperty({
+    type: String,
+    format: 'date',
+    nullable: true,
+    example: '2026-01-01',
+    description: 'Effective date of the price version in force; null for a proposal.',
+  })
+  effectiveFrom!: string | null;
 }
 
 export class PublicPlansDto {

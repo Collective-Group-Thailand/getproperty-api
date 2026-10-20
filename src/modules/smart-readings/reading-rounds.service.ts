@@ -25,6 +25,10 @@ export interface RoundItem {
     source: string;
     photoDocumentId: string | null;
   } | null;
+  /** Staff login an open reading request is assigned to (web F2, D-208); null = anyone. */
+  assignee: { userId: string; displayName: string } | null;
+  /** An open reading request exists for this meter (asked by the owner). */
+  requested: boolean;
 }
 
 export interface RoundBuilding {
@@ -124,6 +128,14 @@ export class ReadingRoundsService extends TenantScopedRepository {
         const floors = new Map(
           (await tx.floor.findMany({ where: { buildingId: b.id, deletedAt: null } })).map((f) => [f.id, f]),
         );
+        const requests = new Map(
+          (
+            await tx.readingRequest.findMany({
+              where: { buildingId: b.id, status: 'open' },
+              include: { assignee: { select: { id: true, displayName: true } } },
+            })
+          ).map((r) => [r.meterAssignmentId, r]),
+        );
         const items: RoundItem[] = [];
         let total = 0;
         let read = 0;
@@ -161,6 +173,13 @@ export class ReadingRoundsService extends TenantScopedRepository {
                   photoDocumentId: last.evidenceDocumentId,
                 }
               : null,
+            assignee: requests.get(a.id)?.assignee
+              ? {
+                  userId: requests.get(a.id)!.assignee!.id,
+                  displayName: requests.get(a.id)!.assignee!.displayName,
+                }
+              : null,
+            requested: requests.has(a.id),
           });
         }
         const byFloor = new Map<string | null, RoundItem[]>();

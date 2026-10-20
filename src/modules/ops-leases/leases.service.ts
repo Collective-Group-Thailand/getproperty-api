@@ -355,6 +355,139 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
 
   // ------------------------------------------------------------------------------------------- drafts
 
+  /** Terms of a new draft with the defaults the API applies (unit base rent / room type months and lines). */
+  private async prepareDraft(tx: Tx, ctx: TenantContext, input: LeaseDraftInput) {
+    const unit = await this.leasableUnit(tx, ctx, input.unitId);
+    const profile = unit.unitDetailUnit?.profile ?? null;
+    const rent = input.rent ?? unit.baseRent?.toFixed(2) ?? profile?.defaultRent.toFixed(2);
+    if (!rent)
+      throw new DomainException('validation.failed', {
+        errors: [{ path: 'rent', code: 'required', message: 'the unit has no base rent; give the rent' }],
+      });
+    const months = input.endDate ? monthsBetween(input.startDate, input.endDate) : (input.months ?? 12);
+    const endDate = input.endDate ?? endDateFor(input.startDate, months);
+    const depositMonths = profile?.defaultDepositMonths.toString() ?? '1';
+    const advanceMonths = profile?.defaultAdvanceRentMonths.toString() ?? '1';
+    const lines =
+      input.lines ??
+      ((profile?.defaultLeaseLines ?? []) as unknown as LeaseLineDraft[]).map((l) => ({
+        ...l,
+        recurrence: 'monthly' as const,
+      }));
+    return {
+      unit,
+      rent,
+      months,
+      endDate,
+      deposit: input.depositAmount ?? new Decimal(rent).times(depositMonths).toFixed(2),
+      advance: input.advanceRentAmount ?? new Decimal(rent).times(advanceMonths).toFixed(2),
+      defaultDeposit: new Decimal(rent).times(depositMonths).toFixed(2),
+      defaultAdvance: new Decimal(rent).times(advanceMonths).toFixed(2),
+      lines,
+    };
+  }
+
+  /**
+   * Dry run of `createDraft` (web F2 wizard, D-208): the compliance checks the terms would get now and the defaults
+   * the API applies — nothing is written, no evaluation recorded. Refusals that are not compliance rules (unit not
+   * leasable, unknown parties) come back as problems instead of an error.
+   */
+  async previewDraft(ctx: TenantContext, input: LeaseDraftInput) {
+    const problems: {
+      code: string;
+      status: number;
+      ruleId: string | null;
+      legalRef: string | null;
+      errors: unknown[];
+    }[] = [];
+    const prepared = await this.db
+      .tenant(ctx, async (tx) => {
+        const p = await this.prepareDraft(tx, ctx, input);
+        const partyIds = [
+          input.lesseePartyId,
+          ...(input.coTenantPartyIds ?? []),
+          ...(input.guarantorPartyIds ?? []),
+          ...(input.occupantPartyIds ?? []),
+        ];
+        const unique: string[] = [...new Set(partyIds)];
+        const parties = await tx.party.count({
+          where: { tenantId: ctx.tenantId, id: { in: unique }, deletedAt: null, anonymisedAt: null },
+        });
+        if (parties !== new Set(partyIds).size)
+          problems.push({
+            code: 'validation.failed',
+            status: 422,
+            ruleId: null,
+            legalRef: null,
+            errors: [{ path: 'lesseePartyId', code: 'notFound', message: 'a party of the lease is unknown' }],
+          });
+        return p;
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DomainException && error.code !== 'http.not_found') {
+          problems.push({
+            code: error.code,
+            status: error.status,
+            ruleId: null,
+            legalRef: null,
+            errors: error.errors ?? [],
+          });
+          return null;
+        }
+        throw error;
+      });
+    if (!prepared) return { checks: [], problems, defaults: null, inScope: true };
+    const settings = await this.ruleSettings(ctx, prepared.unit.buildingId);
+    const checks = checkLeaseTerms(
+      this.termsOf({
+        rent: prepared.rent,
+        depositAmount: prepared.deposit,
+        advanceRentAmount: prepared.advance,
+        months: prepared.months,
+        startDate: input.startDate,
+        endDate: prepared.endDate,
+        utilityBillingMode: input.utilityBillingMode ?? 'metered',
+        lines: prepared.lines,
+        addendum: input.addendum ?? [],
+        rentIncreases: input.rentIncreases ?? [],
+        isRenewal: false,
+      }),
+      settings,
+    );
+    const preview = await this.gate.preview(ctx.tenantId, checks);
+    for (const c of preview.checks)
+      if (c.outcome === 'block')
+        problems.push({
+          code: c.ruleId,
+          status: 422,
+          ruleId: c.ruleId,
+          legalRef: c.legalRef,
+          errors: c.errors ?? [],
+        });
+      else if (c.outcome === 'warn')
+        problems.push({
+          code: 'compliance.acknowledgement_required',
+          status: 409,
+          ruleId: c.ruleId,
+          legalRef: c.legalRef,
+          errors: c.errors ?? [],
+        });
+    return {
+      inScope: preview.inScope,
+      checks: preview.checks,
+      problems,
+      defaults: {
+        rent: prepared.rent,
+        depositAmount: prepared.defaultDeposit,
+        advanceRentAmount: prepared.defaultAdvance,
+        billingDay: input.billingDay ?? null,
+        endDate: prepared.endDate,
+        months: prepared.months,
+        lines: prepared.lines,
+      },
+    };
+  }
+
   /** A new draft (B2.3 §3): defaults from the unit and its room type, compliance-checked before it is written. */
   async createDraft(
     ctx: TenantContext,
@@ -362,34 +495,7 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
     renewedFromLeaseId: string | null = null,
   ): Promise<LeaseRow> {
     const id = uuidv7(this.clock.now().getTime());
-    const prepared = await this.db.tenant(ctx, async (tx) => {
-      const unit = await this.leasableUnit(tx, ctx, input.unitId);
-      const profile = unit.unitDetailUnit?.profile ?? null;
-      const rent = input.rent ?? unit.baseRent?.toFixed(2) ?? profile?.defaultRent.toFixed(2);
-      if (!rent)
-        throw new DomainException('validation.failed', {
-          errors: [{ path: 'rent', code: 'required', message: 'the unit has no base rent; give the rent' }],
-        });
-      const months = input.endDate ? monthsBetween(input.startDate, input.endDate) : (input.months ?? 12);
-      const endDate = input.endDate ?? endDateFor(input.startDate, months);
-      const depositMonths = profile?.defaultDepositMonths.toString() ?? '1';
-      const advanceMonths = profile?.defaultAdvanceRentMonths.toString() ?? '1';
-      const lines =
-        input.lines ??
-        ((profile?.defaultLeaseLines ?? []) as unknown as LeaseLineDraft[]).map((l) => ({
-          ...l,
-          recurrence: 'monthly' as const,
-        }));
-      return {
-        unit,
-        rent,
-        months,
-        endDate,
-        deposit: input.depositAmount ?? new Decimal(rent).times(depositMonths).toFixed(2),
-        advance: input.advanceRentAmount ?? new Decimal(rent).times(advanceMonths).toFixed(2),
-        lines,
-      };
-    });
+    const prepared = await this.db.tenant(ctx, (tx) => this.prepareDraft(tx, ctx, input));
     const { unit } = prepared;
     const template = await this.standardTemplate();
     const gate = await this.checkTerms(
