@@ -38,8 +38,12 @@ export class FakeLockVendor implements LockVendorAdapter {
     if (this.failing.has(lock.vendorLockId)) throw new LockVendorError(this.vendor, 'lock unreachable');
   }
 
-  createCredential(lock: LockRef, input: CredentialInput): Promise<CreatedCredential> {
+  /** Milliseconds each createCredential takes (tests of concurrent syncs; a real vendor takes seconds). */
+  latencyMs = 0;
+
+  async createCredential(lock: LockRef, input: CredentialInput): Promise<CreatedCredential> {
     this.check(lock);
+    if (this.latencyMs) await new Promise((r) => setTimeout(r, this.latencyMs));
     const ref = `${this.vendor}-${randomUUID()}`;
     this.credentials.set(ref, {
       ref,
@@ -51,7 +55,7 @@ export class FakeLockVendor implements LockVendorAdapter {
       validTo: input.validTo,
       revoked: false,
     });
-    return Promise.resolve({ vendorCredentialRef: ref });
+    return { vendorCredentialRef: ref };
   }
 
   revokeCredential(lock: LockRef, ref: string): Promise<void> {
@@ -111,6 +115,7 @@ export class FakeLockVendor implements LockVendorAdapter {
     this.logs.clear();
     this.batteries.clear();
     this.failing.clear();
+    this.latencyMs = 0;
   }
 }
 

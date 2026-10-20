@@ -56,6 +56,9 @@ const by = () => userIdOf(RequestContext.actor());
  * receivables to here (D-024, D-071, D-157): only lease end / termination, an owner action with a reason, the end of
  * a time box or of a work order end a credential.
  */
+/** How long one vendor sync may hold a credential (D-223); a crashed worker's claim lapses after it. */
+const SYNC_CLAIM_MS = 120_000;
+
 @Injectable()
 export class AccessCredentialsService extends TenantScopedRepository {
   private readonly logger = new Logger(AccessCredentialsService.name);
@@ -262,16 +265,40 @@ export class AccessCredentialsService extends TenantScopedRepository {
    * revoked / expired one the vendor still has. Idempotent; called after the commit and by the sweep.
    */
   async sync(credentialId: string): Promise<void> {
-    await RequestContext.run({ actor: systemActor('access-sync') }, async () => {
+    // Review #8 (D-223): one owner per credential — the after-commit sync, the sweep and other replicas skip a row
+    // whose vendor call is in progress, so the vendor never gets two codes for one credential.
+    const now0 = this.clock.now();
+    const claimed = await this.db.platform(
+      (tx) => tx.$queryRaw<{ id: string }[]>`
+        UPDATE smart.access_credential SET sync_claimed_until = ${new Date(now0.getTime() + SYNC_CLAIM_MS)}
+         WHERE id = ${credentialId}::uuid AND (sync_claimed_until IS NULL OR sync_claimed_until < ${now0})
+        RETURNING id`,
+    );
+    if (!claimed.length) return;
+    let again: boolean;
+    try {
+      again = await this.syncClaimed(credentialId);
+    } finally {
+      await this.db.platform((tx) =>
+        tx.accessCredential.update({ where: { id: credentialId }, data: { syncClaimedUntil: null } }),
+      );
+    }
+    // revoked while the vendor created it: the vendor copy is removed now, under a new claim
+    if (again) await this.sync(credentialId);
+  }
+
+  /** The vendor call of a claimed credential; true when another pass is needed (revoked during the creation). */
+  private async syncClaimed(credentialId: string): Promise<boolean> {
+    return RequestContext.run({ actor: systemActor('access-sync') }, async () => {
       const cred = await this.db.platform((tx) =>
         tx.accessCredential.findUnique({ where: { id: credentialId }, include: { lock: true } }),
       );
-      if (!cred) return;
+      if (!cred) return false;
       const now = this.clock.now();
       const needsCreate = cred.status === 'pending';
       const needsRevoke =
         !LIVE_STATUSES.includes(cred.status) && !!cred.vendorCredentialRef && !cred.vendorSyncedAt;
-      if (!needsCreate && !needsRevoke) return;
+      if (!needsCreate && !needsRevoke) return false;
       const resolved = await this.lockRef(cred.lock);
       if ('error' in resolved) {
         await this.db.platform((tx) =>
@@ -282,7 +309,7 @@ export class AccessCredentialsService extends TenantScopedRepository {
               : { vendorError: resolved.error },
           }),
         );
-        return;
+        return false;
       }
       const adapter = this.vendors.adapter(resolved.ref.vendor);
       try {
@@ -319,12 +346,9 @@ export class AccessCredentialsService extends TenantScopedRepository {
                 data: { vendorCredentialRef: created.vendorCredentialRef, vendorSyncedAt: null },
               });
           });
-          if (
-            !(await this.db.platform((tx) =>
-              tx.accessCredential.count({ where: { id: cred.id, status: 'active' } }),
-            ))
-          )
-            await this.sync(cred.id);
+          return !(await this.db.platform((tx) =>
+            tx.accessCredential.count({ where: { id: cred.id, status: 'active' } }),
+          ));
         } else {
           await adapter.revokeCredential(
             resolved.ref,
@@ -345,6 +369,7 @@ export class AccessCredentialsService extends TenantScopedRepository {
           tx.accessCredential.update({ where: { id: cred.id }, data: { vendorError: message } }),
         );
       }
+      return false;
     });
   }
 
