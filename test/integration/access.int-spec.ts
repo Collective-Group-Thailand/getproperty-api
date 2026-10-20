@@ -57,7 +57,7 @@ describe('B5.2 access control (real PostgreSQL)', () => {
     )[0]!.id;
   const creds = (where: string, params: unknown[]) =>
     q<{ id: string; holder_kind: string; status: string; lock_id: string; valid_to: Date | null }>(
-      `SELECT id, holder_kind::text, status::text, lock_id, valid_to FROM smart.access_credential WHERE ${where} ORDER BY created_at`,
+      `SELECT id, holder_kind::text, status::text, lock_id, valid_to FROM smart.access_credential WHERE ${where} ORDER BY created_at, id`,
       params,
     );
   const register = async (body: Record<string, unknown>) =>
@@ -390,11 +390,12 @@ describe('B5.2 access control (real PostgreSQL)', () => {
       .expect(200);
     await settle();
     const after = await creds('work_order_id = $1', [wo.body.id]);
-    expect(after.map((c) => [c.holder_kind, c.status])).toEqual([
-      ['technician', 'revoked'],
-      ['technician', 'revoked'],
+    // order-insensitive: rows of one transaction share created_at
+    expect(after.map((c) => [c.holder_kind, c.status]).sort()).toEqual([
       ['staff', 'active'],
       ['staff', 'active'],
+      ['technician', 'revoked'],
+      ['technician', 'revoked'],
     ]);
     await t.http
       .get(`/v1/technician/work-orders/${wo.body.id}/access`)
@@ -469,6 +470,54 @@ describe('B5.2 access control (real PostgreSQL)', () => {
     owner = await ownerToken(t);
     await t.app.get(AccessCredentialsService).sweep();
     expect((await creds('id = $1', [visitor.body.id]))[0]!.status).toBe('expired');
+  });
+
+  it('concurrent syncs of one credential create one vendor code, never an orphan (review #8, D-223)', async () => {
+    vendor().failing.add('door-1');
+    const from = new Date(t.clock.now().getTime() + 60_000);
+    const to = new Date(t.clock.now().getTime() + 2 * 3_600_000);
+    const visitor = await t.http
+      .post(`/v1/owner/locks/${ids.door}/visitor-codes`)
+      .set(O())
+      .set(idem())
+      .send({ visitorName: 'ผู้มาเยือน ซิงก์', validFrom: from.toISOString(), validTo: to.toISOString() })
+      .expect(201);
+    await settle();
+    expect((await creds('id = $1', [visitor.body.id]))[0]!.status).toBe('pending');
+    vendor().failing.delete('door-1');
+    vendor().latencyMs = 300;
+    const service = t.app.get(AccessCredentialsService);
+    try {
+      // the after-commit sync, the 60-s sweep and a second replica all at once
+      await Promise.all([
+        service.sync(visitor.body.id as string),
+        service.sync(visitor.body.id as string),
+        service.sweep(),
+      ]);
+    } finally {
+      vendor().latencyMs = 0;
+    }
+    const atVendor = [...vendor().credentials.values()].filter((c) => c.holderName === 'ผู้มาเยือน ซิงก์');
+    expect(atVendor).toHaveLength(1);
+    const row = (
+      await q<{ status: string; vendor_credential_ref: string; sync_claimed_until: Date | null }>(
+        'SELECT status::text, vendor_credential_ref, sync_claimed_until FROM smart.access_credential WHERE id = $1',
+        [visitor.body.id],
+      )
+    )[0]!;
+    expect(row).toEqual({
+      status: 'active',
+      vendor_credential_ref: atVendor[0]!.ref,
+      sync_claimed_until: null,
+    });
+    // revoking it removes the one vendor code: nothing stays live at the lock
+    await t.http
+      .post(`/v1/owner/access-credentials/${visitor.body.id}/actions/revoke`)
+      .set(O())
+      .send({ reason: 'ยกเลิกการเยี่ยม' })
+      .expect(200);
+    await settle();
+    expect(atVendor[0]!.revoked).toBe(true);
   });
 
   it('a low battery opens one automatic repair request on the lock', async () => {

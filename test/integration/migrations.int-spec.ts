@@ -25,7 +25,7 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
     expect(core.applied).toHaveLength(10);
     const applied = await applyPrismaMigrations(db.admin);
     expect(applied).toEqual(listMigrations().map((m) => m.name));
-    expect(applied).toHaveLength(33);
+    expect(applied).toHaveLength(34);
   });
 
   it('creates exactly the tables of schema-design §7.1–§7.3 (+ §7.5): core 18, platform 63 (+ B4.1 compliance_score, D-203 topic preferences, B6.1 platform business 17, B6.3 analytics 4), ops 68 (B2.1–B4.5, B5.1 service 5, B5.3 community 8, B6.2 e-Tax / TM30 2, D-218 service messages 1), bridge 1, smart 29 (B1.3 + B3 + D-208 reading requests + B5.2 access 3, partitioned parents counted once), juristic empty', async () => {
