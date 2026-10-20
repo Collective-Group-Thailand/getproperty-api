@@ -100,6 +100,7 @@ const RESIDENT_ME_EXAMPLE: ResidentMeDto = {
   consentComplete: true,
   entitlements: ['bills', 'usage', 'lease'] as never[],
   scopes: [`unit:${FAKE.uuid}`],
+  linkRequestsPending: 0,
 };
 
 const ME_ERRORS = ['tenant.context_invalid', 'tenant.not_in_scope'] as const;

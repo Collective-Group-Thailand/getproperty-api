@@ -52,6 +52,8 @@ export const DOMAIN_EVENT_TYPES = {
   'asset_item.changed': 'An appliance, furniture or other asset item of a unit changed (B2.1).',
   // B2.2 parties
   'party.link_changed': 'A resident login was linked to or unlinked from a party (D-061).',
+  'party.link_requested':
+    'An SMS-OTP login matched a party by its phone; the link waits for the Owner (D-226, review #6).',
   // B2.3 leases
   'lease.drafted': 'A lease draft was created (or renewed into a new draft).',
   'lease.updated': 'A lease draft changed.',

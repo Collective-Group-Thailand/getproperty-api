@@ -30,6 +30,7 @@ import { ContractRenderer } from './ops-leases/contract-renderer';
 import { LeasesService } from './ops-leases/leases.service';
 import { ResidentLeasesService } from './ops-leases/resident-leases.service';
 import { PartiesService } from './ops-parties/parties.service';
+import { PartyNotifications } from './ops-parties/party-notifications';
 import { ResidentDocumentsService } from './ops-parties/resident-documents.service';
 import { ResidentPrivacyService } from './ops-parties/resident-privacy.service';
 import { MerchantResolver } from './ops-payments/merchants';
@@ -77,6 +78,7 @@ const SERVICES = [
   UnitImportService,
   SearchService,
   PartiesService,
+  PartyNotifications,
   ResidentPrivacyService,
   ResidentDocumentsService,
   ContractRenderer,

@@ -158,6 +158,19 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     en: ['Slip to review', 'A transfer slip of {{tenant.name}} waits for your review ({{slip.reasons}}).'],
   },
   {
+    key: 'party.link_requested',
+    description:
+      'Owner: someone signed in with the SMS code sent to a party’s phone and waits to be linked to it (D-226)',
+    th: [
+      'มีผู้ขอเชื่อมบัญชีกับผู้เช่า',
+      'มีผู้เข้าสู่ระบบด้วยเบอร์โทรของ {{party.name}} ({{tenant.name}}) — โปรดตรวจสอบตัวตนก่อนยืนยันในเมนูบุคคล',
+    ],
+    en: [
+      'Login waiting to be linked',
+      'Someone signed in with the phone number of {{party.name}} ({{tenant.name}}) — check who it is before confirming in Parties.',
+    ],
+  },
+  {
     key: 'payment.held',
     description:
       'Owner/Manager: a QR payment looks like a transfer already booked and waits for a decision (D-220)',

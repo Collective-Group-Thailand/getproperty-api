@@ -513,6 +513,10 @@
     "link_not_active": {
       "title": "Link not active",
       "detail": "This login is not linked to the party any more."
+    },
+    "link_request_not_pending": {
+      "title": "Link request already decided",
+      "detail": "This link request was already confirmed or rejected."
     }
   },
   "lease": {

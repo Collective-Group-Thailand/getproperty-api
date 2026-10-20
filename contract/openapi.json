@@ -1446,6 +1446,17 @@
           "type": "https://errors.getproperty.co/party.link_not_active"
         }
       },
+      "problem.party.link_request_not_pending": {
+        "summary": "party.link_request_not_pending",
+        "value": {
+          "code": "party.link_request_not_pending",
+          "detail": "คำขอเชื่อมบัญชีนี้ได้รับการยืนยันหรือปฏิเสธไปแล้ว",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "คำขอเชื่อมบัญชีถูกพิจารณาแล้ว",
+          "type": "https://errors.getproperty.co/party.link_request_not_pending"
+        }
+      },
       "problem.payment.credit_used": {
         "summary": "payment.credit_used",
         "value": {
@@ -20271,6 +20282,107 @@
         ],
         "type": "object"
       },
+      "PartyLinkRequestDto": {
+        "properties": {
+          "decidedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "lineLinked": {
+            "description": "The login also signed in with LINE.",
+            "example": false,
+            "type": "boolean"
+          },
+          "linkId": {
+            "description": "The link created on confirmation (`linkedVia: admin`).",
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "partyDisplayName": {
+            "example": "ผู้เช่า ทดสอบ",
+            "type": "string"
+          },
+          "partyId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "rejectReason": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requestedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PartyLinkRequestState"
+              }
+            ],
+            "example": "pending"
+          },
+          "userDisplayName": {
+            "example": "ผู้เช่า ทดสอบ",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "userId": {
+            "description": "The login that signed in with the SMS code sent to the party’s phone.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "via": {
+            "description": "How the login matched the party (`phone_match`).",
+            "example": "phone_match",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "partyId",
+          "partyDisplayName",
+          "userId",
+          "userDisplayName",
+          "lineLinked",
+          "via",
+          "state",
+          "requestedAt",
+          "decidedAt",
+          "rejectReason",
+          "linkId"
+        ],
+        "type": "object"
+      },
+      "PartyLinkRequestState": {
+        "enum": [
+          "pending",
+          "confirmed",
+          "rejected"
+        ],
+        "type": "string"
+      },
       "PartyLinkState": {
         "enum": [
           "active",
@@ -24250,6 +24362,19 @@
         ],
         "type": "string"
       },
+      "RejectLinkRequestDto": {
+        "properties": {
+          "reason": {
+            "description": "Why the match is refused (audited).",
+            "example": "ไม่ใช่ผู้เช่าห้องนี้ เบอร์โทรพิมพ์ผิด",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
       "RejectedReadingDto": {
         "properties": {
           "meterId": {
@@ -25472,6 +25597,11 @@
             },
             "type": "array"
           },
+          "linkRequestsPending": {
+            "description": "Parties matched by my SMS-verified phone that wait for their landlord’s confirmation before I see them (D-226): show “waiting for your landlord to confirm” or offer the invitation code (D-175).",
+            "example": 0,
+            "type": "integer"
+          },
           "scopes": {
             "example": [
               "unit:3b241101-e2bb-4255-8caf-4136c566a962"
@@ -25499,7 +25629,8 @@
           "consents",
           "consentComplete",
           "entitlements",
-          "scopes"
+          "scopes",
+          "linkRequestsPending"
         ],
         "type": "object"
       },
@@ -63965,7 +64096,7 @@
     },
     "/v1/auth/resident/otp/verify": {
       "post": {
-        "description": "Checks the code, creates the account on first use and links the parties that carry the verified phone in any tenant (`phone_match`, D-061). Returns `resident` tokens.\n\nImplements: D-060, D-061, ADR-0003.",
+        "description": "Checks the code and creates the account on first use. A verified phone that matches parties an operator entered (any tenant) does **not** link them: each match becomes a link request the tenant’s Owner confirms (`/v1/owner/party-link-requests`, D-226) — until then the login sees none of those parties (leases, bills, door codes); `ResidentMeDto.linkRequestsPending` counts them. An invitation code (D-175) or LINE sign-in of an invited party links at once. Returns `resident` tokens.\n\nImplements: D-060, D-061, ADR-0003.",
         "operationId": "auth.residentOtp.verify",
         "parameters": [
           {
@@ -64555,7 +64686,7 @@
     },
     "/v1/auth/technician/otp/verify": {
       "post": {
-        "description": "Checks the code, creates the account on first use and links the parties carrying the verified phone (`phone_match`); the `technician` token carries `work_order:<uuid>` for the work orders assigned to them (B5.1).\n\nImplements: D-072, D-154, ADR-0003.",
+        "description": "Checks the code and creates the account on first use. Parties carrying the verified phone are not linked automatically: each match is a link request the tenant’s Owner confirms (D-226); once linked (or when the work order carries the technician’s LINE id), the `technician` token carries `work_order:<uuid>` for the work orders assigned to them (B5.1) from the next refresh.\n\nImplements: D-072, D-154, ADR-0003.",
         "operationId": "auth.technicianOtp.verify",
         "parameters": [
           {
@@ -122166,6 +122297,854 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/party-link-requests": {
+      "get": {
+        "description": "A resident or technician who signed in with an SMS code sent to a phone an operator entered on a party is not linked automatically: the match waits here for the Owner (`pending`), newest first; `state` and `partyId` filter (D-226). Confirm only after checking who signed in (in person, by a call to the number on file).\n\nImplements: D-061, D-226.",
+        "operationId": "owner.parties.listLinkRequests",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sort field; each endpoint validates it against its own allow-list.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "example": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "description": "Free-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PartyLinkRequestState"
+            }
+          },
+          {
+            "in": "query",
+            "name": "partyId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "decidedAt": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "lineLinked": false,
+                      "linkId": null,
+                      "partyDisplayName": "ผู้เช่า ทดสอบ",
+                      "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "rejectReason": null,
+                      "requestedAt": "2026-11-01T00:15:00+07:00",
+                      "state": "pending",
+                      "userDisplayName": "ผู้เช่า ทดสอบ",
+                      "userId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "via": "phone_match"
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "perPage": 25,
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/PartyLinkRequestDto"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "One page of results",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Logins waiting to be linked to a party",
+        "tags": [
+          "owner.parties"
+        ],
+        "x-required-permissions": [
+          "party.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/party-link-requests/{requestId}/actions/confirm": {
+      "post": {
+        "description": "The Owner confirms that the login is the party (D-226): it is linked (`linkedVia: admin`) and sees the party’s leases, bills and door codes from its next token refresh. Audited (`party.linked`).\n\nImplements: D-061, D-226.",
+        "operationId": "owner.parties.confirmLinkRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "decidedAt": "2026-11-01T00:15:00+07:00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "lineLinked": false,
+                  "linkId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "partyDisplayName": "ผู้เช่า ทดสอบ",
+                  "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "rejectReason": null,
+                  "requestedAt": "2026-11-01T00:15:00+07:00",
+                  "state": "confirmed",
+                  "userDisplayName": "ผู้เช่า ทดสอบ",
+                  "userId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "via": "phone_match"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PartyLinkRequestDto"
+                }
+              }
+            },
+            "description": "Confirmed",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "party.link_request_not_pending": {
+                    "$ref": "#/components/examples/problem.party.link_request_not_pending"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `party.link_request_not_pending`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Confirm a phone-match link",
+        "tags": [
+          "owner.parties"
+        ],
+        "x-required-permissions": [
+          "party.link.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/party-link-requests/{requestId}/actions/reject": {
+      "post": {
+        "description": "The login is not the party (mistyped or recycled number, D-226): nothing is linked; the reason is audited (`party.link_rejected`).\n\nImplements: D-061, D-226.",
+        "operationId": "owner.parties.rejectLinkRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "reason": "ไม่ใช่ผู้เช่าห้องนี้ เบอร์โทรพิมพ์ผิด"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/RejectLinkRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "decidedAt": "2026-11-01T00:15:00+07:00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "lineLinked": false,
+                  "linkId": null,
+                  "partyDisplayName": "ผู้เช่า ทดสอบ",
+                  "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "rejectReason": "ไม่ใช่ผู้เช่าห้องนี้ เบอร์โทรพิมพ์ผิด",
+                  "requestedAt": "2026-11-01T00:15:00+07:00",
+                  "state": "rejected",
+                  "userDisplayName": "ผู้เช่า ทดสอบ",
+                  "userId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "via": "phone_match"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PartyLinkRequestDto"
+                }
+              }
+            },
+            "description": "Rejected",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "party.link_request_not_pending": {
+                    "$ref": "#/components/examples/problem.party.link_request_not_pending"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `party.link_request_not_pending`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Reject a phone-match link",
+        "tags": [
+          "owner.parties"
+        ],
+        "x-required-permissions": [
+          "party.link.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/payer-credits": {
       "get": {
         "description": "Money received beyond what was due, per payer × unit (D-044): used automatically on the next invoice, or refunded with evidence.\n\nImplements: D-044.",
@@ -160412,6 +161391,7 @@
                       "unitNo": "A-201"
                     }
                   ],
+                  "linkRequestsPending": 0,
                   "scopes": [
                     "unit:3b241101-e2bb-4255-8caf-4136c566a962"
                   ],
@@ -160637,6 +161617,7 @@
                       "unitNo": "A-201"
                     }
                   ],
+                  "linkRequestsPending": 0,
                   "scopes": [
                     "unit:3b241101-e2bb-4255-8caf-4136c566a962"
                   ],

@@ -12,7 +12,7 @@ import { LINE_MESSAGING } from '@integrations/line/line-messaging.port';
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';
-import { bearer, idem, operatorToken, ownerToken } from '../support/int-auth';
+import { bearer, idem, operatorToken, otpSignIn, ownerToken } from '../support/int-auth';
 import { createIntDatabase, type IntDatabase } from '../support/int-db';
 
 /** Counts what a test subscriber saw; can be told to fail once. */
@@ -270,15 +270,8 @@ describe('events, workflow and notifications (B1.3 acceptance, real PostgreSQL)'
         [DEV.tenantId],
       );
       t.clock.advance(61_000);
-      const challenge = await t.http
-        .post('/v1/auth/resident/otp/request')
-        .send({ phone: '+660000000055' })
-        .expect(200);
-      const verified = await t.http
-        .post('/v1/auth/resident/otp/verify')
-        .send({ challengeId: challenge.body.challengeId, code: t.sms.lastCodeTo('+660000000055') })
-        .expect(200);
-      residentToken = verified.body.accessToken;
+      // the phone the office typed only requests the link; the Owner confirms it (D-226)
+      residentToken = (await otpSignIn(t, 'resident', '+660000000055', await ownerToken(t))).accessToken;
       const res = await t.http
         .post('/v1/resident/data-subject-requests')
         .set(bearer(residentToken))

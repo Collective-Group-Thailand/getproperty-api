@@ -11,6 +11,7 @@ import {
   IsIn,
   IsOptional,
   IsString,
+  IsUUID,
   Length,
   Matches,
   MaxLength,
@@ -567,4 +568,85 @@ export class ResidentPrivacyDto {
     description: 'My PDPA requests (file new ones at /v1/resident/data-subject-requests).',
   })
   requests!: DsrDto[];
+}
+
+/** `ops.party_link_request_state` (D-226). */
+export enum PartyLinkRequestStateName {
+  Pending = 'pending',
+  Confirmed = 'confirmed',
+  Rejected = 'rejected',
+}
+
+export class PartyLinkRequestDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  partyId!: string;
+
+  @ApiProperty({ example: FAKE.nameTh })
+  partyDisplayName!: string;
+
+  @ApiProperty({
+    format: 'uuid',
+    example: FAKE.uuid,
+    description: 'The login that signed in with the SMS code sent to the party’s phone.',
+  })
+  userId!: string;
+
+  @ApiProperty({ type: String, nullable: true, example: FAKE.nameTh })
+  userDisplayName!: string | null;
+
+  @ApiProperty({ example: false, description: 'The login also signed in with LINE.' })
+  lineLinked!: boolean;
+
+  @ApiProperty({ example: 'phone_match', description: 'How the login matched the party (`phone_match`).' })
+  via!: string;
+
+  @ApiProperty({
+    enum: PartyLinkRequestStateName,
+    enumName: 'PartyLinkRequestState',
+    example: PartyLinkRequestStateName.Pending,
+  })
+  state!: PartyLinkRequestStateName;
+
+  @ApiProperty({ format: 'date-time', example: FAKE.dateTime })
+  requestedAt!: string;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
+  decidedAt!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: null })
+  rejectReason!: string | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: null,
+    description: 'The link created on confirmation (`linkedVia: admin`).',
+  })
+  linkId!: string | null;
+}
+
+export class PartyLinkRequestListQuery extends PageQuery {
+  @ApiPropertyOptional({ enum: PartyLinkRequestStateName, enumName: 'PartyLinkRequestState' })
+  @IsOptional()
+  @IsEnum(PartyLinkRequestStateName)
+  state?: PartyLinkRequestStateName;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  partyId?: string;
+}
+
+export class RejectLinkRequestDto {
+  @ApiProperty({
+    example: 'ไม่ใช่ผู้เช่าห้องนี้ เบอร์โทรพิมพ์ผิด',
+    description: 'Why the match is refused (audited).',
+  })
+  @IsString()
+  @Length(3, 300)
+  reason!: string;
 }

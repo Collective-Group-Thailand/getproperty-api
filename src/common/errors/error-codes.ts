@@ -98,6 +98,7 @@ export const ERROR_CODES = {
   'import.invalid_rows': HttpStatus.UNPROCESSABLE_ENTITY,
   'import.preview_stale': HttpStatus.CONFLICT,
   'party.link_not_active': HttpStatus.CONFLICT,
+  'party.link_request_not_pending': HttpStatus.CONFLICT,
   'compliance.forbidden_clause': HttpStatus.UNPROCESSABLE_ENTITY,
   'compliance.no_renewal_fee': HttpStatus.UNPROCESSABLE_ENTITY,
   'compliance.no_midterm_increase': HttpStatus.UNPROCESSABLE_ENTITY,

@@ -56,7 +56,11 @@ import {
   OwnerSettingsController,
   OwnerUtilityTariffsController,
 } from './money-settings.controller';
-import { OwnerPartyDetailsController, partiesController } from './parties.controller';
+import {
+  OwnerPartyDetailsController,
+  OwnerPartyLinkRequestsController,
+  partiesController,
+} from './parties.controller';
 import { OwnerPaymentsController } from './payments.controller';
 import { OwnerDashboardController, OwnerReceivablesController } from './receivables.controller';
 import { OwnerSearchController } from './search.controller';
@@ -127,6 +131,7 @@ import {
     OwnerUnitImportsController,
     partiesController(SURFACES.owner),
     OwnerPartyDetailsController,
+    OwnerPartyLinkRequestsController,
     OwnerLeasesController,
     OwnerLeaseTemplatesController,
     OwnerDepositsController,

@@ -12,6 +12,7 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { AuditService } from '../audit/audit.service';
 import { CLOCK, type Clock } from '../clock/clock';
+import { DomainEvents } from '../events/domain-events';
 import { InvitationService } from '../tenancy/invitation.service';
 import { hashPassword, needsRehash, passwordProblems, verifyPassword } from './crypto/password';
 import { opaqueToken, tokenHash } from './crypto/secrets';
@@ -50,6 +51,7 @@ export class AuthService {
     private readonly otp: OtpService,
     private readonly invitations: InvitationService,
     private readonly audit: AuditService,
+    private readonly events: DomainEvents,
     private readonly hasher: LookupHasher,
     private readonly platformKey: FieldEncryption,
     private readonly config: AppConfig,
@@ -475,7 +477,7 @@ export class AuthService {
     const challenge = await this.otp.verify({ challengeId, code, purpose: 'technician_login' });
     return this.db.platform(async (tx) => {
       const user = await this.phoneUser(tx, challenge.phoneE164);
-      await this.linkParties(tx, user, { phone: challenge.phoneE164 });
+      await this.requestPhoneLinks(tx, user, challenge.phoneE164);
       return this.issue(tx, await this.subjects.technician(tx, user.id), ['otp'], user);
     });
   }
@@ -528,22 +530,21 @@ export class AuthService {
         user = await tx.userAccount.update({ where: { id: user.id }, data: { phoneVerifiedAt: now } });
       }
       if (user.status !== 'active') throw new DomainException('auth.account_disabled');
-      await this.linkParties(tx, user, { phone: challenge.phoneE164 });
+      await this.requestPhoneLinks(tx, user, challenge.phoneE164);
       return this.issue(tx, await this.subjects.resident(tx, user.id), ['otp'], user);
     });
   }
 
-  /** Links the parties (in any tenant) that carry this LINE id or verified phone and are not linked yet (D-061). */
-  private async linkParties(
-    tx: Tx,
-    user: UserAccount,
-    by: { lineUserId?: string; phone?: string },
-  ): Promise<void> {
+  /**
+   * Links the parties (in any tenant) that carry this LINE id and are not linked yet (D-061): a party gets a LINE id
+   * from an accepted invitation (D-175) or from the owner entering a technician's LINE — never by typing a phone.
+   */
+  private async linkParties(tx: Tx, user: UserAccount, by: { lineUserId: string }): Promise<void> {
     const parties = await tx.party.findMany({
       where: {
         deletedAt: null,
         anonymisedAt: null,
-        ...(by.lineUserId ? { lineUserId: by.lineUserId } : { phoneE164: by.phone! }),
+        lineUserId: by.lineUserId,
         userLinks: { none: { userId: user.id, state: 'active' } },
       },
       select: { id: true, tenantId: true },
@@ -555,8 +556,46 @@ export class AuthService {
           partyId: p.id,
           userId: user.id,
           linkedAt: this.clock.now(),
-          linkedVia: by.lineUserId ? 'line_match' : 'phone_match',
+          linkedVia: 'line_match',
         },
+      });
+    }
+  }
+
+  /**
+   * Review #6 (D-226): a verified phone that matches parties an operator typed is not proof that this person is that
+   * party (typos, recycled Thai numbers). Each match becomes a pending link request the tenant's Owner confirms —
+   * nothing of the party (bills, bank account, door codes) is reachable until then. Audited
+   * `party.link_requested`; the Owner is told (`party.link_requested`).
+   */
+  private async requestPhoneLinks(tx: Tx, user: UserAccount, phone: string): Promise<void> {
+    const parties = await tx.party.findMany({
+      where: {
+        deletedAt: null,
+        anonymisedAt: null,
+        phoneE164: phone,
+        userLinks: { none: { userId: user.id, state: 'active' } },
+        partyLinkRequestParty: { none: { userId: user.id, state: 'pending' } },
+      },
+      select: { id: true, tenantId: true },
+    });
+    for (const p of parties) {
+      const request = await tx.partyLinkRequest.create({
+        data: { tenantId: p.tenantId, partyId: p.id, userId: user.id, requestedAt: this.clock.now() },
+      });
+      await this.audit.record(tx, {
+        action: 'party.link_requested',
+        tenantId: p.tenantId,
+        subjectType: 'ops.party_link_request',
+        subjectId: request.id,
+        metadata: { partyId: p.id, userId: user.id, via: 'phone_match' },
+      });
+      await this.events.record(tx, {
+        type: 'party.link_requested',
+        aggregateType: 'party',
+        aggregateId: p.id,
+        tenantId: p.tenantId,
+        payload: { partyId: p.id, requestId: request.id, userId: user.id },
       });
     }
   }

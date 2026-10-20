@@ -11,7 +11,15 @@ import { AccessCredentialsService } from '@modules/smart-access/access-credentia
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';
-import { adminToken, bearer, idem, onboardTenant, operatorToken, ownerToken } from '../support/int-auth';
+import {
+  adminToken,
+  bearer,
+  idem,
+  onboardTenant,
+  operatorToken,
+  otpSignIn,
+  ownerToken,
+} from '../support/int-auth';
 import { createIntDatabase, type IntDatabase } from '../support/int-db';
 
 const LINE_SUB = 'U00000000000000000000000000b5ac01';
@@ -368,17 +376,10 @@ describe('B5.2 access control (real PostgreSQL)', () => {
     ]);
     for (const c of tech) expect(new Date(c.valid_to!).toISOString()).toBe(end.toISOString());
     // the technician reads the codes of that work order only
-    const challenge = await t.http
-      .post('/v1/auth/technician/otp/request')
-      .send({ phone: TECH_PHONE })
-      .expect(200);
-    const signed = await t.http
-      .post('/v1/auth/technician/otp/verify')
-      .send({ challengeId: challenge.body.challengeId, code: t.sms.lastCodeTo(TECH_PHONE) })
-      .expect(200);
+    const signed = { body: await otpSignIn(t, 'technician', TECH_PHONE, owner) }; // owner-confirmed link (D-226)
     const codes = await t.http
       .get(`/v1/technician/work-orders/${wo.body.id}/access`)
-      .set(bearer(signed.body.accessToken as string))
+      .set(bearer(signed.body.accessToken))
       .expect(200);
     expect(codes.body.data).toHaveLength(2);
     expect(codes.body.data[0].pin).toMatch(/^\d{6}$/);
@@ -399,7 +400,7 @@ describe('B5.2 access control (real PostgreSQL)', () => {
     ]);
     await t.http
       .get(`/v1/technician/work-orders/${wo.body.id}/access`)
-      .set(bearer(signed.body.accessToken as string))
+      .set(bearer(signed.body.accessToken))
       .expect(404);
     const staff = await operatorToken(t, '+660000000003');
     const staffCodes = await t.http

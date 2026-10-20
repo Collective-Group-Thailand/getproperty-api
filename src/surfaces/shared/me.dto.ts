@@ -320,6 +320,14 @@ export class ResidentMeDto {
 
   @ApiProperty({ type: [String], example: ['unit:3b241101-e2bb-4255-8caf-4136c566a962'] })
   scopes!: string[];
+
+  @ApiProperty({
+    type: 'integer',
+    example: 0,
+    description:
+      'Parties matched by my SMS-verified phone that wait for their landlord’s confirmation before I see them (D-226): show “waiting for your landlord to confirm” or offer the invitation code (D-175).',
+  })
+  linkRequestsPending!: number;
 }
 
 export class ResidentMeUpdateDto {

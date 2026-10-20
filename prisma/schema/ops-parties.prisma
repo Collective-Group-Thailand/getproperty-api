@@ -22,3 +22,45 @@ model OccupantProfile {
   @@map("occupant_profile")
   @@schema("ops")
 }
+
+// Release review #6 (migration 0035, D-226) — SMS-OTP phone matches wait for the Owner's confirmation.
+
+enum PartyLinkRequestState {
+  pending
+  confirmed
+  rejected
+
+  @@map("party_link_request_state")
+  @@schema("ops")
+}
+
+/// D-226: an SMS-OTP login whose verified phone matches a party an operator entered — linked once the Owner confirms.
+model PartyLinkRequest {
+  id           String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String                @map("tenant_id") @db.Uuid
+  partyId      String                @map("party_id") @db.Uuid
+  userId       String                @map("user_id") @db.Uuid
+  via          String                @default("phone_match")
+  state        PartyLinkRequestState @default(pending)
+  requestedAt  DateTime              @default(now()) @map("requested_at") @db.Timestamptz(6)
+  decidedAt    DateTime?             @map("decided_at") @db.Timestamptz(6)
+  decidedBy    String?               @map("decided_by") @db.Uuid
+  rejectReason String?               @map("reject_reason")
+  linkId       String?               @map("link_id") @db.Uuid
+  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant  Tenant         @relation("PartyLinkRequestTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "party_link_request_tenant_id_fkey")
+  party   Party          @relation("PartyLinkRequestParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "party_link_request_party_id_fkey")
+  user    UserAccount    @relation("PartyLinkRequestUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "party_link_request_user_id_fkey")
+  decider UserAccount?   @relation("PartyLinkRequestDecider", fields: [decidedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "party_link_request_decided_by_fkey")
+  link    PartyUserLink? @relation("PartyLinkRequestLink", fields: [linkId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "party_link_request_link_id_fkey")
+
+  @@unique([partyId, userId], map: "party_link_request_pending_key", where: raw("(state = 'pending'::ops.party_link_request_state)"))
+  @@index([tenantId, state], map: "party_link_request_tenant_id_state_idx")
+  @@index([userId], map: "party_link_request_user_id_idx")
+  @@index([decidedBy], map: "party_link_request_decided_by_idx")
+  @@index([linkId], map: "party_link_request_link_id_idx")
+  @@map("party_link_request")
+  @@schema("ops")
+}
