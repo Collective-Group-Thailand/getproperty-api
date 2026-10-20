@@ -150,6 +150,8 @@ export const API_TAGS: Record<string, string> = {
     'Versioned building rules with resident acknowledgements (also at lease signing, B2.3) and the building’s contacts (B5.3, D-073).',
   'resident.community':
     'Announcements, my parcels with the pick-up PIN, facility bookings, the building rules and contacts in the LIFF (B5.3, D-073).',
+  'staff.tasks':
+    'My day on the staff PWA (B5.4, D-213): readings, inspections, work orders, parcels and install orders of my buildings by type and floor, completed on their source.',
   'resident.serviceRequests':
     'Reporting a problem of my unit with photos, following it and rating the repair (B5.1, D-072).',
   'resident.invoices':

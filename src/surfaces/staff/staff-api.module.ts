@@ -23,6 +23,7 @@ import { webVitalsController } from '../shared/web-vitals.controller';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import { StaffFieldController } from './staff-field.controller';
+import { StaffTasksController } from './tasks.controller';
 
 /** `/v1/staff/*` (contract §2): staff PWA — me, files, inbox, web push, realtime (B1.3). */
 @Module({
@@ -30,6 +31,7 @@ import { StaffFieldController } from './staff-field.controller';
     systemPingController(SURFACES.staff),
     StaffMeController,
     StaffFieldController,
+    StaffTasksController,
     StaffInstallOrdersController,
     filesController(SURFACES.staff),
     partiesController(SURFACES.staff),
