@@ -327,6 +327,9 @@ export class DocumentsService extends TenantScopedRepository {
       body: Buffer;
       retentionClass?: string;
       versionOfDocumentId?: string | null;
+      /** 2 for the provider-signed version of a document (e-Tax, B6.2), … */
+      versionNo?: number;
+      sourceRef?: string | null;
     },
   ): Promise<Document> {
     const now = this.clock.now();
@@ -354,6 +357,8 @@ export class DocumentsService extends TenantScopedRepository {
         scanStatus: 'skipped',
         scannedAt: now,
         versionOfDocumentId: input.versionOfDocumentId ?? null,
+        versionNo: input.versionNo ?? 1,
+        sourceRef: input.sourceRef ?? null,
         createdBy: userIdOf(RequestContext.actor()),
       },
     });

@@ -913,8 +913,8 @@ export class AdminTenantBusinessController {
     id: 'admin.pilots.kpis',
     summary: 'Pilot KPIs of a tenant',
     description:
-      'The seven D-083 KPIs computed from the tenant’s data over the window (default 90 days): time to bill, invoice correction rate, on-time payment, auto-reconciled payments, utility loss identified, meter uptime, CSAT (no source in R1 → null) — against the baseline and targets of the pilot agreement, plus the Phase 1 acceptance measures. The result is also stored as a snapshot.',
-    implements: ['D-083'],
+      'The seven D-083 KPIs computed from the tenant’s data over the window (default 90 days): time to bill, invoice correction rate, on-time payment, auto-reconciled payments, utility loss identified, meter uptime, CSAT — read from the analytics rollups (B6.3, D-217) against the baseline and targets of the pilot agreement, plus the Phase 1 acceptance measures. The result is also stored as a snapshot.',
+    implements: ['D-083', 'D-217'],
   })
   @ApiSuccess(200, { description: 'KPIs', type: PilotKpisDto, example: KPIS_EXAMPLE })
   @ApiStandardErrors('validation.failed', 'http.bad_request', 'http.not_found')

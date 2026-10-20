@@ -120,6 +120,11 @@ export const API_TAGS: Record<string, string> = {
     'Platform files of the admin zone: the published notice behind a utility tariff version, contracts, evidence (D-214).',
   'admin.integrationEvents':
     'Events exchanged with getbuild / getpack (`bridge.integration_event`, D-153) for the console (D-214).',
+  'owner.etax':
+    'e-Tax Invoice & e-Receipt of a VAT-registered tenant: submissions to its service provider, signed PDF / XML, monthly figures (B6.2, D-050, D-215).',
+  'owner.tm30':
+    'TM30 notifications of foreign occupants: 24-hour deadline, the Immigration Bureau upload file per building, submissions (B6.2, D-052, D-216).',
+  'resident.surveys': 'The periodic 1-question satisfaction survey in the LIFF (B6.3, D-083).',
   'owner.subscription':
     'My plan (D-082, D-156): subscription, usage counted, invoices from getproperty with Thai QR, platform hardware, upgrade to Smart.',
   'admin.tenants':

@@ -208,6 +208,42 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
       '{{tenant.name}} assigned you "{{workOrder.title}}" at {{workOrder.place}}, scheduled {{workOrder.scheduledAt}} (#{{workOrder.ref}})',
     ],
   },
+  {
+    key: 'foreign_stay.due',
+    description: 'Owner/Manager: a foreign occupant moved in — TM30 due within 24 h (D-052, D-216)',
+    th: [
+      'ต้องแจ้ง ตม.30 ภายใน 24 ชั่วโมง',
+      '{{tenant.name}}: {{tm30.name}} ห้อง {{tm30.unitNo}} เข้าพักแล้ว ต้องแจ้งที่พักคนต่างด้าว (ตม.30) ภายใน {{tm30.dueAt}} — สร้างไฟล์แจ้งได้ในเมนู ตม.30',
+    ],
+    en: [
+      'TM30 due within 24 hours',
+      '{{tenant.name}}: {{tm30.name}} moved into {{tm30.unitNo}} — notify Immigration (TM30) by {{tm30.dueAt}}; generate the upload file in TM30.',
+    ],
+  },
+  {
+    key: 'etax.rejected',
+    description: 'Owner/Accountant: the e-Tax provider rejected a document or every retry failed (D-215)',
+    th: [
+      'ส่ง e-Tax ไม่สำเร็จ',
+      '{{tenant.name}}: เอกสาร {{etax.number}} ส่งผู้ให้บริการ e-Tax ไม่สำเร็จ ({{etax.error}}) — แก้ไขข้อมูลแล้วกดส่งใหม่',
+    ],
+    en: [
+      'e-Tax submission failed',
+      '{{tenant.name}}: document {{etax.number}} was not accepted by the e-Tax provider ({{etax.error}}) — fix the data and send it again.',
+    ],
+  },
+  {
+    key: 'etax.monthly_summary',
+    description: 'Owner/Accountant: the e-Tax figures of last month (D-215)',
+    th: [
+      'สรุป e-Tax ประจำเดือน',
+      '{{tenant.name}}: e-Tax งวด {{summary.month}} ลงนามแล้ว {{summary.signed}} ฉบับ ภาษีมูลค่าเพิ่ม {{summary.vat}} บาท มีปัญหา {{summary.problems}} ฉบับ — ดาวน์โหลดทะเบียนได้ในเมนูส่งออกข้อมูล',
+    ],
+    en: [
+      'Monthly e-Tax summary',
+      '{{tenant.name}}: e-Tax {{summary.month}} — {{summary.signed}} documents signed, VAT {{summary.vat}} THB, {{summary.problems}} with problems; download the register in Exports.',
+    ],
+  },
 ];
 
 /** Operator audiences per event: workflow → owner + manager; device/meter health → owner + manager + staff. */
@@ -221,7 +257,11 @@ const operatorAudiences = (key: string): string[] =>
         key === 'service_request.created' ||
         key === 'work_order.assigned'
       ? ['owner', 'manager', 'staff']
-      : ['owner'];
+      : key === 'foreign_stay.due'
+        ? ['owner', 'manager']
+        : key.startsWith('etax.')
+          ? ['owner', 'accountant']
+          : ['owner'];
 
 const operatorTemplates = (): TemplateSeed[] =>
   OPERATOR_EVENTS.flatMap((e) =>
@@ -269,6 +309,7 @@ export const NOTIFICATION_ROUTES: {
     'announcement.published',
     'parcel.received',
     'building_rule.published',
+    'etax.signed',
   ].map((eventType) => ({
     eventType,
     audience: 'resident',
@@ -515,6 +556,24 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         language: 'en',
         subject: null,
         body: '{{tenant.name}} revoked your code for {{lock.name}} {{lock.unitNo}}. Reason: {{credential.reason}} — contact the building office with any question.',
+      },
+    ],
+  },
+  {
+    key: 'etax.signed',
+    channel: 'line',
+    audience: 'resident',
+    description: 'The e-Tax provider signed my receipt / tax invoice: the signed PDF (D-050, D-215)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}}: ใบเสร็จอิเล็กทรอนิกส์ (e-Receipt / e-Tax Invoice) เลขที่ {{document.number}} ลงลายมือชื่อดิจิทัลแล้ว — ดาวน์โหลดฉบับ PDF ได้ที่ {{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}}: your e-Receipt / e-Tax Invoice {{document.number}} is digitally signed — download the PDF at {{link}}',
       },
     ],
   },

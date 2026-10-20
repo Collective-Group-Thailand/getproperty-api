@@ -8,6 +8,7 @@ import { TenantDataKeys } from '@core/tenancy/data-keys.service';
 import { TenantTx } from '@database/tenant-tx';
 import { type Prisma } from '@generated/prisma/client';
 import { ResidentInvoicesService } from '@modules/ops-billing/resident-invoices.service';
+import { signedPdfs } from '@modules/ops-etax/etax-documents';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { PaymentsService } from './payments.service';
@@ -176,7 +177,10 @@ export class ResidentPaymentsService {
       });
       if (!r) throw new DomainException('http.not_found');
       if (!r.document) throw new DomainException('export.not_ready');
-      return { receipt: r, link: await this.documents.signedUrl(r.document) };
+      // e-Tax (B6.2, D-215): the provider-signed PDF once the receipt is signed
+      const signed = (await signedPdfs(tx, 'receipt', [r.id])).get(r.id);
+      const doc = signed ? await tx.document.findUnique({ where: { id: signed } }) : null;
+      return { receipt: r, link: await this.documents.signedUrl(doc ?? r.document) };
     });
   }
 }

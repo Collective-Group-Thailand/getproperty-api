@@ -8,6 +8,8 @@ import { DEFAULT_KPI_TARGETS, type PilotBaseline } from '@modules/platform-subsc
 import { Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
+import { AnalyticsService } from './analytics.service';
+
 /** Windows the KPI endpoint accepts (`?window=`). */
 export const KPI_WINDOWS = { '30d': 30, '90d': 90 } as const;
 export type KpiWindow = keyof typeof KPI_WINDOWS;
@@ -26,7 +28,7 @@ export interface KpiValues {
   latestLossPct: string | null;
   /** Hours with telemetry ÷ hours a meter was bound to a gateway, % (D-034). */
   meterUptimePct: string | null;
-  /** Resident satisfaction 1–5 — no rating source before B5/B6.3 (LIFF survey): null. */
+  /** Resident satisfaction 1–5: repair ratings (B5.1) and the LIFF survey (B6.3); null without any. */
   csat: string | null;
 }
 
@@ -35,7 +37,7 @@ export interface Phase1Acceptance {
   firstFullCycleWithin1h: boolean | null;
   /** Payments by Thai QR ÷ payments, % (target ≥ 60 %). */
   paidByQrPct: string | null;
-  /** Service requests through LINE — service requests arrive with B5: null. */
+  /** Requests reported by residents through the LINE app ÷ requests reported by people, %. */
   serviceRequestsViaLinePct: string | null;
   /** Buildings whose issued invoices carried IoT meter lines in the window (target ≥ 1). */
   buildingsBillingAutomatically: number;
@@ -56,13 +58,14 @@ const pct = (n: number, d: number) =>
  * Pilot KPIs (D-083, B6.3 endpoint in R1): the seven KPIs of the 90-day review computed from the tenant's own data in
  * the window (`30d` / `90d` ending today, Asia/Bangkok), compared with the baseline captured in the pilot agreement
  * and its targets, plus the Phase 1 acceptance metrics of the blueprint. Each computation is stored once per day in
- * `platform.kpi_snapshot` (re-computed on the same day replaces it). CSAT and service requests have no source in R1
- * (B5, B6.3) and are reported as null rather than invented.
+ * `platform.kpi_snapshot` (re-computed on the same day replaces it). Since B6.3 the values come from the analytics
+ * rollups (D-217); a KPI without data is null rather than invented.
  */
 @Injectable()
 export class PilotKpisService {
   constructor(
     private readonly db: TenantTx,
+    private readonly analytics: AnalyticsService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
@@ -189,49 +192,33 @@ export class PilotKpisService {
     ];
   }
 
+  /**
+   * The seven KPIs over [from, to) from the analytics rollups (B6.3, D-217): the tenant's facts and rollups of the
+   * window are refreshed first (idempotent), then read from the day buckets — time to bill = average cut-off → issue,
+   * correction rate = corrections ÷ invoices issued, on-time = invoices due paid by their due date, auto-reconciled,
+   * loss identified (+ the latest loss %), meter uptime = average building-day uptime, CSAT = average rating.
+   */
   async values(tx: Tx, tenantId: string, from: Date, to: Date): Promise<KpiValues> {
-    const ttb = await tx.$queryRaw<{ h: string | null }[]>`
-      SELECT avg(extract(epoch FROM (issued_at - cut_off_at)) / 3600)::numeric(12,2)::text AS h FROM ops.billing_cycle
-       WHERE tenant_id = ${tenantId}::uuid AND issued_at >= ${from} AND issued_at < ${to} AND issued_at >= cut_off_at`;
-    const issued = await tx.invoice.count({ where: { tenantId, issuedAt: { gte: from, lt: to } } });
-    const voided = await tx.invoice.count({
-      where: { tenantId, voidedAt: { gte: from, lt: to }, issuedAt: { not: null } },
-    });
-    const credits = await tx.creditNote.count({ where: { tenantId, issuedAt: { gte: from, lt: to } } });
-    const due = await tx.$queryRaw<{ n: number; on_time: number }[]>`
-      SELECT count(*)::int AS n,
-             count(*) FILTER (WHERE status = 'paid' AND last_payment_at < ((due_date + 1)::timestamp AT TIME ZONE 'Asia/Bangkok'))::int AS on_time
-        FROM ops.invoice
-       WHERE tenant_id = ${tenantId}::uuid AND issued_at IS NOT NULL AND voided_at IS NULL
-         AND due_date >= (${from}::timestamptz AT TIME ZONE 'Asia/Bangkok')::date
-         AND due_date < (${to}::timestamptz AT TIME ZONE 'Asia/Bangkok')::date`;
-    const pay = await tx.$queryRaw<{ n: number; auto: number }[]>`
-      SELECT count(*)::int AS n,
-             count(*) FILTER (WHERE confirmed_via IN ('webhook', 'settlement_file', 'slip_verified'))::int AS auto
-        FROM ops.payment
-       WHERE tenant_id = ${tenantId}::uuid AND status = 'confirmed' AND method <> 'offset'
-         AND confirmed_at >= ${from} AND confirmed_at < ${to}`;
-    const loss = await tx.lossReport.findFirst({
-      where: { tenantId, computedAt: { gte: from, lt: to } },
-      orderBy: { computedAt: 'desc' },
-    });
-    const uptime = await tx.$queryRaw<{ seen: number; expected: number }[]>`
-      WITH ch AS (
-        SELECT meter_asset_item_id AS item, greatest(valid_from, ${from}::timestamptz) AS s, least(coalesce(valid_to, ${to}::timestamptz), ${to}::timestamptz) AS e
-          FROM smart.meter_channel
-         WHERE tenant_id = ${tenantId}::uuid AND valid_from < ${to} AND (valid_to IS NULL OR valid_to > ${from}))
-      SELECT coalesce(sum((SELECT count(*) FROM smart.telemetry_1h t WHERE t.asset_item_id = ch.item AND t.bucket >= date_trunc('hour', ch.s) AND t.bucket < ch.e)), 0)::int AS seen,
-             coalesce(sum(greatest(0, ceil(extract(epoch FROM (ch.e - date_trunc('hour', ch.s))) / 3600))), 0)::int AS expected
-        FROM ch WHERE ch.e > ch.s`;
+    await this.analytics.refresh(tx, tenantId, from, to);
+    const t = await this.analytics.totals(tx, tenantId, from, to);
+    const avg = (fact: string, scale = 1, divisor = 1) => {
+      const x = t.get(fact);
+      return x && x.count > 0
+        ? x.value.times(scale).div(x.count).div(divisor).toDecimalPlaces(2).toFixed(2)
+        : null;
+    };
+    const issued = t.get('invoice.issued')?.count ?? 0;
+    const corrected = t.get('invoice.corrected')?.count ?? 0;
+    const loss = t.get('loss.pct');
     return {
-      timeToBillHours: ttb[0]?.h ?? null,
-      invoiceCorrectionRatePct: pct(voided + credits, issued),
-      onTimePaymentPct: pct(due[0]?.on_time ?? 0, due[0]?.n ?? 0),
-      autoReconciledPct: pct(pay[0]?.auto ?? 0, pay[0]?.n ?? 0),
-      lossIdentified: Boolean(loss),
-      latestLossPct: loss?.lossPct?.toString() ?? null,
-      meterUptimePct: pct(Math.min(uptime[0]?.seen ?? 0, uptime[0]?.expected ?? 0), uptime[0]?.expected ?? 0),
-      csat: null,
+      timeToBillHours: avg('cycle.time_to_issue_s', 1, 3600),
+      invoiceCorrectionRatePct: pct(corrected, issued),
+      onTimePaymentPct: avg('payment.on_time', 100),
+      autoReconciledPct: avg('payment.auto_reconciled', 100),
+      lossIdentified: Boolean(loss && loss.count > 0),
+      latestLossPct: await this.analytics.latest(tx, tenantId, 'loss.pct', from, to),
+      meterUptimePct: avg('meter.uptime_pct'),
+      csat: avg('csat.rating'),
     };
   }
 
@@ -240,10 +227,11 @@ export class PilotKpisService {
       where: { tenantId, issuedAt: { not: null } },
       orderBy: { issuedAt: 'asc' },
     });
-    const pay = await tx.$queryRaw<{ n: number; qr: number }[]>`
-      SELECT count(*)::int AS n, count(*) FILTER (WHERE method = 'qr')::int AS qr FROM ops.payment
-       WHERE tenant_id = ${tenantId}::uuid AND status = 'confirmed' AND method <> 'offset'
-         AND confirmed_at >= ${from} AND confirmed_at < ${to}`;
+    const t = await this.analytics.totals(tx, tenantId, from, to);
+    const share = (fact: string) => {
+      const x = t.get(fact);
+      return x && x.count > 0 ? x.value.times(100).div(x.count).toDecimalPlaces(2).toFixed(2) : null;
+    };
     const auto = await tx.$queryRaw<{ n: number }[]>`
       SELECT count(DISTINCT i.building_id)::int AS n FROM ops.invoice i JOIN ops.invoice_line l ON l.invoice_id = i.id
        WHERE i.tenant_id = ${tenantId}::uuid AND i.issued_at >= ${from} AND i.issued_at < ${to} AND l.reading_source = 'iot'`;
@@ -251,8 +239,8 @@ export class PilotKpisService {
       firstFullCycleWithin1h: first?.issuedAt
         ? first.issuedAt.getTime() - first.cutOffAt.getTime() <= 3_600_000
         : null,
-      paidByQrPct: pct(pay[0]?.qr ?? 0, pay[0]?.n ?? 0),
-      serviceRequestsViaLinePct: null,
+      paidByQrPct: share('payment.by_qr'),
+      serviceRequestsViaLinePct: share('service_request.via_line'),
       buildingsBillingAutomatically: auto[0]?.n ?? 0,
     };
   }

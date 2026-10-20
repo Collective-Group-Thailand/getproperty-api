@@ -8,6 +8,9 @@ import { HttpAiGatewayAdapter, UnconfiguredAiGateway } from './ai/http-ai-gatewa
 import { EMAIL, type EmailPort } from './email/email.port';
 import { FakeEmail } from './email/fake-email';
 import { SesEmailAdapter } from './email/ses-email.adapter';
+import { ETAX_PROVIDERS } from './etax/etax-provider.port';
+import { FakeEtaxProviders } from './etax/fake-etax-provider';
+import { RealEtaxProviders } from './etax/inet-etax.adapter';
 import { GcsObjectStorage } from './gcs/gcs-object-storage';
 import { KEY_WRAP } from './kms/key-wrap.port';
 import { LocalKeyWrap } from './kms/local-key-wrap';
@@ -177,6 +180,14 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
             }),
     },
     {
+      provide: ETAX_PROVIDERS,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig) =>
+        config.useFakes
+          ? new FakeEtaxProviders()
+          : new RealEtaxProviders({ inet: config.get('ETAX_INET_BASE_URL') }),
+    },
+    {
       provide: SLIP_VERIFIER,
       inject: [AppConfig],
       useFactory: (config: AppConfig) => {
@@ -274,6 +285,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
     OBJECT_STORAGE,
     PAYMENT_PROVIDERS,
     LOCK_VENDORS,
+    ETAX_PROVIDERS,
     SLIP_VERIFIER,
     PDF_RENDERER,
     SECRETS_PROVIDER,

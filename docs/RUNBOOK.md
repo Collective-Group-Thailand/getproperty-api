@@ -77,6 +77,11 @@ retried on the next tick; each job is idempotent.
 | `receivables` | 1 h | overdue, dunning, late fee | reminders late; nothing lost |
 | `telemetry-rollup` / `telemetry-partitions` | 1 min / 1 day | rollups and monthly partitions (D-184) | usage charts stale; ingest creates partitions on demand |
 | `gateway-health`, `meter-health`, `config-drift`, `device-commands` | 1–5 min | smart health (B3) | stale health badges |
+| `etax-submissions` | 1 min | e-Tax submissions due: submit, poll, store the signed XML / PDF (B6.2, D-215) | documents stay `queued` / `submitted`; provider errors retry with backoff (10 attempts), then the owner is told; the owner can retry |
+| `etax-monthly` | 1 h (acts on the 1st) | last month's e-Tax figures to the owner and accountant (once per month) | notice late; figures stay available in the console |
+| `tm30-sweep` | 1 h | TM30 duties of move-ins the subscriber missed (last 7 days, idempotent) (B6.2, D-216) | a duty opens late; the move-in subscriber normally opens it at once |
+| `analytics-rollup` | 1 h | facts and day / week / month rollups of the last two days, every tenant (B6.3, D-217) | insights a little stale; the KPI and insights endpoints refresh their own window |
+| `analytics-benchmarks` | 1 day | anonymised benchmark buckets (k ≥ 5 opted-in tenants) | benchmarks of yesterday stay shown |
 | `retention`, `support-grants-expire`, `lease-lifecycle`, `notifications-release`, `workflow-timer-sweep`, `compliance-score` | see `src/worker.runner.ts` | | |
 
 ## 6. Outbox, subscribers and dead letters

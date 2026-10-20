@@ -2,6 +2,7 @@ import { DomainException } from '@common/errors/domain.exception';
 import { AuditService } from '@core/audit/audit.service';
 import { DocumentsService } from '@core/documents/documents.service';
 import { TenantTx } from '@database/tenant-tx';
+import { signedPdfs } from '@modules/ops-etax/etax-documents';
 import { ResidentLeasesService } from '@modules/ops-leases/resident-leases.service';
 import { Injectable } from '@nestjs/common';
 
@@ -19,7 +20,8 @@ export interface ResidentDocument {
 /**
  * "Documents on file" in the resident profile (LIFF #11, D-203), view only: for the parties linked to my login,
  * across tenants — the contract of each lease I can open (the signed copy once countersigned), the evidence of a
- * lease notice, deposit receipts and settlement statements, and the receipts issued to me. Downloads are 5-minute
+ * lease notice, deposit receipts and settlement statements, and the receipts / receipt-tax invoices issued to me
+ * (the provider-signed e-Tax PDF once there is one, B6.2). Downloads are 5-minute
  * signed URLs, audited like the contract download; a document outside that set is a 404.
  */
 @Injectable()
@@ -87,12 +89,37 @@ export class ResidentDocumentsService {
         orderBy: { issuedAt: 'desc' },
         take: 200,
       });
+      // e-Tax (B6.2, D-215): the provider-signed PDF replaces ours once there is one
+      const signedReceipts = await signedPdfs(
+        tx,
+        'receipt',
+        receipts.map((r) => r.id),
+      );
       for (const r of receipts)
         out.push({
-          documentId: r.documentId!,
+          documentId: signedReceipts.get(r.id) ?? r.documentId!,
           tenantId: r.tenantId,
           kind: 'receipt',
           title: `ใบเสร็จรับเงิน ${r.number}${r.unit ? ` ห้อง ${r.unit.unitNo}` : ''}`,
+          leaseId: null,
+        });
+      const taxInvoices = await tx.taxInvoice.findMany({
+        where: { buyerPartyId: { in: partyIds }, documentId: { not: null }, voidedAt: null },
+        include: { unit: { select: { unitNo: true } } },
+        orderBy: { issuedAt: 'desc' },
+        take: 200,
+      });
+      const signedTax = await signedPdfs(
+        tx,
+        'tax_invoice',
+        taxInvoices.map((r) => r.id),
+      );
+      for (const r of taxInvoices)
+        out.push({
+          documentId: signedTax.get(r.id) ?? r.documentId!,
+          tenantId: r.tenantId,
+          kind: 'receipt',
+          title: `ใบเสร็จรับเงิน/ใบกำกับภาษี ${r.number}${r.unit ? ` ห้อง ${r.unit.unitNo}` : ''}`,
           leaseId: null,
         });
       const ids = [...new Set(out.map((o) => o.documentId))];

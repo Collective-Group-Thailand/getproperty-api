@@ -25,6 +25,7 @@ const PREFIXES: [string, NotificationTopic][] = [
   ['slip.', 'billing'],
   ['credit_note.', 'billing'],
   ['debit_note.', 'billing'],
+  ['etax.', 'billing'],
   ['lease.', 'lease'],
   ['deposit.', 'lease'],
   ['inspection.', 'lease'],

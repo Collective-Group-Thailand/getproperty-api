@@ -24,6 +24,8 @@ import { DocumentArchiveBuilder } from './ops-documents/document-archive.builder
 import { BillingDocumentsSubscriber } from './ops-documents/documents.subscriber';
 import { ExportsService } from './ops-documents/exports.service';
 import { InvoiceDocumentsService } from './ops-documents/invoice-documents.service';
+import { EtaxHooks } from './ops-etax/etax.hooks';
+import { EtaxService } from './ops-etax/etax.service';
 import { ContractRenderer } from './ops-leases/contract-renderer';
 import { LeasesService } from './ops-leases/leases.service';
 import { ResidentLeasesService } from './ops-leases/resident-leases.service';
@@ -54,6 +56,7 @@ import { ServiceCategoriesService } from './ops-service/service-categories.servi
 import { ServiceRequestsService } from './ops-service/service-requests.service';
 import { WorkOrdersService } from './ops-service/work-orders.service';
 import { StaffTasksService } from './ops-tasks/staff-tasks.service';
+import { Tm30Service } from './ops-tm30/tm30.service';
 import { BoardService } from './ops-units/board.service';
 import { AmenitiesService, MetersService } from './ops-units/meters-items.service';
 import { UnitProfilesService, UtilityAccountsService } from './ops-units/profiles-accounts.service';
@@ -124,13 +127,16 @@ const SERVICES = [
   FacilitiesService,
   BuildingRulesService,
   StaffTasksService,
+  EtaxService,
+  EtaxHooks,
+  Tm30Service,
   ResidentCommunityService,
   CommunitySubscribers,
 ];
 
 /**
  * Group A business modules (master plan §4: `modules/ops-*`), shared by the HTTP and worker processes so their
- * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4); B4: rate plans, billing cycles, invoices (4.2); documents, Flex, exports (4.3); payments, slips, receipts (4.4); receivables, dunning, penalties, dashboard, finance exports (4.5); B5: service requests, work orders, preventive maintenance, warranty bridge (5.1); access lives in smart (5.2); community (5.3); staff tasks (5.4).
+ * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4); B4: rate plans, billing cycles, invoices (4.2); documents, Flex, exports (4.3); payments, slips, receipts (4.4); receivables, dunning, penalties, dashboard, finance exports (4.5); B5: service requests, work orders, preventive maintenance, warranty bridge (5.1); access lives in smart (5.2); community (5.3); staff tasks (5.4); B6.2: e-Tax submissions, TM30 notifications.
  */
 @Global()
 @Module({ providers: SERVICES, exports: SERVICES })

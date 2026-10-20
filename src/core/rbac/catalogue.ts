@@ -308,6 +308,12 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     description: 'Handle data subject requests as controller and record paper consents (D-025)',
     surfaces: ['owner'],
   },
+  {
+    key: 'tm30.manage',
+    description:
+      'TM30 notifications: generate the Immigration upload file (passport data), record submissions (D-052)',
+    surfaces: ['owner'],
+  },
   // platform (/v1/admin)
   { key: 'admin.tenant.read', description: 'List and view tenants', surfaces: ['admin'] },
   {

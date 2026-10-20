@@ -11,10 +11,13 @@ import { SupportGrantService } from '@core/tenancy/support-grant.service';
 import { WorkflowTimers } from '@core/workflow/workflow-timers.service';
 import { BULLMQ_REDIS, type RedisClient } from '@database/redis.module';
 import { BillingCyclesService } from '@modules/ops-billing/billing-cycles.service';
+import { EtaxService } from '@modules/ops-etax/etax.service';
 import { LeasesService } from '@modules/ops-leases/leases.service';
 import { SettlementsService } from '@modules/ops-payments/settlements.service';
 import { ReceivablesService } from '@modules/ops-receivables/receivables.service';
 import { MaintenancePlansService } from '@modules/ops-service/maintenance-plans.service';
+import { Tm30Service } from '@modules/ops-tm30/tm30.service';
+import { AnalyticsService } from '@modules/platform-analytics/analytics.service';
 import { SubscriptionsService } from '@modules/platform-subscriptions/subscriptions.service';
 import { AccessCredentialsService } from '@modules/smart-access/access-credentials.service';
 import { LocksService } from '@modules/smart-access/locks.service';
@@ -56,6 +59,12 @@ export const MAINTENANCE_JOBS = {
   'maintenance-plans': 3_600_000,
   'access-credentials': 60_000,
   'lock-sweep': 3_600_000,
+  // B6.2 e-Tax & TM30, B6.3 analytics
+  'etax-submissions': 60_000,
+  'etax-monthly': 3_600_000,
+  'tm30-sweep': 3_600_000,
+  'analytics-rollup': 3_600_000,
+  'analytics-benchmarks': 86_400_000,
 } as const;
 type MaintenanceJob = keyof typeof MAINTENANCE_JOBS;
 
@@ -95,6 +104,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly maintenancePlans: MaintenancePlansService,
     private readonly accessCredentials: AccessCredentialsService,
     private readonly locks: LocksService,
+    private readonly etax: EtaxService,
+    private readonly tm30: Tm30Service,
+    private readonly analytics: AnalyticsService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -182,6 +194,21 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'lock-sweep':
         await this.locks.sweep();
+        break;
+      case 'etax-submissions':
+        await this.etax.sweep();
+        break;
+      case 'etax-monthly':
+        await this.etax.monthly();
+        break;
+      case 'tm30-sweep':
+        await this.tm30.sweep();
+        break;
+      case 'analytics-rollup':
+        await this.analytics.sweep();
+        break;
+      case 'analytics-benchmarks':
+        await this.analytics.benchmarks();
         break;
       default:
         this.logger.warn(`unknown maintenance job ${job.name}`);

@@ -1,0 +1,130 @@
+// ops — e-Tax submissions and TM30 notifications (B6.2, D-050, D-052, D-215, D-216; migration 0031).
+
+enum EtaxSubjectType {
+  receipt
+  tax_invoice
+  credit_note
+  debit_note
+
+  @@map("etax_subject_type")
+  @@schema("ops")
+}
+
+enum EtaxStatus {
+  queued
+  submitted
+  signed
+  rejected
+  failed
+
+  @@map("etax_status")
+  @@schema("ops")
+}
+
+enum Tm30Status {
+  due
+  generated
+  downloaded
+  submitted_manually
+  cancelled
+
+  @@map("tm30_status")
+  @@schema("ops")
+}
+
+/// e-Tax Invoice & e-Receipt submission of one receipt / tax invoice to the tenant's service provider (D-215).
+model EtaxSubmission {
+  id                  String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String          @map("tenant_id") @db.Uuid
+  buildingId          String          @map("building_id") @db.Uuid
+  subjectType         EtaxSubjectType @map("subject_type")
+  subjectId           String          @map("subject_id") @db.Uuid
+  number              String          @db.Citext
+  documentTypeCode    String          @map("document_type_code")
+  issuedAt            DateTime        @map("issued_at") @db.Timestamptz(6)
+  subtotal            Decimal         @db.Decimal(14, 2)
+  vatAmount           Decimal         @map("vat_amount") @db.Decimal(14, 2)
+  total               Decimal         @db.Decimal(14, 2)
+  provider            String
+  providerDocId       String?         @map("provider_doc_id")
+  providerMeta        Json            @default("{}") @map("provider_meta")
+  status              EtaxStatus      @default(queued)
+  attempts            Int             @default(0) @db.SmallInt
+  nextAttemptAt       DateTime?       @map("next_attempt_at") @db.Timestamptz(6)
+  sourceDocumentId    String?         @map("source_document_id") @db.Uuid
+  signedXmlDocumentId String?         @map("signed_xml_document_id") @db.Uuid
+  signedPdfDocumentId String?         @map("signed_pdf_document_id") @db.Uuid
+  submittedAt         DateTime?       @map("submitted_at") @db.Timestamptz(6)
+  signedAt            DateTime?       @map("signed_at") @db.Timestamptz(6)
+  error               String?
+  version             Int             @default(1)
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy           String?         @map("created_by") @db.Uuid
+  updatedAt           DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy           String?         @map("updated_by") @db.Uuid
+
+  tenant            Tenant    @relation("EtaxSubmissionTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "etax_submission_tenant_id_fkey")
+  building          Building  @relation("EtaxSubmissionBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "etax_submission_building_id_fkey")
+  sourceDocument    Document? @relation("EtaxSubmissionSourceDocument", fields: [sourceDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "etax_submission_source_document_id_fkey")
+  signedXmlDocument Document? @relation("EtaxSubmissionSignedXmlDocument", fields: [signedXmlDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "etax_submission_signed_xml_document_id_fkey")
+  signedPdfDocument Document? @relation("EtaxSubmissionSignedPdfDocument", fields: [signedPdfDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "etax_submission_signed_pdf_document_id_fkey")
+
+  @@unique([subjectType, subjectId], map: "etax_submission_subject_type_subject_id_key")
+  @@index([tenantId, status], map: "etax_submission_tenant_id_status_idx")
+  @@index([tenantId, issuedAt], map: "etax_submission_tenant_id_issued_at_idx")
+  @@index([status, nextAttemptAt], map: "etax_submission_status_next_attempt_at_idx")
+  @@index([buildingId], map: "etax_submission_building_id_idx")
+  @@index([sourceDocumentId], map: "etax_submission_source_document_id_idx")
+  @@index([signedXmlDocumentId], map: "etax_submission_signed_xml_document_id_idx")
+  @@index([signedPdfDocumentId], map: "etax_submission_signed_pdf_document_id_idx")
+  @@map("etax_submission")
+  @@schema("ops")
+}
+
+/// TM30 notification duty of one foreign occupant at move-in (24 h, D-052, D-216) and the upload file it went into.
+model Tm30Export {
+  id                 String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String     @map("tenant_id") @db.Uuid
+  buildingId         String     @map("building_id") @db.Uuid
+  unitId             String     @map("unit_id") @db.Uuid
+  leaseId            String     @map("lease_id") @db.Uuid
+  partyId            String     @map("party_id") @db.Uuid
+  arrivalDate        DateTime?  @map("arrival_date") @db.Date
+  movedInAt          DateTime   @map("moved_in_at") @db.Timestamptz(6)
+  dueAt              DateTime   @map("due_at") @db.Timestamptz(6)
+  status             Tm30Status @default(due)
+  workflowInstanceId String?    @map("workflow_instance_id") @db.Uuid
+  format             String     @default("immigration_xlsx_v1")
+  generatedAt        DateTime?  @map("generated_at") @db.Timestamptz(6)
+  generatedBy        String?    @map("generated_by") @db.Uuid
+  fileDocumentId     String?    @map("file_document_id") @db.Uuid
+  downloadedAt       DateTime?  @map("downloaded_at") @db.Timestamptz(6)
+  reminderSentAt     DateTime?  @map("reminder_sent_at") @db.Timestamptz(6)
+  submittedAt        DateTime?  @map("submitted_at") @db.Timestamptz(6)
+  submittedBy        String?    @map("submitted_by") @db.Uuid
+  submissionRef      String?    @map("submission_ref")
+  cancelReason       String?    @map("cancel_reason")
+  version            Int        @default(1)
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          String?    @map("created_by") @db.Uuid
+  updatedAt          DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy          String?    @map("updated_by") @db.Uuid
+
+  tenant           Tenant            @relation("Tm30ExportTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tm30_export_tenant_id_fkey")
+  building         Building          @relation("Tm30ExportBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tm30_export_building_id_fkey")
+  unit             Unit              @relation("Tm30ExportUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tm30_export_unit_id_fkey")
+  lease            Lease             @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tm30_export_lease_id_fkey")
+  party            Party             @relation("Tm30ExportParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tm30_export_party_id_fkey")
+  workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tm30_export_workflow_instance_id_fkey")
+  fileDocument     Document?         @relation("Tm30ExportFileDocument", fields: [fileDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "tm30_export_file_document_id_fkey")
+
+  @@unique([leaseId, partyId], map: "tm30_export_lease_id_party_id_key")
+  @@index([tenantId, buildingId, status], map: "tm30_export_tenant_id_building_id_status_idx")
+  @@index([buildingId], map: "tm30_export_building_id_idx")
+  @@index([unitId], map: "tm30_export_unit_id_idx")
+  @@index([partyId], map: "tm30_export_party_id_idx")
+  @@index([workflowInstanceId], map: "tm30_export_workflow_instance_id_idx")
+  @@index([fileDocumentId], map: "tm30_export_file_document_id_idx")
+  @@map("tm30_export")
+  @@schema("ops")
+}

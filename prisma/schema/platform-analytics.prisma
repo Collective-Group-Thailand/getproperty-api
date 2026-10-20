@@ -1,0 +1,102 @@
+// platform — analytics facts, rollups, benchmarks and resident CSAT (B6.3, D-083, D-162, D-217; migration 0031).
+
+enum RollupBucket {
+  day
+  week
+  month
+
+  @@map("rollup_bucket")
+  @@schema("platform")
+}
+
+/// Analytics events; monthly native partitions (D-162), one row per fact × subject × time.
+model AnalyticsFact {
+  id          String   @default(dbgenerated("uuidv7()")) @db.Uuid
+  time        DateTime @db.Timestamptz(6)
+  tenantId    String   @map("tenant_id") @db.Uuid
+  buildingId  String?  @map("building_id") @db.Uuid
+  fact        String
+  subjectType String   @map("subject_type")
+  subjectId   String   @map("subject_id") @db.Uuid
+  value       Decimal  @db.Decimal(18, 6)
+  dims        Json     @default("{}")
+  recordedAt  DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
+
+  @@id([id, time], map: "analytics_fact_pkey")
+  @@unique([fact, subjectId, time], map: "analytics_fact_fact_subject_id_time_key")
+  @@index([tenantId, fact, time(sort: Desc)], map: "analytics_fact_tenant_id_fact_time_idx")
+  @@map("analytics_fact")
+  @@schema("platform")
+}
+
+/// Day / week / month sums of analytics facts per tenant (building_id NULL = all buildings) and building (NULLS NOT DISTINCT).
+model AnalyticsRollup {
+  id          String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String       @map("tenant_id") @db.Uuid
+  buildingId  String?      @map("building_id") @db.Uuid
+  fact        String
+  bucket      RollupBucket
+  bucketStart DateTime     @map("bucket_start") @db.Date
+  value       Decimal      @db.Decimal(20, 6)
+  count       Int
+  minValue    Decimal?     @map("min_value") @db.Decimal(18, 6)
+  maxValue    Decimal?     @map("max_value") @db.Decimal(18, 6)
+  computedAt  DateTime     @map("computed_at") @db.Timestamptz(6)
+
+  tenant   Tenant    @relation("AnalyticsRollupTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "analytics_rollup_tenant_id_fkey")
+  building Building? @relation("AnalyticsRollupBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "analytics_rollup_building_id_fkey")
+
+  @@unique([tenantId, buildingId, fact, bucket, bucketStart], map: "analytics_rollup_key")
+  @@index([tenantId, fact, bucket, bucketStart], map: "analytics_rollup_tenant_id_fact_bucket_bucket_start_idx")
+  @@index([buildingId], map: "analytics_rollup_building_id_idx")
+  @@map("analytics_rollup")
+  @@schema("platform")
+}
+
+/// Anonymised percentiles of opted-in tenants; a bucket exists only with k >= 5 tenants and stores no tenant id.
+model BenchmarkBucket {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  metric     String
+  bucketKey  String   @map("bucket_key")
+  k          Int
+  p25        Decimal  @db.Decimal(18, 6)
+  p50        Decimal  @db.Decimal(18, 6)
+  p75        Decimal  @db.Decimal(18, 6)
+  asOf       DateTime @map("as_of") @db.Date
+  computedAt DateTime @map("computed_at") @db.Timestamptz(6)
+
+  @@unique([metric, bucketKey, asOf], map: "benchmark_bucket_metric_bucket_key_as_of_key")
+  @@map("benchmark_bucket")
+  @@schema("platform")
+}
+
+/// The residents' periodic 1-question satisfaction survey (D-083 CSAT).
+model CsatResponse {
+  id               String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  partyId          String   @map("party_id") @db.Uuid
+  unitId           String?  @map("unit_id") @db.Uuid
+  leaseId          String?  @map("lease_id") @db.Uuid
+  serviceRequestId String?  @map("service_request_id") @db.Uuid
+  questionKey      String   @map("question_key")
+  rating           Int      @db.SmallInt
+  comment          String?
+  answeredAt       DateTime @default(now()) @map("answered_at") @db.Timestamptz(6)
+  answeredBy       String?  @map("answered_by") @db.Uuid
+
+  tenant         Tenant          @relation("CsatResponseTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "csat_response_tenant_id_fkey")
+  party          Party           @relation("CsatResponseParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "csat_response_party_id_fkey")
+  unit           Unit?           @relation("CsatResponseUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "csat_response_unit_id_fkey")
+  lease          Lease?          @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "csat_response_lease_id_fkey")
+  serviceRequest ServiceRequest? @relation(fields: [serviceRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "csat_response_service_request_id_fkey")
+  answerer       UserAccount?    @relation("CsatResponseAnsweredBy", fields: [answeredBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "csat_response_answered_by_fkey")
+
+  @@index([tenantId, answeredAt(sort: Desc)], map: "csat_response_tenant_id_answered_at_idx")
+  @@index([partyId, answeredAt(sort: Desc)], map: "csat_response_party_id_answered_at_idx")
+  @@index([unitId], map: "csat_response_unit_id_idx")
+  @@index([leaseId], map: "csat_response_lease_id_idx")
+  @@index([serviceRequestId], map: "csat_response_service_request_id_idx")
+  @@index([answeredBy], map: "csat_response_answered_by_idx")
+  @@map("csat_response")
+  @@schema("platform")
+}

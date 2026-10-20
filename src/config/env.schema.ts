@@ -503,6 +503,16 @@ export class EnvironmentVariables {
   @IsString()
   LOCKS_SECRETS_PREFIX = 'getproperty/locks';
 
+  // --- e-Tax service providers (B6.2, D-215; real adapters only with INTEGRATIONS_MODE=real) -------------
+
+  /** INET One e-Tax web service (`etaxdocumentws`); UAT and production hosts differ. */
+  @IsUrl({ require_tld: false })
+  ETAX_INET_BASE_URL = 'https://service-etax.one.th/etaxdocumentws';
+
+  /** Prefix of the per-tenant provider account secrets (`<prefix>/<provider>/<tenantId>`). */
+  @IsString()
+  ETAX_SECRETS_PREFIX = 'getproperty/etax';
+
   // --- Email (SES v2) -----------------------------------------------------------------------------------
 
   @IsString()

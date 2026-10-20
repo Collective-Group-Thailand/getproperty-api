@@ -1,0 +1,69 @@
+{
+  "kpis": [
+    {
+      "kpi": "time_to_bill",
+      "baseline": "72",
+      "current": "1.00",
+      "target": "-80%",
+      "met": true
+    },
+    {
+      "kpi": "invoice_correction_rate",
+      "baseline": null,
+      "current": "33.33",
+      "target": "<1%",
+      "met": false
+    },
+    {
+      "kpi": "on_time_payment",
+      "baseline": "40",
+      "current": "50.00",
+      "target": "+10pts",
+      "met": true
+    },
+    {
+      "kpi": "auto_reconciled",
+      "baseline": "0",
+      "current": "0.00",
+      "target": ">=90%",
+      "met": false
+    },
+    {
+      "kpi": "loss_identified",
+      "baseline": null,
+      "current": true,
+      "target": true,
+      "met": true
+    },
+    {
+      "kpi": "meter_uptime",
+      "baseline": null,
+      "current": "99.50",
+      "target": ">=99.5%",
+      "met": true
+    },
+    {
+      "kpi": "csat",
+      "baseline": "3.5",
+      "current": "4.50",
+      "target": ">=4.3",
+      "met": true
+    }
+  ],
+  "current": {
+    "timeToBillHours": "1.00",
+    "invoiceCorrectionRatePct": "33.33",
+    "onTimePaymentPct": "50.00",
+    "autoReconciledPct": "0.00",
+    "lossIdentified": true,
+    "latestLossPct": "3.0000",
+    "meterUptimePct": "99.50",
+    "csat": "4.50"
+  },
+  "acceptance": {
+    "firstFullCycleWithin1h": null,
+    "paidByQrPct": "0.00",
+    "serviceRequestsViaLinePct": null,
+    "buildingsBillingAutomatically": 0
+  }
+}

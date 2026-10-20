@@ -908,5 +908,31 @@
       "title": "Account still in use",
       "detail": "The login still works for a tenant (membership or linked resident); that tenant must end it before the account can be erased."
     }
+  },
+  "etax": {
+    "invalid_state": {
+      "title": "e-Tax submission cannot change",
+      "detail": "Only a rejected or failed submission can be sent again (now: {status})."
+    }
+  },
+  "tm30": {
+    "invalid_state": {
+      "title": "TM30 notification cannot change",
+      "detail": "The TM30 notification is not in a state that allows this action (now: {status})."
+    },
+    "data_missing": {
+      "title": "Passport data missing",
+      "detail": "Some foreign occupants lack the data the Immigration Bureau requires; complete their profiles first."
+    },
+    "nothing_pending": {
+      "title": "Nothing to notify",
+      "detail": "The building has no pending TM30 notification."
+    }
+  },
+  "csat": {
+    "not_due": {
+      "title": "Survey already answered",
+      "detail": "You answered the satisfaction survey recently; it will be offered again later."
+    }
   }
 }

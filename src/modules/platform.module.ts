@@ -1,5 +1,8 @@
 import { Global, Module } from '@nestjs/common';
 
+import { AnalyticsService } from './platform-analytics/analytics.service';
+import { CsatSurveyService } from './platform-analytics/csat-survey.service';
+import { InsightsService } from './platform-analytics/insights.service';
 import { PilotKpisService } from './platform-analytics/pilot-kpis.service';
 import { FieldWorkService } from './platform-subscriptions/field-work.service';
 import { HaasService } from './platform-subscriptions/haas.service';
@@ -21,10 +24,13 @@ const SERVICES = [
   PilotsService,
   TenantHealthService,
   PilotKpisService,
+  AnalyticsService,
+  InsightsService,
+  CsatSurveyService,
 ];
 
 /**
- * The platform business of Collective Group (B6.1, B6.3 KPIs; D-081–D-083, D-156, D-204): price plans and
+ * The platform business of Collective Group (B6.1; B6.3 analytics, KPIs, insights, benchmarks, CSAT survey; D-081–D-083, D-156, D-204): price plans and
  * subscriptions with their lifecycle job, platform invoices / receipts / credit notes with the platform's own Thai QR,
  * the HaaS register, field orders and site surveys, pilot agreements and KPIs, tenant health. Shared by the HTTP and
  * worker processes; the document subscriber consumes in the worker.
