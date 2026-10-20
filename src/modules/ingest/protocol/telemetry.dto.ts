@@ -120,6 +120,15 @@ export class TelemetryBatch {
   @IsISO8601({ strict: true })
   sentAt!: string;
 
+  @JSONSchema({
+    description:
+      'Identity of the gateway’s sequence space (D-227, review #4): a random id the agent creates with its state database and keeps for its life; a wiped, re-flashed or replaced gateway starts a new one together with `seq` 1. The cloud deduplicates on (gatewayId, seqEpoch, meterId, seq), so restarted sequences are never mistaken for duplicates. Optional for agents older than protocol 1.1 (treated as one epoch per gateway).',
+    examples: ['3f0c9a52-6d1e-4b8a-9a43-0d7c2b1e5f60'],
+  })
+  @IsOptional()
+  @Matches(/^[A-Za-z0-9-]{8,64}$/)
+  seqEpoch?: string;
+
   @JSONSchema({ description: `1–${MAX_READINGS_PER_BATCH} readings; no repeated (meterId, seq) pair` })
   @IsArray()
   @ArrayMinSize(1)

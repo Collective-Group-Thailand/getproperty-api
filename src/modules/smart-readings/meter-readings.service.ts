@@ -52,6 +52,8 @@ export interface NewReading {
   confidence?: string;
   deviceId?: string | null;
   seq?: bigint | null;
+  /** D-227: the gateway sequence space of `seq` (dedup is per stream). */
+  seqStream?: string;
   quality?: ReadingQuality | null;
   telemetryTime?: Date | null;
   batchId?: string | null;
@@ -236,6 +238,7 @@ export class MeterReadingsService extends TenantScopedRepository {
           confidence,
           quality: input.quality ?? null,
           seq: input.seq ?? null,
+          seqStream: input.seqStream ?? '',
           telemetryTime: input.telemetryTime ?? null,
           reviewState: verdict.state,
           previousReadingId: previous?.id ?? null,
@@ -829,6 +832,8 @@ export class MeterReadingsService extends TenantScopedRepository {
       assetItemId: string;
       deviceId: string;
       seq: string;
+      /** D-227; absent on candidates recorded before the release (one stream per device then). */
+      seqStream?: string;
       readAt: string;
       register: string;
       quality: ReadingQuality;
@@ -852,6 +857,7 @@ export class MeterReadingsService extends TenantScopedRepository {
       via: c.via,
       deviceId: c.deviceId,
       seq: BigInt(c.seq),
+      seqStream: c.seqStream ?? '',
       quality: c.quality,
       telemetryTime: readAt,
       skipBand: true,

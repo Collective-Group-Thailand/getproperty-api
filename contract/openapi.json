@@ -23715,6 +23715,12 @@
             "example": "2026-11-01T00:15:03+07:00",
             "format": "date-time",
             "type": "string"
+          },
+          "seqEpoch": {
+            "description": "Device protocol 1.1 (D-227): the sequence space of the gateway’s state database; dedup is per (gatewayId, seqEpoch, meterId, seq). Omitted by older agents.",
+            "example": "3f0c9a52-6d1e-4b8a-9a43-0d7c2b1e5f60",
+            "pattern": "^[A-Za-z0-9-]{8,64}$",
+            "type": "string"
           }
         },
         "required": [
@@ -66169,7 +66175,7 @@
     },
     "/v1/device/readings/batch": {
       "post": {
-        "description": "Fallback when MQTT is unavailable (api-conventions §7): the body is a protocol `TelemetryBatch` of the calling gateway and goes through the same pipeline as MQTT — authorisation per meter channel, dedup on `(meterId, seq)` (D-143), monthly partitions (D-162). Replays are harmless; an `Idempotency-Key` header is accepted and ignored (edge CR-009). Any 2xx means the readings are durable.\n\nImplements: D-143, D-162, D-030.",
+        "description": "Fallback when MQTT is unavailable (api-conventions §7): the body is a protocol `TelemetryBatch` of the calling gateway and goes through the same pipeline as MQTT — authorisation per meter channel, dedup on `(gatewayId, seqEpoch, meterId, seq)` (D-143, D-227: a re-flashed or replaced gateway sends a new `seqEpoch`), monthly partitions (D-162). Replays are harmless; an `Idempotency-Key` header is accepted and ignored (edge CR-009). Any 2xx means the readings are durable.\n\nImplements: D-143, D-162, D-030, D-227.",
         "operationId": "device.readings.batch",
         "parameters": [
           {

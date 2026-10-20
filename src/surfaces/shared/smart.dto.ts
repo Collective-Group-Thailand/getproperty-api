@@ -2353,6 +2353,16 @@ export class ReadingsBatchDto {
   @IsDateString()
   sentAt!: string;
 
+  @ApiPropertyOptional({
+    pattern: '^[A-Za-z0-9-]{8,64}$',
+    example: '3f0c9a52-6d1e-4b8a-9a43-0d7c2b1e5f60',
+    description:
+      'Device protocol 1.1 (D-227): the sequence space of the gateway’s state database; dedup is per (gatewayId, seqEpoch, meterId, seq). Omitted by older agents.',
+  })
+  @IsOptional()
+  @Matches(/^[A-Za-z0-9-]{8,64}$/)
+  seqEpoch?: string;
+
   @ApiProperty({ type: () => [BatchReadingDto], description: '1–200 readings; no repeated (meterId, seq).' })
   @ValidateNested({ each: true })
   @Type(() => BatchReadingDto)
