@@ -1023,8 +1023,9 @@ export class ResidentCommunityController {
   @ApiEndpoint({
     id: 'resident.community.parcels',
     summary: 'Parcels for my units',
-    description: 'Newest first, with the pick-up PIN while the parcel waits at the desk.',
-    implements: ['D-073'],
+    description:
+      'Parcels of my units received since my current occupancy began (a former occupant’s parcels are never shown, D-224), newest first, with the pick-up PIN while the parcel waits at the desk.',
+    implements: ['D-073', 'D-224'],
   })
   @ApiSuccess(200, {
     description: 'Parcels',
@@ -1094,8 +1095,8 @@ export class ResidentCommunityController {
   @ApiEndpoint({
     id: 'resident.community.bookings',
     summary: 'My bookings',
-    description: 'Bookings of my units, newest first.',
-    implements: ['D-073'],
+    description: 'Bookings of my units made since my current occupancy began (D-224), newest first.',
+    implements: ['D-073', 'D-224'],
   })
   @ApiSuccess(200, { description: 'Bookings', type: BookingsDto, example: { data: [BOOKING_EXAMPLE] } })
   @ApiStandardErrors('validation.failed')

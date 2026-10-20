@@ -607,6 +607,68 @@ describe('B5.1 service requests & work orders (real PostgreSQL)', () => {
     ids.plan = plan.body.id as string;
   });
 
+  it('a new occupant never sees the previous occupants’ requests of the unit (review #9, D-224)', async () => {
+    await relogin();
+    // the current resident reported a leak ten days ago
+    const old = await t.http
+      .post('/v1/resident/service-requests')
+      .set(R())
+      .set(idem())
+      .send({ unitId, categoryId: ids.plumbing, description: 'ท่อน้ำใต้ซิงก์รั่ว (ผู้เช่าเดิม)' })
+      .expect(201);
+    await q(`UPDATE ops.service_request SET created_at = created_at - interval '10 days' WHERE id = $1`, [
+      old.body.id,
+    ]);
+    // a family member moves in today and signs in with their own LINE
+    const party = (
+      await q<{ id: string }>(
+        `INSERT INTO core.party (tenant_id, type, display_name) VALUES ($1, 'person', 'ผู้อยู่ใหม่ A-101') RETURNING id`,
+        [DEV.tenantId],
+      )
+    )[0]!.id;
+    const today = new Date(t.clock.now().getTime() + 7 * 3_600_000).toISOString().slice(0, 10);
+    await q(
+      `INSERT INTO core.occupancy (tenant_id, building_id, unit_id, party_id, role, valid_from) VALUES ($1, $2, $3, $4, 'family', $5::date)`,
+      [DEV.tenantId, DEV.buildingId, unitId, party, today],
+    );
+    const first = await t.http
+      .post('/v1/auth/resident/line')
+      .send({ idToken: fakeLineIdToken({ sub: 'U00000000000000000000000000b5sr09', name: 'ผู้อยู่ใหม่' }) })
+      .expect(200);
+    await q(
+      `INSERT INTO core.party_user_link (tenant_id, party_id, user_id, linked_via) SELECT $1, $2, user_id, 'invitation' FROM core.user_identity WHERE provider_subject = $3`,
+      [DEV.tenantId, party, 'U00000000000000000000000000b5sr09'],
+    );
+    const N = bearer(
+      (await t.http.post('/v1/auth/refresh').send({ refreshToken: first.body.refreshToken }).expect(200)).body
+        .accessToken as string,
+    );
+    const listed = (await t.http.get('/v1/resident/service-requests').set(N).expect(200)).body.data as {
+      id: string;
+    }[];
+    expect(listed.map((r) => r.id)).not.toContain(old.body.id);
+    expect(listed.map((r) => r.id)).not.toContain(ids.sr);
+    await t.http.get(`/v1/resident/service-requests/${old.body.id}`).set(N).expect(404);
+    await t.http
+      .post(`/v1/resident/service-requests/${old.body.id}/actions/cancel`)
+      .set(N)
+      .set(idem())
+      .send({ reason: 'ไม่ใช่ของฉัน' })
+      .expect(404);
+    // what the unit reports from now on is theirs to follow; the reporter keeps their own request
+    const mine = await t.http
+      .post('/v1/resident/service-requests')
+      .set(N)
+      .set(idem())
+      .send({ unitId, categoryId: ids.plumbing, description: 'ไฟห้องน้ำดับ' })
+      .expect(201);
+    const after = (await t.http.get('/v1/resident/service-requests').set(N).expect(200)).body.data as {
+      id: string;
+    }[];
+    expect(after.map((r) => r.id)).toContain(mine.body.id);
+    await t.http.get(`/v1/resident/service-requests/${old.body.id}`).set(R()).expect(200);
+  });
+
   it('another tenant gets 404 on every request, work order and plan of this tenant', async () => {
     const X = bearer(other.token);
     await t.http.get(`/v1/owner/service-requests/${ids.sr}`).set(X).expect(404);

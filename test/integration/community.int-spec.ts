@@ -481,6 +481,68 @@ describe('B5.3 community (real PostgreSQL)', () => {
     ).toHaveLength(1);
   });
 
+  it('a new occupant never sees a former occupant’s parcel, its pick-up PIN or bookings (review #9, D-224)', async () => {
+    await relogin();
+    const photo = await uploadFile(t, db, staff, {
+      kind: 'service_photo',
+      scopeType: 'building',
+      scopeId: DEV.buildingId,
+      fileName: 'parcel-old.jpg',
+      mimeType: 'image/jpeg',
+      body: JPEG,
+      surface: 'staff',
+    });
+    const waiting = await t.http
+      .post('/v1/staff/parcels')
+      .set(S())
+      .send({ unitId: ids.a101, carrier: 'Kerry Express', trackingNo: 'KEX-OLD', photoDocumentId: photo })
+      .expect(201);
+    await settle();
+    await q(`UPDATE ops.parcel SET received_at = received_at - interval '10 days' WHERE id = $1`, [
+      waiting.body.id,
+    ]);
+    await q(
+      `UPDATE ops.facility_booking SET created_at = created_at - interval '10 days' WHERE unit_id = $1`,
+      [ids.a101],
+    );
+    const party = (
+      await q<{ id: string }>(
+        `INSERT INTO core.party (tenant_id, type, display_name) VALUES ($1, 'person', 'ผู้อยู่ใหม่ A-101') RETURNING id`,
+        [DEV.tenantId],
+      )
+    )[0]!.id;
+    const today = new Date(t.clock.now().getTime() + 7 * 3_600_000).toISOString().slice(0, 10);
+    await q(
+      `INSERT INTO core.occupancy (tenant_id, building_id, unit_id, party_id, role, valid_from) VALUES ($1, $2, $3, $4, 'family', $5::date)`,
+      [DEV.tenantId, DEV.buildingId, ids.a101, party, today],
+    );
+    const sub = 'U00000000000000000000000000b53c09';
+    const first = await t.http
+      .post('/v1/auth/resident/line')
+      .send({ idToken: fakeLineIdToken({ sub, name: 'ผู้อยู่ใหม่' }) })
+      .expect(200);
+    await q(
+      `INSERT INTO core.party_user_link (tenant_id, party_id, user_id, linked_via) SELECT $1, $2, user_id, 'invitation' FROM core.user_identity WHERE provider_subject = $3`,
+      [DEV.tenantId, party, sub],
+    );
+    const N = bearer(
+      (await t.http.post('/v1/auth/refresh').send({ refreshToken: first.body.refreshToken }).expect(200)).body
+        .accessToken as string,
+    );
+    const parcels = (await t.http.get('/v1/resident/parcels').set(N).expect(200)).body.data as {
+      id: string;
+    }[];
+    expect(parcels.map((p) => p.id)).not.toContain(waiting.body.id);
+    expect((await t.http.get('/v1/resident/facility-bookings').set(N).expect(200)).body.data).toEqual([]);
+    // the former occupant (still on the lease) keeps seeing their parcel and its PIN
+    await refreshResident();
+    const theirs = (await t.http.get('/v1/resident/parcels').set(R()).expect(200)).body.data as {
+      id: string;
+      pin: string | null;
+    }[];
+    expect(theirs.find((p) => p.id === waiting.body.id)?.pin).toMatch(/^\d{6}$/);
+  });
+
   it('another tenant gets 404; RLS hides every community table', async () => {
     const X = bearer(await operatorToken(t, PHONE_B));
     await t.http.get(`/v1/owner/announcements/${ids.ann}`).set(X).expect(404);
