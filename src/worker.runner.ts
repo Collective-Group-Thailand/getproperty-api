@@ -24,6 +24,7 @@ import { LocksService } from '@modules/smart-access/locks.service';
 import { DeviceCommandsService } from '@modules/smart-devices/commands.service';
 import { GatewayConfigService } from '@modules/smart-devices/gateway-config.service';
 import { MeterHealthService } from '@modules/smart-health/meter-health.service';
+import { UtilityLossService } from '@modules/smart-health/utility-loss.service';
 import { TelemetryMaintenanceService } from '@modules/smart-ingest/telemetry-maintenance.service';
 import {
   Inject,
@@ -65,6 +66,10 @@ export const MAINTENANCE_JOBS = {
   'tm30-sweep': 3_600_000,
   'analytics-rollup': 3_600_000,
   'analytics-benchmarks': 86_400_000,
+  // release review #11 (D-225): safety nets of after-commit effects
+  'notifications-requeue': 300_000,
+  'gateway-config-publish': 60_000,
+  'loss-recompute': 3_600_000,
 } as const;
 type MaintenanceJob = keyof typeof MAINTENANCE_JOBS;
 
@@ -107,6 +112,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly etax: EtaxService,
     private readonly tm30: Tm30Service,
     private readonly analytics: AnalyticsService,
+    private readonly loss: UtilityLossService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -209,6 +215,15 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'analytics-benchmarks':
         await this.analytics.benchmarks();
+        break;
+      case 'notifications-requeue':
+        await this.notifications.requeueStuck();
+        break;
+      case 'gateway-config-publish':
+        await this.configs.publishPending();
+        break;
+      case 'loss-recompute':
+        await this.loss.recomputeStale();
         break;
       default:
         this.logger.warn(`unknown maintenance job ${job.name}`);

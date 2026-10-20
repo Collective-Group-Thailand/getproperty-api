@@ -165,8 +165,15 @@ export class FakePaymentProviders implements PaymentProviderRegistry {
 export class FakeSlipVerifier implements SlipVerifierPort {
   readonly provider = 'fake';
   readonly mode = 'fake' as const;
+  /** Milliseconds each verification takes (tests: a slow provider must never hold a transaction, review #10). */
+  latencyMs = 0;
 
-  verify(image: Buffer): Promise<SlipVerification> {
+  async verify(image: Buffer): Promise<SlipVerification> {
+    if (this.latencyMs) await new Promise((r) => setTimeout(r, this.latencyMs));
+    return this.read(image);
+  }
+
+  private read(image: Buffer): Promise<SlipVerification> {
     const text = image.toString('utf8');
     const start = text.indexOf('{"transRef"');
     const none: SlipVerification = {

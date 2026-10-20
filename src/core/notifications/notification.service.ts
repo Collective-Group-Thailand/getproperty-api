@@ -264,6 +264,24 @@ export class NotificationService {
       );
   }
 
+  /**
+   * Review #11 (D-225): a message left `queued` — its delivery job was never enqueued (queue outage after the commit,
+   * a crash between commit and enqueue) — is enqueued again after 5 minutes; the job id `n-<id>` keeps one job per
+   * message. Maintenance job `notifications-requeue`.
+   */
+  async requeueStuck(): Promise<number> {
+    const before = new Date(this.clock.now().getTime() - 5 * 60_000);
+    const rows = await this.db.platform(
+      (tx) =>
+        tx.$queryRaw<{ id: string }[]>`
+        SELECT id::text FROM platform.notification
+         WHERE state = 'queued' AND scheduled_for <= ${before.toISOString()}::timestamptz
+         ORDER BY scheduled_for LIMIT 500`,
+    );
+    await this.enqueue(rows.map((r) => r.id));
+    return rows.length;
+  }
+
   /** Maintenance: held quiet-hours messages whose window ended go back to the queue. */
   async releaseHeld(): Promise<number> {
     const now = this.clock.now();

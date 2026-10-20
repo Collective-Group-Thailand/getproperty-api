@@ -3,6 +3,8 @@ import 'reflect-metadata';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { UtilityLossService } from '@modules/smart-health/utility-loss.service';
+
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';
 import { adminToken, bearer, idem, onboardTenant, ownerToken } from '../support/int-auth';
@@ -248,6 +250,44 @@ describe('utility invoices & loss (B3.4, real PostgreSQL)', () => {
       .expect(200);
     expect(priced.body.report.priceBasis).toBe('utility_tariff');
     expect(Number(priced.body.report.lossThb)).toBeGreaterThan(0);
+  });
+
+  it('a lost after-commit recompute is caught up by the stale-report sweep (review #11, D-225)', async () => {
+    const loss = t.app.get(UtilityLossService);
+    const list = await t.http
+      .get(`/v1/owner/buildings/${DEV.buildingId}/utility-invoices?utility=electric`)
+      .set(bearer(owner))
+      .expect(200);
+    const id = list.body[0].id as string;
+    const one = await t.http
+      .get(`/v1/owner/buildings/${DEV.buildingId}/utility-invoices/${id}`)
+      .set(bearer(owner))
+      .expect(200);
+    const original = loss.recomputeFor.bind(loss);
+    loss.recomputeFor = () => Promise.reject(new Error('worker died after the commit (test)'));
+    try {
+      await t.http
+        .patch(`/v1/owner/buildings/${DEV.buildingId}/utility-invoices/${id}`)
+        .set(bearer(owner))
+        .set('If-Match', one.headers.etag as string)
+        .send({ units: '1430.000' })
+        .expect(200);
+      await t.worker.tick();
+    } finally {
+      loss.recomputeFor = original;
+    }
+    const before = await t.http
+      .get(`/v1/owner/buildings/${DEV.buildingId}/loss?utility=electric&cycle=2026-10`)
+      .set(bearer(owner))
+      .expect(200);
+    expect(before.body.report.lossUnits).toBe('145.000');
+    expect(await loss.recomputeStale()).toBeGreaterThanOrEqual(1);
+    const after = await t.http
+      .get(`/v1/owner/buildings/${DEV.buildingId}/loss?utility=electric&cycle=2026-10`)
+      .set(bearer(owner))
+      .expect(200);
+    expect(after.body.report.lossUnits).toBe('150.000');
+    expect(await loss.recomputeStale()).toBe(0);
   });
 
   it('OCR prefill and e-bill import of the water invoice; cross-tenant 404', async () => {

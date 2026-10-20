@@ -11,7 +11,15 @@ export class FakePdfRenderer implements PdfRendererPort {
   readonly mode = 'fake' as const;
   readonly rendered: { title: string; footer: string; text: string; paper: string }[] = [];
 
-  render(html: string, options: PdfRenderOptions): Promise<Buffer> {
+  /** Milliseconds each render takes (tests: a cold Chromium must never hold a transaction, review #10). */
+  latencyMs = 0;
+
+  async render(html: string, options: PdfRenderOptions): Promise<Buffer> {
+    if (this.latencyMs) await new Promise((r) => setTimeout(r, this.latencyMs));
+    return this.renderNow(html, options);
+  }
+
+  private renderNow(html: string, options: PdfRenderOptions): Promise<Buffer> {
     const text = htmlToText(html);
     const paper = options.paper ?? 'a4';
     this.rendered.push({ title: options.title, footer: options.footer, text, paper });

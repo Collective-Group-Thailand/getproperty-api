@@ -19,6 +19,13 @@ import Decimal from 'decimal.js';
 import { PaymentsService } from './payments.service';
 
 const by = () => userIdOf(RequestContext.actor());
+
+type SlipVerifyResult = Awaited<ReturnType<SlipVerifierPort['verify']>>;
+/** What `prepare` found out about a slip before the transaction (review #10). */
+interface SlipVerification {
+  slipId: string;
+  result: SlipVerifyResult;
+}
 const digits = (s: string | null | undefined) => (s ?? '').replace(/\D/g, '');
 
 export const SLIP_INCLUDE = {
@@ -126,19 +133,39 @@ export class SlipsService extends TenantScopedRepository implements EventSubscri
     );
   }
 
-  /** Worker: verify the slip and confirm it, or queue it for the owner. */
-  async handle(event: DomainEventEnvelope, tx: Tx): Promise<void> {
-    await this.verify(tx, event.payload.slipReviewId as string);
+  /**
+   * Review #10: the slip image is read from object storage and sent to the slip verifier (HTTP, up to 2 × 10 s)
+   * before the subscriber transaction opens; `handle` then decides in a short transaction.
+   */
+  async prepare(event: DomainEventEnvelope): Promise<SlipVerification | null> {
+    const slipId = event.payload.slipReviewId as string;
+    const slip = await this.db.platform((tx) =>
+      tx.slipReview.findUnique({ where: { id: slipId }, include: { slipDocument: true } }),
+    );
+    if (!slip || slip.status !== 'pending_verification') return null;
+    const image = await this.documents.bytesOf(slip.slipDocument);
+    return { slipId, result: await this.verifier.verify(image, slip.slipDocument.mimeType) };
   }
 
-  async verify(tx: Tx, slipId: string): Promise<void> {
+  /** Worker: verify the slip and confirm it, or queue it for the owner. */
+  async handle(event: DomainEventEnvelope, tx: Tx, prepared?: unknown): Promise<void> {
+    const pre = prepared as SlipVerification | null | undefined;
+    const slipId = event.payload.slipReviewId as string;
+    await this.verify(tx, slipId, pre?.slipId === slipId ? pre.result : undefined);
+  }
+
+  async verify(tx: Tx, slipId: string, verified?: SlipVerifyResult): Promise<void> {
     const slip = await tx.slipReview.findUnique({
       where: { id: slipId },
       include: { slipDocument: true, invoice: true },
     });
     if (!slip || slip.status !== 'pending_verification') return;
-    const image = await this.documents.bytesOf(slip.slipDocument);
-    const v = await this.verifier.verify(image, slip.slipDocument.mimeType);
+    const v =
+      verified ??
+      (await this.verifier.verify(
+        await this.documents.bytesOf(slip.slipDocument),
+        slip.slipDocument.mimeType,
+      ));
     const reasons: string[] = [];
     let duplicateOf: string | null = null;
     if (!v.valid) reasons.push('not_recognised');
