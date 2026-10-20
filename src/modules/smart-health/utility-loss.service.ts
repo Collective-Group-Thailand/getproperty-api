@@ -635,6 +635,36 @@ export class UtilityLossService extends TenantScopedRepository {
   }
 
   /** Subscriber: a changed utility invoice recomputes the reports of the period it closes in (if one exists). */
+  /**
+   * Review #11 (D-225): the safety net of the after-commit recompute — a stored report older than a utility invoice of
+   * its building, utility and period (both `updated_at`, database time) is computed again. Hourly maintenance job.
+   */
+  async recomputeStale(): Promise<number> {
+    const stale = await this.db.platform(
+      (tx) =>
+        tx.$queryRaw<
+          { tenant_id: string; building_id: string; utility: 'electric' | 'water'; key: string | null }[]
+        >`
+        SELECT DISTINCT r.tenant_id::text, r.building_id::text, r.utility::text AS utility,
+               r.inputs_snapshot->>'periodKey' AS key
+          FROM ops.loss_report r
+          JOIN ops.utility_invoice i ON i.building_id = r.building_id AND i.utility = r.utility
+                                    AND i.period_end BETWEEN r.period_start AND r.period_end
+         WHERE i.updated_at > r.updated_at
+         LIMIT 200`,
+    );
+    let done = 0;
+    for (const r of stale) {
+      if (!r.key) continue;
+      await this.compute(systemTenantContext(r.tenant_id), r.building_id, r.utility, r.key).then(
+        () => (done += 1),
+        (error: unknown) =>
+          this.logger.warn(`stale loss report ${r.building_id}: ${(error as Error).message}`),
+      );
+    }
+    return done;
+  }
+
   async recomputeFor(invoiceId: string): Promise<void> {
     const reports = await this.db.platform(async (tx) => {
       const invoice = await tx.utilityInvoice.findUnique({ where: { id: invoiceId } });

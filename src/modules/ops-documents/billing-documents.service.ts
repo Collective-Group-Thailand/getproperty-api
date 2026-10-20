@@ -1,8 +1,9 @@
 import { htmlToText } from '@common/text/html-text';
 import { AppConfig } from '@config/app-config';
-import { DocumentsService } from '@core/documents/documents.service';
+import { DocumentsService, type UploadedGenerated } from '@core/documents/documents.service';
 import { DomainEvents } from '@core/events/domain-events';
 import { type Tx } from '@database/prisma.service';
+import { TenantTx } from '@database/tenant-tx';
 import { type Document } from '@generated/prisma/client';
 import { PDF_RENDERER, type PdfRendererPort } from '@integrations/pdf/pdf-renderer.port';
 import { fonts } from '@modules/ops-leases/contract-renderer';
@@ -37,6 +38,7 @@ export class BillingDocuments {
     private readonly documents: DocumentsService,
     private readonly events: DomainEvents,
     private readonly config: AppConfig,
+    private readonly db: TenantTx,
   ) {}
 
   // ------------------------------------------------------------------------------------------- rendering (pure)
@@ -152,15 +154,23 @@ export class BillingDocuments {
 
   // ------------------------------------------------------------------------------------------- generation
 
-  /** The stored A4 PDF of an issued invoice (generated once, `document.generated`). */
-  async generateInvoice(tx: Tx, invoiceId: string): Promise<Document> {
-    // one generator at a time per invoice (worker subscriber vs an on-demand download): document_id is set once
-    await tx.$queryRaw`SELECT id FROM ops.invoice WHERE id = ${invoiceId}::uuid FOR UPDATE`;
-    const inv = await tx.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { document: true } });
-    if (inv.document) return inv.document;
-    if (!inv.issuedAt || !inv.number) throw new RangeError(`invoice ${invoiceId} is not issued`);
-    const view = await this.invoiceViewOf(tx, inv);
-    const doc = await this.documents.storeGenerated(tx, {
+  /**
+   * Review #10: the slow half of `generateInvoice` — the view read in its own read-only transaction, the PDF rendered
+   * (headless Chromium) and uploaded to object storage with no transaction open. Null when the invoice already has
+   * its PDF or is not issued. `generateInvoice(tx, id, prepared)` then only records the row.
+   */
+  async prepareInvoice(invoiceId: string): Promise<UploadedGenerated | null> {
+    const found = await this.db.platform(
+      async (tx) => {
+        const inv = await tx.invoice.findUnique({ where: { id: invoiceId } });
+        if (!inv || inv.documentId || !inv.issuedAt || !inv.number) return null;
+        return { inv, view: await this.invoiceViewOf(tx, inv) };
+      },
+      { timeout: 30_000 },
+    );
+    if (!found) return null;
+    const { inv, view } = found;
+    return this.documents.uploadGenerated({
       tenantId: inv.tenantId,
       kind: 'pdf_invoice',
       scopeType: inv.unitId ? 'unit' : 'building',
@@ -170,6 +180,56 @@ export class BillingDocuments {
       mimeType: 'application/pdf',
       body: await this.pdf(view, 'a4'),
     });
+  }
+
+  /** Review #10: the slow half of `generateNote` (see `prepareInvoice`). */
+  async prepareNote(kind: 'credit' | 'debit', noteId: string): Promise<UploadedGenerated | null> {
+    const found = await this.db.platform(
+      async (tx) => {
+        const { view, row } = await this.noteViewOf(tx, kind, noteId);
+        return row.documentId ? null : { view, row };
+      },
+      { timeout: 30_000 },
+    );
+    if (!found) return null;
+    const { view, row } = found;
+    return this.documents.uploadGenerated({
+      tenantId: row.tenantId,
+      kind: 'pdf_note',
+      scopeType: row.unitId ? 'unit' : 'building',
+      scopeId: row.unitId ?? row.buildingId,
+      buildingId: row.buildingId,
+      title: `${view.title} ${row.number}.pdf`,
+      mimeType: 'application/pdf',
+      body: await this.pdf(view, 'a4'),
+    });
+  }
+
+  /**
+   * The stored A4 PDF of an issued invoice (generated once, `document.generated`); with `prepared` (the worker) only
+   * the row is written — rendering and upload happened before the transaction.
+   */
+  async generateInvoice(tx: Tx, invoiceId: string, prepared?: UploadedGenerated | null): Promise<Document> {
+    // one generator at a time per invoice (worker subscriber vs an on-demand download): document_id is set once
+    await tx.$queryRaw`SELECT id FROM ops.invoice WHERE id = ${invoiceId}::uuid FOR UPDATE`;
+    const inv = await tx.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { document: true } });
+    if (inv.document) return inv.document;
+    if (!inv.issuedAt || !inv.number) throw new RangeError(`invoice ${invoiceId} is not issued`);
+    const doc = prepared
+      ? await this.documents.recordGenerated(tx, prepared)
+      : await (async () => {
+          const view = await this.invoiceViewOf(tx, inv);
+          return this.documents.storeGenerated(tx, {
+            tenantId: inv.tenantId,
+            kind: 'pdf_invoice',
+            scopeType: inv.unitId ? 'unit' : 'building',
+            scopeId: inv.unitId ?? inv.buildingId,
+            buildingId: inv.buildingId,
+            title: `${view.title} ${inv.number}.pdf`,
+            mimeType: 'application/pdf',
+            body: await this.pdf(view, 'a4'),
+          });
+        })();
     await tx.invoice.update({ where: { id: invoiceId }, data: { documentId: doc.id } });
     await this.generated(tx, doc, {
       docType: 'invoice',
@@ -209,22 +269,29 @@ export class BillingDocuments {
     return doc;
   }
 
-  async generateNote(tx: Tx, kind: 'credit' | 'debit', noteId: string): Promise<Document> {
+  async generateNote(
+    tx: Tx,
+    kind: 'credit' | 'debit',
+    noteId: string,
+    prepared?: UploadedGenerated | null,
+  ): Promise<Document> {
     if (kind === 'credit')
       await tx.$queryRaw`SELECT id FROM ops.credit_note WHERE id = ${noteId}::uuid FOR UPDATE`;
     else await tx.$queryRaw`SELECT id FROM ops.debit_note WHERE id = ${noteId}::uuid FOR UPDATE`;
     const { view, row } = await this.noteViewOf(tx, kind, noteId);
     if (row.documentId) return tx.document.findUniqueOrThrow({ where: { id: row.documentId } });
-    const doc = await this.documents.storeGenerated(tx, {
-      tenantId: row.tenantId,
-      kind: 'pdf_note',
-      scopeType: row.unitId ? 'unit' : 'building',
-      scopeId: row.unitId ?? row.buildingId,
-      buildingId: row.buildingId,
-      title: `${view.title} ${row.number}.pdf`,
-      mimeType: 'application/pdf',
-      body: await this.pdf(view, 'a4'),
-    });
+    const doc = prepared
+      ? await this.documents.recordGenerated(tx, prepared)
+      : await this.documents.storeGenerated(tx, {
+          tenantId: row.tenantId,
+          kind: 'pdf_note',
+          scopeType: row.unitId ? 'unit' : 'building',
+          scopeId: row.unitId ?? row.buildingId,
+          buildingId: row.buildingId,
+          title: `${view.title} ${row.number}.pdf`,
+          mimeType: 'application/pdf',
+          body: await this.pdf(view, 'a4'),
+        });
     if (kind === 'credit')
       await tx.creditNote.update({ where: { id: noteId }, data: { documentId: doc.id } });
     else await tx.debitNote.update({ where: { id: noteId }, data: { documentId: doc.id } });

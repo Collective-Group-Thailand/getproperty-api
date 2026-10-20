@@ -7,6 +7,7 @@ import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 import { MQTT_CLIENT, type MqttClientPort } from '@integrations/mqtt/mqtt-client.port';
 import { IngestService } from '@modules/ingest/ingest.service';
 import { IngestSubscriber } from '@modules/ingest/ingest.subscriber';
+import { GatewayConfigService } from '@modules/smart-devices/gateway-config.service';
 import { canonicalManifest } from '@modules/smart-devices/ota.service';
 import { MeterHealthService } from '@modules/smart-health/meter-health.service';
 import { IngestPipeline } from '@modules/smart-ingest/ingest-pipeline.service';
@@ -381,6 +382,28 @@ describe('smart metering B3 (real PostgreSQL + MQTT broker)', () => {
       .expect(200);
     expect(history.body.assignments).toHaveLength(2);
     expect(history.body.swaps).toHaveLength(1);
+  });
+
+  it('a gateway config whose after-commit publish was lost is published by the sweep (review #11, D-225)', async () => {
+    const latest = (
+      await q<{ id: string }>(
+        `SELECT id FROM smart.gateway_config WHERE gateway_device_id = $1 ORDER BY version DESC LIMIT 1`,
+        [gw1],
+      )
+    )[0]!.id;
+    await q(`UPDATE smart.gateway_config SET published_at = NULL, compiled_at = $2 WHERE id = $1`, [
+      latest,
+      new Date(t.clock.now().getTime() - 2 * 60_000),
+    ]);
+    const configs = t.app.get(GatewayConfigService);
+    expect(await configs.publishPending()).toBe(1);
+    const row = (
+      await q<{ published_at: Date | null }>('SELECT published_at FROM smart.gateway_config WHERE id = $1', [
+        latest,
+      ])
+    )[0]!;
+    expect(row.published_at).not.toBeNull();
+    expect(await configs.publishPending()).toBe(0);
   });
 
   it('3.1 tenant isolation (404 + RLS) and the fleet view counts inventory devices', async () => {

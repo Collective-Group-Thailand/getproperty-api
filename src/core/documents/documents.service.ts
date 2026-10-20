@@ -27,6 +27,30 @@ import {
 } from './document-policy';
 
 export const UPLOAD_URL_TTL_SECONDS = 900;
+
+/** A file the platform generated (PDF, export, slip image) to store as a `core.document`. */
+export interface GeneratedInput {
+  tenantId: string;
+  kind: DocumentKind;
+  scopeType: DocumentScope;
+  scopeId: string | null;
+  buildingId: string | null;
+  title: string;
+  mimeType: string;
+  body: Buffer;
+  retentionClass?: string;
+  versionOfDocumentId?: string | null;
+  /** 2 for the provider-signed version of a document (e-Tax, B6.2), … */
+  versionNo?: number;
+  sourceRef?: string | null;
+}
+
+/** A generated file already in object storage, waiting for its row (`recordGenerated`). */
+export interface UploadedGenerated extends GeneratedInput {
+  id: string;
+  storageKey: string;
+  uploadedAt: Date;
+}
 /** Permission needed to see ID document images (B2.2). */
 export const ID_DOCUMENT_PERMISSION = 'party.id_document.read';
 /** Permission needed to read a lease contract (it carries the lessee's ID number, D-172, D-222). */
@@ -328,29 +352,26 @@ export class DocumentsService extends TenantScopedRepository {
    * object first, then the `core.document` row (verified, scan `skipped` — the platform wrote it). A rollback
    * leaves an orphan object, never a row without its object; the retention job sweeps orphans by key prefix.
    */
-  async storeGenerated(
-    tx: Tx,
-    input: {
-      tenantId: string;
-      kind: DocumentKind;
-      scopeType: DocumentScope;
-      scopeId: string | null;
-      buildingId: string | null;
-      title: string;
-      mimeType: string;
-      body: Buffer;
-      retentionClass?: string;
-      versionOfDocumentId?: string | null;
-      /** 2 for the provider-signed version of a document (e-Tax, B6.2), … */
-      versionNo?: number;
-      sourceRef?: string | null;
-    },
-  ): Promise<Document> {
+  async storeGenerated(tx: Tx, input: GeneratedInput): Promise<Document> {
+    return this.recordGenerated(tx, await this.uploadGenerated(input));
+  }
+
+  /**
+   * The object-storage half of `storeGenerated`, outside any transaction (review #10: a subscriber uploads in its
+   * `prepare` step and records the row in its short transaction with `recordGenerated`).
+   */
+  async uploadGenerated(input: GeneratedInput): Promise<UploadedGenerated> {
     const now = this.clock.now();
     const id = uuidv7(now.getTime());
     const ym = now.toISOString().slice(0, 7).replace('-', '/');
     const storageKey = `t/${input.tenantId}/${input.kind}/${ym}/${id}`;
     await this.storage.put(storageKey, input.body, input.mimeType);
+    return { ...input, id, storageKey, uploadedAt: now };
+  }
+
+  /** The `core.document` row of an uploaded generated file (inside the caller's transaction). */
+  recordGenerated(tx: Tx, input: UploadedGenerated): Promise<Document> {
+    const { id, storageKey, uploadedAt: now } = input;
     return tx.document.create({
       data: {
         id,

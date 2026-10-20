@@ -138,6 +138,30 @@ export class GatewayConfigService {
     );
   }
 
+  /**
+   * Review #11 (D-225): the safety net of the after-commit publish — the latest compiled config of each gateway that
+   * was never published (a broker error after the commit) is published now. Every minute.
+   */
+  async publishPending(): Promise<number> {
+    const before = new Date(this.clock.now().getTime() - 60_000);
+    const pending = await this.db.platform(
+      (tx) =>
+        tx.$queryRaw<{ id: string }[]>`
+        SELECT c.id::text FROM smart.gateway_config c
+         WHERE c.published_at IS NULL AND c.compiled_at < ${before}
+           AND c.version = (SELECT max(x.version) FROM smart.gateway_config x WHERE x.gateway_device_id = c.gateway_device_id)
+         LIMIT 200`,
+    );
+    let published = 0;
+    for (const c of pending)
+      await this.publish(c.id).then(
+        () => (published += 1),
+        (error: unknown) =>
+          this.logger.warn(`config ${c.id} still not published: ${(error as Error).message}`),
+      );
+    return published;
+  }
+
   /** The config the gateway should run (cold start, `GET /v1/device/config`): compiled on demand when none exists. */
   async current(gatewayId: string): Promise<GatewayConfig | null> {
     return this.db.platform(async (tx) => {

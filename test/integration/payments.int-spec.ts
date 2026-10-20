@@ -5,11 +5,14 @@ import { TenantTx } from '@database/tenant-tx';
 import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 import {
   type FakePaymentProviders,
+  type FakeSlipVerifier,
   fakeWebhookSecret,
   signFakeWebhook,
 } from '@integrations/payments/fake-payment-providers';
-import { PAYMENT_PROVIDERS } from '@integrations/payments/payment-provider.port';
+import { PAYMENT_PROVIDERS, SLIP_VERIFIER } from '@integrations/payments/payment-provider.port';
 import { parseThaiQr } from '@integrations/payments/thai-qr';
+import { FakePdfRenderer } from '@integrations/pdf/fake-pdf-renderer';
+import { PDF_RENDERER } from '@integrations/pdf/pdf-renderer.port';
 import { MerchantResolver } from '@modules/ops-payments/merchants';
 import { PaymentWebhooksService } from '@modules/ops-payments/payment-webhooks.service';
 import { PaymentsService } from '@modules/ops-payments/payments.service';
@@ -80,7 +83,7 @@ describe('B4.4 payments, slips, settlement, receipts (real PostgreSQL)', () => {
   /** A ready draft of A-101 for `total`, issued through the API; the worker then sets up its QR and PDF. */
   async function issue(total: string): Promise<{ id: string; number: string; ref: string }> {
     month += 1;
-    const start = `2025-${String(month).padStart(2, '0')}-01`;
+    const start = `${2024 + Math.ceil(month / 12)}-${String(((month - 1) % 12) + 1).padStart(2, '0')}-01`;
     const id = (
       await q<{ id: string }>(
         `INSERT INTO ops.invoice (tenant_id, building_id, unit_id, billed_party_id, lease_id, period_start, period_end,
@@ -1001,6 +1004,33 @@ describe('B4.4 payments, slips, settlement, receipts (real PostgreSQL)', () => {
     expect(allocatedDelta + creditDelta).toBeCloseTo(2 * Number(amount), 2);
     await ledgersAgree();
   });
+
+  it('a slow PDF renderer and slip verifier never time out the subscriber transaction (review #10)', async () => {
+    const renderer = t.app.get<FakePdfRenderer>(PDF_RENDERER);
+    const verifier = t.app.get<FakeSlipVerifier>(SLIP_VERIFIER);
+    renderer.latencyMs = 6_000; // beyond Prisma's 5 s interactive-transaction default
+    verifier.latencyMs = 6_000;
+    try {
+      const inv = await issue('650.00');
+      const pdf = await q<{ document_id: string | null }>(
+        'SELECT document_id FROM ops.invoice WHERE id = $1',
+        [inv.id],
+      );
+      expect(pdf[0]!.document_id).not.toBeNull();
+      const slip = await slipFor(inv.id, 'SLIP-SLOW-0001', await due(inv.id));
+      const row = (
+        await q<{ status: string }>('SELECT status::text FROM ops.slip_review WHERE id = $1', [slip])
+      )[0]!;
+      expect(row.status).not.toBe('pending_verification');
+      const dead = await q(
+        `SELECT 1 FROM platform.event_consumption WHERE subscriber IN ('billing-documents', 'slips') AND state <> 'processed'`,
+      );
+      expect(dead).toEqual([]);
+    } finally {
+      renderer.latencyMs = 0;
+      verifier.latencyMs = 0;
+    }
+  }, 120_000);
 
   it('another tenant gets 404 on my payments, slips, receipts, credits; RLS hides the rows', async () => {
     const B = bearer(other.token);

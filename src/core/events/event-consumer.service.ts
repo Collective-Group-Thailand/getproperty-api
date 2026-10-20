@@ -6,7 +6,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CLOCK, type Clock } from '../clock/clock';
 import { QUEUE, QUEUE_NAMES, type QueueJob, type QueuePort } from '../queue/queue.port';
 import { envelopeOf } from './domain-events';
-import { EventSubscriberRegistry } from './subscribers';
+import { EventSubscriberRegistry, SUBSCRIBER_TX_TIMEOUT_MS } from './subscribers';
 
 export interface DispatchJob {
   eventId: string;
@@ -62,10 +62,33 @@ export class EventConsumer {
     if (!subscriber) throw new Error(`unknown subscriber ${name}`);
     const now = this.clock.now();
     try {
-      const outcome = await this.db.platform(async (tx) => {
-        const row = await tx.domainEvent.findUnique({ where: { id: eventId } });
+      // review #10: external I/O runs before the (short, explicitly timed) transaction, never inside it
+      let prepared: unknown;
+      if (subscriber.prepare) {
+        const done = await this.db.platform((tx) =>
+          tx.eventConsumption.findFirst({
+            where: { eventId, subscriber: name, state: 'processed' },
+            select: { id: true },
+          }),
+        );
+        if (done) return 'skipped';
+        const row = await this.db.platform((tx) => tx.domainEvent.findUnique({ where: { id: eventId } }));
         if (!row) throw new Error(`event ${eventId} not found`);
-        const claimed = await tx.$queryRaw<{ id: string }[]>`
+        const envelope = envelopeOf(row);
+        prepared = await RequestContext.run(
+          {
+            actor: systemActor(`subscriber:${name}`),
+            correlationId: envelope.correlationId,
+            causationId: envelope.id,
+          },
+          () => subscriber.prepare!(envelope),
+        );
+      }
+      const outcome = await this.db.platform(
+        async (tx) => {
+          const row = await tx.domainEvent.findUnique({ where: { id: eventId } });
+          if (!row) throw new Error(`event ${eventId} not found`);
+          const claimed = await tx.$queryRaw<{ id: string }[]>`
           INSERT INTO platform.event_consumption (event_id, subscriber, state, attempts, processed_at)
           VALUES (${eventId}::uuid, ${name}, 'processed', 1, ${now.toISOString()}::timestamptz)
           ON CONFLICT (event_id, subscriber) DO UPDATE
@@ -73,29 +96,45 @@ export class EventConsumer {
                  attempts = platform.event_consumption.attempts + 1, last_error = NULL
            WHERE platform.event_consumption.state <> 'processed'
           RETURNING id`;
-        if (claimed.length === 0) return { status: 'skipped' as const, envelope: null };
-        const envelope = envelopeOf(row);
-        if (envelope.tenantId)
-          await tx.$queryRaw`SELECT set_config('app.tenant_id', ${envelope.tenantId}, true)`;
+          if (claimed.length === 0) return { status: 'skipped' as const, envelope: null };
+          const envelope = envelopeOf(row);
+          if (envelope.tenantId)
+            await tx.$queryRaw`SELECT set_config('app.tenant_id', ${envelope.tenantId}, true)`;
+          await RequestContext.run(
+            {
+              actor: systemActor(`subscriber:${name}`),
+              correlationId: envelope.correlationId,
+              causationId: envelope.id,
+            },
+            () => subscriber.handle(envelope, tx, prepared),
+          );
+          return { status: 'processed' as const, envelope };
+        },
+        { timeout: subscriber.timeoutMs ?? SUBSCRIBER_TX_TIMEOUT_MS },
+      );
+      if (outcome.status === 'processed' && outcome.envelope && subscriber.afterCommit) {
+        const envelope = outcome.envelope;
+        // review #11: the inbox row is already `processed`, so a retry of this job would skip; the failure is
+        // recorded for the admin and every afterCommit effect is reconciled by its sweep (notifications re-queued,
+        // gateway configs re-published, loss reports recomputed, vendor syncs, device commands, e-Tax)
         await RequestContext.run(
           {
             actor: systemActor(`subscriber:${name}`),
             correlationId: envelope.correlationId,
             causationId: envelope.id,
           },
-          () => subscriber.handle(envelope, tx),
-        );
-        return { status: 'processed' as const, envelope };
-      });
-      if (outcome.status === 'processed' && outcome.envelope && subscriber.afterCommit) {
-        await RequestContext.run(
-          {
-            actor: systemActor(`subscriber:${name}`),
-            correlationId: outcome.envelope.correlationId,
-            causationId: outcome.envelope.id,
-          },
-          () => subscriber.afterCommit!(outcome.envelope),
-        );
+          () => subscriber.afterCommit!(envelope),
+        ).catch(async (error: unknown) => {
+          const message = (error as Error).message ?? String(error);
+          this.logger.error(`subscriber ${name} afterCommit failed on ${eventId}: ${message}`);
+          await this.db
+            .platform(
+              (tx) => tx.$executeRaw`
+                UPDATE platform.event_consumption SET last_error = ${`afterCommit: ${message}`.slice(0, 1000)}
+                 WHERE event_id = ${eventId}::uuid AND subscriber = ${name}`,
+            )
+            .catch(() => undefined);
+        });
       }
       return outcome.status;
     } catch (error) {

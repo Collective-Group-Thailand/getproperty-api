@@ -3,6 +3,8 @@ import { EventConsumer } from '@core/events/event-consumer.service';
 import { type EventSubscriber, EventSubscriberRegistry } from '@core/events/subscribers';
 import { NotificationService } from '@core/notifications/notification.service';
 import { ConsentService } from '@core/privacy/consent.service';
+import { type FakeQueue } from '@core/queue/fake-queue';
+import { QUEUE, QUEUE_NAMES } from '@core/queue/queue.port';
 import { type Tx } from '@database/prisma.service';
 import { TenantTx } from '@database/tenant-tx';
 import { type FakeLineMessaging } from '@integrations/line/fake-line-messaging';
@@ -117,6 +119,57 @@ describe('events, workflow and notifications (B1.3 acceptance, real PostgreSQL)'
         .expect(422);
       const after = await db.admin.query(`SELECT count(*)::int AS n FROM platform.outbox_message`);
       expect(after.rows[0].n).toBe(before.rows[0].n);
+    });
+  });
+
+  describe('after-commit effects are reconciled (review #11, D-225)', () => {
+    it('a queue outage after the commit loses no notification: recorded on the inbox, re-queued by the sweep', async () => {
+      const queue = t.app.get<FakeQueue>(QUEUE);
+      const add = queue.add.bind(queue);
+      let outage = true;
+      queue.add = (name, jobName, data, options) => {
+        if (outage && name === QUEUE_NAMES.notifications)
+          return Promise.reject(new Error('redis down (test)'));
+        return add(name, jobName, data, options);
+      };
+      let eventId: string;
+      try {
+        eventId = await t.app.get(TenantTx).platform(async (tx) => {
+          const e = await t.app.get(DomainEvents).record(tx, {
+            type: 'slip.review_requested',
+            aggregateType: 'slip_review',
+            aggregateId: '01a15b00-0000-7000-8000-000000000011',
+            tenantId: DEV.tenantId,
+            payload: { slipReviewId: '01a15b00-0000-7000-8000-000000000011', reasons: ['amount_below_due'] },
+          });
+          return e.id;
+        });
+        await t.worker.tick();
+      } finally {
+        outage = false;
+        queue.add = add;
+      }
+      const inbox = await db.admin.query(
+        `SELECT state, last_error FROM platform.event_consumption WHERE event_id = $1 AND subscriber = 'notifications'`,
+        [eventId],
+      );
+      expect(inbox.rows).toEqual([{ state: 'processed', last_error: expect.stringContaining('redis down') }]);
+      const stuck = await db.admin.query(
+        `SELECT id FROM platform.notification WHERE event_id = $1 AND state = 'queued'`,
+        [eventId],
+      );
+      expect(stuck.rows.length).toBeGreaterThan(0);
+      expect(queue.pending(QUEUE_NAMES.notifications).map((j) => j.id)).not.toContain(
+        `n-${stuck.rows[0].id}`,
+      );
+      t.clock.advance(6 * 60_000);
+      expect(await t.app.get(NotificationService).requeueStuck()).toBeGreaterThanOrEqual(stuck.rows.length);
+      await t.worker.tick();
+      const left = await db.admin.query(
+        `SELECT count(*)::int AS n FROM platform.notification WHERE event_id = $1 AND state = 'queued'`,
+        [eventId],
+      );
+      expect(left.rows[0].n).toBe(0);
     });
   });
 

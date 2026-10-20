@@ -27,7 +27,7 @@ const config = {
 };
 
 function documents(renderer = new FakePdfRenderer()) {
-  return new BillingDocuments(renderer, {} as never, {} as never, config as never);
+  return new BillingDocuments(renderer, {} as never, {} as never, config as never, {} as never);
 }
 
 function golden(name: string, text: string): void {
