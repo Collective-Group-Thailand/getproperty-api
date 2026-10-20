@@ -208,4 +208,37 @@ export class TenantService extends TenantScopedRepository {
       this.found(await tx.tenant.findFirst({ where: { id: tenantId, deletedAt: null } })),
     );
   }
+
+  /**
+   * Buildings a tenant owns or operates (admin console, web F5 device assignment, D-214): company-level structure only
+   * — names, the property, the number of units — no tenant business data.
+   */
+  async buildingsOf(tenantId: string) {
+    return this.db.platform(async (tx) => {
+      this.found(await tx.tenant.findFirst({ where: { id: tenantId, deletedAt: null } }));
+      const rows = await tx.building.findMany({
+        where: { deletedAt: null, OR: [{ ownerTenantId: tenantId }, { operatorTenantId: tenantId }] },
+        include: { property: { select: { id: true, name: true } } },
+        orderBy: [{ property: { name: 'asc' } }, { code: 'asc' }],
+      });
+      const counts = await tx.unit.groupBy({
+        by: ['buildingId'],
+        where: { buildingId: { in: rows.map((b) => b.id) }, deletedAt: null },
+        _count: { _all: true },
+      });
+      const count = new Map(counts.map((c) => [c.buildingId, c._count._all]));
+      return rows.map((b) => ({
+        id: b.id,
+        code: b.code,
+        name: b.name,
+        propertyId: b.property.id,
+        propertyName: b.property.name,
+        unitCount: count.get(b.id) ?? 0,
+        roles: [
+          ...(b.ownerTenantId === tenantId ? (['owner'] as const) : []),
+          ...(b.operatorTenantId === tenantId ? (['operator'] as const) : []),
+        ],
+      }));
+    });
+  }
 }

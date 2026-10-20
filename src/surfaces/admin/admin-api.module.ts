@@ -12,6 +12,7 @@ import {
 import { webVitalsController } from '../shared/web-vitals.controller';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
+import { AdminFilesController, AdminIntegrationEventsController } from './admin-backlog.controller';
 import { ADMIN_BUSINESS_CONTROLLERS } from './admin-business.controller';
 import {
   AdminBuildingsController,
@@ -51,6 +52,8 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
     AdminWorkflowDefinitionsController,
     AdminUtilityTariffsController,
     AdminOutboxController,
+    AdminIntegrationEventsController,
+    AdminFilesController,
     AdminNotificationTemplatesController,
     AdminDevicesController,
     AdminBuildingsController,

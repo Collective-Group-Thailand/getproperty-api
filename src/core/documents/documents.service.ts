@@ -30,6 +30,8 @@ export const UPLOAD_URL_TTL_SECONDS = 900;
 /** Permission needed to see ID document images (B2.2). */
 export const ID_DOCUMENT_PERMISSION = 'party.id_document.read';
 export const DOWNLOAD_URL_TTL_SECONDS = 300;
+/** Kinds the platform admin may upload as platform files (`POST /v1/admin/files/presign`). */
+export const PLATFORM_UPLOAD_KINDS: DocumentKind[] = ['tariff_source', 'contract', 'other'];
 
 export interface PresignInput {
   kind: DocumentKind;
@@ -373,6 +375,147 @@ export class DocumentsService extends TenantScopedRepository {
       contentType: document.mimeType,
     });
     return { url, expiresAt: new Date(this.clock.now().getTime() + DOWNLOAD_URL_TTL_SECONDS * 1000) };
+  }
+
+  // ------------------------------------------------------------------------------------------------- platform files
+
+  /**
+   * Platform-scoped files (`tenant_id` NULL, scope `platform`, web F5 contract request): uploads of the platform
+   * admin — the published notice behind a utility tariff version (kind `tariff_source`), contracts, other evidence.
+   * Same presign → upload → complete → scan flow as tenant files; keys start with `p/` and are never tenant-visible.
+   */
+  async presignPlatform(input: Omit<PresignInput, 'scopeType' | 'scopeId'>): Promise<PresignResult> {
+    const policy = DOCUMENT_POLICY[input.kind];
+    if (!policy || !PLATFORM_UPLOAD_KINDS.includes(input.kind) || !policy.mime.includes(input.mimeType))
+      throw new DomainException('document.type_not_allowed');
+    if (input.sizeBytes > policy.maxBytes)
+      throw new DomainException('validation.failed', {
+        errors: [
+          { path: 'sizeBytes', code: 'max', message: `at most ${policy.maxBytes} bytes for ${input.kind}` },
+        ],
+      });
+    if (!/^[0-9a-f]{64}$/i.test(input.sha256))
+      throw new DomainException('validation.failed', {
+        errors: [{ path: 'sha256', code: 'isHexadecimal', message: 'sha256 must be 64 hex characters' }],
+      });
+    const now = this.clock.now();
+    const id = uuidv7(now.getTime());
+    const storageKey = `p/${input.kind}/${now.toISOString().slice(0, 7).replace('-', '/')}/${id}`;
+    const document = await this.db.platform((tx) =>
+      tx.document.create({
+        data: {
+          id,
+          tenantId: null,
+          scopeType: 'platform',
+          scopeId: null,
+          buildingId: null,
+          kind: input.kind,
+          title: input.title ?? input.fileName.slice(0, 200),
+          storageBucket: this.config.get('S3_BUCKET'),
+          storageKey,
+          mimeType: input.mimeType,
+          sizeBytes: BigInt(input.sizeBytes),
+          sha256: new Uint8Array(Buffer.from(input.sha256, 'hex')),
+          retentionClass: policy.retentionClass,
+          uploadState: 'presigned',
+          scanStatus: 'pending',
+          createdBy: userIdOf(RequestContext.actor()),
+        },
+      }),
+    );
+    const put = await this.storage.presignPut(storageKey, {
+      contentType: input.mimeType,
+      contentLength: input.sizeBytes,
+      expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
+    });
+    return {
+      document,
+      uploadUrl: put.url,
+      headers: put.headers,
+      multipart: null,
+      expiresAt: new Date(now.getTime() + UPLOAD_URL_TTL_SECONDS * 1000),
+    };
+  }
+
+  private async platformDoc(id: string): Promise<Document> {
+    return this.db.platform(async (tx) =>
+      this.found(
+        await tx.document.findFirst({
+          where: { id, tenantId: null, scopeType: 'platform', deletedAt: null },
+        }),
+      ),
+    );
+  }
+
+  /** The platform file was uploaded: the object must exist with the declared size; the scan follows. */
+  async completePlatform(id: string) {
+    const doc = await this.platformDoc(id);
+    if (doc.uploadState !== 'presigned') return doc;
+    const head = await this.storage.head(doc.storageKey);
+    if (!head) throw new DomainException('document.not_uploaded');
+    if (head.sizeBytes !== Number(doc.sizeBytes)) throw new DomainException('document.size_mismatch');
+    return this.db.platform(async (tx) => {
+      const updated = await tx.document.update({
+        where: { id: doc.id },
+        data: {
+          uploadState: 'uploaded',
+          uploadedAt: this.clock.now(),
+          updatedBy: userIdOf(RequestContext.actor()),
+        },
+      });
+      await this.events.record(tx, {
+        type: 'document.uploaded',
+        aggregateType: 'document',
+        aggregateId: doc.id,
+        tenantId: null,
+        payload: { documentId: doc.id, kind: doc.kind },
+      });
+      return updated;
+    });
+  }
+
+  /** Metadata + a 5-minute signed URL of a clean platform file (downloads audited). */
+  async downloadPlatform(id: string) {
+    const doc = await this.platformDoc(id);
+    if (doc.uploadState === 'presigned') throw new DomainException('document.not_uploaded');
+    if (doc.scanStatus === 'pending') throw new DomainException('document.scan_pending');
+    if (doc.scanStatus !== 'clean' && doc.scanStatus !== 'skipped')
+      throw new DomainException('document.infected');
+    await this.db.platform((tx) =>
+      this.audit.record(tx, {
+        action: 'document.downloaded',
+        tenantId: null,
+        subjectType: 'core.document',
+        subjectId: doc.id,
+        metadata: { kind: doc.kind, purpose: 'platform_admin' },
+      }),
+    );
+    const { url, expiresAt } = await this.signedUrl(doc);
+    return { document: doc, url, thumbnailUrl: null, expiresAt };
+  }
+
+  /** A platform file a tariff version may cite as its source (uploaded, not infected), else 422. */
+  async platformSource(tx: Tx, id: string): Promise<Document> {
+    const doc = await tx.document.findFirst({
+      where: {
+        id,
+        tenantId: null,
+        scopeType: 'platform',
+        deletedAt: null,
+        kind: { in: PLATFORM_UPLOAD_KINDS },
+      },
+    });
+    if (!doc || doc.uploadState === 'presigned' || ['infected', 'failed'].includes(doc.scanStatus))
+      throw new DomainException('validation.failed', {
+        errors: [
+          {
+            path: 'sourceDocumentId',
+            code: 'document',
+            message: 'an uploaded platform file (tariff_source, contract or other) is required',
+          },
+        ],
+      });
+    return doc;
   }
 
   /**

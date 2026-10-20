@@ -28,6 +28,8 @@ export const DOCUMENT_POLICY: Partial<
   as_built: { mime: [...IMAGES, ...PDF], maxBytes: 500_000_000, retentionClass: 'other' },
   certificate: { mime: [...IMAGES, ...PDF], maxBytes: 20_000_000, retentionClass: 'other' },
   warranty: { mime: [...IMAGES, ...PDF], maxBytes: 20_000_000, retentionClass: 'other' },
+  // The published notice behind a utility tariff version (platform admin upload, web F5 / D-214).
+  tariff_source: { mime: [...IMAGES, ...PDF], maxBytes: 20_000_000, retentionClass: 'other' },
   other: { mime: [...IMAGES, ...PDF, ...SHEETS], maxBytes: 50_000_000, retentionClass: 'other' },
   // Uploaded by gateways only (`POST /v1/device/logs/presign`, `upload_logs`; never by operators).
   log_bundle: { mime: ['application/gzip'], maxBytes: 50_000_000, retentionClass: 'log_bundle' },

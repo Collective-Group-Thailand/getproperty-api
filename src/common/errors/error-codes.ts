@@ -203,6 +203,8 @@ export const ERROR_CODES = {
   'facility.slot_taken': HttpStatus.CONFLICT,
   'facility.booking_invalid_state': HttpStatus.CONFLICT,
   'staff_task.not_completable': HttpStatus.CONFLICT,
+  'dsr.tenant_controlled': HttpStatus.CONFLICT,
+  'dsr.erasure_blocked': HttpStatus.CONFLICT,
   'internal.unexpected': HttpStatus.INTERNAL_SERVER_ERROR,
 } as const satisfies Record<string, HttpStatus>;
 

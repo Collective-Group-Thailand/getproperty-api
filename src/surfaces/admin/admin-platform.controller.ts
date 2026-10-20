@@ -30,7 +30,14 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsUUID } from 'class-validator';
 
 import { AUDIT_EXAMPLE, auditPage, auditQueryOf, DSR_EXAMPLE, dsrDto } from '../owner/governance.controller';
-import { AuditEntryDto, AuditQueryDto, DsrDto, DsrListQuery } from '../owner/governance.dto';
+import {
+  AuditEntryDto,
+  AuditQueryDto,
+  DsrActionDto,
+  DsrActionName,
+  DsrDto,
+  DsrListQuery,
+} from '../owner/governance.dto';
 import { type SettingScopeName, SettingUpdateDto, SettingVersionDto } from '../owner/money-settings.dto';
 import { iso, isoOrNull } from '../shared/mappers';
 import { UserStatusName } from '../shared/status.enums';
@@ -378,6 +385,39 @@ export class AdminDsrController {
   @ApiStandardErrors('validation.failed')
   async list(@Query() query: DsrListQuery): Promise<DsrDto[]> {
     return (await this.dsr.listAll(query.state)).map(dsrDto);
+  }
+
+  @Post(':requestId/actions/:action')
+  @HttpCode(200)
+  @Can('admin.dsr.manage')
+  @ApiParam({ name: 'action', enum: DsrActionName, enumName: 'DsrAction', example: DsrActionName.Verify })
+  @ApiEndpoint({
+    id: 'admin.dataSubjectRequests.transition',
+    summary: 'Move a platform-level data subject request',
+    description:
+      'Requests where Collective is the controller (`tenantId: null` — logins not linked to any tenant, platform users; web F5, D-214): `verify` → `start` → `fulfil` (access / portability: a JSON export of the login; erasure: the login’s contact data anonymised and the login disabled, 409 `dsr.erasure_blocked` while it still works for a tenant) or `reject`. A tenant’s request is handled by that tenant (409 `dsr.tenant_controlled`). Audited (D-025).',
+    implements: ['D-025', 'D-159', 'D-214'],
+  })
+  @ApiJsonBody(DsrActionDto, { notes: 'ยืนยันตัวตนทางอีเมลที่ลงทะเบียนแล้ว' })
+  @ApiSuccess(200, {
+    description: 'New state',
+    type: DsrDto,
+    example: { ...DSR_EXAMPLE, tenantId: null, state: 'verifying' },
+  })
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.bad_request',
+    'http.not_found',
+    'workflow.invalid_transition',
+    'dsr.tenant_controlled',
+    'dsr.erasure_blocked',
+  )
+  async transition(
+    @Param('requestId', ParseUUIDPipe) id: string,
+    @Param('action', new ParseEnumPipe(DsrActionName)) action: DsrActionName,
+    @Body() body: DsrActionDto,
+  ): Promise<DsrDto> {
+    return dsrDto(await this.dsr.transitionPlatform(id, action, body.notes ?? null));
   }
 }
 

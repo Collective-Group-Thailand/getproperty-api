@@ -47,6 +47,7 @@ import {
   OwnerNotificationRoutesController,
   OwnerSupportGrantsController,
 } from './governance.controller';
+import { OwnerInsightsController } from './insights.controller';
 import { OwnerLeasesController, OwnerLeaseTemplatesController } from './leases.controller';
 import {
   OwnerBankAccountsController,
@@ -84,6 +85,7 @@ import {
 @Module({
   controllers: [
     OwnerSubscriptionController,
+    OwnerInsightsController,
     OwnerServiceCategoriesController,
     serviceRequestsController(SURFACES.owner),
     workOrdersController(SURFACES.owner),

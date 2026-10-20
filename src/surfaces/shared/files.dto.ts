@@ -43,6 +43,8 @@ export enum DocumentScopeName {
   Unit = 'unit',
   Party = 'party',
   AssetItem = 'asset_item',
+  /** Platform files of the admin zone (no tenant, D-214); never accepted on tenant surfaces. */
+  Platform = 'platform',
 }
 
 export enum DocumentScanStatusName {

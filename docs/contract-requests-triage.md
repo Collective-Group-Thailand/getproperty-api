@@ -11,9 +11,12 @@ Commit ids: **A** = `13be5a7` (`feat(contract): consumer contract requests for B
 (`feat(smart): B3 metering & IoT — devices, ingest, meter readings, health, loss (3.1–3.4)`) · **A6** = the commit
 `cc49ff5` (`feat(contract): consumer contract requests before B6`, D-203) · **B6.1** = the commit
 `feat(platform): B6.1 subscriptions, platform billing, HaaS, pilots, console; B6.5 launch` (D-204–D-207) · **F2** = the commit
-`feat(contract): consumer contract requests before B5` (D-208, D-209).
+`feat(contract): consumer contract requests before B5` (D-208, D-209) · **F5** = the commit
+`feat(contract): consumer contract requests of 2026-10-20` (D-214).
 
 ## getproperty-edge (`docs/contract-requests.md` CR-001…CR-011)
+
+Re-checked 2026-10-20 (F5): no open request.
 
 | # | Request | What the API did | Status |
 |---|---|---|---|
@@ -60,8 +63,18 @@ Commit ids: **A** = `13be5a7` (`feat(contract): consumer contract requests for B
 | `GET /v1/owner/unit-profiles/{unitProfileId}` | `UnitProfileDto` + `ETag` (`owner.unitProfiles.get`); the PATCH takes it as `If-Match`. | **done** in F2 (D-208) |
 | Public pricing page on the price-plan tables | `GET /v1/public/plans` now projects `platform.price_plan` + `price_plan_version` (the prices billing uses): the published version in force → `sold: true` + `effectiveFrom`, else the newest draft as a proposal (`sold: false`); `PriceUnit` + `meter_point_month` (the meter rental add-on is listed). | **done** in F2 (D-208, supersedes the D-204 note) |
 | `ServiceRequestStatus`, `WorkOrderStatus` named components | Named enums with the B5.1 tables: `ServiceRequestStatus` (`new, triaged, assigned, in_progress, waiting_parts, done, closed, cancelled`), `WorkOrderStatus` (`open, assigned, accepted, in_progress, done, verified, cancelled`), plus `ServicePriority`, `ServiceReporterKind`, `WorkOrderKind`, `WorkOrderCostKind`, `WorkOrderPhotoRole`, `ServiceCategorySource`, `AssigneeType`. | **done** in B5.1 (D-210) |
+| `GET /v1/admin/utility-tariffs/versions/{versionId}/charge?units=` | Sample bill of **any** version (entered, verified, published, superseded) with the same tariff math → `TariffChargeDto` (`admin.utilityTariffs.sampleCharge`, permission `admin.utility_tariff.enter`); `units` required > 0; a TOU structure is 422 (needs a peak / off-peak split); unknown version 404. | **done** in F5 (D-214) |
+| `GET /v1/owner/pilot-kpis?window=30d\|90d` | `PilotKpisDto` of my tenant (`owner.insights.pilotKpis`, `report.read`), the same computation and daily snapshot as `admin.pilots.kpis`; 404 without a pilot agreement. B6.3 (`GET /v1/owner/insights`) reads the analytics rollups. | **done** in F5 (D-214) |
+| `GET /v1/admin/integration-events` | Paged `{ data: [{ id, direction, system, type, contractVersion, aggregateRef, tenantId, state, attempts, lastError, occurredAt, ackedAt }], meta }` (`admin.integrationEvents.list`); filters `state` (`IntegrationStatus`), `system` (`IntegrationSystem`), `direction`, `tenantId`, `q` (type prefix, idempotency key or subject / event id). Payloads are never listed. Two fields more than asked (`contractVersion`, `ackedAt`, `tenantId`). | **done** in F5 (D-214) |
+| `GET /v1/admin/tenants/{tenantId}/buildings` | `[{ id, code, name, propertyId, propertyName, unitCount, roles }]` — buildings the tenant owns or operates (`roles`: `owner`, `operator`), units not deleted; 404 for an unknown tenant. | **done** in F5 (D-214; `propertyId`, `roles` added) |
+| `POST /v1/admin/data-subject-requests/{requestId}/actions/{action}` | `DsrAction` (`verify`, `start`, `fulfil`, `reject`) with `DsrActionDto` → `DsrDto`, for platform-level requests (`tenantId: null`) only: a tenant's request is 409 `dsr.tenant_controlled`; fulfil = JSON export of the login as a platform file (access / portability) or anonymisation + disable (erasure; 409 `dsr.erasure_blocked` while the login has an active membership or linked party). Audited, `dsr.transitioned`. | **done** in F5 (D-214) |
+| `GET /v1/owner/settings/{key}/versions` | `[{ versionId, scope, propertyId, value, effectiveFrom, effectiveTo, scheduled, reason, createdBy, createdAt }]` — platform defaults, my tenant's and my properties' versions (`?propertyId=` for one; another tenant's property 404), newest effective date first, `scheduled` = not in force yet; keys without a tenant / property scope `settings.unknown_key`. (Chosen over `SettingDto.scheduled`, which would hide the property and history rows.) | **done** in F5 (D-214) |
+| `TariffEnterDto.sourceDocumentId` | `sourceDocumentId: uuid \| null` on the entry and on `TariffVersionDto`; the file is a platform upload through the new **`/v1/admin/files`** (`presign` → PUT → `actions/complete` → `GET {fileId}`), kinds `tariff_source` (new upload kind), `contract`, `other`; a tenant file, an unfinished upload or an infected one is 422. `DocumentScope` gains `platform` (response only; tenant surfaces answer 404 for it). | **done** in F5 (D-214) |
+| `GET /v1/admin/site-surveys` query `state` | `SiteSurveyListQuery.state: SiteSurveyState` (`requested \| scheduled \| done \| cancelled`) and the filter is applied (it was ignored). | **done** in F5 (D-214) |
 
-## getproperty-liff (`docs/contract-requests.md` #1…#6)
+## getproperty-liff (`docs/contract-requests.md` #1…#21)
+
+Re-checked 2026-10-20 (F5): no open row — #7–#21 still say "Requested" in the LIFF file but were closed here (A6, F2); the app updates its file at its next `pnpm gen:api --adopt`.
 
 | # | Request | What the API did | Status |
 |---|---|---|---|

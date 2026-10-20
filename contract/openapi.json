@@ -698,6 +698,28 @@
           "type": "https://errors.getproperty.co/document.type_not_allowed"
         }
       },
+      "problem.dsr.erasure_blocked": {
+        "summary": "dsr.erasure_blocked",
+        "value": {
+          "code": "dsr.erasure_blocked",
+          "detail": "บัญชีนี้ยังผูกกับผู้ประกอบการ (สมาชิกหรือผู้เช่าที่เชื่อมไว้) ต้องยกเลิกการผูกก่อนจึงลบข้อมูลได้",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "บัญชียังใช้งานอยู่",
+          "type": "https://errors.getproperty.co/dsr.erasure_blocked"
+        }
+      },
+      "problem.dsr.tenant_controlled": {
+        "summary": "dsr.tenant_controlled",
+        "value": {
+          "code": "dsr.tenant_controlled",
+          "detail": "คำขอนี้ส่งถึงผู้ประกอบการ (ผู้ควบคุมข้อมูลของผู้เช่า) ผู้ประกอบการรายนั้นเป็นผู้ดำเนินการ",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ผู้ประกอบการเป็นผู้ดำเนินการ",
+          "type": "https://errors.getproperty.co/dsr.tenant_controlled"
+        }
+      },
       "problem.export.not_ready": {
         "summary": "export.not_ready",
         "value": {
@@ -2458,6 +2480,58 @@
         ],
         "type": "object"
       },
+      "AdminBuildingDto": {
+        "properties": {
+          "code": {
+            "example": "A",
+            "type": "string"
+          },
+          "id": {
+            "example": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "example": "อาคาร A",
+            "type": "string"
+          },
+          "propertyId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "propertyName": {
+            "example": "หอพักตัวอย่าง",
+            "type": "string"
+          },
+          "roles": {
+            "description": "How the tenant relates to the building (D-152).",
+            "example": [
+              "owner",
+              "operator"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/BuildingTenantRole"
+            },
+            "type": "array"
+          },
+          "unitCount": {
+            "description": "Units that are not deleted (any status).",
+            "example": 12,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "propertyId",
+          "propertyName",
+          "unitCount",
+          "roles"
+        ],
+        "type": "object"
+      },
       "AdminCommandCreateDto": {
         "properties": {
           "args": {
@@ -2478,6 +2552,51 @@
         },
         "required": [
           "type"
+        ],
+        "type": "object"
+      },
+      "AdminFilePresignDto": {
+        "properties": {
+          "fileName": {
+            "example": "mea-tariff-2026-09.pdf",
+            "maxLength": 255,
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlatformUploadKind"
+              }
+            ],
+            "example": "tariff_source"
+          },
+          "mimeType": {
+            "example": "application/pdf",
+            "type": "string"
+          },
+          "sha256": {
+            "example": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "example": 345678,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "title": {
+            "example": "ประกาศ กฟน. อัตรา ก.ย. 2569",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "fileName",
+          "mimeType",
+          "sizeBytes",
+          "sha256"
         ],
         "type": "object"
       },
@@ -5058,6 +5177,14 @@
           "data"
         ],
         "type": "object"
+      },
+      "BuildingTenantRole": {
+        "description": "How the tenant relates to the building (D-152).",
+        "enum": [
+          "owner",
+          "operator"
+        ],
+        "type": "string"
       },
       "BuildingType": {
         "enum": [
@@ -8364,7 +8491,8 @@
           "floor",
           "unit",
           "party",
-          "asset_item"
+          "asset_item",
+          "platform"
         ],
         "type": "string"
       },
@@ -11415,6 +11543,130 @@
           "in_progress",
           "done",
           "cancelled"
+        ],
+        "type": "string"
+      },
+      "IntegrationDirection": {
+        "enum": [
+          "inbound",
+          "outbound"
+        ],
+        "type": "string"
+      },
+      "IntegrationEventDto": {
+        "properties": {
+          "ackedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "aggregateRef": {
+            "description": "`<subject type>:<subject id>` of the aggregate the event is about.",
+            "example": "ops.service_request:01890a5d-ac96-774b-bcce-b302099a8057",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "attempts": {
+            "example": 0,
+            "type": "integer"
+          },
+          "contractVersion": {
+            "example": "1.0",
+            "type": "string"
+          },
+          "direction": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IntegrationDirection"
+              }
+            ],
+            "example": "outbound"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "lastError": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurredAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IntegrationStatus"
+              }
+            ],
+            "example": "pending"
+          },
+          "system": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IntegrationSystem"
+              }
+            ],
+            "example": "getbuild"
+          },
+          "tenantId": {
+            "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "example": "warranty.defect.reported",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "direction",
+          "system",
+          "type",
+          "contractVersion",
+          "aggregateRef",
+          "tenantId",
+          "state",
+          "attempts",
+          "lastError",
+          "occurredAt",
+          "ackedAt"
+        ],
+        "type": "object"
+      },
+      "IntegrationStatus": {
+        "enum": [
+          "received",
+          "validated",
+          "applied",
+          "rejected",
+          "pending",
+          "sent",
+          "acked",
+          "failed",
+          "dead"
+        ],
+        "type": "string"
+      },
+      "IntegrationSystem": {
+        "enum": [
+          "getbuild",
+          "getpack"
         ],
         "type": "string"
       },
@@ -20739,6 +20991,14 @@
         ],
         "type": "object"
       },
+      "PlatformUploadKind": {
+        "enum": [
+          "tariff_source",
+          "contract",
+          "other"
+        ],
+        "type": "string"
+      },
       "PlatformUserCreateDto": {
         "properties": {
           "displayName": {
@@ -27030,6 +27290,106 @@
         ],
         "type": "object"
       },
+      "SettingHistoryEntryDto": {
+        "properties": {
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdBy": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "effectiveFrom": {
+            "example": "2026-12-01T00:00:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "effectiveTo": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "propertyId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "example": "ส่งแจ้งเตือนวันที่ 1, 3, 7",
+            "type": "string"
+          },
+          "scheduled": {
+            "description": "Effective in the future (not in force yet).",
+            "example": true,
+            "type": "boolean"
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettingScope"
+              }
+            ],
+            "example": "tenant"
+          },
+          "value": {
+            "description": "The value (JSON) of this version.",
+            "example": [
+              1,
+              3,
+              7
+            ],
+            "oneOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "versionId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "versionId",
+          "scope",
+          "propertyId",
+          "value",
+          "effectiveFrom",
+          "effectiveTo",
+          "scheduled",
+          "reason",
+          "createdBy",
+          "createdAt"
+        ],
+        "type": "object"
+      },
       "SettingScope": {
         "description": "Where the value in force comes from.",
         "enum": [
@@ -29424,6 +29784,15 @@
               "null"
             ]
           },
+          "sourceDocumentId": {
+            "description": "An uploaded copy of the notice (`POST /v1/admin/files/presign`, kind `tariff_source`, `contract` or `other`) so the checker can compare against it even when the utility’s page changes (D-214).",
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "sourcePublishedOn": {
             "example": "2026-08-20",
             "format": "date",
@@ -29539,6 +29908,15 @@
               "null"
             ]
           },
+          "sourceDocumentId": {
+            "description": "The uploaded copy of the published notice (`GET /v1/admin/files/{fileId}`), if one was attached.",
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "sourceUrl": {
             "example": "https://www.mea.or.th/",
             "type": "string"
@@ -29578,6 +29956,7 @@
           "ceilingPerUnit",
           "needsCheck",
           "sourceUrl",
+          "sourceDocumentId",
           "structure",
           "enteredBy",
           "verifiedBy",
@@ -34496,6 +34875,278 @@
         "x-surface": "admin"
       }
     },
+    "/v1/admin/data-subject-requests/{requestId}/actions/{action}": {
+      "post": {
+        "description": "Requests where Collective is the controller (`tenantId: null` — logins not linked to any tenant, platform users; web F5, D-214): `verify` → `start` → `fulfil` (access / portability: a JSON export of the login; erasure: the login’s contact data anonymised and the login disabled, 409 `dsr.erasure_blocked` while it still works for a tenant) or `reject`. A tenant’s request is handled by that tenant (409 `dsr.tenant_controlled`). Audited (D-025).\n\nImplements: D-025, D-159, D-214.",
+        "operationId": "admin.dataSubjectRequests.transition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/DsrAction"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "notes": "ยืนยันตัวตนทางอีเมลที่ลงทะเบียนแล้ว"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DsrActionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "dueAt": "2026-12-01T00:15:00+07:00",
+                  "exportDocumentId": null,
+                  "fulfilledAt": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "kind": "access",
+                  "nextActions": [
+                    "verify",
+                    "start",
+                    "reject"
+                  ],
+                  "notes": null,
+                  "receivedAt": "2026-11-01T00:15:00+07:00",
+                  "state": "verifying",
+                  "tenantId": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/DsrDto"
+                }
+              }
+            },
+            "description": "New state",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "dsr.erasure_blocked": {
+                    "$ref": "#/components/examples/problem.dsr.erasure_blocked"
+                  },
+                  "dsr.tenant_controlled": {
+                    "$ref": "#/components/examples/problem.dsr.tenant_controlled"
+                  },
+                  "workflow.invalid_transition": {
+                    "$ref": "#/components/examples/problem.workflow.invalid_transition"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `dsr.erasure_blocked`, `dsr.tenant_controlled`, `workflow.invalid_transition`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Move a platform-level data subject request",
+        "tags": [
+          "admin.dataSubjectRequests"
+        ],
+        "x-required-permissions": [
+          "admin.dsr.manage"
+        ],
+        "x-surface": "admin"
+      }
+    },
     "/v1/admin/devices": {
       "get": {
         "description": "All tenants and the inventory; filter by tenant, building, kind, status, serial (D-033).\n\nImplements: D-033.",
@@ -38089,6 +38740,721 @@
         "x-surface": "admin"
       }
     },
+    "/v1/admin/files/presign": {
+      "post": {
+        "description": "A platform-scoped file (no tenant): kind `tariff_source` (the utility notice a tariff version cites as `sourceDocumentId`), `contract` or `other`; images or PDF up to the kind’s limit. Returns a 15-minute signed PUT URL; upload, then `complete` (D-214, D-021a).\n\nImplements: D-214, D-021, D-025.",
+        "operationId": "admin.files.presign",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "fileName": "mea-tariff-2026-09.pdf",
+                    "kind": "tariff_source",
+                    "mimeType": "application/pdf",
+                    "sha256": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+                    "sizeBytes": 345678
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/AdminFilePresignDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "expiresAt": "2026-11-01T00:30:00+07:00",
+                  "file": {
+                    "buildingId": null,
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "height": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "kind": "tariff_source",
+                    "mimeType": "application/pdf",
+                    "retentionClass": "other",
+                    "scanStatus": "pending",
+                    "scopeId": null,
+                    "scopeType": "platform",
+                    "sizeBytes": 2345678,
+                    "title": "ประกาศ กฟน. อัตรา ก.ย. 2569",
+                    "uploadState": "presigned",
+                    "width": null
+                  },
+                  "headers": {
+                    "Content-Type": "application/pdf"
+                  },
+                  "multipart": null,
+                  "uploadUrl": "https://storage.example.com/upload?X-Amz-Signature=abc"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/FilePresignedDto"
+                }
+              }
+            },
+            "description": "Presigned",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "document.type_not_allowed": {
+                    "$ref": "#/components/examples/problem.document.type_not_allowed"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `document.type_not_allowed`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Start a platform file upload",
+        "tags": [
+          "admin.files"
+        ],
+        "x-required-permissions": [
+          "admin.utility_tariff.enter"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/files/{fileId}": {
+      "get": {
+        "description": "A 5-minute signed URL of a clean platform file (`409 document.scan_pending` / `document.infected` otherwise); every download is audited. A tenant file is 404 here.\n\nImplements: D-214, D-025.",
+        "operationId": "admin.files.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fileId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "expiresAt": "2026-11-01T00:20:00+07:00",
+                  "file": {
+                    "buildingId": null,
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "height": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "kind": "tariff_source",
+                    "mimeType": "application/pdf",
+                    "retentionClass": "other",
+                    "scanStatus": "clean",
+                    "scopeId": null,
+                    "scopeType": "platform",
+                    "sizeBytes": 2345678,
+                    "title": "ประกาศ กฟน. อัตรา ก.ย. 2569",
+                    "uploadState": "verified",
+                    "width": null
+                  },
+                  "thumbnailUrl": null,
+                  "url": "https://storage.example.com/file?X-Amz-Signature=abc"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/FileDownloadDto"
+                }
+              }
+            },
+            "description": "Download",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "document.infected": {
+                    "$ref": "#/components/examples/problem.document.infected"
+                  },
+                  "document.not_uploaded": {
+                    "$ref": "#/components/examples/problem.document.not_uploaded"
+                  },
+                  "document.scan_pending": {
+                    "$ref": "#/components/examples/problem.document.scan_pending"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `document.infected`, `document.not_uploaded`, `document.scan_pending`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Platform file metadata and a signed download URL",
+        "tags": [
+          "admin.files"
+        ],
+        "x-required-permissions": [
+          "admin.utility_tariff.enter"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/files/{fileId}/actions/complete": {
+      "post": {
+        "description": "Checks the stored object (size) and emits `document.uploaded`; the virus scan and sha256 check follow. Repeating it is harmless.\n\nImplements: D-214, D-025.",
+        "operationId": "admin.files.complete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fileId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {}
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/FileCompleteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "buildingId": null,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "height": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "kind": "tariff_source",
+                  "mimeType": "application/pdf",
+                  "retentionClass": "other",
+                  "scanStatus": "pending",
+                  "scopeId": null,
+                  "scopeType": "platform",
+                  "sizeBytes": 2345678,
+                  "title": "ประกาศ กฟน. อัตรา ก.ย. 2569",
+                  "uploadState": "uploaded",
+                  "width": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/FileDto"
+                }
+              }
+            },
+            "description": "Uploaded",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "document.not_uploaded": {
+                    "$ref": "#/components/examples/problem.document.not_uploaded"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `document.not_uploaded`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "document.size_mismatch": {
+                    "$ref": "#/components/examples/problem.document.size_mismatch"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `document.size_mismatch`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Finish a platform file upload",
+        "tags": [
+          "admin.files"
+        ],
+        "x-required-permissions": [
+          "admin.utility_tariff.enter"
+        ],
+        "x-surface": "admin"
+      }
+    },
     "/v1/admin/haas-assets": {
       "get": {
         "description": "Platform-owned devices placed at tenants with term, monthly value and straight-line book value (D-081).\n\nImplements: D-081.",
@@ -40810,6 +42176,282 @@
         ],
         "x-required-permissions": [
           "admin.device.manage"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/integration-events": {
+      "get": {
+        "description": "Every event exchanged with getbuild / getpack (D-153), newest first, filtered by state, system, direction, tenant; `q` matches the event type, the idempotency key or the subject id. Payloads are not listed (they may carry encrypted PII).\n\nImplements: D-153, D-214.",
+        "operationId": "admin.integrationEvents.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sort field; each endpoint validates it against its own allow-list.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "example": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "description": "Free-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/IntegrationStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "system",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/IntegrationSystem"
+            }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/IntegrationDirection"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tenantId",
+            "required": false,
+            "schema": {
+              "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "ackedAt": null,
+                      "aggregateRef": "ops.service_request:3b241101-e2bb-4255-8caf-4136c566a962",
+                      "attempts": 0,
+                      "contractVersion": "1.0",
+                      "direction": "outbound",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "lastError": null,
+                      "occurredAt": "2026-11-01T00:15:00+07:00",
+                      "state": "pending",
+                      "system": "getbuild",
+                      "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                      "type": "warranty.defect.reported"
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "perPage": 25,
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/IntegrationEventDto"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "One page of results",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Integration events with getbuild / getpack",
+        "tags": [
+          "admin.integrationEvents"
+        ],
+        "x-required-permissions": [
+          "admin.integration_event.read"
         ],
         "x-surface": "admin"
       }
@@ -50184,7 +51826,7 @@
     },
     "/v1/admin/site-surveys": {
       "get": {
-        "description": "Surveys owners asked for to upgrade Starter → Smart (D-156), newest first.\n\nImplements: D-156.",
+        "description": "Surveys owners asked for to upgrade Starter → Smart (D-156), newest first; `state` filters by `SiteSurveyState` (D-214).\n\nImplements: D-156.",
         "operationId": "admin.siteSurveys.list",
         "parameters": [
           {
@@ -50250,15 +51892,7 @@
             "name": "state",
             "required": false,
             "schema": {
-              "$ref": "#/components/schemas/InstallOrderState"
-            }
-          },
-          {
-            "in": "query",
-            "name": "kind",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/InstallOrderKind"
+              "$ref": "#/components/schemas/SiteSurveyState"
             }
           },
           {
@@ -55074,6 +56708,207 @@
         "x-surface": "admin"
       }
     },
+    "/v1/admin/tenants/{tenantId}/buildings": {
+      "get": {
+        "description": "Buildings the tenant owns or operates with their property and unit count — what the console needs to assign a device or open an install order (web F5, D-214). Structure only, no business data (D-206).\n\nImplements: D-214, D-206, D-152.",
+        "operationId": "admin.tenants.buildings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "code": "A",
+                    "id": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                    "name": "อาคาร A",
+                    "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "propertyName": "หอพักตัวอย่าง",
+                    "roles": [
+                      "owner",
+                      "operator"
+                    ],
+                    "unitCount": 12
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminBuildingDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Buildings",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Buildings of a tenant",
+        "tags": [
+          "admin.tenants"
+        ],
+        "x-required-permissions": [
+          "admin.tenant.read"
+        ],
+        "x-surface": "admin"
+      }
+    },
     "/v1/admin/tenants/{tenantId}/feature-flags": {
       "get": {
         "description": "Every flag as it resolves for this tenant; change one with `admin.featureFlags.update` and `tenantId` (D-161).\n\nImplements: D-161.",
@@ -56952,6 +58787,7 @@
                         ],
                         "notes": null,
                         "publishedAt": null,
+                        "sourceDocumentId": null,
                         "sourceUrl": "https://www.mea.or.th/",
                         "state": "entered",
                         "structure": {
@@ -57143,6 +58979,7 @@
                   ],
                   "notes": null,
                   "publishedAt": "2026-11-01T00:15:00+07:00",
+                  "sourceDocumentId": null,
                   "sourceUrl": "https://www.mea.or.th/",
                   "state": "published",
                   "structure": {
@@ -57386,6 +59223,7 @@
                   ],
                   "notes": null,
                   "publishedAt": null,
+                  "sourceDocumentId": null,
                   "sourceUrl": "https://www.mea.or.th/",
                   "state": "verified",
                   "structure": {
@@ -57601,6 +59439,234 @@
         "x-surface": "admin"
       }
     },
+    "/v1/admin/utility-tariffs/versions/{versionId}/charge": {
+      "get": {
+        "description": "The bill for `units` under one version in any state (entered, verified, published, superseded) — what the checker compares with the notice before verifying and publishing (web F5, D-214). Same tariff math as `owner.utilityTariffs.current` (D-140); a time-of-use structure is 422.\n\nImplements: D-021, D-140, D-214.",
+        "operationId": "admin.utilityTariffs.sampleCharge",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "versionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Units consumed in a month (kWh or m³).",
+            "in": "query",
+            "name": "units",
+            "required": true,
+            "schema": {
+              "example": "150.000",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "effectiveAverageRate": "3.4890",
+                  "lines": [
+                    {
+                      "amount": "487.26",
+                      "label": "0–150",
+                      "pricePerUnit": "3.2484",
+                      "units": "150"
+                    }
+                  ],
+                  "minimumApplied": false,
+                  "totalExVat": "523.35",
+                  "units": "150"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/TariffChargeDto"
+                }
+              }
+            },
+            "description": "Sample bill",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Sample bill of a tariff version",
+        "tags": [
+          "admin.utilityTariffs"
+        ],
+        "x-required-permissions": [
+          "admin.utility_tariff.enter"
+        ],
+        "x-surface": "admin"
+      }
+    },
     "/v1/admin/utility-tariffs/{tariffId}/versions": {
       "post": {
         "description": "A new effective-dated version in state `entered` with its source; the structure is validated and every value is flagged for checking. A different platform user verifies it, then it is published (D-021a, ADR-0004).\n\nImplements: D-021, D-140, ADR-0004.",
@@ -57673,6 +59739,7 @@
                   ],
                   "notes": null,
                   "publishedAt": null,
+                  "sourceDocumentId": null,
                   "sourceUrl": "https://www.mea.or.th/",
                   "state": "entered",
                   "structure": {
@@ -118564,6 +120631,251 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/pilot-kpis": {
+      "get": {
+        "description": "The seven D-083 KPIs of my tenant over the window (default 90 days) against the baseline and targets of my pilot agreement, plus the Phase 1 acceptance measures — the same figures the platform admin reads at `admin.pilots.kpis` (web F2, D-214). 404 when my tenant has no pilot agreement.\n\nImplements: D-083, D-214.",
+        "operationId": "owner.insights.pilotKpis",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/KpiWindow"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "acceptance": {
+                    "buildingsBillingAutomatically": 1,
+                    "firstFullCycleWithin1h": true,
+                    "paidByQrPct": "72.00",
+                    "serviceRequestsViaLinePct": null
+                  },
+                  "current": {
+                    "autoReconciledPct": "95.00",
+                    "csat": null,
+                    "invoiceCorrectionRatePct": "0.00",
+                    "latestLossPct": "2.2706",
+                    "lossIdentified": true,
+                    "meterUptimePct": null,
+                    "onTimePaymentPct": "81.25",
+                    "timeToBillHours": "0.25"
+                  },
+                  "from": "2026-07-19T10:00:00+07:00",
+                  "kpiReviewOn": "2027-05-02",
+                  "kpis": [
+                    {
+                      "baseline": "0",
+                      "current": "95.00",
+                      "kpi": "auto_reconciled",
+                      "met": true,
+                      "target": ">=90%"
+                    }
+                  ],
+                  "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                  "to": "2026-11-01T00:15:00+07:00",
+                  "window": "90d"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PilotKpisDto"
+                }
+              }
+            },
+            "description": "KPIs",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "My pilot KPIs",
+        "tags": [
+          "owner.insights"
+        ],
+        "x-required-permissions": [
+          "report.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/ping": {
       "get": {
         "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `owner` surface until its real endpoints land. Anonymous or with an `operator` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`). An `X-Tenant-Id` header, when sent, must be a uuid (contract §8, D-151).\n\nImplements: D-002, D-151, ADR-0002.",
@@ -128409,6 +130721,256 @@
           }
         ],
         "summary": "Set a tenant value of a setting",
+        "tags": [
+          "owner.settings"
+        ],
+        "x-required-permissions": [
+          "tenant.settings.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/settings/{key}/versions": {
+      "get": {
+        "description": "Every version that applies to my tenant — the platform defaults, my tenant’s and my properties’ (one property with `propertyId`) — newest effective date first, including **scheduled** versions that are not in force yet (web F2, D-214, ADR-0004). Keys without a tenant or property scope are `settings.unknown_key`.\n\nImplements: D-144, D-214, ADR-0004.",
+        "operationId": "owner.settings.versions",
+        "parameters": [
+          {
+            "description": "Setting key (catalogue).",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "example": "reminders.schedule",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only this property’s overrides (default: every property of my tenant).",
+            "in": "query",
+            "name": "propertyId",
+            "required": false,
+            "schema": {
+              "example": "7b9f1c2e-3d4a-4f5b-8c6d-9e0f1a2b3c4d",
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "createdBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "effectiveFrom": "2026-12-01T00:00:00+07:00",
+                    "effectiveTo": null,
+                    "propertyId": null,
+                    "reason": "ส่งแจ้งเตือนวันที่ 1, 3, 7",
+                    "scheduled": true,
+                    "scope": "tenant",
+                    "value": [
+                      1,
+                      3,
+                      7
+                    ],
+                    "versionId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SettingHistoryEntryDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Versions",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  },
+                  "settings.unknown_key": {
+                    "$ref": "#/components/examples/problem.settings.unknown_key"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`, `settings.unknown_key`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Version history of a setting",
         "tags": [
           "owner.settings"
         ],
@@ -178378,12 +180940,20 @@
       "name": "admin.fieldWork"
     },
     {
+      "description": "Platform files of the admin zone: the published notice behind a utility tariff version, contracts, evidence (D-214).",
+      "name": "admin.files"
+    },
+    {
       "description": "The HaaS register (D-081): platform-owned gateways and rented meters at tenants with term, monthly value, book value and history.",
       "name": "admin.haas"
     },
     {
       "description": "Ingest dead letters (refused MQTT / HTTPS payloads) and replay (D-162).",
       "name": "admin.ingest"
+    },
+    {
+      "description": "Events exchanged with getbuild / getpack (`bridge.integration_event`, D-153) for the console (D-214).",
+      "name": "admin.integrationEvents"
     },
     {
       "description": "Who I am in the platform admin zone: roles, permissions, menu, TOTP state (D-161).",
@@ -178600,6 +181170,10 @@
     {
       "description": "Floors of a building (B2.1).",
       "name": "owner.floors"
+    },
+    {
+      "description": "My pilot KPIs, operating insights from the analytics rollups and anonymised benchmarks (B6.3, D-083, D-214).",
+      "name": "owner.insights"
     },
     {
       "description": "Move-in / move-out inspections with photos, meter registers and signatures (D-023).",

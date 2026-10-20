@@ -114,6 +114,12 @@ export const API_TAGS: Record<string, string> = {
     'The HaaS register (D-081): platform-owned gateways and rented meters at tenants with term, monthly value, book value and history.',
   'admin.fieldWork':
     "Install / de-install orders and site surveys of Collective's field engineers (D-081, D-156).",
+  'owner.insights':
+    'My pilot KPIs, operating insights from the analytics rollups and anonymised benchmarks (B6.3, D-083, D-214).',
+  'admin.files':
+    'Platform files of the admin zone: the published notice behind a utility tariff version, contracts, evidence (D-214).',
+  'admin.integrationEvents':
+    'Events exchanged with getbuild / getpack (`bridge.integration_event`, D-153) for the console (D-214).',
   'owner.subscription':
     'My plan (D-082, D-156): subscription, usage counted, invoices from getproperty with Thai QR, platform hardware, upgrade to Smart.',
   'admin.tenants':

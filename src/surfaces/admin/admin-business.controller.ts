@@ -67,6 +67,7 @@ import {
   SiteSurveyActionDto,
   SiteSurveyActionName,
   SiteSurveyDto,
+  SiteSurveyListQuery,
   SubscriptionCancelDto,
   SubscriptionChangePlanDto,
   SubscriptionCreateDto,
@@ -196,6 +197,17 @@ export const PILOT_EXAMPLE: PilotAgreementDto = {
   agreementDocumentId: null,
   notes: null,
 };
+export const pilotKpisDto = (r: Awaited<ReturnType<PilotKpisService['compute']>>): PilotKpisDto => ({
+  tenantId: r.tenantId,
+  window: r.window as KpiWindowName,
+  from: r.from.toISOString(),
+  to: r.to.toISOString(),
+  kpiReviewOn: r.pilot ? r.pilot.kpiReviewAt.toISOString().slice(0, 10) : null,
+  kpis: r.kpis,
+  current: r.current,
+  acceptance: r.acceptance,
+});
+
 export const KPIS_EXAMPLE: PilotKpisDto = {
   tenantId: FAKE.tenantId,
   window: KpiWindowName.D90,
@@ -910,17 +922,7 @@ export class AdminTenantBusinessController {
     @Param('tenantId', ParseUUIDPipe) tenantId: string,
     @Query() query: KpiQuery,
   ): Promise<PilotKpisDto> {
-    const r = await this.kpis.compute(tenantId, query.window ?? KpiWindowName.D90);
-    return {
-      tenantId: r.tenantId,
-      window: r.window as KpiWindowName,
-      from: r.from.toISOString(),
-      to: r.to.toISOString(),
-      kpiReviewOn: r.pilot ? r.pilot.kpiReviewAt.toISOString().slice(0, 10) : null,
-      kpis: r.kpis,
-      current: r.current,
-      acceptance: r.acceptance,
-    };
+    return pilotKpisDto(await this.kpis.compute(tenantId, query.window ?? KpiWindowName.D90));
   }
 
   @Get('ai-usage')
@@ -1210,13 +1212,16 @@ export class AdminFieldWorkController {
   @ApiEndpoint({
     id: 'admin.siteSurveys.list',
     summary: 'Site surveys',
-    description: 'Surveys owners asked for to upgrade Starter → Smart (D-156), newest first.',
+    description:
+      'Surveys owners asked for to upgrade Starter → Smart (D-156), newest first; `state` filters by `SiteSurveyState` (D-214).',
     implements: ['D-156'],
   })
   @ApiSuccess(200, { description: 'Surveys', type: [SiteSurveyDto], example: [SURVEY_EXAMPLE] })
   @ApiStandardErrors('validation.failed')
-  async listSurveys(@Query() query: InstallOrderListQuery): Promise<SiteSurveyDto[]> {
-    return (await this.field.listSurveys({ tenantId: query.tenantId })).map(siteSurveyDto);
+  async listSurveys(@Query() query: SiteSurveyListQuery): Promise<SiteSurveyDto[]> {
+    return (await this.field.listSurveys({ tenantId: query.tenantId, state: query.state })).map(
+      siteSurveyDto,
+    );
   }
 
   @Post('site-surveys/:surveyId/actions/:action')

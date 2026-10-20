@@ -55,6 +55,43 @@ export class IntegrationEventsService {
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
+  /** Admin console list (D-214): newest first, filtered; `q` = event type prefix, idempotency key or subject id. */
+  async list(filter: {
+    state?: IntegrationEvent['status'];
+    platform?: IntegrationPlatform;
+    direction?: IntegrationEvent['direction'];
+    tenantId?: string;
+    q?: string;
+    skip: number;
+    take: number;
+  }) {
+    const q = filter.q?.trim();
+    const where: Prisma.IntegrationEventWhereInput = {
+      ...(filter.state ? { status: filter.state } : {}),
+      ...(filter.platform ? { platform: filter.platform } : {}),
+      ...(filter.direction ? { direction: filter.direction } : {}),
+      ...(filter.tenantId ? { tenantId: filter.tenantId } : {}),
+      ...(q
+        ? {
+            OR: [
+              { eventType: { startsWith: q } },
+              { idempotencyKey: q },
+              ...(/^[0-9a-f-]{36}$/i.test(q) ? [{ subjectId: q }, { id: q }] : []),
+            ],
+          }
+        : {}),
+    };
+    return this.db.platform(async (tx) => ({
+      rows: await tx.integrationEvent.findMany({
+        where,
+        orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+        skip: filter.skip,
+        take: filter.take,
+      }),
+      total: await tx.integrationEvent.count({ where }),
+    }));
+  }
+
   /** Modules register the inbound event types they apply (e.g. `warranty.defect.closed` → B5.1). */
   onInbound(type: string, handler: InboundHandler): void {
     this.handlers.set(type, handler);

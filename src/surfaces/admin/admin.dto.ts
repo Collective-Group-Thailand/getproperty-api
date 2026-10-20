@@ -346,6 +346,16 @@ export class TariffVersionDto {
   sourceUrl!: string;
 
   @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: null,
+    description:
+      'The uploaded copy of the published notice (`GET /v1/admin/files/{fileId}`), if one was attached.',
+  })
+  sourceDocumentId!: string | null;
+
+  @ApiProperty({
     type: 'object',
     additionalProperties: true,
     example: { kind: 'tiered', unit: 'kwh', currency: 'THB' },
@@ -416,6 +426,18 @@ export class TariffEnterDto {
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
   sourcePublishedOn?: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: null,
+    description:
+      'An uploaded copy of the notice (`POST /v1/admin/files/presign`, kind `tariff_source`, `contract` or `other`) so the checker can compare against it even when the utility’s page changes (D-214).',
+  })
+  @IsOptional()
+  @IsUUID()
+  sourceDocumentId?: string | null;
 
   @ApiPropertyOptional({ type: String, nullable: true, example: 'อัตรา Ft งวด ก.ย.–ธ.ค.' })
   @IsOptional()
@@ -912,4 +934,169 @@ export class WorkflowDefinitionDto {
 
   @ApiProperty({ example: true })
   active!: boolean;
+}
+
+// ------------------------------------------------------------------------------------- contract requests (D-214)
+
+export class TariffSampleQuery {
+  @ApiProperty({ example: '150.000', description: 'Units consumed in a month (kWh or m³).' })
+  @Matches(/^\d{1,9}(\.\d{1,3})?$/)
+  units!: string;
+}
+
+export enum PlatformUploadKindName {
+  TariffSource = 'tariff_source',
+  Contract = 'contract',
+  Other = 'other',
+}
+
+export class AdminFilePresignDto {
+  @ApiProperty({ enum: PlatformUploadKindName, enumName: 'PlatformUploadKind', example: 'tariff_source' })
+  @IsEnum(PlatformUploadKindName)
+  kind!: PlatformUploadKindName;
+
+  @ApiProperty({ example: 'mea-tariff-2026-09.pdf', maxLength: 255 })
+  @IsString()
+  @MaxLength(255)
+  fileName!: string;
+
+  @ApiProperty({ example: 'application/pdf' })
+  @IsString()
+  @MaxLength(100)
+  mimeType!: string;
+
+  @ApiProperty({ type: 'integer', minimum: 1, example: 345_678 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  sizeBytes!: number;
+
+  @ApiProperty({ example: 'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9' })
+  @Matches(/^[0-9a-fA-F]{64}$/)
+  sha256!: string;
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'ประกาศ กฟน. อัตรา ก.ย. 2569' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  title?: string | null;
+}
+
+export enum IntegrationDirectionName {
+  Inbound = 'inbound',
+  Outbound = 'outbound',
+}
+export enum IntegrationSystemName {
+  Getbuild = 'getbuild',
+  Getpack = 'getpack',
+}
+export enum IntegrationStatusName {
+  Received = 'received',
+  Validated = 'validated',
+  Applied = 'applied',
+  Rejected = 'rejected',
+  Pending = 'pending',
+  Sent = 'sent',
+  Acked = 'acked',
+  Failed = 'failed',
+  Dead = 'dead',
+}
+
+export class IntegrationEventListQuery extends PageQuery {
+  @ApiPropertyOptional({ enum: IntegrationStatusName, enumName: 'IntegrationStatus' })
+  @IsOptional()
+  @IsEnum(IntegrationStatusName)
+  state?: IntegrationStatusName;
+
+  @ApiPropertyOptional({ enum: IntegrationSystemName, enumName: 'IntegrationSystem' })
+  @IsOptional()
+  @IsEnum(IntegrationSystemName)
+  system?: IntegrationSystemName;
+
+  @ApiPropertyOptional({ enum: IntegrationDirectionName, enumName: 'IntegrationDirection' })
+  @IsOptional()
+  @IsEnum(IntegrationDirectionName)
+  direction?: IntegrationDirectionName;
+
+  @ApiPropertyOptional({ format: 'uuid', example: FAKE.tenantId })
+  @IsOptional()
+  @IsUUID()
+  tenantId?: string;
+}
+
+export class IntegrationEventDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({ enum: IntegrationDirectionName, enumName: 'IntegrationDirection', example: 'outbound' })
+  direction!: IntegrationDirectionName;
+
+  @ApiProperty({ enum: IntegrationSystemName, enumName: 'IntegrationSystem', example: 'getbuild' })
+  system!: IntegrationSystemName;
+
+  @ApiProperty({ example: 'warranty.defect.reported' })
+  type!: string;
+
+  @ApiProperty({ example: '1.0' })
+  contractVersion!: string;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'ops.service_request:01890a5d-ac96-774b-bcce-b302099a8057',
+    description: '`<subject type>:<subject id>` of the aggregate the event is about.',
+  })
+  aggregateRef!: string | null;
+
+  @ApiProperty({ type: String, format: 'uuid', nullable: true, example: FAKE.tenantId })
+  tenantId!: string | null;
+
+  @ApiProperty({ enum: IntegrationStatusName, enumName: 'IntegrationStatus', example: 'pending' })
+  state!: IntegrationStatusName;
+
+  @ApiProperty({ type: 'integer', example: 0 })
+  attempts!: number;
+
+  @ApiProperty({ type: String, nullable: true, example: null })
+  lastError!: string | null;
+
+  @ApiProperty({ format: 'date-time', example: FAKE.dateTime })
+  occurredAt!: string;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
+  ackedAt!: string | null;
+}
+
+export enum BuildingTenantRoleName {
+  Owner = 'owner',
+  Operator = 'operator',
+}
+
+export class AdminBuildingDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.buildingId })
+  id!: string;
+
+  @ApiProperty({ example: 'A' })
+  code!: string;
+
+  @ApiProperty({ example: 'อาคาร A' })
+  name!: string;
+
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  propertyId!: string;
+
+  @ApiProperty({ example: 'หอพักตัวอย่าง' })
+  propertyName!: string;
+
+  @ApiProperty({ type: 'integer', example: 12, description: 'Units that are not deleted (any status).' })
+  unitCount!: number;
+
+  @ApiProperty({
+    enum: BuildingTenantRoleName,
+    enumName: 'BuildingTenantRole',
+    isArray: true,
+    example: ['owner', 'operator'],
+    description: 'How the tenant relates to the building (D-152).',
+  })
+  roles!: BuildingTenantRoleName[];
 }

@@ -42,7 +42,14 @@ import {
 import { MemberDto, TenantProfileDto } from '../owner/tenancy.dto';
 import { currentUserId, iso } from '../shared/mappers';
 import { ApiSurface, SURFACES } from '../surfaces';
-import { AdminTenantListQuery, SupportGrantRequestDto, TenantCreatedDto, TenantCreateDto } from './admin.dto';
+import {
+  AdminBuildingDto,
+  AdminTenantListQuery,
+  type BuildingTenantRoleName,
+  SupportGrantRequestDto,
+  TenantCreatedDto,
+  TenantCreateDto,
+} from './admin.dto';
 
 const pathTenant = (tenantId: string): TenantContext => ({ tenantId, source: 'path' });
 
@@ -136,6 +143,38 @@ export class AdminTenantsController {
   @ApiStandardErrors('validation.failed', 'http.not_found')
   async get(@Param('tenantId', ParseUUIDPipe) tenantId: string): Promise<TenantProfileDto> {
     return tenantProfileDto(await this.tenants.getAny(tenantId));
+  }
+
+  @Get(':tenantId/buildings')
+  @Can('admin.tenant.read')
+  @ApiEndpoint({
+    id: 'admin.tenants.buildings',
+    summary: 'Buildings of a tenant',
+    description:
+      'Buildings the tenant owns or operates with their property and unit count — what the console needs to assign a device or open an install order (web F5, D-214). Structure only, no business data (D-206).',
+    implements: ['D-214', 'D-206', 'D-152'],
+  })
+  @ApiSuccess(200, {
+    description: 'Buildings',
+    type: [AdminBuildingDto],
+    example: [
+      {
+        id: FAKE.buildingId,
+        code: 'A',
+        name: 'อาคาร A',
+        propertyId: FAKE.uuid,
+        propertyName: 'หอพักตัวอย่าง',
+        unitCount: 12,
+        roles: ['owner', 'operator'],
+      },
+    ],
+  })
+  @ApiStandardErrors('validation.failed', 'http.not_found')
+  async buildings(@Param('tenantId', ParseUUIDPipe) tenantId: string): Promise<AdminBuildingDto[]> {
+    return (await this.tenants.buildingsOf(tenantId)).map((b) => ({
+      ...b,
+      roles: b.roles as BuildingTenantRoleName[],
+    }));
   }
 
   @Get(':tenantId/members')
