@@ -1754,6 +1754,17 @@
           "type": "https://errors.getproperty.co/slip.not_allowed"
         }
       },
+      "problem.staff_task.not_completable": {
+        "summary": "staff_task.not_completable",
+        "value": {
+          "code": "staff_task.not_completable",
+          "detail": "งานประเภทนี้ ({type}) ทีมช่างของ Collective เป็นผู้ปิดงาน",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ปิดงานนี้จากแอปพนักงานไม่ได้",
+          "type": "https://errors.getproperty.co/staff_task.not_completable"
+        }
+      },
       "problem.subscription.confirmation_mismatch": {
         "summary": "subscription.confirmation_mismatch",
         "value": {
@@ -28355,6 +28366,288 @@
           "data"
         ],
         "type": "object"
+      },
+      "StaffTaskCompleteDto": {
+        "properties": {
+          "note": {
+            "description": "Work order completion note, inspection notes.",
+            "maxLength": 2000,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photoDocumentId": {
+            "description": "Reading: the uploaded meter photo.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "pin": {
+            "description": "Parcel: the PIN the resident shows.",
+            "example": "482913",
+            "type": "string"
+          },
+          "readAt": {
+            "description": "Reading: when it was read (default now).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "residentSignaturePng": {
+            "description": "Inspection: the resident’s signature on the staff device (PNG, base64).",
+            "type": "string"
+          },
+          "staffConfirmed": {
+            "description": "Parcel: hand-over confirmed by staff without the PIN.",
+            "type": "boolean"
+          },
+          "staffSignaturePng": {
+            "description": "Inspection: the inspector’s signature (PNG, base64).",
+            "type": "string"
+          },
+          "typedValue": {
+            "description": "Reading: the value read.",
+            "pattern": "^\\d{1,9}(\\.\\d{1,3})?$",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "StaffTaskDayDto": {
+        "properties": {
+          "buildingId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/StaffTaskGroupDto"
+            },
+            "type": "array"
+          },
+          "total": {
+            "example": 7,
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "buildingId",
+          "total",
+          "groups"
+        ],
+        "type": "object"
+      },
+      "StaffTaskDto": {
+        "properties": {
+          "assetItemId": {
+            "description": "The meter or equipment.",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "assigneeUserId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "buildingId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "completable": {
+            "description": "False for install orders (Collective’s field engineers complete them, D-081).",
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "dueAt": {
+            "description": "Visit, scheduled inspection, reading due or install due time.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "description": "The id of the source (work order, inspection, reading request, …).",
+            "format": "uuid",
+            "type": "string"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "priority": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ServicePriority"
+              }
+            ],
+            "description": "Raised to `high` once overdue."
+          },
+          "sourceStatus": {
+            "description": "The source’s own status (work order `assigned`, inspection `scheduled`, reading request `open`, parcel `notified`, install order `open`, …).",
+            "example": "assigned",
+            "type": "string"
+          },
+          "subject": {
+            "description": "Work order title, meter code, inspection type (`move_in`, `move_out`, `periodic`), parcel carrier, install order kind.",
+            "example": "ก๊อกน้ำรั่ว",
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffTaskType"
+              }
+            ]
+          },
+          "unitId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unitNo": {
+            "example": "A-101",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "buildingId",
+          "unitId",
+          "unitNo",
+          "sourceStatus",
+          "priority",
+          "overdue",
+          "dueAt",
+          "assigneeUserId",
+          "subject",
+          "assetItemId",
+          "createdAt",
+          "completable"
+        ],
+        "type": "object"
+      },
+      "StaffTaskFloorDto": {
+        "properties": {
+          "floorId": {
+            "description": "Null: building-wide tasks.",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "floorLevel": {
+            "example": 1,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "floorName": {
+            "example": "ชั้น 1",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/StaffTaskDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "floorId",
+          "floorName",
+          "floorLevel",
+          "tasks"
+        ],
+        "type": "object"
+      },
+      "StaffTaskGroupDto": {
+        "properties": {
+          "count": {
+            "example": 3,
+            "type": "number"
+          },
+          "floors": {
+            "items": {
+              "$ref": "#/components/schemas/StaffTaskFloorDto"
+            },
+            "type": "array"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffTaskType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "count",
+          "floors"
+        ],
+        "type": "object"
+      },
+      "StaffTaskResultDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "sourceStatus": {
+            "description": "The source’s status after completion.",
+            "example": "done",
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffTaskType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "sourceStatus"
+        ],
+        "type": "object"
+      },
+      "StaffTaskType": {
+        "enum": [
+          "work_order",
+          "inspection",
+          "reading",
+          "parcel",
+          "install"
+        ],
+        "type": "string"
       },
       "SubjectDto": {
         "properties": {
@@ -168878,6 +169171,835 @@
         "x-surface": "staff"
       }
     },
+    "/v1/staff/tasks": {
+      "get": {
+        "description": "Open work of the buildings I work in (D-090) due on the Bangkok day, overdue or without a date: reading requests (B3.3), move-in / move-out inspections (B2.4), work orders (B5.1), parcels waiting at the desk (B5.3) and platform install orders (B6.1, read-only) — grouped by type and floor, most urgent first; overdue tasks are at least `high`.\n\nImplements: D-213, D-090, D-072, D-073, D-081.",
+        "operationId": "staff.tasks.day",
+        "parameters": [
+          {
+            "description": "One building (default: every building I work in).",
+            "in": "query",
+            "name": "building",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The Bangkok day (default: today).",
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "example": "2026-11-03",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only tasks assigned to me and unassigned ones.",
+            "in": "query",
+            "name": "mine",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "date": "2026-11-01",
+                  "groups": [
+                    {
+                      "count": 1,
+                      "floors": [
+                        {
+                          "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                          "floorLevel": 1,
+                          "floorName": "ชั้น 1",
+                          "tasks": [
+                            {
+                              "assetItemId": null,
+                              "assigneeUserId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                              "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                              "completable": true,
+                              "createdAt": "2026-11-01T00:15:00+07:00",
+                              "dueAt": "2026-11-01T00:15:00+07:00",
+                              "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                              "overdue": false,
+                              "priority": "high",
+                              "sourceStatus": "assigned",
+                              "subject": "ก๊อกน้ำรั่ว",
+                              "type": "work_order",
+                              "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                              "unitNo": "A-201"
+                            }
+                          ]
+                        }
+                      ],
+                      "type": "work_order"
+                    }
+                  ],
+                  "total": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/StaffTaskDayDto"
+                }
+              }
+            },
+            "description": "The day",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "My day of tasks",
+        "tags": [
+          "staff.tasks"
+        ],
+        "x-required-permissions": [
+          "staff_task.read"
+        ],
+        "x-surface": "staff"
+      }
+    },
+    "/v1/staff/tasks/{type}/{taskId}": {
+      "get": {
+        "description": "An open task of my buildings; a finished one or one outside my buildings is 404.\n\nImplements: D-213, D-090.",
+        "operationId": "staff.tasks.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/StaffTaskType"
+            }
+          },
+          {
+            "in": "path",
+            "name": "taskId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "assetItemId": null,
+                  "assigneeUserId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "completable": true,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "dueAt": "2026-11-01T00:15:00+07:00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "overdue": false,
+                  "priority": "high",
+                  "sourceStatus": "assigned",
+                  "subject": "ก๊อกน้ำรั่ว",
+                  "type": "work_order",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/StaffTaskDto"
+                }
+              }
+            },
+            "description": "The task",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "One open task",
+        "tags": [
+          "staff.tasks"
+        ],
+        "x-required-permissions": [
+          "staff_task.read"
+        ],
+        "x-surface": "staff"
+      }
+    },
+    "/v1/staff/tasks/{type}/{taskId}/actions/complete": {
+      "post": {
+        "description": "Writes the source with its own rules and permission: a work order is completed (`note`; an after photo is required), a parcel handed over (`pin` or `staffConfirmed`), a reading request fulfilled by the reading taken now (`photoDocumentId`, `typedValue`, `readAt`; a reading sent to review fulfils it too), an inspection completed and signed (`staffSignaturePng`, `residentSignaturePng`, `note`). Install orders are completed by Collective’s field engineers (409 `staff_task.not_completable`).\n\nImplements: D-213, D-072, D-073, D-035, D-023, D-081.",
+        "operationId": "staff.tasks.complete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/StaffTaskType"
+            }
+          },
+          {
+            "in": "path",
+            "name": "taskId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "note": "เปลี่ยนก๊อกใหม่แล้ว"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/StaffTaskCompleteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "sourceStatus": "done",
+                  "type": "work_order"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/StaffTaskResultDto"
+                }
+              }
+            },
+            "description": "Completed on the source",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "inspection.invalid_state": {
+                    "$ref": "#/components/examples/problem.inspection.invalid_state"
+                  },
+                  "parcel.invalid_state": {
+                    "$ref": "#/components/examples/problem.parcel.invalid_state"
+                  },
+                  "reading.duplicate": {
+                    "$ref": "#/components/examples/problem.reading.duplicate"
+                  },
+                  "reading.non_monotonic": {
+                    "$ref": "#/components/examples/problem.reading.non_monotonic"
+                  },
+                  "staff_task.not_completable": {
+                    "$ref": "#/components/examples/problem.staff_task.not_completable"
+                  },
+                  "work_order.invalid_state": {
+                    "$ref": "#/components/examples/problem.work_order.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `inspection.invalid_state`, `parcel.invalid_state`, `reading.duplicate`, `reading.non_monotonic`, `staff_task.not_completable`, `work_order.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "parcel.pin_mismatch": {
+                    "$ref": "#/components/examples/problem.parcel.pin_mismatch"
+                  },
+                  "reading.photo_required": {
+                    "$ref": "#/components/examples/problem.reading.photo_required"
+                  },
+                  "reading.unreadable": {
+                    "$ref": "#/components/examples/problem.reading.unreadable"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  },
+                  "work_order.photo_required": {
+                    "$ref": "#/components/examples/problem.work_order.photo_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `parcel.pin_mismatch`, `reading.photo_required`, `reading.unreadable`, `validation.failed`, `work_order.photo_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Complete a task",
+        "tags": [
+          "staff.tasks"
+        ],
+        "x-required-permissions": [
+          "staff_task.read"
+        ],
+        "x-surface": "staff"
+      }
+    },
     "/v1/staff/telemetry/web-vitals": {
       "post": {
         "description": "Real-user Core Web Vitals (LCP, INP, CLS, FCP, TTFB) of the web zone, batched by its BFF; anonymous on public pages. Route patterns only — never URLs with ids or query strings. Accepted for aggregation, nothing to poll (D-179 performance budgets).\n\nImplements: D-179.",
@@ -177778,6 +178900,10 @@
     {
       "description": "Staff PWA of getproperty-web — readings, inspections, installs, service requests, parcels (`operator` audience with the Staff role). System: ping.",
       "name": "staff.system"
+    },
+    {
+      "description": "My day on the staff PWA (B5.4, D-213): readings, inspections, work orders, parcels and install orders of my buildings by type and floor, completed on their source.",
+      "name": "staff.tasks"
     },
     {
       "description": "Real-user Web Vitals of the staff PWA, forwarded by its BFF (D-179).",

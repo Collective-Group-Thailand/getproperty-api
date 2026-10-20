@@ -892,5 +892,11 @@
       "title": "Booking cannot change",
       "detail": "The booking is not in a state that allows this action."
     }
+  },
+  "staff_task": {
+    "not_completable": {
+      "title": "Task cannot be completed here",
+      "detail": "This kind of task ({type}) is completed by Collective field engineers, not on the staff app."
+    }
   }
 }

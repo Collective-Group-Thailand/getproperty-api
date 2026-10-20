@@ -288,6 +288,11 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     surfaces: ['owner', 'staff'],
   },
   {
+    key: 'staff_task.read',
+    description: 'My day of tasks: readings, inspections, work orders, parcels, install orders (B5.4)',
+    surfaces: ['staff'],
+  },
+  {
     key: 'community.manage',
     description: 'Facilities, booking decisions, building rule versions and contacts (D-073)',
     surfaces: ['owner'],
@@ -435,6 +440,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'service_request.handle',
     'parcel.manage',
     'community.read',
+    'staff_task.read',
   ],
   accountant: [
     'tenant.read',

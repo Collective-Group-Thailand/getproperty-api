@@ -70,17 +70,24 @@ export class ReadingRequestsService extends TenantScopedRepository implements Ev
   /** Fulfils the open request of the reading's meter assignment (any source, any reader). */
   async handle(event: DomainEventEnvelope, tx: Tx): Promise<void> {
     const readingId = event.payload.readingId as string | undefined;
-    if (!readingId) return;
+    if (readingId) await this.fulfilIn(tx, readingId);
+  }
+
+  /**
+   * Fulfils the open request of a reading's meter assignment (idempotent: the subscriber finds nothing left when the
+   * staff task already fulfilled it, B5.4). Returns the fulfilled request, or null.
+   */
+  async fulfilIn(tx: Tx, readingId: string): Promise<ReadingRequest | null> {
     const reading = await tx.meterReading.findUnique({
       where: { id: readingId },
       select: { id: true, meterAssignmentId: true, readAt: true },
     });
-    if (!reading) return;
+    if (!reading) return null;
     const open = await tx.readingRequest.findFirst({
       where: { meterAssignmentId: reading.meterAssignmentId, status: 'open' },
     });
-    if (!open || reading.readAt.getTime() < open.requestedAt.getTime() - 86_400_000) return;
-    await tx.readingRequest.update({
+    if (!open || reading.readAt.getTime() < open.requestedAt.getTime() - 86_400_000) return null;
+    return tx.readingRequest.update({
       where: { id: open.id },
       data: { status: 'fulfilled', fulfilledAt: this.clock.now(), fulfilledReadingId: reading.id },
     });

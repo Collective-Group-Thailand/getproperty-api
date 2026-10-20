@@ -14,7 +14,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (83)
+## Permissions (84)
 | Permission | Surfaces | owner | manager | staff | accountant | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View the tenant profile and company data |
@@ -76,6 +76,7 @@
 | `access.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Register locks, issue visitor / staff codes, revoke credentials with a reason (D-070, D-071) |
 | `announcement.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Post announcements |
 | `community.read` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  | Facilities and bookings, building rules and contacts (D-073) |
+| `staff_task.read` | staff | ✓ | ✓ | ✓ |  |  |  |  |  | My day of tasks: readings, inspections, work orders, parcels, install orders (B5.4) |
 | `community.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Facilities, booking decisions, building rule versions and contacts (D-073) |
 | `notification.route.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Configure which resident-facing events notify through which channels (B1.3 routing matrix) |
 | `privacy.manage` | owner | ✓ |  |  |  |  |  |  |  | Handle data subject requests as controller and record paper consents (D-025) |

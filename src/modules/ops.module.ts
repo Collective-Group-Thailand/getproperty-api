@@ -53,6 +53,7 @@ import { AutoServiceRequests, ServiceNotifications, WarrantyBridge } from './ops
 import { ServiceCategoriesService } from './ops-service/service-categories.service';
 import { ServiceRequestsService } from './ops-service/service-requests.service';
 import { WorkOrdersService } from './ops-service/work-orders.service';
+import { StaffTasksService } from './ops-tasks/staff-tasks.service';
 import { BoardService } from './ops-units/board.service';
 import { AmenitiesService, MetersService } from './ops-units/meters-items.service';
 import { UnitProfilesService, UtilityAccountsService } from './ops-units/profiles-accounts.service';
@@ -122,13 +123,14 @@ const SERVICES = [
   ParcelsService,
   FacilitiesService,
   BuildingRulesService,
+  StaffTasksService,
   ResidentCommunityService,
   CommunitySubscribers,
 ];
 
 /**
  * Group A business modules (master plan §4: `modules/ops-*`), shared by the HTTP and worker processes so their
- * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4); B4: rate plans, billing cycles, invoices (4.2); documents, Flex, exports (4.3); payments, slips, receipts (4.4); receivables, dunning, penalties, dashboard, finance exports (4.5); B5: service requests, work orders, preventive maintenance, warranty bridge (5.1).
+ * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4); B4: rate plans, billing cycles, invoices (4.2); documents, Flex, exports (4.3); payments, slips, receipts (4.4); receivables, dunning, penalties, dashboard, finance exports (4.5); B5: service requests, work orders, preventive maintenance, warranty bridge (5.1); access lives in smart (5.2); community (5.3); staff tasks (5.4).
  */
 @Global()
 @Module({ providers: SERVICES, exports: SERVICES })
