@@ -29,6 +29,7 @@ export const OWNER_MENU: readonly MenuEntry[] = [
   { key: 'reports', anyOf: ['report.read', 'export.create'] },
   { key: 'utility_loss', anyOf: ['report.read'], tenantTypes: ['apartment', 'condo_juristic', 'pm_company'] },
   { key: 'service_requests', anyOf: ['service_request.read'], flag: 'module.service_requests' },
+  { key: 'access', anyOf: ['access.read'], flag: 'module.smart_access' },
   { key: 'parcels', anyOf: ['parcel.manage'], flag: 'module.community' },
   { key: 'announcements', anyOf: ['announcement.manage'], flag: 'module.community' },
   { key: 'members', anyOf: ['tenant.member.read'] },

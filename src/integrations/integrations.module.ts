@@ -17,6 +17,9 @@ import { LineLoginAdapter } from './line/line-login.adapter';
 import { LINE_LOGIN, type LineLoginPort } from './line/line-login.port';
 import { LineMessagingAdapter } from './line/line-messaging.adapter';
 import { LINE_MESSAGING, type LineMessagingPort } from './line/line-messaging.port';
+import { FakeLockVendors } from './locks/fake-lock-vendors';
+import { LOCK_VENDORS } from './locks/lock-vendor.port';
+import { RealLockVendors } from './locks/real-lock-vendors';
 import { FakeMqttClient } from './mqtt/fake-mqtt-client';
 import { EmqxMqttClient } from './mqtt/mqtt-client';
 import { MQTT_CLIENT, type MqttClientPort } from './mqtt/mqtt-client.port';
@@ -163,6 +166,17 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
             }),
     },
     {
+      provide: LOCK_VENDORS,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig) =>
+        config.useFakes
+          ? new FakeLockVendors()
+          : new RealLockVendors({
+              ttlock: config.get('LOCKS_TTLOCK_BASE_URL'),
+              tuya: config.get('LOCKS_TUYA_BASE_URL'),
+            }),
+    },
+    {
       provide: SLIP_VERIFIER,
       inject: [AppConfig],
       useFactory: (config: AppConfig) => {
@@ -259,6 +273,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
   exports: [
     OBJECT_STORAGE,
     PAYMENT_PROVIDERS,
+    LOCK_VENDORS,
     SLIP_VERIFIER,
     PDF_RENDERER,
     SECRETS_PROVIDER,

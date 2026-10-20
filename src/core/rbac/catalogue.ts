@@ -269,6 +269,18 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     surfaces: ['owner'],
   },
   { key: 'parcel.manage', description: 'Record parcels and pick-ups', surfaces: ['owner', 'staff'] },
+  // A3/R2 access control (B5.2)
+  {
+    key: 'access.read',
+    description: 'Locks, credentials and the unlock log of my buildings (D-070, D-025)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'access.manage',
+    description:
+      'Register locks, issue visitor / staff codes, revoke credentials with a reason (D-070, D-071)',
+    surfaces: ['owner'],
+  },
   { key: 'announcement.manage', description: 'Post announcements', surfaces: ['owner'] },
   // platform services in the tenant (B1.3)
   {

@@ -260,6 +260,26 @@ export const SETTINGS: readonly SettingDef[] = [
     reason: 'seed: D-034',
   },
   {
+    key: 'access.work_order_window_hours',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'B5.2 (D-070): length of the time-boxed door code of a staff member / technician when the work order has no visit window (from the visit start, or from the assignment).',
+    editableBy: OWNER_SETTINGS,
+    value: 4,
+    reason: 'seed: B5.2 founder pre-approved recommendation (D-211)',
+  },
+  {
+    key: 'access.battery_low_pct',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'B5.2 (D-070, D-034): a lock at or below this battery % opens an automatic repair request (once per 24 h per lock).',
+    editableBy: OWNER_SETTINGS,
+    value: 20,
+    reason: 'seed: B5.2 founder pre-approved recommendation (D-211)',
+  },
+  {
     key: 'health.gateway_missed_heartbeats',
     valueType: 'int',
     scopeAllowed: ['platform'],

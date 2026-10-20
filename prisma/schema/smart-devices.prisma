@@ -109,6 +109,8 @@ model Device {
   sessions         AuthSession[]
   channelsAsMeter   MeterChannel[]       @relation("MeterChannelMeterDevice")
   channelsAsGateway MeterChannel[]       @relation("MeterChannelGateway")
+  lock              Lock?
+  accessCredentials AccessCredential[]   @relation("AccessCredentialDevice")
   gatewayConfigs    GatewayConfig[]      @relation("GatewayConfigGateway")
   swapsOld          MeterSwap[]          @relation("MeterSwapOldDevice")
   swapsNew          MeterSwap[]          @relation("MeterSwapNewDevice")

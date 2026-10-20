@@ -25,7 +25,8 @@ export const FEATURE_FLAGS: readonly FeatureFlagDef[] = [
   },
   {
     key: 'module.smart_access',
-    description: 'R2 smart locks (B5.2, D-070/D-071); off until the module ships.',
+    description:
+      'R2 smart locks (B5.2, D-070/D-071): shows the access menu entries per tenant; default off until the tenant installs locks.',
     defaultEnabled: false,
     rolloutPct: 0,
   },
@@ -38,6 +39,20 @@ export const FEATURE_FLAGS: readonly FeatureFlagDef[] = [
   {
     key: 'resident.daily_usage',
     description: 'Daily electricity/water usage in the resident app where IoT meters exist (D-063, B3).',
+    defaultEnabled: false,
+    rolloutPct: 0,
+  },
+  {
+    key: 'locks.vendor.ttlock',
+    description:
+      'B5.2 (D-070): TTLock cloud for this tenant’s locks — real adapter UNVERIFIED against the live API.',
+    defaultEnabled: false,
+    rolloutPct: 0,
+  },
+  {
+    key: 'locks.vendor.tuya',
+    description:
+      'B5.2 (D-070): Tuya cloud for this tenant’s locks — real adapter UNVERIFIED against the live API.',
     defaultEnabled: false,
     rolloutPct: 0,
   },

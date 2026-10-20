@@ -9,6 +9,10 @@ import {
   LossRecomputeSubscriber,
   ReadingCandidateSubscriber,
 } from './smart.subscribers';
+import { AccessLifecycle, AccessNotifications, AccessVendorSync } from './smart-access/access.subscribers';
+import { AccessCredentialsService } from './smart-access/access-credentials.service';
+import { AccessViewsService } from './smart-access/access-views.service';
+import { LocksService } from './smart-access/locks.service';
 import { DeviceCommandsService } from './smart-devices/commands.service';
 import { DeviceFleetService } from './smart-devices/fleet.service';
 import { GatewayConfigService } from './smart-devices/gateway-config.service';
@@ -42,6 +46,9 @@ const SERVICES = [
   ReadingRequestsService,
   MeterHealthService,
   UtilityLossService,
+  AccessCredentialsService,
+  LocksService,
+  AccessViewsService,
 ];
 
 /**
@@ -55,6 +62,9 @@ const SERVICES = [
     ...SERVICES,
     // B4.2: billed units of the loss report come from issued invoices (the B3.4 readings stub is gone, D-032)
     { provide: BILLED_UNITS, useClass: InvoiceBilledUnits },
+    AccessLifecycle,
+    AccessVendorSync,
+    AccessNotifications,
     ReadingCandidateSubscriber,
     GatewayConfigSubscriber,
     DeviceCommandSubscriber,

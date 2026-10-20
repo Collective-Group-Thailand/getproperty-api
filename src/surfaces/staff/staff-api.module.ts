@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { StaffAccessController } from '../owner/access.controller';
 import { inspectionsController } from '../owner/deposits.controller';
 import { partiesController } from '../owner/parties.controller';
 import { serviceRequestsController, workOrdersController } from '../owner/service.controller';
@@ -37,6 +38,7 @@ import { StaffFieldController } from './staff-field.controller';
     meterReadingsController(SURFACES.staff),
     serviceRequestsController(SURFACES.staff),
     workOrdersController(SURFACES.staff),
+    StaffAccessController,
     notificationsController(SURFACES.staff),
     pushSubscriptionsController(SURFACES.staff),
     realtimeController(SURFACES.staff),

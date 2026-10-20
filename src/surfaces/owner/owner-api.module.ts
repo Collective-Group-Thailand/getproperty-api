@@ -12,6 +12,7 @@ import {
 import { webVitalsController } from '../shared/web-vitals.controller';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
+import { OwnerAccessController } from './access.controller';
 import {
   OwnerAssetItemsController,
   OwnerBuildingsController,
@@ -82,6 +83,7 @@ import {
     workOrdersController(SURFACES.owner),
     OwnerWorkOrderVerifyController,
     OwnerMaintenancePlansController,
+    OwnerAccessController,
     systemPingController(SURFACES.owner),
     OwnerMeController,
     OwnerTenantController,

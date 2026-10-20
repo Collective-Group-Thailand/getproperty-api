@@ -489,6 +489,20 @@ export class EnvironmentVariables {
   @IsString()
   SLIP_VERIFY_API_KEY?: string;
 
+  // --- Smart locks (B5.2, D-070; real adapters behind the locks.vendor.* flags) --------------------------
+
+  /** TTLock Open Platform (EU cloud by default; the account's region decides). */
+  @IsUrl({ require_tld: false })
+  LOCKS_TTLOCK_BASE_URL = 'https://euapi.ttlock.com';
+
+  /** Tuya OpenAPI data centre of the tenant's cloud project. */
+  @IsUrl({ require_tld: false })
+  LOCKS_TUYA_BASE_URL = 'https://openapi-sg.iotbing.com';
+
+  /** Prefix of the per-tenant vendor secrets (`<prefix>/<vendor>/<tenantId>`): API keys, account. */
+  @IsString()
+  LOCKS_SECRETS_PREFIX = 'getproperty/locks';
+
   // --- Email (SES v2) -----------------------------------------------------------------------------------
 
   @IsString()

@@ -160,6 +160,10 @@ export const AUDIT_ACTIONS = [
   'service_request.cancelled',
   'work_order.cost_changed',
   'work_order.verified',
+  'access.credential_issued',
+  'access.credential_revoked',
+  'access.credential_revealed',
+  'access.log_read',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
