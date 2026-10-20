@@ -851,6 +851,10 @@
     "invalid_state": {
       "title": "Credential cannot change",
       "detail": "The credential is no longer active."
+    },
+    "visitor_codes_disabled": {
+      "title": "Visitor codes are not available",
+      "detail": "The building does not let residents create visitor codes in the app. Ask the building office."
     }
   },
   "lock": {

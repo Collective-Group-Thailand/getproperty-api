@@ -68,6 +68,26 @@ enum WorkOrderCostKind {
   @@schema("ops")
 }
 
+enum VisitPreference {
+  anytime
+  morning
+  afternoon
+  evening
+
+  @@map("visit_preference")
+  @@schema("ops")
+}
+
+enum ServiceMessageAuthor {
+  resident
+  office
+  technician
+  system
+
+  @@map("service_message_author")
+  @@schema("ops")
+}
+
 /// Repair categories with default SLA hours (D-072); tenant_id NULL = platform default.
 model ServiceCategory {
   id              String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
@@ -123,6 +143,9 @@ model ServiceRequest {
   rating                     Int?                 @db.SmallInt
   ratingComment              String?              @map("rating_comment")
   ratedAt                    DateTime?            @map("rated_at") @db.Timestamptz(6)
+  preferredVisit             VisitPreference?     @map("preferred_visit")
+  visitConfirmedAt           DateTime?            @map("visit_confirmed_at") @db.Timestamptz(6)
+  visitConfirmedFor          DateTime?            @map("visit_confirmed_for") @db.Timestamptz(6)
   version                    Int                  @default(1)
   createdAt                  DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy                  String?              @map("created_by") @db.Uuid
@@ -138,6 +161,7 @@ model ServiceRequest {
   workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_request_workflow_instance_id_fkey")
   workOrders       WorkOrder[]
   csatResponses CsatResponse[]
+  messages         ServiceMessage[]
 
   @@index([tenantId, buildingId, status], map: "service_request_tenant_id_building_id_status_idx")
   @@index([buildingId], map: "service_request_building_id_idx")
@@ -197,6 +221,7 @@ model WorkOrder {
   costLines        WorkOrderCostLine[]
   lastOfPlans      MaintenancePlan[]  @relation("MaintenancePlanLastWorkOrder")
   accessCredentials AccessCredential[]
+  messages         ServiceMessage[]
 
   @@index([tenantId, buildingId, status], map: "work_order_tenant_id_building_id_status_idx")
   @@index([buildingId], map: "work_order_building_id_idx")
@@ -275,5 +300,37 @@ model MaintenancePlan {
   @@index([assetItemId], map: "maintenance_plan_asset_item_id_idx")
   @@index([nextDueOn], map: "maintenance_plan_next_due_on_idx", where: raw("is_active"))
   @@map("maintenance_plan")
+  @@schema("ops")
+}
+
+/// Message thread of a repair request or of a work order without a request (D-072, D-218); append-only.
+model ServiceMessage {
+  id               String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String               @map("tenant_id") @db.Uuid
+  buildingId       String               @map("building_id") @db.Uuid
+  serviceRequestId String?              @map("service_request_id") @db.Uuid
+  workOrderId      String?              @map("work_order_id") @db.Uuid
+  authorKind       ServiceMessageAuthor @map("author_kind")
+  authorUserId     String?              @map("author_user_id") @db.Uuid
+  authorPartyId    String?              @map("author_party_id") @db.Uuid
+  authorName       String               @map("author_name")
+  body             String
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?              @map("created_by") @db.Uuid
+
+  tenant         Tenant          @relation("ServiceMessageTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_message_tenant_id_fkey")
+  building       Building        @relation("ServiceMessageBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_message_building_id_fkey")
+  serviceRequest ServiceRequest? @relation(fields: [serviceRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_message_service_request_id_fkey")
+  workOrder      WorkOrder?      @relation(fields: [workOrderId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_message_work_order_id_fkey")
+  authorUser     UserAccount?    @relation("ServiceMessageAuthorUser", fields: [authorUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_message_author_user_id_fkey")
+  authorParty    Party?          @relation("ServiceMessageAuthorParty", fields: [authorPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_message_author_party_id_fkey")
+
+  @@index([serviceRequestId, createdAt], map: "service_message_service_request_id_created_at_idx")
+  @@index([workOrderId, createdAt], map: "service_message_work_order_id_created_at_idx")
+  @@index([tenantId, buildingId], map: "service_message_tenant_id_building_id_idx")
+  @@index([buildingId], map: "service_message_building_id_idx")
+  @@index([authorUserId], map: "service_message_author_user_id_idx")
+  @@index([authorPartyId], map: "service_message_author_party_id_idx")
+  @@map("service_message")
   @@schema("ops")
 }

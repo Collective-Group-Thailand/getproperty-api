@@ -95,6 +95,26 @@ export enum AmenityCategoryName {
   Hvac = 'hvac',
   Other = 'other',
 }
+/** `core.asset_category` (asset core): every kind of asset item of a building (web F2 2.7, D-218). */
+export enum AssetCategoryName {
+  MeterElectric = 'meter_electric',
+  MeterWater = 'meter_water',
+  Gateway = 'gateway',
+  Lock = 'lock',
+  Breaker = 'breaker',
+  DoorController = 'door_controller',
+  Camera = 'camera',
+  Sensor = 'sensor',
+  Pump = 'pump',
+  Lift = 'lift',
+  Generator = 'generator',
+  Hvac = 'hvac',
+  FireSafety = 'fire_safety',
+  WaterTank = 'water_tank',
+  Appliance = 'appliance',
+  Furniture = 'furniture',
+  Other = 'other',
+}
 export enum AssetStatusName {
   Active = 'active',
   Inactive = 'inactive',
@@ -1035,6 +1055,72 @@ export class AmenityDto {
 
   @ApiProperty({ enum: AssetStatusName, enumName: 'AssetStatus', example: AssetStatusName.Active })
   status!: AssetStatusName;
+}
+
+export class BuildingAssetItemDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({ enum: AssetCategoryName, enumName: 'AssetCategory', example: AssetCategoryName.Pump })
+  category!: AssetCategoryName;
+
+  @ApiProperty({ example: 'ปั๊มน้ำหลัก' })
+  name!: string;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: null,
+    description: 'Null for building equipment / common areas.',
+  })
+  unitId!: string | null;
+
+  @ApiProperty({ type: String, format: 'uuid', nullable: true, example: null })
+  floorId!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: 'ห้องเครื่องชั้นดาดฟ้า' })
+  location!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: 'ตัวอย่างยี่ห้อ' })
+  manufacturer!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: null })
+  model!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: null })
+  serial!: string | null;
+
+  @ApiProperty({ type: String, format: 'date', nullable: true, example: null })
+  installDate!: string | null;
+
+  @ApiProperty({ type: String, format: 'date', nullable: true, example: FAKE.date })
+  warrantyUntil!: string | null;
+
+  @ApiProperty({ enum: AssetStatusName, enumName: 'AssetStatus', example: AssetStatusName.Active })
+  status!: AssetStatusName;
+}
+
+export class BuildingAssetItemsDto {
+  @ApiProperty({ type: [BuildingAssetItemDto], description: 'By category, then name (at most 1000).' })
+  data!: BuildingAssetItemDto[];
+}
+
+export class BuildingAssetItemQuery {
+  @ApiPropertyOptional({ enum: AssetCategoryName, enumName: 'AssetCategory' })
+  @IsOptional()
+  @IsEnum(AssetCategoryName)
+  category?: AssetCategoryName;
+
+  @ApiPropertyOptional({ enum: AssetStatusName, enumName: 'AssetStatus' })
+  @IsOptional()
+  @IsEnum(AssetStatusName)
+  status?: AssetStatusName;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Only the items of one unit.' })
+  @IsOptional()
+  @IsUUID()
+  unitId?: string;
 }
 
 export class AmenityCreateDto {

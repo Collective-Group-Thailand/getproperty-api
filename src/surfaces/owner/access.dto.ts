@@ -309,9 +309,55 @@ export class RevealedCredentialDto extends CredentialDto {
   pin!: string | null;
 }
 
+export class VisitorPolicyDto {
+  @ApiProperty({
+    example: true,
+    description:
+      'The operator lets me create visitor codes for my unit’s lock (`access.resident_visitor_codes`).',
+  })
+  allowed!: boolean;
+
+  @ApiProperty({
+    type: 'integer',
+    example: 24,
+    description: 'Longest visitor code I may create, in hours (0 when not allowed).',
+  })
+  maxHours!: number;
+}
+
 export class RevealedCredentialsDto {
   @ApiProperty({ type: [RevealedCredentialDto] })
   data!: RevealedCredentialDto[];
+
+  @ApiPropertyOptional({
+    type: VisitorPolicyDto,
+    description: 'Resident app only (LIFF #26, D-218): whether and how long I may create visitor codes.',
+  })
+  visitorPolicy?: VisitorPolicyDto;
+}
+
+export class ResidentVisitorCodeCreateDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid, description: 'A unit I occupy, with a door lock.' })
+  @IsUUID()
+  unitId!: string;
+
+  @ApiProperty({ example: 'คุณผู้มาเยือน ทดสอบ', maxLength: 200 })
+  @IsString()
+  @Length(1, 200)
+  visitorName!: string;
+
+  @ApiProperty({ type: String, format: 'date-time', example: FAKE.dateTime })
+  @IsDateString()
+  validFrom!: string;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    example: '2026-11-01T18:00:00+07:00',
+    description: 'At most `visitorPolicy.maxHours` after `validFrom`.',
+  })
+  @IsDateString()
+  validTo!: string;
 }
 
 export class VisitorCodeCreateDto {

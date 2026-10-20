@@ -90,6 +90,38 @@ export enum ServiceCategorySourceName {
   Tenant = 'tenant',
 }
 
+/** `ops.visit_preference` (LIFF #24, D-218). */
+export enum VisitPreferenceName {
+  Anytime = 'anytime',
+  Morning = 'morning',
+  Afternoon = 'afternoon',
+  Evening = 'evening',
+}
+
+/** Role of a request / work-order photo (LIFF #22, #25). */
+export enum ServicePhotoRoleName {
+  Report = 'report',
+  Before = 'before',
+  After = 'after',
+}
+
+/** `ops.service_message_author` (LIFF #23). */
+export enum ServiceMessageAuthorName {
+  Resident = 'resident',
+  Office = 'office',
+  Technician = 'technician',
+  System = 'system',
+}
+
+/** The SLA of a request as the resident sees it (LIFF #22, D-159). */
+export enum ServiceSlaStateName {
+  OnTrack = 'on_track',
+  AtRisk = 'at_risk',
+  Breached = 'breached',
+  Paused = 'paused',
+  None = 'none',
+}
+
 const MONEY = /^\d{1,12}(\.\d{1,2})?$/;
 const QUANTITY = /^\d{1,9}(\.\d{1,3})?$/;
 
@@ -565,6 +597,97 @@ export class CostLineCreateDto {
   receiptDocumentId?: string | null;
 }
 
+// ------------------------------------------------------------------------------------- photos, SLA, messages
+
+export class ServicePhotoDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({
+    enum: ServicePhotoRoleName,
+    enumName: 'ServicePhotoRole',
+    example: ServicePhotoRoleName.Report,
+    description: '`report` = the resident’s photo of the problem; `before` / `after` = the technician’s.',
+  })
+  role!: ServicePhotoRoleName;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'https://storage.example.com/service-photo?X-Amz-Signature=abc',
+    description: '5-minute signed link; null while the file is not scanned clean.',
+  })
+  url!: string | null;
+}
+
+export class ServiceStatusEventDto {
+  @ApiProperty({
+    enum: ServiceRequestStatusName,
+    enumName: 'ServiceRequestStatus',
+    example: ServiceRequestStatusName.New,
+  })
+  status!: ServiceRequestStatusName;
+
+  @ApiProperty({ type: String, format: 'date-time', example: FAKE.dateTime })
+  at!: string;
+}
+
+export class ServiceSlaDto {
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    example: '2026-11-02T00:15:00+07:00',
+    description: 'Due time while the clock runs (or when it breached); null when paused or done.',
+  })
+  dueAt!: string | null;
+
+  @ApiProperty({
+    enum: ServiceSlaStateName,
+    enumName: 'ServiceSlaState',
+    example: ServiceSlaStateName.OnTrack,
+    description:
+      '`at_risk` within 2 h of the due time, `paused` while referred to the developer’s warranty, `none` once the work is done or the request ended.',
+  })
+  state!: ServiceSlaStateName;
+}
+
+export class ServiceMessageDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({
+    enum: ServiceMessageAuthorName,
+    enumName: 'ServiceMessageAuthor',
+    example: ServiceMessageAuthorName.Office,
+  })
+  author!: ServiceMessageAuthorName;
+
+  @ApiProperty({ example: 'สมชาย (นิติบุคคล)', description: 'A display name — never a phone number.' })
+  authorName!: string;
+
+  @ApiProperty({ example: 'ช่างจะเข้าไปพรุ่งนี้ 10 โมงนะคะ', maxLength: 2000 })
+  body!: string;
+
+  @ApiProperty({ type: String, format: 'date-time', example: FAKE.dateTime })
+  createdAt!: string;
+
+  @ApiProperty({ example: false, description: 'Written by my login.' })
+  mine!: boolean;
+}
+
+export class ServiceMessagesDto {
+  @ApiProperty({ type: [ServiceMessageDto], description: 'Oldest first (the last 500).' })
+  data!: ServiceMessageDto[];
+}
+
+export class ServiceMessageCreateDto {
+  @ApiProperty({ example: 'สะดวกช่วงบ่ายค่ะ', minLength: 1, maxLength: 2000 })
+  @IsString()
+  @Length(1, 2000)
+  body!: string;
+}
+
 // ------------------------------------------------------------------------------------------ service requests
 
 export class ServiceRequestDto {
@@ -678,6 +801,24 @@ export class ServiceRequestDto {
   @ApiProperty({ type: String, nullable: true, example: null })
   cancelReason!: string | null;
 
+  @ApiProperty({
+    enum: VisitPreferenceName,
+    enumName: 'VisitPreference',
+    nullable: true,
+    example: VisitPreferenceName.Afternoon,
+    description: 'When the resident prefers the visit (LIFF #24).',
+  })
+  preferredVisit!: VisitPreferenceName | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    example: null,
+    description: 'The resident confirmed the planned visit (null again once the visit is moved).',
+  })
+  visitConfirmedAt!: string | null;
+
   @ApiProperty({ type: 'integer', example: 1 })
   version!: number;
 
@@ -720,6 +861,16 @@ export class ServiceRequestListQuery extends PageQuery {
   @Transform(toBool)
   @IsBoolean()
   open?: boolean;
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    description:
+      'Only requests whose SLA breached (`true`) or not (`false`); with `open=true` = overdue (D-159).',
+  })
+  @IsOptional()
+  @Transform(toBool)
+  @IsBoolean()
+  slaBreached?: boolean;
 }
 
 export class ServiceRequestCreateDto {
@@ -774,6 +925,15 @@ export class ServiceRequestCreateDto {
   @ArrayMaxSize(10)
   @IsUUID('all', { each: true })
   photoDocumentIds?: string[];
+  @ApiPropertyOptional({
+    enum: VisitPreferenceName,
+    enumName: 'VisitPreference',
+    nullable: true,
+    description: 'When the technician may come (LIFF #24).',
+  })
+  @IsOptional()
+  @IsEnum(VisitPreferenceName)
+  preferredVisit?: VisitPreferenceName | null;
 }
 
 export class ServiceTriageDto {
@@ -1021,6 +1181,39 @@ export class ResidentServiceRequestDto {
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
   closedAt!: string | null;
+
+  @ApiProperty({
+    enum: VisitPreferenceName,
+    enumName: 'VisitPreference',
+    nullable: true,
+    example: VisitPreferenceName.Afternoon,
+  })
+  preferredVisit!: VisitPreferenceName | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    example: null,
+    description: 'When I confirmed the planned visit (`visitAt`); null until then or once the visit moved.',
+  })
+  visitConfirmedAt!: string | null;
+
+  @ApiProperty({
+    type: [ServicePhotoDto],
+    description: 'My report photos, then the technician’s before / after photos (5-minute links, D-072).',
+  })
+  photos!: ServicePhotoDto[];
+
+  @ApiProperty({ type: [ServiceStatusEventDto], description: 'Status history, oldest first.' })
+  events!: ServiceStatusEventDto[];
+
+  @ApiProperty({
+    type: ServiceSlaDto,
+    nullable: true,
+    description: 'Null for a request without an SLA clock.',
+  })
+  sla!: ServiceSlaDto | null;
 }
 
 export class ResidentServiceRequestCreateDto {
@@ -1057,6 +1250,15 @@ export class ResidentServiceRequestCreateDto {
   @ArrayMaxSize(10)
   @IsUUID('all', { each: true })
   photoDocumentIds?: string[];
+  @ApiPropertyOptional({
+    enum: VisitPreferenceName,
+    enumName: 'VisitPreference',
+    nullable: true,
+    description: 'When the technician may come (LIFF #24).',
+  })
+  @IsOptional()
+  @IsEnum(VisitPreferenceName)
+  preferredVisit?: VisitPreferenceName | null;
 }
 
 export class ResidentCategoryQuery {
@@ -1107,6 +1309,35 @@ export class TechnicianWorkOrderDto extends WorkOrderDto {
 
   @ApiProperty({ example: 'อาคาร A' })
   buildingName!: string;
+
+  @ApiProperty({
+    type: [ServicePhotoDto],
+    description:
+      'The resident’s report photos and my before / after photos of this work order (5-minute links).',
+  })
+  photos!: ServicePhotoDto[];
+
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    example: null,
+    minimum: 1,
+    maximum: 5,
+    description: 'The resident’s rating once given (the rating closes the request).',
+  })
+  rating!: number | null;
+
+  @ApiProperty({ type: String, nullable: true, example: null })
+  ratingComment!: string | null;
+
+  @ApiProperty({
+    enum: VisitPreferenceName,
+    enumName: 'VisitPreference',
+    nullable: true,
+    example: VisitPreferenceName.Afternoon,
+    description: 'When the resident prefers the visit.',
+  })
+  preferredVisit!: VisitPreferenceName | null;
 }
 
 export class TechnicianWorkOrdersDto {

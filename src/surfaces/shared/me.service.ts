@@ -241,7 +241,8 @@ export class MeService {
 
   /**
    * Resident app entitlements (D-063): bills and lease with any lease or occupancy, usage where an installed IoT
-   * meter serves one of my units now, the R2 modules where one of my tenants has the feature flag on.
+   * meter serves one of my units now, the R2 modules where one of my tenants has the feature flag on — facilities
+   * and access also need a bookable facility / an active unit lock of mine (LIFF #27, D-218).
    */
   private async entitlements(
     units: { unitId: string; tenantId: string }[],
@@ -271,6 +272,29 @@ export class MeService {
       if (flags['module.community']) {
         out.add(ResidentEntitlement.Announcements);
         out.add(ResidentEntitlement.Parcels);
+      }
+      // LIFF #27 (D-218): the B5 menus get their own entitlements — facilities when one of my buildings of this
+      // tenant has a bookable facility, access when one of my units of this tenant has an active door lock
+      const mine = units.filter((u) => u.tenantId === tenantId).map((u) => u.unitId);
+      if (!mine.length) continue;
+      if (flags['module.community'] && !out.has(ResidentEntitlement.Facilities)) {
+        const facilities = await this.db.platform((tx) =>
+          tx.facility.count({
+            where: {
+              tenantId,
+              isActive: true,
+              deletedAt: null,
+              building: { units: { some: { id: { in: mine } } } },
+            },
+          }),
+        );
+        if (facilities > 0) out.add(ResidentEntitlement.Facilities);
+      }
+      if (flags['module.smart_access'] && !out.has(ResidentEntitlement.Access)) {
+        const locks = await this.db.platform((tx) =>
+          tx.lock.count({ where: { tenantId, unitId: { in: mine }, scope: 'unit', isActive: true } }),
+        );
+        if (locks > 0) out.add(ResidentEntitlement.Access);
       }
     }
     const order = Object.values(ResidentEntitlement);

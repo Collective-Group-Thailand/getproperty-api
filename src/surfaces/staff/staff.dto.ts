@@ -1,7 +1,7 @@
 import { FAKE } from '@common/openapi/examples';
 import { ApiProperty } from '@nestjs/swagger';
 
-import { MeterDto, UtilityName } from '../owner/assets.dto';
+import { MeterDto, UnitStatusName, UnitTypeName, UtilityName } from '../owner/assets.dto';
 import { BusTypeName } from '../shared/smart.dto';
 
 export class StaffBuildingDto {
@@ -24,6 +24,34 @@ export class StaffBuildingDto {
 export class StaffBuildingsDto {
   @ApiProperty({ type: () => [StaffBuildingDto] })
   data!: StaffBuildingDto[];
+}
+
+export class StaffUnitDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({ example: FAKE.unitCode })
+  unitNo!: string;
+
+  @ApiProperty({ type: String, format: 'uuid', nullable: true, example: FAKE.uuid })
+  floorId!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: 'ชั้น 2' })
+  floorName!: string | null;
+
+  @ApiProperty({ type: 'integer', nullable: true, example: 2 })
+  floorLevel!: number | null;
+
+  @ApiProperty({ enum: UnitStatusName, enumName: 'UnitStatus', example: UnitStatusName.Occupied })
+  status!: UnitStatusName;
+
+  @ApiProperty({ enum: UnitTypeName, enumName: 'UnitType', example: UnitTypeName.Room })
+  type!: UnitTypeName;
+}
+
+export class StaffUnitsDto {
+  @ApiProperty({ type: () => [StaffUnitDto], description: 'By floor level, then unit number.' })
+  data!: StaffUnitDto[];
 }
 
 export class MeterPointChannelDto {

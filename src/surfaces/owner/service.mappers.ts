@@ -1,7 +1,10 @@
 import { FAKE } from '@common/openapi/examples';
+import { type ServiceMessage } from '@generated/prisma/client';
+import { type PhotoLink, type ResidentRequestDetail } from '@modules/ops-service/field-access.service';
 import { type MaintenancePlanRow } from '@modules/ops-service/maintenance-plans.service';
 import { type EffectiveCategory } from '@modules/ops-service/service-categories.service';
 import { type ServiceRequestRow } from '@modules/ops-service/service-requests.service';
+import { visitConfirmation } from '@modules/ops-service/service-rules';
 import { type WorkOrderRow } from '@modules/ops-service/work-orders.service';
 
 import { dateOnly, iso, isoOrNull } from '../shared/mappers';
@@ -12,11 +15,17 @@ import {
   type ResidentServiceRequestDto,
   type ServiceCategoryDto,
   type ServiceCategorySourceName,
+  type ServiceMessageAuthorName,
+  type ServiceMessageDto,
+  type ServicePhotoDto,
+  type ServicePhotoRoleName,
   type ServicePriorityName,
   type ServiceReporterKindName,
   type ServiceRequestDto,
   type ServiceRequestStatusName,
+  type ServiceSlaStateName,
   type TechnicianWorkOrderDto,
+  type VisitPreferenceName,
   type WorkOrderCostKindName,
   type WorkOrderDto,
   type WorkOrderKindName,
@@ -82,6 +91,10 @@ export function serviceRequestDto(
     })),
     rating: r.rating,
     ratingComment: r.ratingComment,
+    preferredVisit: r.preferredVisit as VisitPreferenceName | null,
+    visitConfirmedAt: isoOrNull(
+      visitConfirmation(r.workOrders, { at: r.visitConfirmedAt, for: r.visitConfirmedFor }).confirmedAt,
+    ),
     triagedAt: isoOrNull(r.triagedAt),
     doneAt: isoOrNull(r.doneAt),
     closedAt: isoOrNull(r.closedAt),
@@ -92,15 +105,28 @@ export function serviceRequestDto(
   };
 }
 
+export function photoDtos(photos: PhotoLink[]): ServicePhotoDto[] {
+  return photos.map((p) => ({ id: p.id, role: p.role as ServicePhotoRoleName, url: p.url }));
+}
+
+export function serviceMessageDto(m: ServiceMessage, me: string | null): ServiceMessageDto {
+  return {
+    id: m.id,
+    author: m.authorKind as ServiceMessageAuthorName,
+    authorName: m.authorName,
+    body: m.body,
+    createdAt: iso(m.createdAt),
+    mine: !!me && m.authorUserId === me,
+  };
+}
+
 export function residentServiceRequestDto(
   r: ServiceRequestRow,
   photoIds: string[],
   nextActions: string[],
+  detail: ResidentRequestDetail,
 ): ResidentServiceRequestDto {
-  const visit = r.workOrders
-    .filter((w) => w.scheduledAt && w.status !== 'cancelled')
-    .map((w) => w.scheduledAt!)
-    .sort((a, b) => a.getTime() - b.getTime())[0];
+  const visit = visitConfirmation(r.workOrders, { at: null, for: null }).visit?.scheduledAt;
   return {
     nextActions,
     id: r.id,
@@ -124,6 +150,13 @@ export function residentServiceRequestDto(
     createdAt: iso(r.createdAt),
     doneAt: isoOrNull(r.doneAt),
     closedAt: isoOrNull(r.closedAt),
+    preferredVisit: r.preferredVisit as VisitPreferenceName | null,
+    visitConfirmedAt: isoOrNull(detail.visitConfirmedAt),
+    photos: photoDtos(detail.photos),
+    events: detail.events.map((e) => ({ status: e.status as ServiceRequestStatusName, at: iso(e.at) })),
+    sla: detail.sla
+      ? { dueAt: isoOrNull(detail.sla.dueAt), state: detail.sla.state as ServiceSlaStateName }
+      : null,
   };
 }
 
@@ -183,11 +216,19 @@ export function workOrderDto(
   };
 }
 
+export interface TechnicianExtras {
+  photos: PhotoLink[];
+  rating: number | null;
+  ratingComment: string | null;
+  preferredVisit: string | null;
+}
+
 export function technicianWorkOrderDto(
   w: WorkOrderRow,
   photos: Map<string, string[]> | undefined,
   nextActions: string[],
   request: { description: string; categoryKey: string; photoIds: string[] } | null,
+  extras: TechnicianExtras = { photos: [], rating: null, ratingComment: null, preferredVisit: null },
 ): TechnicianWorkOrderDto {
   const dto = workOrderDto(w, photos, nextActions);
   return {
@@ -197,6 +238,10 @@ export function technicianWorkOrderDto(
     categoryKey: request?.categoryKey ?? null,
     requestPhotoIds: request?.photoIds ?? [],
     buildingName: w.building.name,
+    photos: photoDtos(extras.photos),
+    rating: extras.rating,
+    ratingComment: extras.ratingComment,
+    preferredVisit: extras.preferredVisit as VisitPreferenceName | null,
   };
 }
 
@@ -302,6 +347,8 @@ export const SERVICE_REQUEST_EXAMPLE = {
   workOrders: [],
   rating: null,
   ratingComment: null,
+  preferredVisit: 'afternoon',
+  visitConfirmedAt: null,
   triagedAt: null,
   doneAt: null,
   closedAt: null,
@@ -329,6 +376,22 @@ export const RESIDENT_REQUEST_EXAMPLE = {
   createdAt: FAKE.dateTime,
   doneAt: null,
   closedAt: null,
+  preferredVisit: 'afternoon',
+  visitConfirmedAt: null,
+  photos: [
+    { id: FAKE.uuid, role: 'report', url: 'https://storage.example.com/service-photo?X-Amz-Signature=abc' },
+  ],
+  events: [{ status: 'new', at: FAKE.dateTime }],
+  sla: { dueAt: '2026-11-02T00:15:00+07:00', state: 'on_track' },
+};
+
+export const MESSAGE_EXAMPLE = {
+  id: FAKE.uuid,
+  author: 'office',
+  authorName: 'สมชาย (สำนักงาน)',
+  body: 'ช่างจะเข้าไปพรุ่งนี้ 10 โมงนะคะ',
+  createdAt: FAKE.dateTime,
+  mine: false,
 };
 
 export const MAINTENANCE_PLAN_EXAMPLE = {

@@ -278,8 +278,8 @@ export class OwnerDashboardController {
     id: 'owner.dashboard.get',
     summary: 'Owner dashboard',
     description:
-      'First version (B4.5): income received this month, billed vs collected, arrears with aging, due today, slips and drafts waiting, each property’s billing cycle, the compliance score of the month incl. above-cap lines (D-190) and the latest loss % per building and utility (B3.4). Optionally one building.',
-    implements: ['D-044', 'D-045', 'D-190', 'D-032'],
+      'First version (B4.5): income received this month, billed vs collected, arrears with aging, due today, slips and drafts waiting, overdue repair requests and parcels waiting (D-218), each property’s billing cycle, the compliance score of the month incl. above-cap lines (D-190) and the latest loss % per building and utility (B3.4). Optionally one building.',
+    implements: ['D-044', 'D-045', 'D-190', 'D-032', 'D-218'],
   })
   @ApiSuccess(200, {
     description: 'Dashboard numbers',
@@ -302,7 +302,7 @@ export class OwnerDashboardController {
       },
       arrears: { balance: '16000.00', invoices: 3, parties: 3, aging: AGING_EXAMPLE, credit: '350.00' },
       dueToday: { balance: '5344.00', invoices: 1 },
-      attention: { slipsToReview: 2, draftsToReview: 0 },
+      attention: { slipsToReview: 2, draftsToReview: 0, serviceRequestsOverdue: 1, parcelsWaiting: 3 },
       cycles: [
         {
           propertyId: FAKE.uuid,

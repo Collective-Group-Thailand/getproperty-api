@@ -9,6 +9,7 @@ import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
 import {
   type AssetCategory,
+  type AssetStatus,
   type Building,
   type MeterPurpose,
   type Prisma,
@@ -317,6 +318,31 @@ export class AmenitiesService extends TenantScopedRepository {
       return tx.assetItem.findMany({
         where: { unitId, deletedAt: null, category: { in: [...AMENITY_CATEGORIES] } },
         orderBy: [{ category: 'asc' }, { name: 'asc' }],
+      });
+    });
+  }
+
+  /**
+   * Every asset item of a building (web F2 2.7 maintenance plans, D-210, D-218): building equipment (pumps, lifts,
+   * water tanks, gateways, locks, …) and the items of its units, optionally by category / status; not deleted.
+   */
+  listForBuilding(
+    ctx: TenantContext,
+    buildingId: string,
+    filter: { category?: AssetCategory; status?: AssetStatus; unitId?: string },
+  ) {
+    return this.db.tenant(ctx, async (tx) => {
+      await visibleBuilding(tx, ctx, buildingId);
+      return tx.assetItem.findMany({
+        where: {
+          buildingId,
+          deletedAt: null,
+          ...(filter.category ? { category: filter.category } : {}),
+          ...(filter.status ? { status: filter.status } : {}),
+          ...(filter.unitId ? { unitId: filter.unitId } : {}),
+        },
+        orderBy: [{ category: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+        take: 1000,
       });
     });
   }

@@ -18,6 +18,15 @@ export interface TemplateSeed {
   }[];
 }
 
+/**
+ * LIFF #28 (D-218): version 2 of a LINE text template — the same text with the app screen it opens (`link`).
+ * Older versions stay as history (retired by the seed only when nothing newer was published since).
+ */
+const withLink = (th: string, en: string, link = '{{link}}'): TemplateSeed['versions'] => [
+  { language: 'th', subject: null, body: `${th}\n${link}`, version: 2 },
+  { language: 'en', subject: null, body: `${en}\n${link}`, version: 2 },
+];
+
 /** The LINE Flex body of the billing messages: the modules build `flex` (B4.3, `src/modules/ops-documents/flex.ts`). */
 // (the space before the last brace keeps Handlebars from reading `}}}` as a triple-stash close)
 const FLEX_BODY = '{"altText": {{json flex.altText}}, "contents": {{json flex.contents}} }';
@@ -304,6 +313,7 @@ export const NOTIFICATION_ROUTES: {
     'deposit.settlement_proposed',
     'deposit.refunded',
     'service_request.changed',
+    'service_request.message',
     'access.credential_issued',
     'access.credential_revoked',
     'announcement.published',
@@ -317,6 +327,8 @@ export const NOTIFICATION_ROUTES: {
     urgent: false,
   })),
   { eventType: 'work_order.assigned', audience: 'technician', channel: 'line', urgent: false },
+  { eventType: 'service_request.message', audience: 'technician', channel: 'line', urgent: false },
+  { eventType: 'service_request.visit_confirmed', audience: 'technician', channel: 'line', urgent: false },
   { eventType: 'access.credential_issued', audience: 'technician', channel: 'line', urgent: false },
 ];
 
@@ -431,6 +443,64 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         subject: null,
         body: 'Repair request #{{request.ref}} ({{request.categoryEn}}, unit {{request.unitNo}}): {{request.statusEn}}',
       },
+      ...withLink(
+        'งานแจ้งซ่อม #{{request.ref}} ({{request.category}} ห้อง {{request.unitNo}}): {{request.statusTh}}',
+        'Repair request #{{request.ref}} ({{request.categoryEn}}, unit {{request.unitNo}}): {{request.statusEn}}',
+      ),
+    ],
+  },
+  {
+    key: 'service_request.message',
+    channel: 'line',
+    audience: 'resident',
+    description: 'A new message from the office or the technician in my repair request (LIFF #23, D-218)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'ข้อความใหม่ในงานแจ้งซ่อม #{{request.ref}} จาก {{message.authorName}}: {{message.excerpt}}\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'New message on repair request #{{request.ref}} from {{message.authorName}}: {{message.excerpt}}\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'service_request.message',
+    channel: 'line',
+    audience: 'technician',
+    description: 'Technician: a new message in the thread of my work order (LIFF #23, D-218)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'ข้อความใหม่ในงาน #{{request.ref}} ห้อง {{request.unitNo}} จาก {{message.authorName}}: {{message.excerpt}}\n{{technicianLink}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'New message on job #{{request.ref}}, unit {{request.unitNo}}, from {{message.authorName}}: {{message.excerpt}}\n{{technicianLink}}',
+      },
+    ],
+  },
+  {
+    key: 'service_request.visit_confirmed',
+    channel: 'line',
+    audience: 'technician',
+    description: 'Technician: the resident confirmed the visit (LIFF #24, D-218)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'ผู้แจ้งยืนยันนัดหมายงาน #{{request.ref}} ห้อง {{request.unitNo}} เวลา {{visit.scheduledAt}} แล้ว\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'The resident confirmed the visit for job #{{request.ref}}, unit {{request.unitNo}}, at {{visit.scheduledAt}}.\n{{link}}',
+      },
     ],
   },
   {
@@ -449,6 +519,10 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         subject: null,
         body: '{{tenant.name}} assigned you "{{workOrder.title}}" at {{workOrder.place}}, scheduled {{workOrder.scheduledAt}} — open it in the technician app (#{{workOrder.ref}})',
       },
+      ...withLink(
+        '{{tenant.name}} มอบหมายงาน "{{workOrder.title}}" ที่ {{workOrder.place}} นัดหมาย {{workOrder.scheduledAt}} (#{{workOrder.ref}})',
+        '{{tenant.name}} assigned you "{{workOrder.title}}" at {{workOrder.place}}, scheduled {{workOrder.scheduledAt}} (#{{workOrder.ref}})',
+      ),
     ],
   },
   {
@@ -467,6 +541,10 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         subject: null,
         body: 'Announcement from {{tenant.name}}: {{announcement.title}} — open the app to read it.',
       },
+      ...withLink(
+        'ประกาศจาก {{tenant.name}}: {{announcement.title}} — {{announcement.excerpt}}',
+        'Announcement from {{tenant.name}}: {{announcement.title}}',
+      ),
     ],
   },
   {
@@ -485,6 +563,10 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         subject: null,
         body: '{{tenant.name}}: a parcel ({{parcel.carrier}}) arrived for unit {{parcel.unitNo}} — show the pick-up PIN in the app at the desk.',
       },
+      ...withLink(
+        '{{tenant.name}}: มีพัสดุ ({{parcel.carrier}}) มาถึงห้อง {{parcel.unitNo}} — แสดงรหัสรับพัสดุในแอปที่เคาน์เตอร์',
+        '{{tenant.name}}: a parcel ({{parcel.carrier}}) arrived for unit {{parcel.unitNo}} — show the pick-up PIN in the app at the desk.',
+      ),
     ],
   },
   {

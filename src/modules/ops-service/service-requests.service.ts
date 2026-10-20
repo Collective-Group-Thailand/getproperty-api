@@ -16,6 +16,7 @@ import {
   type ServiceReporterKind,
   type ServiceRequest,
   type ServiceRequestStatus,
+  type VisitPreference,
 } from '@generated/prisma/client';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -25,6 +26,8 @@ import {
   inWarranty,
   OPEN_REQUEST_STATUSES,
   requestStatusOf,
+  statusHistory,
+  visitConfirmation,
 } from './service-rules';
 
 export const SERVICE_REQUEST_SUBJECT = 'ops.service_request';
@@ -38,7 +41,9 @@ export const SERVICE_REQUEST_INCLUDE = {
   building: { select: { id: true, name: true } },
   requester: { select: { id: true, displayName: true } },
   assetItem: { select: { id: true, name: true, category: true } },
-  workflowInstance: { select: { id: true, state: true, slaDueAt: true, slaBreachedAt: true } },
+  workflowInstance: {
+    select: { id: true, state: true, slaDueAt: true, slaWarnedAt: true, slaBreachedAt: true },
+  },
   workOrders: {
     select: {
       id: true,
@@ -67,6 +72,8 @@ export interface OpenRequestInput {
   requesterPartyId?: string | null;
   reporterKind: ServiceReporterKind;
   photoDocumentIds?: string[];
+  /** When the technician may come (LIFF #24). */
+  preferredVisit?: VisitPreference | null;
   autoReason?: string | null;
   sourceDeviceEventId?: string | null;
 }
@@ -78,6 +85,8 @@ export interface RequestFilters {
   categoryId?: string;
   inWarranty?: boolean;
   open?: boolean;
+  /** Only requests whose SLA breached (web F2 2.7 Today queue). */
+  slaBreached?: boolean;
   skip: number;
   take: number;
 }
@@ -119,6 +128,9 @@ export class ServiceRequestsService extends TenantScopedRepository {
       ...(f.status ? { status: f.status } : f.open ? { status: { in: [...OPEN_REQUEST_STATUSES] } } : {}),
       ...(f.categoryId ? { categoryId: f.categoryId } : {}),
       ...(f.inWarranty !== undefined ? { inWarranty: f.inWarranty } : {}),
+      ...(f.slaBreached !== undefined
+        ? { workflowInstance: { slaBreachedAt: f.slaBreached ? { not: null } : null } }
+        : {}),
     });
     return this.db.tenant(ctx, async (tx) => {
       const [rows, total] = await Promise.all([
@@ -164,6 +176,63 @@ export class ServiceRequestsService extends TenantScopedRepository {
       out.set(r.subjectId, roles);
     }
     return out;
+  }
+
+  /**
+   * Photos of a request and of its work orders with 5-minute links (LIFF #22, #25): the report photos, then the
+   * before / after photos of the work orders that are not cancelled. Only clean (or unscanned-by-policy) files get a
+   * link; a file still being scanned shows without one.
+   */
+  async photoLinks(
+    tx: Tx,
+    requestId: string | null,
+    workOrderIds: string[],
+  ): Promise<{ id: string; role: 'report' | 'before' | 'after'; url: string | null }[]> {
+    const rows = await tx.attachment.findMany({
+      where: {
+        OR: [
+          ...(requestId
+            ? [{ subjectType: SERVICE_REQUEST_SUBJECT, subjectId: requestId, role: 'report' }]
+            : []),
+          ...(workOrderIds.length
+            ? [
+                {
+                  subjectType: WORK_ORDER_SUBJECT,
+                  subjectId: { in: workOrderIds },
+                  role: { in: ['before', 'after'] },
+                },
+              ]
+            : []),
+        ],
+      },
+      include: { document: true },
+      orderBy: [{ createdAt: 'asc' }, { position: 'asc' }],
+    });
+    const order = { report: 0, before: 1, after: 2 } as const;
+    const out: { id: string; role: 'report' | 'before' | 'after'; url: string | null; rank: number }[] = [];
+    for (const r of rows) {
+      if (r.document.deletedAt) continue;
+      const role = r.role as 'report' | 'before' | 'after';
+      const clean = ['clean', 'skipped'].includes(r.document.scanStatus);
+      out.push({
+        id: r.documentId,
+        role,
+        url: clean ? (await this.documents.signedUrl(r.document)).url : null,
+        rank: order[role],
+      });
+    }
+    return out.sort((a, b) => a.rank - b.rank).map(({ rank: _rank, ...p }) => p);
+  }
+
+  /** The status history of a request (its workflow transitions, oldest first; LIFF #22). */
+  async history(tx: Tx, row: Pick<ServiceRequest, 'workflowInstanceId'>) {
+    if (!row.workflowInstanceId) return [];
+    const events = await tx.workflowEvent.findMany({
+      where: { instanceId: row.workflowInstanceId },
+      orderBy: { occurredAt: 'asc' },
+      select: { toState: true, occurredAt: true },
+    });
+    return statusHistory(events);
   }
 
   /** Photos per subject and role, in their own tenant transaction (list views). */
@@ -245,6 +314,7 @@ export class ServiceRequestsService extends TenantScopedRepository {
         categoryId: category.id,
         description: input.description.trim(),
         priority: input.priority ?? 'normal',
+        preferredVisit: input.preferredVisit ?? null,
         slaHours: category.slaHours,
         autoReason: input.autoReason ?? null,
         sourceDeviceEventId: input.sourceDeviceEventId ?? null,
@@ -292,6 +362,7 @@ export class ServiceRequestsService extends TenantScopedRepository {
         categoryKey: category.key,
         priority: row.priority,
         slaDueAt: instance.slaDueAt?.toISOString() ?? null,
+        preferredVisit: row.preferredVisit,
         autoReason: row.autoReason,
       },
     });
@@ -607,6 +678,58 @@ export class ServiceRequestsService extends TenantScopedRepository {
       payload: { serviceRequestId: row.id, unitId: row.unitId, rating },
     });
     return fresh;
+  }
+
+  /**
+   * The resident confirms the scheduled visit (LIFF #24, D-218): allowed while the planned visit's work order has not
+   * started and this visit start is not confirmed yet (409 otherwise). Records the visit start it confirms (a moved
+   * visit asks again), audited, `service_request.visit_confirmed` (the assignee and the office are told).
+   */
+  async confirmVisitIn(tx: Tx, row: ServiceRequest): Promise<ServiceRequest> {
+    const workOrders = await tx.workOrder.findMany({
+      where: { serviceRequestId: row.id },
+      select: { id: true, status: true, scheduledAt: true, assigneePartyId: true, assigneeUserId: true },
+    });
+    const v = visitConfirmation(workOrders, { at: row.visitConfirmedAt, for: row.visitConfirmedFor });
+    if (!v.due || !OPEN_REQUEST_STATUSES.includes(row.status))
+      throw new DomainException('service_request.invalid_state', { params: { status: row.status } });
+    const now = this.clock.now();
+    const updated = await tx.serviceRequest.updateMany({
+      where: { id: row.id, version: row.version },
+      data: {
+        visitConfirmedAt: now,
+        visitConfirmedFor: v.visit!.scheduledAt,
+        version: { increment: 1 },
+        updatedBy: by(),
+      },
+    });
+    if (updated.count !== 1) throw new DomainException('concurrency.stale');
+    const wo = workOrders.find((w) => w.id === v.visit!.id)!;
+    await this.audit.record(tx, {
+      action: 'service_request.visit_confirmed',
+      tenantId: row.tenantId,
+      buildingId: row.buildingId,
+      subjectType: SERVICE_REQUEST_SUBJECT,
+      subjectId: row.id,
+      metadata: { workOrderId: wo.id, scheduledAt: v.visit!.scheduledAt!.toISOString() },
+    });
+    await this.events.record(tx, {
+      type: 'service_request.visit_confirmed',
+      aggregateType: 'service_request',
+      aggregateId: row.id,
+      tenantId: row.tenantId,
+      buildingId: row.buildingId,
+      payload: {
+        serviceRequestId: row.id,
+        unitId: row.unitId,
+        requesterPartyId: row.requesterPartyId,
+        workOrderId: wo.id,
+        assigneePartyId: wo.assigneePartyId,
+        assigneeUserId: wo.assigneeUserId,
+        scheduledAt: v.visit!.scheduledAt!.toISOString(),
+      },
+    });
+    return tx.serviceRequest.findUniqueOrThrow({ where: { id: row.id } });
   }
 
   /** 409 `service_request.invalid_state` unless the workflow allows `event` now. */

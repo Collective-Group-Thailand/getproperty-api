@@ -16,7 +16,18 @@ import { InvitationService } from '@core/tenancy/invitation.service';
 import { MembershipService } from '@core/tenancy/membership.service';
 import { TenantService } from '@core/tenancy/tenant.service';
 import { type Invitation, type Tenant } from '@generated/prisma/client';
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 import { iso, isoOrNull } from '../shared/mappers';
@@ -31,6 +42,7 @@ import {
   InvitationDto,
   type InvitationStateName,
   MemberDto,
+  MemberListQuery,
   type MembershipStatusName,
   MemberUpdateDto,
   type TenantLegalFormName,
@@ -207,13 +219,14 @@ export class OwnerMembersController {
   @ApiEndpoint({
     id: 'owner.members.list',
     summary: 'People working for my tenant',
-    description: 'Active and suspended memberships with role and building limits (D-090).',
-    implements: ['D-090', 'D-151'],
+    description:
+      'Active and suspended memberships with role and building limits (D-090). `permission` and `buildingId` narrow it to the active members who may do that in that building — e.g. the work-order assignees (`service_request.handle`) or readers (`reading.capture`), the same test the assignment applies (D-218); an unknown permission is 422, another tenant’s building 404.',
+    implements: ['D-090', 'D-151', 'D-218'],
   })
   @ApiSuccess(200, { description: 'Members', type: [MemberDto], example: [MEMBER_EXAMPLE] })
-  @ApiStandardErrors(...TENANT_ERRORS)
-  async list(@CurrentTenant() ctx: TenantContext): Promise<MemberDto[]> {
-    return (await this.members.list(ctx)).map(memberDto);
+  @ApiStandardErrors('validation.failed', 'http.not_found', ...TENANT_ERRORS)
+  async list(@CurrentTenant() ctx: TenantContext, @Query() q: MemberListQuery): Promise<MemberDto[]> {
+    return (await this.members.listHolding(ctx, q)).map(memberDto);
   }
 
   @Patch(':membershipId')

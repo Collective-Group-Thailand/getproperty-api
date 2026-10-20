@@ -196,6 +196,10 @@ export const DOMAIN_EVENT_TYPES = {
   'service_request.rated': 'The resident rated a done repair request; the rating closed it (D-072).',
   'service_request.warranty_referred':
     'A request inside a getbuild warranty was referred to the developer instead of the building technician (D-153).',
+  'service_request.visit_confirmed':
+    'The resident confirmed the scheduled visit of their repair request (LIFF #24, D-218).',
+  'service_request.message':
+    'A message was posted in the thread of a repair request or work order (LIFF #23, D-218; named as the consumers listen to it).',
   'work_order.created': 'A work order was opened (repair, preventive, install, de-install, inspection).',
   'work_order.assigned': 'A work order was assigned to a staff member or an external technician.',
   'work_order.changed':

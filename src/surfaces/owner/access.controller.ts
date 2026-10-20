@@ -51,6 +51,7 @@ import {
   LocksDto,
   type LockVendorName,
   ResidentAccessEventQuery,
+  ResidentVisitorCodeCreateDto,
   RevealedCredentialsDto,
   StaffCodeCreateDto,
   VisitorCodeCreateDto,
@@ -480,17 +481,70 @@ export class ResidentAccessController {
     id: 'resident.access.credentials',
     summary: 'My door codes',
     description:
-      'The codes of my unit’s locks and building doors for my leases, with the code itself (each reveal is audited); they last until the lease ends (D-071).',
-    implements: ['D-070', 'D-071'],
+      'The codes of my unit’s locks and building doors for my leases, with the code itself (each reveal is audited); they last until the lease ends (D-071). `visitorPolicy` says whether I may create visitor codes (D-218).',
+    implements: ['D-070', 'D-071', 'D-218'],
   })
   @ApiSuccess(200, {
     description: 'My codes',
     type: RevealedCredentialsDto,
-    example: { data: [{ ...CREDENTIAL_EXAMPLE, pin: '482913' }] },
+    example: {
+      data: [{ ...CREDENTIAL_EXAMPLE, pin: '482913' }],
+      visitorPolicy: { allowed: true, maxHours: 24 },
+    },
   })
   @ApiStandardErrors('validation.failed')
   async credentials(): Promise<RevealedCredentialsDto> {
-    return { data: (await this.views.residentCredentials()).map(revealedDto) };
+    const [data, visitorPolicy] = await Promise.all([
+      this.views.residentCredentials(),
+      this.views.visitorPolicy(),
+    ]);
+    return { data: data.map(revealedDto), visitorPolicy };
+  }
+
+  @Post('visitor-codes')
+  @Idempotent()
+  @ApiEndpoint({
+    id: 'resident.access.visitorCode',
+    summary: 'Create a visitor code',
+    description:
+      'A time-boxed keypad code on my unit’s door lock for a named visitor, within what the operator allows (`visitorPolicy`): 403 `access.visitor_codes_disabled` when not allowed, 422 beyond `maxHours`, 409 for a unit without a lock. The code is answered this once (give it to the visitor) and ends by itself (D-070, D-218).',
+    implements: ['D-070', 'D-218'],
+  })
+  @ApiJsonBody(ResidentVisitorCodeCreateDto, {
+    unitId: FAKE.uuid,
+    visitorName: 'คุณผู้มาเยือน ทดสอบ',
+    validFrom: FAKE.dateTime,
+    validTo: '2026-11-01T18:00:00+07:00',
+  })
+  @ApiSuccess(201, {
+    description: 'Issued',
+    type: IssuedCredentialDto,
+    example: {
+      ...CREDENTIAL_EXAMPLE,
+      holderKind: 'visitor',
+      holderPartyId: null,
+      holderName: 'คุณผู้มาเยือน ทดสอบ',
+      leaseId: null,
+      status: 'pending',
+      validTo: '2026-11-01T18:00:00+07:00',
+      pin: '482913',
+    },
+  })
+  @ApiStandardErrors(
+    'http.not_found',
+    'http.bad_request',
+    'validation.failed',
+    'access.visitor_codes_disabled',
+    'access.invalid_state',
+  )
+  async visitorCode(@Body() body: ResidentVisitorCodeCreateDto): Promise<IssuedCredentialDto> {
+    const c = await this.views.createVisitorCode({
+      unitId: body.unitId,
+      visitorName: body.visitorName,
+      validFrom: new Date(body.validFrom),
+      validTo: new Date(body.validTo),
+    });
+    return { ...credentialDto(c), pin: c.pin };
   }
 
   @Get('events')
