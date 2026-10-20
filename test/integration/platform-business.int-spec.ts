@@ -596,6 +596,21 @@ describe('B6.1 platform business (real PostgreSQL)', () => {
     expect(invoices.body.meta.total).toBe(0);
   });
 
+  it('change-plan, suspend and reinstate require an Idempotency-Key (contract §3, review #13)', async () => {
+    for (const [action, body] of [
+      ['change-plan', { planKey: 'apartment_smart' }],
+      ['suspend', { reason: 'ทดสอบ idempotency' }],
+      ['reinstate', { reason: 'ทดสอบ idempotency' }],
+    ] as const) {
+      const res = await t.http
+        .post(`/v1/admin/subscriptions/${subscriptionId}/actions/${action}`)
+        .set(bearer(admin))
+        .send(body)
+        .expect(400);
+      expect({ action, code: res.body.code }).toEqual({ action, code: 'idempotency.key_required' });
+    }
+  });
+
   it('cancellation takes effect after the month end: tenant read-only, de-install order for platform hardware', async () => {
     const cancel = await t.http
       .post(`/v1/admin/subscriptions/${subscriptionId}/actions/cancel`)

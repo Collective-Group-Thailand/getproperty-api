@@ -449,6 +449,7 @@ export function deviceInstallsController(surface: Extract<Surface, 'owner' | 'st
     ) {}
 
     @Post('devices/actions/provision')
+    @Idempotent()
     @HttpCode(200)
     @TenantScoped()
     @Can('device.install')
