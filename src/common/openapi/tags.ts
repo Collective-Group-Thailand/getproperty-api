@@ -136,6 +136,9 @@ export const API_TAGS: Record<string, string> = {
   'owner.serviceCategories':
     'Repair categories and their SLA hours: platform defaults and my versions (D-072).',
   'owner.maintenancePlans': 'Preventive maintenance of equipment every N days (B5.1).',
+  'owner.access':
+    'Smart locks (B5.2, D-070, D-071): locks of units and building doors, credentials that follow the lease (never the bill, D-024), time-boxed visitor and staff codes, revocation with a reason, the unlock log (audited, D-025).',
+  'resident.access': 'My door codes for my leases and my unit’s unlock log (B5.2, D-070, D-025).',
   'resident.serviceRequests':
     'Reporting a problem of my unit with photos, following it and rating the repair (B5.1, D-072).',
   'resident.invoices':

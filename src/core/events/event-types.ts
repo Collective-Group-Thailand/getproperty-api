@@ -202,6 +202,12 @@ export const DOMAIN_EVENT_TYPES = {
     'A work order changed state (accepted, in progress, waiting for parts, verified, cancelled).',
   'work_order.completed': 'The assignee completed a work order with after photos (D-072).',
   'work_order.cost_changed': 'Parts / labour of a work order changed (B4.5 expenses).',
+  // B5.2 access control (D-070, D-071)
+  'lock.registered': 'A smart lock / door controller was registered on a unit, building door or common area.',
+  'access.credential_issued':
+    'An access credential was issued (resident at lease activation, visitor / staff / technician time-boxed).',
+  'access.credential_revoked':
+    'An access credential was revoked (lease end or termination, owner with a reason, work order end) — never for arrears (D-071).',
 } as const;
 export type DomainEventType = keyof typeof DOMAIN_EVENT_TYPES;
 

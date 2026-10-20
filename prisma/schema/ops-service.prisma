@@ -195,6 +195,7 @@ model WorkOrder {
   workflowInstance WorkflowInstance?  @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "work_order_workflow_instance_id_fkey")
   costLines        WorkOrderCostLine[]
   lastOfPlans      MaintenancePlan[]  @relation("MaintenancePlanLastWorkOrder")
+  accessCredentials AccessCredential[]
 
   @@index([tenantId, buildingId, status], map: "work_order_tenant_id_building_id_status_idx")
   @@index([buildingId], map: "work_order_building_id_idx")

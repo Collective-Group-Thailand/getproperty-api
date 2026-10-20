@@ -14,7 +14,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (79)
+## Permissions (81)
 | Permission | Surfaces | owner | manager | staff | accountant | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View the tenant profile and company data |
@@ -72,6 +72,8 @@
 | `service_category.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Repair categories and their SLA hours (D-072) |
 | `maintenance_plan.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Preventive maintenance plans of equipment (B5.1) |
 | `parcel.manage` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  | Record parcels and pick-ups |
+| `access.read` | owner | ✓ | ✓ |  |  |  |  |  |  | Locks, credentials and the unlock log of my buildings (D-070, D-025) |
+| `access.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Register locks, issue visitor / staff codes, revoke credentials with a reason (D-070, D-071) |
 | `announcement.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Post announcements |
 | `notification.route.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Configure which resident-facing events notify through which channels (B1.3 routing matrix) |
 | `privacy.manage` | owner | ✓ |  |  |  |  |  |  |  | Handle data subject requests as controller and record paper consents (D-025) |

@@ -1,0 +1,199 @@
+// B5.2 — access control: locks, credentials, unlock events (migration 0028; schema-design v2 §3.4.4, D-070, D-071).
+
+enum LockVendor {
+  ttlock
+  tuya
+  hikvision
+  zkteco
+  other
+
+  @@map("lock_vendor")
+  @@schema("smart")
+}
+
+enum LockScope {
+  unit
+  building_door
+  common_area
+
+  @@map("lock_scope")
+  @@schema("smart")
+}
+
+enum AccessHolderKind {
+  resident
+  staff
+  visitor
+  owner
+  technician
+
+  @@map("access_holder_kind")
+  @@schema("smart")
+}
+
+enum CredentialType {
+  app
+  pin
+  card
+  fingerprint
+  face
+  qr
+
+  @@map("credential_type")
+  @@schema("smart")
+}
+
+enum CredentialStatus {
+  pending
+  active
+  revoked
+  expired
+  failed
+
+  @@map("credential_status")
+  @@schema("smart")
+}
+
+enum AccessResult {
+  success
+  denied
+  error
+
+  @@map("access_result")
+  @@schema("smart")
+}
+
+enum AccessSource {
+  app
+  pin
+  card
+  remote
+  vendor_sync
+  face
+  qr
+  fingerprint
+
+  @@map("access_source")
+  @@schema("smart")
+}
+
+/// A smart lock / door controller (D-070) with its vendor id and place.
+model Lock {
+  id               String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String     @map("tenant_id") @db.Uuid
+  buildingId       String     @map("building_id") @db.Uuid
+  unitId           String?    @map("unit_id") @db.Uuid
+  deviceId         String     @unique(map: "lock_device_id_key") @map("device_id") @db.Uuid
+  assetItemId      String     @unique(map: "lock_asset_item_id_key") @map("asset_item_id") @db.Uuid
+  scope            LockScope
+  vendor           LockVendor
+  vendorLockId     String     @map("vendor_lock_id")
+  name             String
+  batteryPct       Int?       @map("battery_pct") @db.SmallInt
+  batteryCheckedAt DateTime?  @map("battery_checked_at") @db.Timestamptz(6)
+  batteryLowSince  DateTime?  @map("battery_low_since") @db.Timestamptz(6)
+  online           Boolean?
+  lastLogSyncAt    DateTime?  @map("last_log_sync_at") @db.Timestamptz(6)
+  isActive         Boolean    @default(true) @map("is_active")
+  version          Int        @default(1)
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?    @map("created_by") @db.Uuid
+  updatedAt        DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy        String?    @map("updated_by") @db.Uuid
+
+  tenant      Tenant             @relation("LockTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lock_tenant_id_fkey")
+  building    Building           @relation("LockBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lock_building_id_fkey")
+  unit        Unit?              @relation("LockUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lock_unit_id_fkey")
+  device      Device             @relation(fields: [deviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lock_device_id_fkey")
+  assetItem   AssetItem          @relation("LockAssetItem", fields: [assetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lock_asset_item_id_fkey")
+  credentials AccessCredential[]
+
+  @@unique([vendor, vendorLockId], map: "lock_vendor_vendor_lock_id_key")
+  @@index([tenantId, buildingId], map: "lock_tenant_id_building_id_idx")
+  @@index([buildingId], map: "lock_building_id_idx")
+  @@index([unitId], map: "lock_unit_id_idx")
+  @@map("lock")
+  @@schema("smart")
+}
+
+/// Access credentials (D-070, D-071): residents follow the lease; staff, technicians and visitors are time-boxed.
+model AccessCredential {
+  id                  String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String           @map("tenant_id") @db.Uuid
+  buildingId          String           @map("building_id") @db.Uuid
+  unitId              String?          @map("unit_id") @db.Uuid
+  lockId              String           @map("lock_id") @db.Uuid
+  deviceId            String           @map("device_id") @db.Uuid
+  holderKind          AccessHolderKind @map("holder_kind")
+  holderPartyId       String?          @map("holder_party_id") @db.Uuid
+  holderUserId        String?          @map("holder_user_id") @db.Uuid
+  holderName          String           @map("holder_name")
+  leaseId             String?          @map("lease_id") @db.Uuid
+  workOrderId         String?          @map("work_order_id") @db.Uuid
+  type                CredentialType
+  vendor              LockVendor
+  vendorCredentialRef String?          @map("vendor_credential_ref")
+  pinEnc              Bytes?           @map("pin_enc")
+  validFrom           DateTime         @map("valid_from") @db.Timestamptz(6)
+  validTo             DateTime?        @map("valid_to") @db.Timestamptz(6)
+  status              CredentialStatus @default(pending)
+  vendorSyncedAt      DateTime?        @map("vendor_synced_at") @db.Timestamptz(6)
+  vendorError         String?          @map("vendor_error")
+  revokedAt           DateTime?        @map("revoked_at") @db.Timestamptz(6)
+  revokedBy           String?          @map("revoked_by") @db.Uuid
+  revokeReason        String?          @map("revoke_reason")
+  version             Int              @default(1)
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy           String?          @map("created_by") @db.Uuid
+  updatedAt           DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy           String?          @map("updated_by") @db.Uuid
+
+  tenant      Tenant       @relation("AccessCredentialTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "access_credential_tenant_id_fkey")
+  building    Building     @relation("AccessCredentialBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "access_credential_building_id_fkey")
+  unit        Unit?        @relation("AccessCredentialUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "access_credential_unit_id_fkey")
+  lock        Lock         @relation(fields: [lockId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "access_credential_lock_id_fkey")
+  device      Device       @relation("AccessCredentialDevice", fields: [deviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "access_credential_device_id_fkey")
+  holderParty Party?       @relation("AccessCredentialHolderParty", fields: [holderPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "access_credential_holder_party_id_fkey")
+  holderUser  UserAccount? @relation("AccessCredentialHolderUser", fields: [holderUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "access_credential_holder_user_id_fkey")
+  lease       Lease?       @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "access_credential_lease_id_fkey")
+  workOrder   WorkOrder?   @relation(fields: [workOrderId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "access_credential_work_order_id_fkey")
+
+  @@index([deviceId, status], map: "access_credential_device_id_status_idx")
+  @@index([leaseId], map: "access_credential_lease_id_idx")
+  @@index([workOrderId], map: "access_credential_work_order_id_idx")
+  @@index([lockId], map: "access_credential_lock_id_idx")
+  @@index([tenantId, buildingId, status], map: "access_credential_tenant_id_building_id_status_idx")
+  @@index([buildingId], map: "access_credential_building_id_idx")
+  @@index([unitId], map: "access_credential_unit_id_idx")
+  @@index([holderPartyId], map: "access_credential_holder_party_id_idx")
+  @@index([holderUserId], map: "access_credential_holder_user_id_idx")
+  @@map("access_credential")
+  @@schema("smart")
+}
+
+/// Unlock events (D-070); monthly range partitions (D-162), no FKs on the write path.
+model AccessEvent {
+  id            String       @default(dbgenerated("uuidv7()")) @db.Uuid
+  time          DateTime     @db.Timestamptz(6)
+  receivedAt    DateTime     @default(now()) @map("received_at") @db.Timestamptz(6)
+  tenantId      String       @map("tenant_id") @db.Uuid
+  buildingId    String       @map("building_id") @db.Uuid
+  unitId        String?      @map("unit_id") @db.Uuid
+  lockId        String       @map("lock_id") @db.Uuid
+  deviceId      String       @map("device_id") @db.Uuid
+  credentialId  String?      @map("credential_id") @db.Uuid
+  holderPartyId String?      @map("holder_party_id") @db.Uuid
+  result        AccessResult
+  source        AccessSource
+  vendorEventId String?      @map("vendor_event_id")
+  detail        Json?
+
+  @@id([id, time], map: "access_event_pkey")
+  @@unique([deviceId, vendorEventId, time], map: "access_event_device_id_vendor_event_id_time_key")
+  @@index([deviceId, time(sort: Desc)], map: "access_event_device_id_time_idx")
+  @@index([unitId, time(sort: Desc)], map: "access_event_unit_id_time_idx")
+  @@index([tenantId, buildingId, time(sort: Desc)], map: "access_event_tenant_id_building_id_time_idx")
+  @@index([credentialId], map: "access_event_credential_id_idx")
+  @@map("access_event")
+  @@schema("smart")
+}

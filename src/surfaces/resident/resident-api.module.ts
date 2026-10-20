@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { ResidentAccessController } from '../owner/access.controller';
 import { ResidentInvoicesController } from '../owner/billing.controller';
 import { ResidentDepositsController, ResidentUploadsController } from '../owner/deposits.controller';
 import { ResidentInvoiceDocumentsController } from '../owner/documents.controller';
@@ -37,6 +38,7 @@ import {
     ResidentDepositsController,
     ResidentUploadsController,
     ResidentServiceRequestsController,
+    ResidentAccessController,
     ResidentInvoicesController,
     ResidentInvoiceDocumentsController,
     ResidentPaymentsController,

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { TechnicianAccessController } from '../owner/access.controller';
 import { TechnicianWorkOrdersController } from '../owner/service.controller';
 import { TechnicianMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
@@ -13,6 +14,7 @@ import { systemPingController } from '../system-ping.controller';
     systemPingController(SURFACES.technician),
     TechnicianMeController,
     TechnicianWorkOrdersController,
+    TechnicianAccessController,
     notificationsController(SURFACES.technician),
   ],
   providers: [MeService],

@@ -264,6 +264,8 @@ export const NOTIFICATION_ROUTES: {
     'deposit.settlement_proposed',
     'deposit.refunded',
     'service_request.changed',
+    'access.credential_issued',
+    'access.credential_revoked',
   ].map((eventType) => ({
     eventType,
     audience: 'resident',
@@ -271,6 +273,7 @@ export const NOTIFICATION_ROUTES: {
     urgent: false,
   })),
   { eventType: 'work_order.assigned', audience: 'technician', channel: 'line', urgent: false },
+  { eventType: 'access.credential_issued', audience: 'technician', channel: 'line', urgent: false },
 ];
 
 export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
@@ -401,6 +404,60 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         language: 'en',
         subject: null,
         body: '{{tenant.name}} assigned you "{{workOrder.title}}" at {{workOrder.place}}, scheduled {{workOrder.scheduledAt}} — open it in the technician app (#{{workOrder.ref}})',
+      },
+    ],
+  },
+  {
+    key: 'access.credential_issued',
+    channel: 'line',
+    audience: 'resident',
+    description: 'Door code ready (D-070): the code is shown in the app, never in the message',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}}: รหัสเข้า {{lock.name}} {{lock.unitNo}} พร้อมใช้แล้ว — เปิดดูรหัสได้ในแอป',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}}: your code for {{lock.name}} {{lock.unitNo}} is ready — open the app to see it.',
+      },
+    ],
+  },
+  {
+    key: 'access.credential_issued',
+    channel: 'line',
+    audience: 'technician',
+    description: 'Technician: the time-boxed door code of a work order is ready (D-070)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}}: รหัสเข้า {{lock.name}} {{lock.unitNo}} สำหรับงานของคุณ ใช้ได้ถึง {{credential.validTo}} — ดูรหัสในแอปช่าง',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}}: the code for {{lock.name}} {{lock.unitNo}} for your job is valid until {{credential.validTo}} — see it in the technician app.',
+      },
+    ],
+  },
+  {
+    key: 'access.credential_revoked',
+    channel: 'line',
+    audience: 'resident',
+    description: 'An owner revoked a door code with a reason (D-071)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}} ยกเลิกรหัสเข้า {{lock.name}} {{lock.unitNo}} เหตุผล: {{credential.reason}} — ติดต่อผู้ดูแลอาคารหากมีข้อสงสัย',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}} revoked your code for {{lock.name}} {{lock.unitNo}}. Reason: {{credential.reason}} — contact the building office with any question.',
       },
     ],
   },

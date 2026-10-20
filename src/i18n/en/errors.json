@@ -846,5 +846,17 @@
       "title": "After photo required",
       "detail": "Add at least one photo of the finished work before completing it."
     }
+  },
+  "access": {
+    "invalid_state": {
+      "title": "Credential cannot change",
+      "detail": "The credential is no longer active."
+    }
+  },
+  "lock": {
+    "exists": {
+      "title": "Lock already registered",
+      "detail": "A lock with this vendor id or serial number is already registered."
+    }
   }
 }

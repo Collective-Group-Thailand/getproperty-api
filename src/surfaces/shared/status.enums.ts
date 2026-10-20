@@ -90,6 +90,7 @@ export enum OwnerMenuKey {
   Reports = 'reports',
   UtilityLoss = 'utility_loss',
   ServiceRequests = 'service_requests',
+  Access = 'access',
   Parcels = 'parcels',
   Announcements = 'announcements',
   Members = 'members',

@@ -16,6 +16,8 @@ import { SettlementsService } from '@modules/ops-payments/settlements.service';
 import { ReceivablesService } from '@modules/ops-receivables/receivables.service';
 import { MaintenancePlansService } from '@modules/ops-service/maintenance-plans.service';
 import { SubscriptionsService } from '@modules/platform-subscriptions/subscriptions.service';
+import { AccessCredentialsService } from '@modules/smart-access/access-credentials.service';
+import { LocksService } from '@modules/smart-access/locks.service';
 import { DeviceCommandsService } from '@modules/smart-devices/commands.service';
 import { GatewayConfigService } from '@modules/smart-devices/gateway-config.service';
 import { MeterHealthService } from '@modules/smart-health/meter-health.service';
@@ -52,6 +54,8 @@ export const MAINTENANCE_JOBS = {
   'platform-subscriptions': 3_600_000,
   // B5 operations
   'maintenance-plans': 3_600_000,
+  'access-credentials': 60_000,
+  'lock-sweep': 3_600_000,
 } as const;
 type MaintenanceJob = keyof typeof MAINTENANCE_JOBS;
 
@@ -89,6 +93,8 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly receivables: ReceivablesService,
     private readonly subscriptions: SubscriptionsService,
     private readonly maintenancePlans: MaintenancePlansService,
+    private readonly accessCredentials: AccessCredentialsService,
+    private readonly locks: LocksService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -170,6 +176,12 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'maintenance-plans':
         await this.maintenancePlans.sweep();
+        break;
+      case 'access-credentials':
+        await this.accessCredentials.sweep();
+        break;
+      case 'lock-sweep':
+        await this.locks.sweep();
         break;
       default:
         this.logger.warn(`unknown maintenance job ${job.name}`);
