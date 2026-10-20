@@ -1475,7 +1475,15 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
         throw new DomainException('validation.failed', {
           errors: [{ path: 'moveOutAt', code: 'max', message: 'move-out cannot be in the future' }],
         });
-      await this.close(tx, lease, 'ended', moveOutAt, {});
+      // a termination scheduled for a later date (D-219) closes as `terminated` once the move-out is done
+      const scheduled = Boolean(lease.terminationReasonCode && !lease.terminatedAt);
+      await this.close(
+        tx,
+        lease,
+        scheduled ? 'terminated' : 'ended',
+        moveOutAt,
+        scheduled ? { terminatedAt: now } : {},
+      );
       return this.load(tx, id);
     });
   }
@@ -1610,6 +1618,13 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
     return this.db.tenant(ctx, async (tx) => {
       const fresh = await this.ownLease(tx, ctx, id);
       this.assertStatus(fresh, ['active', 'notice_given', 'ending']);
+      // Review #1 (D-024, D-071, D-176, D-219): a termination effective later is recorded as the lessor's notice; the
+      // lease stays in force — occupancy, unit, door codes and deposit clock untouched — until the hourly lifecycle
+      // sweep starts the move-out on the effective date and the office completes it (then `terminated`).
+      if (input.effectiveDate > this.today()) {
+        await this.scheduleTermination(tx, fresh, input, evidence);
+        return this.load(tx, id);
+      }
       const effective = new Date(`${input.effectiveDate}T00:00:00+07:00`);
       const moveOutAt = effective.getTime() < this.clock.now().getTime() ? effective : this.clock.now();
       await this.close(tx, fresh, 'terminated', moveOutAt, {
@@ -1620,6 +1635,63 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
       });
       return this.load(tx, id);
     });
+  }
+
+  /**
+   * A termination with a future effective date (D-219): the lessor's notice (`notice_given`, `noticeBy = lessor`, the
+   * ground, the effective date and the evidence) plus the termination ground kept for the close; `terminatedAt` stays
+   * empty until the move-out completes. A lease already in its move-out phase keeps `ending`.
+   */
+  private async scheduleTermination(
+    tx: Tx,
+    lease: LeaseRow,
+    input: { reasonCode: string; effectiveDate: string; notes?: string | null },
+    evidence: string[],
+  ): Promise<void> {
+    const now = this.clock.now();
+    const endDate = lease.endDate.toISOString().slice(0, 10);
+    if (input.effectiveDate > endDate)
+      throw new DomainException('validation.failed', {
+        errors: [
+          {
+            path: 'effectiveDate',
+            code: 'range',
+            message: `a termination takes effect at the latest at the end of the lease (${endDate})`,
+          },
+        ],
+      });
+    await tx.lease.update({
+      where: { id: lease.id },
+      data: {
+        ...(lease.status === 'ending' ? {} : { status: 'notice_given' as const }),
+        noticeGivenAt: now,
+        noticeBy: 'lessor',
+        noticeReasonCode: input.reasonCode,
+        noticeEffectiveDate: new Date(input.effectiveDate),
+        noticeEvidenceDocumentIds: evidence,
+        terminationReasonCode: input.reasonCode,
+        terminationNotes: input.notes ?? null,
+        terminationEvidenceDocumentIds: evidence,
+        updatedBy: by(),
+        version: { increment: 1 },
+      },
+    });
+    const data = {
+      by: 'lessor',
+      noticeDate: this.today(),
+      effectiveDate: input.effectiveDate,
+      reasonCode: input.reasonCode,
+      termination: true,
+    };
+    await this.audit.record(tx, {
+      action: 'lease.termination_scheduled',
+      tenantId: lease.tenantId,
+      buildingId: lease.buildingId,
+      subjectType: 'ops.lease',
+      subjectId: lease.id,
+      metadata: data,
+    });
+    await this.history(tx, lease, 'notice_given', data, 'lease.notice_given');
   }
 
   /** Renewal = a new draft from the old lease, starting the day after it ends (no renewal fee, D-020). */

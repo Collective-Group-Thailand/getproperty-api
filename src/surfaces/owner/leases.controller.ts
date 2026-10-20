@@ -612,8 +612,8 @@ export class OwnerLeasesController {
     id: 'owner.leases.terminate',
     summary: 'Terminate the lease',
     description:
-      'With a ground and evidence (D-020): the lessor’s grounds need their notice period and the written notice on file (`compliance.termination_notice`); `lessee_notice` closes a lease the lessee gave notice for. Occupancies close, the unit becomes vacant, the deposit settlement opens (D-023). Never cuts power or access (D-024).',
-    implements: ['D-020', 'D-023', 'D-024'],
+      'With a ground and evidence (D-020): the lessor’s grounds need their notice period and the written notice on file (`compliance.termination_notice`); `lessee_notice` closes a lease the lessee gave notice for. **An `effectiveDate` after today records the lessor’s notice** (`200`, status `notice_given` — or still `ending` — with `notice.by = lessor`, the ground and the effective date): the lease, its occupancy, the unit and the resident’s door codes stay as they are until the hourly lifecycle sweep starts the move-out on that date; completing the move-out then closes it as `terminated` (D-219). An `effectiveDate` of today or earlier closes it now: occupancies close, the unit becomes vacant, the deposit settlement opens (D-023) and the resident’s door codes end with the lease (D-071, D-211). Never cuts power, and access never ends for arrears (D-024).',
+    implements: ['D-020', 'D-023', 'D-024', 'D-071', 'D-219'],
   })
   @ApiCompliance('compliance.termination_notice')
   @ApiJsonBody(TerminateLeaseDto, {
@@ -622,7 +622,7 @@ export class OwnerLeasesController {
     evidenceDocumentIds: [FAKE.uuid],
   })
   @ApiSuccess(200, {
-    description: 'Terminated',
+    description: 'Terminated (effective today or earlier), or the lessor’s notice recorded (effective later)',
     type: LeaseDto,
     example: { ...LEASE_EXAMPLE, status: 'terminated' },
   })

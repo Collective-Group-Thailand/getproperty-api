@@ -96,6 +96,7 @@ export const AUDIT_ACTIONS = [
   'lease.notice_given',
   'lease.ended',
   'lease.terminated',
+  'lease.termination_scheduled',
   'lease.cancelled',
   'lease.renewed',
   'lease.invitation_created',
