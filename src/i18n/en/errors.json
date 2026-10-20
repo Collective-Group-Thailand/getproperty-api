@@ -826,5 +826,25 @@
       "title": "Not a field engineer",
       "detail": "Assign the order to a platform user with the field engineer role."
     }
+  },
+  "service_request": {
+    "invalid_state": {
+      "title": "Request cannot change",
+      "detail": "The repair request is not in a state that allows this action."
+    },
+    "in_warranty": {
+      "title": "Referred to the warranty",
+      "detail": "This request is inside the developer warranty and was referred to them; it cannot get a work order of the building."
+    }
+  },
+  "work_order": {
+    "invalid_state": {
+      "title": "Work order cannot change",
+      "detail": "The work order is not in a state that allows this action."
+    },
+    "photo_required": {
+      "title": "After photo required",
+      "detail": "Add at least one photo of the finished work before completing it."
+    }
   }
 }

@@ -466,7 +466,7 @@ export class FinanceExports implements OnModuleInit {
     const rows: IncomeExpenseExport[] = [];
     for (const b of buildings) {
       const scope = { tenantId: job.tenantId, buildingId: b.id };
-      const [billed, received, utility] = await Promise.all([
+      const [billed, received, utility, work] = await Promise.all([
         tx.invoice.aggregate({
           where: { ...scope, issuedAt: { gte: from, lt: to }, status: { not: 'void' } },
           _sum: { total: true },
@@ -483,6 +483,11 @@ export class FinanceExports implements OnModuleInit {
           },
           _sum: { amount: true },
         }),
+        // B5.1: costs of the work orders completed in the month (done or verified, never cancelled)
+        tx.workOrder.aggregate({
+          where: { ...scope, status: { in: ['done', 'verified'] }, completedAt: { gte: from, lt: to } },
+          _sum: { costTotal: true },
+        }),
       ]);
       const util = (k: 'electric' | 'water') => m2(utility.find((u) => u.utility === k)?._sum.amount ?? 0);
       rows.push({
@@ -491,8 +496,7 @@ export class FinanceExports implements OnModuleInit {
         received: m2(received._sum.amount ?? 0),
         electricity: util('electric'),
         water: util('water'),
-        // work-order costs arrive with B5 (service requests & work orders)
-        workOrders: '0.00',
+        workOrders: m2(work._sum.costTotal ?? 0),
       });
     }
     return this.xlsx(

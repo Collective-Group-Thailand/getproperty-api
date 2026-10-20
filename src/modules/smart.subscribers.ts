@@ -2,7 +2,7 @@ import { type DomainEventEnvelope } from '@core/events/domain-events';
 import { type EventSubscriber, EventSubscriberRegistry } from '@core/events/subscribers';
 import { type Tx } from '@database/prisma.service';
 import { type ReadingQuality } from '@generated/prisma/client';
-import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
+import { Injectable, type OnModuleInit } from '@nestjs/common';
 
 import { InspectionsService } from './ops-deposits/inspections.service';
 import { DeviceCommandsService } from './smart-devices/commands.service';
@@ -114,31 +114,6 @@ export class LossRecomputeSubscriber implements EventSubscriber, OnModuleInit {
 
   async afterCommit(event: DomainEventEnvelope): Promise<void> {
     await this.loss.recomputeFor(event.payload.utilityInvoiceId as string);
-  }
-}
-
-/**
- * `service.auto_request_requested` (silent meter, D-034): the service-request module lands in B5 and will consume
- * these events from the outbox (they stay consumable); until then the request is logged.
- */
-@Injectable()
-export class AutoServiceRequestSubscriber implements EventSubscriber, OnModuleInit {
-  private readonly logger = new Logger(AutoServiceRequestSubscriber.name);
-  readonly name = 'auto-service-request-log';
-  readonly eventTypes = ['service.auto_request_requested'] as const;
-
-  constructor(private readonly registry: EventSubscriberRegistry) {}
-
-  onModuleInit(): void {
-    this.registry.register(this);
-  }
-
-  async handle(event: DomainEventEnvelope): Promise<void> {
-    this.logger.warn(
-      { event: 'auto_service_request', assetItemId: event.payload.assetItemId, reason: event.payload.reason },
-      'service request wanted (B5 pending)',
-    );
-    return Promise.resolve();
   }
 }
 

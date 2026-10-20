@@ -6,6 +6,7 @@ import { ResidentInvoiceDocumentsController } from '../owner/documents.controlle
 import { ResidentInvitationsController, ResidentLeasesController } from '../owner/leases.controller';
 import { ResidentPrivacyController } from '../owner/parties.controller';
 import { ResidentPaymentsController } from '../owner/payments.controller';
+import { ResidentServiceRequestsController } from '../owner/service.controller';
 import { ResidentUsageController } from '../owner/smart.controller';
 import { ResidentLinkController, ResidentMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
@@ -22,7 +23,7 @@ import {
   ResidentNotificationPreferencesController,
 } from './resident-profile.controller';
 
-/** `/v1/resident/*` (contract §2): LIFF — me, consents, PDPA requests, inbox, realtime (B1.3); privacy (B2.2); leases, e-signature, notice, invitations (B2.3); deposits (B2.4); invoices (B4.2); payments, slips, receipts (B4.4). */
+/** `/v1/resident/*` (contract §2): LIFF — me, consents, PDPA requests, inbox, realtime (B1.3); privacy (B2.2); leases, e-signature, notice, invitations (B2.3); deposits (B2.4); invoices (B4.2); payments, slips, receipts (B4.4); service requests (B5.1). */
 @Module({
   controllers: [
     systemPingController(SURFACES.resident),
@@ -35,6 +36,7 @@ import {
     ResidentInvitationsController,
     ResidentDepositsController,
     ResidentUploadsController,
+    ResidentServiceRequestsController,
     ResidentInvoicesController,
     ResidentInvoiceDocumentsController,
     ResidentPaymentsController,

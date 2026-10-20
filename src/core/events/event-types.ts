@@ -188,6 +188,20 @@ export const DOMAIN_EVENT_TYPES = {
   'install_order.changed': 'A platform install order changed state (D-081).',
   'site_survey.requested': 'An owner asked for a site survey to upgrade to Smart (D-156).',
   'haas_asset.changed': 'A platform-owned device at a tenant changed state in the HaaS register (D-081).',
+  // B5.1 service requests & work orders (D-072, D-034, D-153)
+  'service_request.created':
+    'A repair request was reported (resident, staff, owner or system); its SLA clock started (D-072, D-159).',
+  'service_request.changed':
+    'A repair request changed state (triaged, assigned, in progress, done, closed …).',
+  'service_request.rated': 'The resident rated a done repair request; the rating closed it (D-072).',
+  'service_request.warranty_referred':
+    'A request inside a getbuild warranty was referred to the developer instead of the building technician (D-153).',
+  'work_order.created': 'A work order was opened (repair, preventive, install, de-install, inspection).',
+  'work_order.assigned': 'A work order was assigned to a staff member or an external technician.',
+  'work_order.changed':
+    'A work order changed state (accepted, in progress, waiting for parts, verified, cancelled).',
+  'work_order.completed': 'The assignee completed a work order with after photos (D-072).',
+  'work_order.cost_changed': 'Parts / labour of a work order changed (B4.5 expenses).',
 } as const;
 export type DomainEventType = keyof typeof DOMAIN_EVENT_TYPES;
 

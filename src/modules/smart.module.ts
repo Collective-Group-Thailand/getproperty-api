@@ -3,7 +3,6 @@ import { Global, Module } from '@nestjs/common';
 import { IngestService } from './ingest/ingest.service';
 import { InvoiceBilledUnits } from './ops-billing/invoice-billed-units';
 import {
-  AutoServiceRequestSubscriber,
   DeviceCommandSubscriber,
   GatewayConfigSubscriber,
   InspectionReadingsHook,
@@ -60,7 +59,6 @@ const SERVICES = [
     GatewayConfigSubscriber,
     DeviceCommandSubscriber,
     LossRecomputeSubscriber,
-    AutoServiceRequestSubscriber,
     InspectionReadingsHook,
     LossReportExportBuilder,
   ],

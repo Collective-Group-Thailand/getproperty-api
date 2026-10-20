@@ -6,7 +6,7 @@
 export interface TemplateSeed {
   key: string;
   channel: 'line' | 'sms' | 'email' | 'in_app' | 'web_push';
-  audience: 'resident' | 'owner';
+  audience: 'resident' | 'owner' | 'technician';
   description: string;
   versions: {
     language: 'th' | 'en';
@@ -184,6 +184,30 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
       '{{tenant.name}} asks for {{request.count}} meter reading(s) for billing period {{request.periodKey}} — see the reading round.',
     ],
   },
+  {
+    key: 'service_request.created',
+    description: 'Operators: a repair request was reported (resident, staff or automatic, D-072, D-034)',
+    th: [
+      'มีงานแจ้งซ่อมใหม่',
+      '{{tenant.name}}: แจ้งซ่อม {{request.category}} ที่ {{request.unitNo}} — {{request.description}} (#{{request.ref}})',
+    ],
+    en: [
+      'New repair request',
+      '{{tenant.name}}: {{request.categoryEn}} at {{request.unitNo}} — {{request.description}} (#{{request.ref}})',
+    ],
+  },
+  {
+    key: 'work_order.assigned',
+    description: 'Staff: a work order was assigned to me (D-072)',
+    th: [
+      'มีใบสั่งงานใหม่',
+      '{{tenant.name}} มอบหมายงาน "{{workOrder.title}}" ที่ {{workOrder.place}} นัดหมาย {{workOrder.scheduledAt}} (#{{workOrder.ref}})',
+    ],
+    en: [
+      'New work order',
+      '{{tenant.name}} assigned you "{{workOrder.title}}" at {{workOrder.place}}, scheduled {{workOrder.scheduledAt}} (#{{workOrder.ref}})',
+    ],
+  },
 ];
 
 /** Operator audiences per event: workflow → owner + manager; device/meter health → owner + manager + staff. */
@@ -193,7 +217,9 @@ const operatorAudiences = (key: string): string[] =>
     : key.startsWith('meter.') ||
         key.startsWith('device.') ||
         key === 'billing_cycle.readings_requested' ||
-        key === 'reading.requested'
+        key === 'reading.requested' ||
+        key === 'service_request.created' ||
+        key === 'work_order.assigned'
       ? ['owner', 'manager', 'staff']
       : ['owner'];
 
@@ -237,12 +263,14 @@ export const NOTIFICATION_ROUTES: {
     'receipt.issued',
     'deposit.settlement_proposed',
     'deposit.refunded',
+    'service_request.changed',
   ].map((eventType) => ({
     eventType,
     audience: 'resident',
     channel: 'line',
     urgent: false,
   })),
+  { eventType: 'work_order.assigned', audience: 'technician', channel: 'line', urgent: false },
 ];
 
 export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
@@ -338,6 +366,42 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         body: '{{tenant.name}} refunded {{settlement.refundAmount}} THB of your deposit — statement {{settlement.statementNumber}}.',
       },
       ...flexVersions(),
+    ],
+  },
+  {
+    key: 'service_request.changed',
+    channel: 'line',
+    audience: 'resident',
+    description: 'Repair request status changed (D-072); the resident rates it once done',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'งานแจ้งซ่อม #{{request.ref}} ({{request.category}} ห้อง {{request.unitNo}}): {{request.statusTh}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'Repair request #{{request.ref}} ({{request.categoryEn}}, unit {{request.unitNo}}): {{request.statusEn}}',
+      },
+    ],
+  },
+  {
+    key: 'work_order.assigned',
+    channel: 'line',
+    audience: 'technician',
+    description: 'Technician: a work order was assigned — open it in the technician app (D-072, D-154)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}} มอบหมายงาน "{{workOrder.title}}" ที่ {{workOrder.place}} นัดหมาย {{workOrder.scheduledAt}} — เปิดในแอปช่าง (#{{workOrder.ref}})',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}} assigned you "{{workOrder.title}}" at {{workOrder.place}}, scheduled {{workOrder.scheduledAt}} — open it in the technician app (#{{workOrder.ref}})',
+      },
     ],
   },
   ...operatorTemplates(),

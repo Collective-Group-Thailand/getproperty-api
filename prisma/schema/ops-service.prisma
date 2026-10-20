@@ -1,0 +1,277 @@
+// B5.1 — service requests, work orders, cost lines, preventive maintenance (migration 0027; schema-design v2 §3.3.9).
+
+enum ServiceReporterKind {
+  resident
+  staff
+  owner
+  system
+
+  @@map("service_reporter_kind")
+  @@schema("ops")
+}
+
+enum ServicePriority {
+  low
+  normal
+  high
+  urgent
+
+  @@map("service_priority")
+  @@schema("ops")
+}
+
+enum ServiceRequestStatus {
+  new
+  triaged
+  assigned
+  in_progress
+  waiting_parts
+  done
+  closed
+  cancelled
+
+  @@map("service_request_status")
+  @@schema("ops")
+}
+
+enum WorkOrderKind {
+  repair
+  preventive
+  install
+  deinstall
+  inspection
+
+  @@map("work_order_kind")
+  @@schema("ops")
+}
+
+enum WorkOrderStatus {
+  open
+  assigned
+  accepted
+  in_progress
+  done
+  verified
+  cancelled
+
+  @@map("work_order_status")
+  @@schema("ops")
+}
+
+enum WorkOrderCostKind {
+  part
+  labour
+  travel
+  other
+
+  @@map("work_order_cost_kind")
+  @@schema("ops")
+}
+
+/// Repair categories with default SLA hours (D-072); tenant_id NULL = platform default.
+model ServiceCategory {
+  id              String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String?   @map("tenant_id") @db.Uuid
+  key             String
+  nameTh          String    @map("name_th")
+  nameEn          String    @map("name_en")
+  defaultSlaHours Int       @map("default_sla_hours")
+  sortOrder       Int       @default(0) @map("sort_order") @db.SmallInt
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy       String?   @map("created_by") @db.Uuid
+  updatedAt       DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy       String?   @map("updated_by") @db.Uuid
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy       String?   @map("deleted_by") @db.Uuid
+
+  tenant           Tenant?           @relation("ServiceCategoryTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_category_tenant_id_fkey")
+  requests         ServiceRequest[]
+  maintenancePlans MaintenancePlan[]
+
+  @@unique([tenantId, key], map: "service_category_tenant_id_key_key")
+  @@map("service_category")
+  @@schema("ops")
+}
+
+/// A repair request (D-072); photos in platform.attachment, SLA on the workflow engine (D-159).
+model ServiceRequest {
+  id                         String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                   String               @map("tenant_id") @db.Uuid
+  buildingId                 String               @map("building_id") @db.Uuid
+  unitId                     String?              @map("unit_id") @db.Uuid
+  assetItemId                String?              @map("asset_item_id") @db.Uuid
+  requesterPartyId           String?              @map("requester_party_id") @db.Uuid
+  reporterKind               ServiceReporterKind  @map("reporter_kind")
+  reporterUserId             String?              @map("reporter_user_id") @db.Uuid
+  categoryId                 String               @map("category_id") @db.Uuid
+  description                String
+  priority                   ServicePriority      @default(normal)
+  status                     ServiceRequestStatus @default(new)
+  slaHours                   Int                  @map("sla_hours")
+  workflowInstanceId         String?              @map("workflow_instance_id") @db.Uuid
+  inWarranty                 Boolean              @default(false) @map("in_warranty")
+  warrantyIntegrationEventId String?              @map("warranty_integration_event_id") @db.Uuid
+  warrantyResolution         String?              @map("warranty_resolution")
+  sourceDeviceEventId        String?              @map("source_device_event_id") @db.Uuid
+  autoReason                 String?              @map("auto_reason")
+  triagedAt                  DateTime?            @map("triaged_at") @db.Timestamptz(6)
+  doneAt                     DateTime?            @map("done_at") @db.Timestamptz(6)
+  closedAt                   DateTime?            @map("closed_at") @db.Timestamptz(6)
+  cancelledAt                DateTime?            @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason               String?              @map("cancel_reason")
+  rating                     Int?                 @db.SmallInt
+  ratingComment              String?              @map("rating_comment")
+  ratedAt                    DateTime?            @map("rated_at") @db.Timestamptz(6)
+  version                    Int                  @default(1)
+  createdAt                  DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                  String?              @map("created_by") @db.Uuid
+  updatedAt                  DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy                  String?              @map("updated_by") @db.Uuid
+
+  tenant           Tenant            @relation("ServiceRequestTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_request_tenant_id_fkey")
+  building         Building          @relation("ServiceRequestBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_request_building_id_fkey")
+  unit             Unit?             @relation("ServiceRequestUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_request_unit_id_fkey")
+  assetItem        AssetItem?        @relation("ServiceRequestAssetItem", fields: [assetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_request_asset_item_id_fkey")
+  requester        Party?            @relation("ServiceRequestRequester", fields: [requesterPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_request_requester_party_id_fkey")
+  category         ServiceCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_request_category_id_fkey")
+  workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_request_workflow_instance_id_fkey")
+  workOrders       WorkOrder[]
+
+  @@index([tenantId, buildingId, status], map: "service_request_tenant_id_building_id_status_idx")
+  @@index([buildingId], map: "service_request_building_id_idx")
+  @@index([unitId], map: "service_request_unit_id_idx")
+  @@index([assetItemId, createdAt], map: "service_request_asset_item_id_created_at_idx")
+  @@index([requesterPartyId], map: "service_request_requester_party_id_idx")
+  @@index([categoryId], map: "service_request_category_id_idx")
+  @@index([workflowInstanceId], map: "service_request_workflow_instance_id_idx")
+  @@map("service_request")
+  @@schema("ops")
+}
+
+/// Work on a request, an asset item or a unit (D-072); assigned to a staff login or a technician party.
+model WorkOrder {
+  id                 String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String          @map("tenant_id") @db.Uuid
+  buildingId         String          @map("building_id") @db.Uuid
+  serviceRequestId   String?         @map("service_request_id") @db.Uuid
+  assetItemId        String?         @map("asset_item_id") @db.Uuid
+  unitId             String?         @map("unit_id") @db.Uuid
+  maintenancePlanId  String?         @map("maintenance_plan_id") @db.Uuid
+  kind               WorkOrderKind
+  title              String
+  description        String?
+  priority           ServicePriority @default(normal)
+  assigneePartyId    String?         @map("assignee_party_id") @db.Uuid
+  assigneeUserId     String?         @map("assignee_user_id") @db.Uuid
+  scheduledAt        DateTime?       @map("scheduled_at") @db.Timestamptz(6)
+  scheduledUntil     DateTime?       @map("scheduled_until") @db.Timestamptz(6)
+  status             WorkOrderStatus @default(open)
+  assignedAt         DateTime?       @map("assigned_at") @db.Timestamptz(6)
+  acceptedAt         DateTime?       @map("accepted_at") @db.Timestamptz(6)
+  checkedInAt        DateTime?       @map("checked_in_at") @db.Timestamptz(6)
+  completedAt        DateTime?       @map("completed_at") @db.Timestamptz(6)
+  verifiedAt         DateTime?       @map("verified_at") @db.Timestamptz(6)
+  cancelledAt        DateTime?       @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason       String?         @map("cancel_reason")
+  completionNote     String?         @map("completion_note")
+  costTotal          Decimal         @default(0) @map("cost_total") @db.Decimal(14, 2)
+  procurementRef     String?         @map("procurement_ref")
+  workflowInstanceId String?         @map("workflow_instance_id") @db.Uuid
+  version            Int             @default(1)
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          String?         @map("created_by") @db.Uuid
+  updatedAt          DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy          String?         @map("updated_by") @db.Uuid
+
+  tenant           Tenant             @relation("WorkOrderTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "work_order_tenant_id_fkey")
+  building         Building           @relation("WorkOrderBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "work_order_building_id_fkey")
+  serviceRequest   ServiceRequest?    @relation(fields: [serviceRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "work_order_service_request_id_fkey")
+  assetItem        AssetItem?         @relation("WorkOrderAssetItem", fields: [assetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "work_order_asset_item_id_fkey")
+  unit             Unit?              @relation("WorkOrderUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "work_order_unit_id_fkey")
+  maintenancePlan  MaintenancePlan?   @relation("WorkOrderMaintenancePlan", fields: [maintenancePlanId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "work_order_maintenance_plan_id_fkey")
+  assigneeParty    Party?             @relation("WorkOrderAssigneeParty", fields: [assigneePartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "work_order_assignee_party_id_fkey")
+  assigneeUser     UserAccount?       @relation("WorkOrderAssigneeUser", fields: [assigneeUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "work_order_assignee_user_id_fkey")
+  workflowInstance WorkflowInstance?  @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "work_order_workflow_instance_id_fkey")
+  costLines        WorkOrderCostLine[]
+  lastOfPlans      MaintenancePlan[]  @relation("MaintenancePlanLastWorkOrder")
+
+  @@index([tenantId, buildingId, status], map: "work_order_tenant_id_building_id_status_idx")
+  @@index([buildingId], map: "work_order_building_id_idx")
+  @@index([assigneePartyId, status], map: "work_order_assignee_party_id_status_idx")
+  @@index([assigneeUserId, status], map: "work_order_assignee_user_id_status_idx")
+  @@index([serviceRequestId], map: "work_order_service_request_id_idx")
+  @@index([assetItemId], map: "work_order_asset_item_id_idx")
+  @@index([unitId], map: "work_order_unit_id_idx")
+  @@index([maintenancePlanId], map: "work_order_maintenance_plan_id_idx")
+  @@index([tenantId, completedAt], map: "work_order_tenant_id_completed_at_idx")
+  @@map("work_order")
+  @@schema("ops")
+}
+
+/// Parts, labour and travel of a work order (B4.5 income & expense).
+model WorkOrderCostLine {
+  id                String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String            @map("tenant_id") @db.Uuid
+  workOrderId       String            @map("work_order_id") @db.Uuid
+  kind              WorkOrderCostKind @default(part)
+  description       String
+  quantity          Decimal           @default(1) @db.Decimal(12, 3)
+  unitPrice         Decimal           @map("unit_price") @db.Decimal(14, 2)
+  amount            Decimal           @db.Decimal(14, 2)
+  vendorPartyId     String?           @map("vendor_party_id") @db.Uuid
+  receiptDocumentId String?           @map("receipt_document_id") @db.Uuid
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?           @map("created_by") @db.Uuid
+  updatedAt         DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?           @map("updated_by") @db.Uuid
+
+  tenant          Tenant    @relation("WorkOrderCostLineTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "work_order_cost_line_tenant_id_fkey")
+  workOrder       WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "work_order_cost_line_work_order_id_fkey")
+  vendor          Party?    @relation("WorkOrderCostLineVendor", fields: [vendorPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "work_order_cost_line_vendor_party_id_fkey")
+  receiptDocument Document? @relation("WorkOrderCostLineReceipt", fields: [receiptDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "work_order_cost_line_receipt_document_id_fkey")
+
+  @@index([workOrderId], map: "work_order_cost_line_work_order_id_idx")
+  @@index([tenantId], map: "work_order_cost_line_tenant_id_idx")
+  @@map("work_order_cost_line")
+  @@schema("ops")
+}
+
+/// Preventive maintenance of an asset item (B5.1): a preventive work order every interval_days.
+model MaintenancePlan {
+  id              String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  buildingId      String    @map("building_id") @db.Uuid
+  assetItemId     String    @map("asset_item_id") @db.Uuid
+  categoryId      String?   @map("category_id") @db.Uuid
+  title           String
+  description     String?
+  intervalDays    Int       @map("interval_days")
+  leadDays        Int       @default(7) @map("lead_days")
+  nextDueOn       DateTime  @map("next_due_on") @db.Date
+  assigneePartyId String?   @map("assignee_party_id") @db.Uuid
+  assigneeUserId  String?   @map("assignee_user_id") @db.Uuid
+  isActive        Boolean   @default(true) @map("is_active")
+  lastWorkOrderId String?   @map("last_work_order_id") @db.Uuid
+  version         Int       @default(1)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy       String?   @map("created_by") @db.Uuid
+  updatedAt       DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy       String?   @map("updated_by") @db.Uuid
+
+  tenant        Tenant           @relation("MaintenancePlanTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "maintenance_plan_tenant_id_fkey")
+  building      Building         @relation("MaintenancePlanBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "maintenance_plan_building_id_fkey")
+  assetItem     AssetItem        @relation("MaintenancePlanAssetItem", fields: [assetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "maintenance_plan_asset_item_id_fkey")
+  category      ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "maintenance_plan_category_id_fkey")
+  assigneeParty Party?           @relation("MaintenancePlanAssigneeParty", fields: [assigneePartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "maintenance_plan_assignee_party_id_fkey")
+  assigneeUser  UserAccount?     @relation("MaintenancePlanAssigneeUser", fields: [assigneeUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "maintenance_plan_assignee_user_id_fkey")
+  lastWorkOrder WorkOrder?       @relation("MaintenancePlanLastWorkOrder", fields: [lastWorkOrderId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "maintenance_plan_last_work_order_id_fkey")
+  workOrders    WorkOrder[]      @relation("WorkOrderMaintenancePlan")
+
+  @@index([tenantId, buildingId], map: "maintenance_plan_tenant_id_building_id_idx")
+  @@index([buildingId], map: "maintenance_plan_building_id_idx")
+  @@index([assetItemId], map: "maintenance_plan_asset_item_id_idx")
+  @@index([nextDueOn], map: "maintenance_plan_next_due_on_idx", where: raw("is_active"))
+  @@map("maintenance_plan")
+  @@schema("ops")
+}

@@ -14,6 +14,7 @@ import { BillingCyclesService } from '@modules/ops-billing/billing-cycles.servic
 import { LeasesService } from '@modules/ops-leases/leases.service';
 import { SettlementsService } from '@modules/ops-payments/settlements.service';
 import { ReceivablesService } from '@modules/ops-receivables/receivables.service';
+import { MaintenancePlansService } from '@modules/ops-service/maintenance-plans.service';
 import { SubscriptionsService } from '@modules/platform-subscriptions/subscriptions.service';
 import { DeviceCommandsService } from '@modules/smart-devices/commands.service';
 import { GatewayConfigService } from '@modules/smart-devices/gateway-config.service';
@@ -49,6 +50,8 @@ export const MAINTENANCE_JOBS = {
   receivables: 3_600_000,
   // B6.1 platform business
   'platform-subscriptions': 3_600_000,
+  // B5 operations
+  'maintenance-plans': 3_600_000,
 } as const;
 type MaintenanceJob = keyof typeof MAINTENANCE_JOBS;
 
@@ -85,6 +88,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly settlements: SettlementsService,
     private readonly receivables: ReceivablesService,
     private readonly subscriptions: SubscriptionsService,
+    private readonly maintenancePlans: MaintenancePlansService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -163,6 +167,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'platform-subscriptions':
         await this.subscriptions.sweep();
+        break;
+      case 'maintenance-plans':
+        await this.maintenancePlans.sweep();
         break;
       default:
         this.logger.warn(`unknown maintenance job ${job.name}`);

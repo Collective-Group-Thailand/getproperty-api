@@ -31,6 +31,7 @@ import {
   STANDARD_TEMPLATE_NAME,
   STANDARD_TEMPLATE_VERSION,
 } from '../../src/modules/ops-leases/contract-template';
+import { DEFAULT_SERVICE_CATEGORIES } from '../../src/modules/ops-service/service-rules';
 import { HOLIDAYS } from './data/holidays';
 import { NOTIFICATION_ROUTES, NOTIFICATION_TEMPLATES } from './data/notifications';
 import { PRICE_PLAN_EFFECTIVE_FROM, PRICE_PLANS } from './data/price-plans';
@@ -107,6 +108,7 @@ export async function runSeed(
   await tx(db, () => seedLeaseTemplates(db));
   await tx(db, () => seedInspectionTemplates(db));
   await tx(db, () => seedPricePlans(db));
+  await tx(db, () => seedServiceCategories(db));
   if (mode === 'dev') await tx(db, () => seedDev(db));
 
   const counts = await countRows(db);
@@ -393,6 +395,17 @@ async function seedPricePlans(db: ClientBase): Promise<void> {
         JSON.stringify(v.terms),
         v.published ? 'published' : 'draft',
       ],
+    );
+  }
+}
+
+/** B5.1 (D-072): the platform default repair categories with their default SLA hours (tenants override per key). */
+async function seedServiceCategories(db: ClientBase): Promise<void> {
+  for (const [i, c] of DEFAULT_SERVICE_CATEGORIES.entries()) {
+    await db.query(
+      `INSERT INTO ops.service_category (tenant_id, key, name_th, name_en, default_sla_hours, sort_order)
+       VALUES (NULL, $1, $2, $3, $4, $5) ON CONFLICT (tenant_id, key) DO NOTHING`,
+      [c.key, c.nameTh, c.nameEn, c.slaHours, (i + 1) * 10],
     );
   }
 }
@@ -711,6 +724,7 @@ async function seedDevDeposit(db: ClientBase): Promise<void> {
 }
 
 const COUNTED_TABLES = [
+  'ops.service_category',
   'platform.role',
   'platform.permission',
   'platform.role_permission',

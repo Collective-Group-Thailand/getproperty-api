@@ -22,6 +22,9 @@ import {
 
 export { specFromRow, specToRow } from './engine';
 
+/** SLA `settingKey`s with this prefix read a number from the instance context instead of a setting. */
+export const CONTEXT_PREFIX = 'context.';
+
 export type WorkflowGuard = (instance: WorkflowInstance, data: Record<string, unknown>) => boolean;
 
 export interface StartInput {
@@ -76,11 +79,24 @@ export class WorkflowService {
     return { row, spec: specFromRow(row) };
   }
 
-  private async settingLookup(spec: WorkflowDefinitionSpec, tenantId: string, at: Date) {
+  /**
+   * SLA values of a definition: settings in force at `at`, or — for `context.<name>` keys — a number stored in the
+   * instance context when it started (e.g. the SLA hours of a service request's category, D-072).
+   */
+  private async settingLookup(
+    spec: WorkflowDefinitionSpec,
+    tenantId: string,
+    at: Date,
+    context: Record<string, unknown> = {},
+  ) {
     const values = new Map<string, number>();
     for (const s of spec.states) {
       const key = s.sla?.settingKey;
       if (key && !values.has(key)) {
+        if (key.startsWith(CONTEXT_PREFIX)) {
+          values.set(key, Number(context[key.slice(CONTEXT_PREFIX.length)]));
+          continue;
+        }
         const v = await this.settings.at(key, at, { tenantId });
         values.set(key, Number(v?.value));
       }
@@ -98,7 +114,7 @@ export class WorkflowService {
       now,
       await this.calendars.calendar(),
       // the SLA settings in force now (when the instance opens), even for a clock started earlier
-      await this.settingLookup(spec, input.tenantId, now),
+      await this.settingLookup(spec, input.tenantId, now, input.context),
       clockStart,
     );
     const instance = await tx.workflowInstance.create({
@@ -141,7 +157,12 @@ export class WorkflowService {
         event,
         now,
         await this.calendars.calendar(),
-        await this.settingLookup(spec, instance.tenantId, now),
+        await this.settingLookup(
+          spec,
+          instance.tenantId,
+          now,
+          (instance.context ?? {}) as Record<string, unknown>,
+        ),
         (name) => {
           const guard = this.guards.get(name);
           return guard ? guard(instance, data) : false;

@@ -12,7 +12,8 @@ export interface FeatureFlagDef {
 export const FEATURE_FLAGS: readonly FeatureFlagDef[] = [
   {
     key: 'module.service_requests',
-    description: 'R2 service requests & work orders (B5.1, D-072); off until the module ships.',
+    description:
+      'R2 service requests & work orders (B5.1, D-072): shows the menu entries per tenant; default off until the tenant starts R2.',
     defaultEnabled: false,
     rolloutPct: 0,
   },

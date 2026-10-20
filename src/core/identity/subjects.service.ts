@@ -25,7 +25,7 @@ export interface Subject {
  * - operator: `tenant:<id>` per active membership, `building:<id>` for Staff limited to buildings; roles and
  *   permissions are listed when the operator has exactly one tenant (otherwise per tenant via `/me`);
  * - resident: `lease:<id>` for each lease of a linked party (after the draft), `unit:<id>` for each current occupancy;
- * - technician: `work_order:<id>` (none until B5);
+ * - technician: `work_order:<id>` of the work orders assigned to a party linked to the login (B5.1);
  * - platform: role keys and their permissions;
  * - device: `device:<id>`, `tenant:<id>`, `building:<id>`.
  */
@@ -105,8 +105,37 @@ export class SubjectService {
     };
   }
 
-  technician(userId: string): Subject {
-    return { id: userId, type: 'user', audience: 'technician', roles: [], permissions: [], scopes: [] };
+  /**
+   * B5.1: `work_order:<id>` for every work order assigned to a party linked to the login, or carrying its LINE id
+   * (the owner entered the technician with their LINE), that is assigned, accepted, in progress or done (not yet
+   * verified or cancelled). Recomputed at every refresh, so a re-assigned work order drops out.
+   */
+  async technician(tx: Tx, userId: string): Promise<Subject> {
+    const user = await tx.userAccount.findUnique({ where: { id: userId }, select: { lineUserId: true } });
+    const orders = await tx.workOrder.findMany({
+      where: {
+        status: { in: ['assigned', 'accepted', 'in_progress', 'done'] },
+        assigneeParty: {
+          deletedAt: null,
+          anonymisedAt: null,
+          OR: [
+            { userLinks: { some: { userId, state: 'active' } } },
+            ...(user?.lineUserId ? [{ lineUserId: user.lineUserId }] : []),
+          ],
+        },
+      },
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+    return {
+      id: userId,
+      type: 'user',
+      audience: 'technician',
+      roles: [],
+      permissions: [],
+      scopes: orders.map((o) => `work_order:${o.id}`),
+    };
   }
 
   async platform(tx: Tx, userId: string): Promise<Subject> {
@@ -161,7 +190,7 @@ export class SubjectService {
       case 'resident':
         return this.resident(tx, user.id);
       case 'technician':
-        return this.technician(user.id);
+        return this.technician(tx, user.id);
       case 'platform': {
         const s = await this.platform(tx, user.id);
         return s.roles.length ? s : null;

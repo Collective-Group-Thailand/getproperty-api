@@ -78,6 +78,8 @@ model WorkflowInstance {
   timers     WorkflowTimer[]
   depositSettlements DepositSettlement[]
   dunningReminders DunningReminder[]
+  serviceRequests  ServiceRequest[]
+  workOrders       WorkOrder[]
 
   @@unique([subjectType, subjectId, definitionId], map: "workflow_instance_subject_type_subject_id_definition_id_key", where: raw("(closed_at IS NULL)"))
   @@index([tenantId, definitionId, state], map: "workflow_instance_tenant_id_definition_id_state_idx")

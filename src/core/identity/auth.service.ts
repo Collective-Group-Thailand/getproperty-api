@@ -431,11 +431,12 @@ export class AuthService {
       }
       if (!user.lineUserId)
         user = await tx.userAccount.update({ where: { id: user.id }, data: { lineUserId: claims.sub } });
-      if (audience === 'resident') await this.linkParties(tx, user, { lineUserId: claims.sub });
+      // parties carrying this LINE id (a lessee, or a technician the owner entered) are linked to the login
+      await this.linkParties(tx, user, { lineUserId: claims.sub });
       const subject =
         audience === 'resident'
           ? await this.subjects.resident(tx, user.id)
-          : this.subjects.technician(user.id);
+          : await this.subjects.technician(tx, user.id);
       return this.issue(tx, subject, ['line'], user);
     });
   }
@@ -455,6 +456,53 @@ export class AuthService {
       // The challenge id lets the link complete the sign-in in another browser; the code stays in the SMS text.
       vars: { link: `${residentUrl}/auth/otp?c={challengeId}` },
     });
+  }
+
+  /**
+   * Technician OTP (B5.1): a code is sent when the phone belongs to an account or to a party an operator entered
+   * (the external technician of a work order); the same answer otherwise (no enumeration).
+   */
+  async technicianOtpRequest(phone: string, language?: string): Promise<OtpRequestResult> {
+    const eligible = await this.db.platform(async (tx) => {
+      if (await this.userByPhone(tx, phone)) return true;
+      return (await tx.party.count({ where: { phoneE164: phone, deletedAt: null, anonymisedAt: null } })) > 0;
+    });
+    return this.otp.request({ purpose: 'technician_login', phone, send: eligible, language });
+  }
+
+  /** Technician OTP verify: the verified phone links the parties carrying it; `technician` tokens with work orders. */
+  async technicianOtpVerify(challengeId: string, code: string): Promise<TokenPair> {
+    const challenge = await this.otp.verify({ challengeId, code, purpose: 'technician_login' });
+    return this.db.platform(async (tx) => {
+      const user = await this.phoneUser(tx, challenge.phoneE164);
+      await this.linkParties(tx, user, { phone: challenge.phoneE164 });
+      return this.issue(tx, await this.subjects.technician(tx, user.id), ['otp'], user);
+    });
+  }
+
+  /** The account of a verified phone (created on first use from the party an operator entered). */
+  private async phoneUser(tx: Tx, phone: string): Promise<UserAccount> {
+    const now = this.clock.now();
+    let user = await this.userByPhone(tx, phone);
+    if (!user) {
+      const party = await tx.party.findFirst({
+        where: { phoneE164: phone, deletedAt: null, anonymisedAt: null },
+        orderBy: { createdAt: 'asc' },
+      });
+      user = await tx.userAccount.create({
+        data: {
+          displayName: party?.displayName ?? maskPhone(phone),
+          phoneE164: phone,
+          phoneHash: this.hasher.phone(phone),
+          phoneVerifiedAt: now,
+          language: party?.language ?? 'th',
+        },
+      });
+    } else if (!user.phoneVerifiedAt) {
+      user = await tx.userAccount.update({ where: { id: user.id }, data: { phoneVerifiedAt: now } });
+    }
+    if (user.status !== 'active') throw new DomainException('auth.account_disabled');
+    return user;
   }
 
   async residentOtpVerify(challengeId: string, code: string): Promise<TokenPair> {
