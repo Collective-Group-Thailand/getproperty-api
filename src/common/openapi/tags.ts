@@ -139,6 +139,17 @@ export const API_TAGS: Record<string, string> = {
   'owner.access':
     'Smart locks (B5.2, D-070, D-071): locks of units and building doors, credentials that follow the lease (never the bill, D-024), time-boxed visitor and staff codes, revocation with a reason, the unlock log (audited, D-025).',
   'resident.access': 'My door codes for my leases and my unit’s unlock log (B5.2, D-070, D-025).',
+  'owner.announcements':
+    'Announcements to the residents of a building (B5.3, D-073): Thai with translations, audience by floor / unit, LINE push, read receipts.',
+  'owner.parcels':
+    'Parcels received at the desk, the resident’s pick-up PIN, hand-over and returns (B5.3, D-073).',
+  'staff.parcels': 'Parcels at the desk of my buildings on the staff PWA (B5.3, D-073, D-090).',
+  'owner.facilities':
+    'Common facilities and their bookings (B5.3, blueprint A1.6): booking policy, weekly quota per unit, approvals; overlaps refused by the database.',
+  'owner.buildingRules':
+    'Versioned building rules with resident acknowledgements (also at lease signing, B2.3) and the building’s contacts (B5.3, D-073).',
+  'resident.community':
+    'Announcements, my parcels with the pick-up PIN, facility bookings, the building rules and contacts in the LIFF (B5.3, D-073).',
   'resident.serviceRequests':
     'Reporting a problem of my unit with photos, following it and rating the repair (B5.1, D-072).',
   'resident.invoices':

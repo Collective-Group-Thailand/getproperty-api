@@ -1,0 +1,285 @@
+// B5.3 — community: announcements, parcels, facilities & bookings, building rules, contacts (migration 0029;
+// schema-design v2 §3.3.9). The booking exclusion constraint lives in the migration SQL (not modelled by Prisma).
+
+enum ParcelStatus {
+  received
+  notified
+  picked_up
+  returned
+
+  @@map("parcel_status")
+  @@schema("ops")
+}
+
+enum PickupConfirmation {
+  resident_pin
+  staff
+
+  @@map("pickup_confirmation")
+  @@schema("ops")
+}
+
+enum FacilityKind {
+  meeting_room
+  fitness
+  pool
+  bbq
+  parking_visitor
+  other
+
+  @@map("facility_kind")
+  @@schema("ops")
+}
+
+enum BookingStatus {
+  requested
+  confirmed
+  cancelled
+  no_show
+
+  @@map("booking_status")
+  @@schema("ops")
+}
+
+enum ContactKind {
+  emergency
+  building
+  vendor
+  utility
+
+  @@map("contact_kind")
+  @@schema("ops")
+}
+
+/// Announcements of a building or the tenant (D-073) with translations and read receipts.
+model Announcement {
+  id             String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  buildingId     String?   @map("building_id") @db.Uuid
+  title          String
+  bodyTh         String    @map("body_th")
+  translations   Json      @default("{}")
+  audienceFilter Json      @default("{}") @map("audience_filter")
+  pinned         Boolean   @default(false)
+  publishedAt    DateTime? @map("published_at") @db.Timestamptz(6)
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz(6)
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(6)
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedAt      DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy      String?   @map("updated_by") @db.Uuid
+
+  tenant   Tenant             @relation("AnnouncementTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "announcement_tenant_id_fkey")
+  building Building?          @relation("AnnouncementBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "announcement_building_id_fkey")
+  reads    AnnouncementRead[]
+
+  @@index([tenantId, buildingId, publishedAt], map: "announcement_tenant_id_building_id_published_at_idx")
+  @@index([buildingId], map: "announcement_building_id_idx")
+  @@map("announcement")
+  @@schema("ops")
+}
+
+/// Read receipts: the first read of an announcement per party.
+model AnnouncementRead {
+  announcementId String   @map("announcement_id") @db.Uuid
+  partyId        String   @map("party_id") @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  userId         String?  @map("user_id") @db.Uuid
+  readAt         DateTime @default(now()) @map("read_at") @db.Timestamptz(6)
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "announcement_read_announcement_id_fkey")
+  party        Party        @relation("AnnouncementReadParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "announcement_read_party_id_fkey")
+  tenant       Tenant       @relation("AnnouncementReadTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "announcement_read_tenant_id_fkey")
+
+  @@id([announcementId, partyId], map: "announcement_read_pkey")
+  @@index([partyId], map: "announcement_read_party_id_idx")
+  @@index([tenantId], map: "announcement_read_tenant_id_idx")
+  @@map("announcement_read")
+  @@schema("ops")
+}
+
+/// Parcels for a unit (D-073): photo, LINE notice, pick-up by PIN or staff confirmation.
+model Parcel {
+  id                String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String              @map("tenant_id") @db.Uuid
+  buildingId        String              @map("building_id") @db.Uuid
+  unitId            String              @map("unit_id") @db.Uuid
+  recipientPartyId  String?             @map("recipient_party_id") @db.Uuid
+  carrier           String?
+  trackingNo        String?             @map("tracking_no")
+  photoDocumentId   String              @map("photo_document_id") @db.Uuid
+  receivedBy        String?             @map("received_by") @db.Uuid
+  receivedAt        DateTime            @map("received_at") @db.Timestamptz(6)
+  status            ParcelStatus        @default(received)
+  notifiedAt        DateTime?           @map("notified_at") @db.Timestamptz(6)
+  pickupPinEnc      Bytes               @map("pickup_pin_enc")
+  pickedUpAt        DateTime?           @map("picked_up_at") @db.Timestamptz(6)
+  pickupConfirmedBy PickupConfirmation? @map("pickup_confirmed_by")
+  pickedUpByPartyId String?             @map("picked_up_by_party_id") @db.Uuid
+  handedOverBy      String?             @map("handed_over_by") @db.Uuid
+  returnedAt        DateTime?           @map("returned_at") @db.Timestamptz(6)
+  returnReason      String?             @map("return_reason")
+  notes             String?
+  version           Int                 @default(1)
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?             @map("created_by") @db.Uuid
+  updatedAt         DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?             @map("updated_by") @db.Uuid
+
+  tenant      Tenant   @relation("ParcelTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "parcel_tenant_id_fkey")
+  building    Building @relation("ParcelBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "parcel_building_id_fkey")
+  unit        Unit     @relation("ParcelUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "parcel_unit_id_fkey")
+  recipient   Party?   @relation("ParcelRecipient", fields: [recipientPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "parcel_recipient_party_id_fkey")
+  photo       Document @relation("ParcelPhoto", fields: [photoDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "parcel_photo_document_id_fkey")
+  pickedUpBy  Party?   @relation("ParcelPickedUpBy", fields: [pickedUpByPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "parcel_picked_up_by_party_id_fkey")
+
+  @@index([tenantId, buildingId, status], map: "parcel_tenant_id_building_id_status_idx")
+  @@index([buildingId], map: "parcel_building_id_idx")
+  @@index([unitId, status], map: "parcel_unit_id_status_idx")
+  @@index([recipientPartyId], map: "parcel_recipient_party_id_idx")
+  @@map("parcel")
+  @@schema("ops")
+}
+
+/// A common facility of a building (blueprint A1.6) with its booking policy.
+model Facility {
+  id            String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String       @map("tenant_id") @db.Uuid
+  buildingId    String       @map("building_id") @db.Uuid
+  name          String
+  kind          FacilityKind
+  capacity      Int?
+  rules         Json         @default("{}")
+  bookingPolicy Json         @default("{}") @map("booking_policy")
+  isActive      Boolean      @default(true) @map("is_active")
+  version       Int          @default(1)
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?      @map("created_by") @db.Uuid
+  updatedAt     DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?      @map("updated_by") @db.Uuid
+  deletedAt     DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  deletedBy     String?      @map("deleted_by") @db.Uuid
+
+  tenant   Tenant            @relation("FacilityTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "facility_tenant_id_fkey")
+  building Building          @relation("FacilityBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "facility_building_id_fkey")
+  bookings FacilityBooking[]
+
+  @@index([tenantId, buildingId], map: "facility_tenant_id_building_id_idx")
+  @@index([buildingId], map: "facility_building_id_idx")
+  @@map("facility")
+  @@schema("ops")
+}
+
+/// A booking of a facility by a unit; live bookings never overlap (exclusion constraint in SQL).
+model FacilityBooking {
+  id           String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String        @map("tenant_id") @db.Uuid
+  buildingId   String        @map("building_id") @db.Uuid
+  facilityId   String        @map("facility_id") @db.Uuid
+  unitId       String        @map("unit_id") @db.Uuid
+  partyId      String?       @map("party_id") @db.Uuid
+  startsAt     DateTime      @map("starts_at") @db.Timestamptz(6)
+  endsAt       DateTime      @map("ends_at") @db.Timestamptz(6)
+  status       BookingStatus @default(requested)
+  decidedBy    String?       @map("decided_by") @db.Uuid
+  decidedAt    DateTime?     @map("decided_at") @db.Timestamptz(6)
+  cancelReason String?       @map("cancel_reason")
+  note         String?
+  version      Int           @default(1)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy    String?       @map("created_by") @db.Uuid
+  updatedAt    DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy    String?       @map("updated_by") @db.Uuid
+
+  tenant   Tenant   @relation("FacilityBookingTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "facility_booking_tenant_id_fkey")
+  building Building @relation("FacilityBookingBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "facility_booking_building_id_fkey")
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "facility_booking_facility_id_fkey")
+  unit     Unit     @relation("FacilityBookingUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "facility_booking_unit_id_fkey")
+  party    Party?   @relation("FacilityBookingParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "facility_booking_party_id_fkey")
+
+  @@index([tenantId, buildingId], map: "facility_booking_tenant_id_building_id_idx")
+  @@index([buildingId], map: "facility_booking_building_id_idx")
+  @@index([facilityId, startsAt], map: "facility_booking_facility_id_starts_at_idx")
+  @@index([unitId, startsAt], map: "facility_booking_unit_id_starts_at_idx")
+  @@index([partyId], map: "facility_booking_party_id_idx")
+  @@map("facility_booking")
+  @@schema("ops")
+}
+
+/// Versioned rules of a building (D-073).
+model BuildingRule {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  buildingId    String    @map("building_id") @db.Uuid
+  version       Int
+  title         String
+  bodyTh        String    @map("body_th")
+  translations  Json      @default("{}")
+  effectiveFrom DateTime  @map("effective_from") @db.Date
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?   @map("updated_by") @db.Uuid
+
+  tenant   Tenant            @relation("BuildingRuleTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "building_rule_tenant_id_fkey")
+  building Building          @relation("BuildingRuleBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "building_rule_building_id_fkey")
+  acks     BuildingRuleAck[]
+
+  @@unique([buildingId, version], map: "building_rule_building_id_version_key")
+  @@index([tenantId, buildingId], map: "building_rule_tenant_id_building_id_idx")
+  @@map("building_rule")
+  @@schema("ops")
+}
+
+/// Acknowledgement of a rule version by a party (append-only).
+model BuildingRuleAck {
+  ruleId   String   @map("rule_id") @db.Uuid
+  partyId  String   @map("party_id") @db.Uuid
+  tenantId String   @map("tenant_id") @db.Uuid
+  leaseId  String?  @map("lease_id") @db.Uuid
+  userId   String?  @map("user_id") @db.Uuid
+  ackedAt  DateTime @default(now()) @map("acked_at") @db.Timestamptz(6)
+
+  rule   BuildingRule @relation(fields: [ruleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "building_rule_ack_rule_id_fkey")
+  party  Party        @relation("BuildingRuleAckParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "building_rule_ack_party_id_fkey")
+  tenant Tenant       @relation("BuildingRuleAckTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "building_rule_ack_tenant_id_fkey")
+  lease  Lease?       @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "building_rule_ack_lease_id_fkey")
+
+  @@id([ruleId, partyId], map: "building_rule_ack_pkey")
+  @@index([partyId], map: "building_rule_ack_party_id_idx")
+  @@index([leaseId], map: "building_rule_ack_lease_id_idx")
+  @@index([tenantId], map: "building_rule_ack_tenant_id_idx")
+  @@map("building_rule_ack")
+  @@schema("ops")
+}
+
+/// Emergency, building, vendor and utility contacts (D-073).
+model Contact {
+  id         String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String      @map("tenant_id") @db.Uuid
+  buildingId String?     @map("building_id") @db.Uuid
+  kind       ContactKind
+  name       String
+  phone      String?
+  lineId     String?     @map("line_id")
+  partyId    String?     @map("party_id") @db.Uuid
+  notes      String?
+  sortOrder  Int         @default(0) @map("sort_order") @db.SmallInt
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?     @map("created_by") @db.Uuid
+  updatedAt  DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy  String?     @map("updated_by") @db.Uuid
+  deletedAt  DateTime?   @map("deleted_at") @db.Timestamptz(6)
+  deletedBy  String?     @map("deleted_by") @db.Uuid
+
+  tenant   Tenant    @relation("ContactTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contact_tenant_id_fkey")
+  building Building? @relation("ContactBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contact_building_id_fkey")
+  party    Party?    @relation("ContactParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contact_party_id_fkey")
+
+  @@index([tenantId, buildingId], map: "contact_tenant_id_building_id_idx")
+  @@index([buildingId], map: "contact_building_id_idx")
+  @@map("contact")
+  @@schema("ops")
+}

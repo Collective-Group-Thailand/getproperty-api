@@ -7,6 +7,12 @@ import { InvoiceScoreSource } from './ops-billing/invoice-score.source';
 import { InvoicesService } from './ops-billing/invoices.service';
 import { RatePlansService } from './ops-billing/rate-plans.service';
 import { ResidentInvoicesService } from './ops-billing/resident-invoices.service';
+import { AnnouncementsService } from './ops-community/announcements.service';
+import { CommunitySubscribers } from './ops-community/community.subscribers';
+import { FacilitiesService } from './ops-community/facilities.service';
+import { ParcelsService } from './ops-community/parcels.service';
+import { ResidentCommunityService } from './ops-community/resident-community.service';
+import { BuildingRulesService } from './ops-community/rules-contacts.service';
 import { DepositDocuments } from './ops-deposits/deposit-documents';
 import { DepositsService } from './ops-deposits/deposits.service';
 import { DepositDeadlineSubscriber } from './ops-deposits/deposits.subscriber';
@@ -112,6 +118,12 @@ const SERVICES = [
   ServiceNotifications,
   AutoServiceRequests,
   WarrantyBridge,
+  AnnouncementsService,
+  ParcelsService,
+  FacilitiesService,
+  BuildingRulesService,
+  ResidentCommunityService,
+  CommunitySubscribers,
 ];
 
 /**

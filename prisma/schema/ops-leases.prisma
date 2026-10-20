@@ -210,6 +210,7 @@ model Lease {
   receivableEntries  ReceivableEntry[]
   penaltyAssessments PenaltyAssessment[]
   accessCredentials  AccessCredential[]
+  buildingRuleAcks   BuildingRuleAck[]
 
   @@unique([tenantId, number], map: "lease_tenant_id_number_key")
   @@index([tenantId, buildingId, status], map: "lease_tenant_id_building_id_status_idx")

@@ -266,6 +266,9 @@ export const NOTIFICATION_ROUTES: {
     'service_request.changed',
     'access.credential_issued',
     'access.credential_revoked',
+    'announcement.published',
+    'parcel.received',
+    'building_rule.published',
   ].map((eventType) => ({
     eventType,
     audience: 'resident',
@@ -404,6 +407,60 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         language: 'en',
         subject: null,
         body: '{{tenant.name}} assigned you "{{workOrder.title}}" at {{workOrder.place}}, scheduled {{workOrder.scheduledAt}} — open it in the technician app (#{{workOrder.ref}})',
+      },
+    ],
+  },
+  {
+    key: 'announcement.published',
+    channel: 'line',
+    audience: 'resident',
+    description: 'A new announcement of the building (D-073)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'ประกาศจาก {{tenant.name}}: {{announcement.title}} — {{announcement.excerpt}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'Announcement from {{tenant.name}}: {{announcement.title}} — open the app to read it.',
+      },
+    ],
+  },
+  {
+    key: 'parcel.received',
+    channel: 'line',
+    audience: 'resident',
+    description: 'A parcel arrived for my unit; pick it up with the PIN in the app (D-073)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}}: มีพัสดุ ({{parcel.carrier}}) มาถึงห้อง {{parcel.unitNo}} — แสดงรหัสรับพัสดุในแอปที่เคาน์เตอร์',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}}: a parcel ({{parcel.carrier}}) arrived for unit {{parcel.unitNo}} — show the pick-up PIN in the app at the desk.',
+      },
+    ],
+  },
+  {
+    key: 'building_rule.published',
+    channel: 'line',
+    audience: 'resident',
+    description: 'New building rules to read and acknowledge (D-073)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}} ปรับปรุงระเบียบอาคาร "{{rule.title}}" (ฉบับที่ {{rule.version}} มีผล {{rule.effectiveFrom}}) — โปรดอ่านและกดรับทราบในแอป',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}} updated the building rules "{{rule.title}}" (version {{rule.version}}, from {{rule.effectiveFrom}}) — please read and acknowledge them in the app.',
       },
     ],
   },

@@ -858,5 +858,39 @@
       "title": "Lock already registered",
       "detail": "A lock with this vendor id or serial number is already registered."
     }
+  },
+  "announcement": {
+    "published": {
+      "title": "Already published",
+      "detail": "A published announcement keeps its text; publish a new one instead."
+    }
+  },
+  "parcel": {
+    "invalid_state": {
+      "title": "Parcel already handled",
+      "detail": "The parcel was already picked up or returned."
+    },
+    "pin_mismatch": {
+      "title": "Wrong pick-up PIN",
+      "detail": "The PIN does not match this parcel."
+    }
+  },
+  "facility": {
+    "unavailable": {
+      "title": "Facility unavailable",
+      "detail": "The facility is not open for booking."
+    },
+    "quota_exceeded": {
+      "title": "Weekly quota reached",
+      "detail": "Your unit has used its bookings of this facility for the week."
+    },
+    "slot_taken": {
+      "title": "Slot already booked",
+      "detail": "Someone booked this time already; choose another slot."
+    },
+    "booking_invalid_state": {
+      "title": "Booking cannot change",
+      "detail": "The booking is not in a state that allows this action."
+    }
   }
 }
