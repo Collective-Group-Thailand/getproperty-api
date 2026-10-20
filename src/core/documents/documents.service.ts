@@ -29,6 +29,8 @@ import {
 export const UPLOAD_URL_TTL_SECONDS = 900;
 /** Permission needed to see ID document images (B2.2). */
 export const ID_DOCUMENT_PERMISSION = 'party.id_document.read';
+/** Permission needed to read a lease contract (it carries the lessee's ID number, D-172, D-222). */
+export const PII_DECRYPT_PERMISSION = 'party.pii.decrypt';
 export const DOWNLOAD_URL_TTL_SECONDS = 300;
 /** Kinds the platform admin may upload as platform files (`POST /v1/admin/files/presign`). */
 export const PLATFORM_UPLOAD_KINDS: DocumentKind[] = ['tariff_source', 'contract', 'other'];
@@ -238,6 +240,18 @@ export class DocumentsService extends TenantScopedRepository {
     const doc = await this.db.tenant(ctx, async (tx) => this.found(await this.findOwn(tx, ctx, id)));
     // ID document images: Owner/Manager only (D-025, D-172), whatever surface the download comes from.
     if (doc.kind === 'id_document' && !RequestContext.permissions().has(ID_DOCUMENT_PERMISSION))
+      throw new DomainException('auth.forbidden');
+    // a lease contract carries the lessee's full ID / passport number: operators need party.pii.decrypt (D-222)
+    const actor = RequestContext.actor();
+    if (
+      doc.kind === 'contract' &&
+      actor?.type === 'user' &&
+      actor.audience === 'operator' &&
+      !RequestContext.permissions().has(PII_DECRYPT_PERMISSION) &&
+      (await this.db.tenant(ctx, (tx) =>
+        tx.lease.count({ where: { OR: [{ contractDocumentId: doc.id }, { signedDocumentId: doc.id }] } }),
+      )) > 0
+    )
       throw new DomainException('auth.forbidden');
     if (doc.uploadState === 'presigned') throw new DomainException('document.not_uploaded');
     if (doc.scanStatus === 'pending') throw new DomainException('document.scan_pending');

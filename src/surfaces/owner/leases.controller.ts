@@ -354,8 +354,8 @@ export class OwnerLeasesController {
     id: 'owner.leases.previewContract',
     summary: 'Preview the contract PDF',
     description:
-      'The standard contract filled with this lease (Thai, Sarabun), marked ร่าง while a draft; not stored. Decrypting the lessee’s ID number for the PDF is audited (`pii.decrypted`, D-148).',
-    implements: ['D-020', 'D-148'],
+      'The standard contract filled with this lease (Thai, Sarabun), marked ร่าง while a draft; not stored. The lessee’s ID / passport number is printed only for callers holding `party.pii.decrypt` (Owner, Manager) and its decryption is audited (`pii.decrypted`, D-148); Staff and Accountant get the same PDF with the number masked and nothing decrypted (D-172, D-222).',
+    implements: ['D-020', 'D-148', 'D-172', 'D-222'],
   })
   @ApiResponse({
     status: 200,
@@ -377,13 +377,13 @@ export class OwnerLeasesController {
 
   @Get(':leaseId/contract')
   @TenantScoped()
-  @Can('lease.read')
+  @Can('lease.read', 'party.pii.decrypt')
   @ApiEndpoint({
     id: 'owner.leases.contract',
     summary: 'Download the contract',
     description:
-      'A 5-minute signed URL of the contract PDF (the signed one once countersigned) with its sha256; audited (`document.downloaded`).',
-    implements: ['D-062'],
+      'A 5-minute signed URL of the contract PDF (the signed one once countersigned) with its sha256; audited (`document.downloaded`). The stored contract carries the lessee’s full ID / passport number, so it needs `party.pii.decrypt` as well (Owner, Manager — 403 for Staff and Accountant, D-172, D-222).',
+    implements: ['D-062', 'D-172', 'D-222'],
   })
   @ApiSuccess(200, {
     description: 'Download',

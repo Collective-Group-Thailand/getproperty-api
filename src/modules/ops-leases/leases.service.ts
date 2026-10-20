@@ -91,6 +91,11 @@ export const LEASE_INCLUDE = {
 } as const satisfies Prisma.LeaseInclude;
 export type LeaseRow = Prisma.LeaseGetPayload<{ include: typeof LEASE_INCLUDE }>;
 
+/** Permission that reveals ID / passport numbers (D-172). */
+export const PII_DECRYPT = 'party.pii.decrypt';
+/** What a contract preview shows instead of the ID number to a caller without `party.pii.decrypt` (D-222). */
+export const MASKED_ID_NUMBER = 'xxxxxxxxxxxxx (ปกปิด)';
+
 export const IN_FORCE: LeaseStatus[] = ['active', 'notice_given', 'ending'];
 const ID_LABEL: Record<string, string> = {
   thai_national_id: 'เลขประจำตัวประชาชน',
@@ -833,6 +838,11 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
       number: string | null;
       signatures?: ContractData['signatures'];
       madeOn?: string;
+      /**
+       * Review #5 (D-172, D-222): false renders the ID / passport number masked without decrypting it — for callers
+       * without `party.pii.decrypt` (Staff, Accountant). Stored contracts are always rendered in full.
+       */
+      revealIdNumber?: boolean;
     },
   ): Promise<{ data: ContractData; body: string }> {
     const now = this.clock.now();
@@ -867,7 +877,8 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
       ),
     ]);
     let idNumber = '-';
-    if (party.idNumberEnc) {
+    if (party.idNumberEnc && options.revealIdNumber === false) idNumber = MASKED_ID_NUMBER;
+    else if (party.idNumberEnc) {
       idNumber = await this.keys.decrypt(
         tx,
         { tenantId: lease.tenantId, table: 'core.party', column: 'id_number', rowId: party.id },
@@ -987,6 +998,7 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
         const { data, body } = await this.contractData(tx, lease, {
           draft: lease.status === 'draft',
           number: lease.number,
+          revealIdNumber: RequestContext.permissions().has(PII_DECRYPT),
         });
         return (await this.renderer.render(body, data)).pdf;
       },
