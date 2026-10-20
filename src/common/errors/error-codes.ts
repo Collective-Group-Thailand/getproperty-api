@@ -195,6 +195,13 @@ export const ERROR_CODES = {
   'work_order.photo_required': HttpStatus.UNPROCESSABLE_ENTITY,
   'access.invalid_state': HttpStatus.CONFLICT,
   'lock.exists': HttpStatus.CONFLICT,
+  'announcement.published': HttpStatus.CONFLICT,
+  'parcel.invalid_state': HttpStatus.CONFLICT,
+  'parcel.pin_mismatch': HttpStatus.UNPROCESSABLE_ENTITY,
+  'facility.unavailable': HttpStatus.CONFLICT,
+  'facility.quota_exceeded': HttpStatus.UNPROCESSABLE_ENTITY,
+  'facility.slot_taken': HttpStatus.CONFLICT,
+  'facility.booking_invalid_state': HttpStatus.CONFLICT,
   'internal.unexpected': HttpStatus.INTERNAL_SERVER_ERROR,
 } as const satisfies Record<string, HttpStatus>;
 

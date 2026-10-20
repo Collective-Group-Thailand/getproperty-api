@@ -202,6 +202,15 @@ export const DOMAIN_EVENT_TYPES = {
     'A work order changed state (accepted, in progress, waiting for parts, verified, cancelled).',
   'work_order.completed': 'The assignee completed a work order with after photos (D-072).',
   'work_order.cost_changed': 'Parts / labour of a work order changed (B4.5 expenses).',
+  // B5.3 community (D-073)
+  'announcement.published': 'An announcement was published; the residents in its audience are told on LINE.',
+  'parcel.received': 'Staff recorded a parcel for a unit with its photo; the residents are told on LINE.',
+  'parcel.picked_up': 'A parcel was handed over (resident PIN or staff confirmation).',
+  'parcel.returned': 'An unclaimed parcel was returned to the carrier.',
+  'facility_booking.changed':
+    'A facility booking was requested, confirmed, rejected, cancelled or marked no-show.',
+  'building_rule.published': 'A new version of the building rules was published (residents acknowledge it).',
+  'building_rule.acknowledged': 'Residents acknowledged the building rules in force (app or lease signing).',
   // B5.2 access control (D-070, D-071)
   'lock.registered': 'A smart lock / door controller was registered on a unit, building door or common area.',
   'access.credential_issued':

@@ -31,6 +31,12 @@ import {
   OwnerInvoicesController,
   OwnerRatePlansController,
 } from './billing.controller';
+import {
+  OwnerAnnouncementsController,
+  OwnerFacilitiesController,
+  OwnerRulesContactsController,
+  parcelsController,
+} from './community.controller';
 import { OwnerComplianceController } from './compliance.controller';
 import { inspectionsController, OwnerDepositsController } from './deposits.controller';
 import { OwnerBillingDocumentsController, OwnerExportsController } from './documents.controller';
@@ -84,6 +90,10 @@ import {
     OwnerWorkOrderVerifyController,
     OwnerMaintenancePlansController,
     OwnerAccessController,
+    OwnerAnnouncementsController,
+    parcelsController(SURFACES.owner),
+    OwnerFacilitiesController,
+    OwnerRulesContactsController,
     systemPingController(SURFACES.owner),
     OwnerMeController,
     OwnerTenantController,

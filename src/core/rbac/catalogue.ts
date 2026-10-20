@@ -282,6 +282,16 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     surfaces: ['owner'],
   },
   { key: 'announcement.manage', description: 'Post announcements', surfaces: ['owner'] },
+  {
+    key: 'community.read',
+    description: 'Facilities and bookings, building rules and contacts (D-073)',
+    surfaces: ['owner', 'staff'],
+  },
+  {
+    key: 'community.manage',
+    description: 'Facilities, booking decisions, building rule versions and contacts (D-073)',
+    surfaces: ['owner'],
+  },
   // platform services in the tenant (B1.3)
   {
     key: 'notification.route.manage',
@@ -424,6 +434,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'service_request.read',
     'service_request.handle',
     'parcel.manage',
+    'community.read',
   ],
   accountant: [
     'tenant.read',
