@@ -1,10 +1,11 @@
 import { bangkokDate } from '@common/time/bangkok';
 import { fakeLineIdToken } from '@integrations/line/fake-line-login';
+import { FakePdfRenderer } from '@integrations/pdf/fake-pdf-renderer';
 import { LeasesService } from '@modules/ops-leases/leases.service';
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';
-import { adminToken, bearer, idem, onboardTenant, ownerToken } from '../support/int-auth';
+import { adminToken, bearer, idem, onboardTenant, operatorToken, ownerToken } from '../support/int-auth';
 import { createIntDatabase, type IntDatabase } from '../support/int-db';
 
 const PNG = Buffer.from(
@@ -211,6 +212,48 @@ describe('B2.3 leases, e-signature, notices (real PostgreSQL)', () => {
         .send({ rent: '5000.00' });
       expect([412, 422]).toContain(patch.status);
       if (patch.status === 422) expect(patch.body.code).toBe('compliance.no_midterm_increase');
+    });
+
+    it('Staff and Accountant never see the lessee ID number in the contract (D-172, D-222, review #5)', async () => {
+      const staff = bearer(await operatorToken(t, '+660000000003'));
+      const fullId = thaiId('110000000000');
+      const pdfOf = (token: Record<string, string>) =>
+        t.http
+          .get(`/v1/owner/leases/${ids.lease}/contract-preview`)
+          .set(token)
+          .buffer(true)
+          .parse((r, cb) => {
+            const chunks: Buffer[] = [];
+            r.on('data', (c: Buffer) => chunks.push(c));
+            r.on('end', () => cb(null, Buffer.concat(chunks)));
+          })
+          .expect(200);
+      const decrypts = async () =>
+        (
+          await db.admin.query(
+            `SELECT count(*)::int AS n FROM platform.audit_log WHERE action = 'pii.decrypted' AND subject_id = $1`,
+            [ids.party],
+          )
+        ).rows[0].n as number;
+      const before = await decrypts();
+      const masked = FakePdfRenderer.textOf((await pdfOf(staff)).body as Buffer);
+      expect(masked).toContain('ปกปิด');
+      expect(masked).not.toContain(fullId);
+      expect(await decrypts()).toBe(before); // nothing decrypted for Staff
+      const full = FakePdfRenderer.textOf((await pdfOf(bearer(owner))).body as Buffer);
+      expect(full).toContain(fullId);
+      expect(await decrypts()).toBe(before + 1);
+      // the stored contract carries the full number: Owner/Manager only, on every route
+      const res = await t.http.get(`/v1/owner/leases/${ids.lease}/contract`).set(staff).expect(403);
+      expect(res.body.code).toBe('auth.forbidden');
+      await t.http.get(`/v1/owner/leases/${ids.lease}/contract`).set(bearer(owner)).expect(200);
+      const doc = (
+        await db.admin.query('SELECT contract_document_id AS id FROM ops.lease WHERE id = $1', [ids.lease])
+      ).rows[0].id as string;
+      expect((await t.http.get(`/v1/staff/files/${doc}`).set(staff).expect(403)).body.code).toBe(
+        'auth.forbidden',
+      );
+      await t.http.get(`/v1/owner/files/${doc}`).set(bearer(owner)).expect(200);
     });
 
     it('invites the lessee; the resident signs in with LINE, must consent first, then accepts', async () => {
