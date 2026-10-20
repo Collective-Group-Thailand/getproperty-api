@@ -129,6 +129,8 @@ export const AUDIT_ACTIONS = [
   'payment.confirmed',
   'payment.reversed',
   'payment.refunded',
+  'payment.held',
+  'payment.dismissed',
   'slip.reviewed',
   'receipt.issued',
   'receipt.voided',

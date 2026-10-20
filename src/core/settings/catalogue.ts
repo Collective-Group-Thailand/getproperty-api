@@ -219,6 +219,16 @@ export const SETTINGS: readonly SettingDef[] = [
     value: false,
     reason: 'seed: D-044 (enabled per tenant)',
   },
+  {
+    key: 'payments.duplicate_window_hours',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-220: a QR callback or settlement row of the same amount as a slip or hand-recorded transfer of the same payer × unit within this many hours is held for the owner as a possible duplicate (never booked twice).',
+    editableBy: OWNER_BILLING,
+    value: 72,
+    reason: 'seed: D-220 (review #2)',
+  },
   // --- readings ---------------------------------------------------------------------------------------
   {
     key: 'readings.require_photo',

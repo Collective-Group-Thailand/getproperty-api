@@ -158,6 +158,19 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     en: ['Slip to review', 'A transfer slip of {{tenant.name}} waits for your review ({{slip.reasons}}).'],
   },
   {
+    key: 'payment.held',
+    description:
+      'Owner/Manager: a QR payment looks like a transfer already booked and waits for a decision (D-220)',
+    th: [
+      'ยอดชำระรอตรวจสอบ (อาจซ้ำ)',
+      'มียอดชำระผ่าน QR {{payment.amount}} บาท ของ {{tenant.name}} ที่อาจเป็นการโอนเดียวกับที่บันทึกแล้ว — โปรดยืนยันหรือปฏิเสธในเมนูการชำระเงิน',
+    ],
+    en: [
+      'Payment held (possible duplicate)',
+      'A QR payment of {{payment.amount}} THB for {{tenant.name}} looks like a transfer already booked — confirm or dismiss it in Payments.',
+    ],
+  },
+  {
     key: 'settlement_file.processed',
     description: 'Owner: the provider settlement shows payments that do not match (D-042)',
     th: [
@@ -257,7 +270,10 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
 
 /** Operator audiences per event: workflow → owner + manager; device/meter health → owner + manager + staff. */
 const operatorAudiences = (key: string): string[] =>
-  key.startsWith('workflow.') || key === 'billing_cycle.computed' || key === 'slip.review_requested'
+  key.startsWith('workflow.') ||
+  key === 'billing_cycle.computed' ||
+  key === 'slip.review_requested' ||
+  key === 'payment.held'
     ? ['owner', 'manager']
     : key.startsWith('meter.') ||
         key.startsWith('device.') ||

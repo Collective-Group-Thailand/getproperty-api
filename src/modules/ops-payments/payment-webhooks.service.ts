@@ -15,10 +15,11 @@ import {
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 
 import { type MerchantAccount, MerchantResolver } from './merchants';
-import { PaymentsService } from './payments.service';
+import { type ConfirmInput, PaymentsService } from './payments.service';
 
 /** What a matched provider payment produced (webhook or settlement row). */
-export type MatchOutcome = 'created' | 'duplicate' | 'unknown_reference' | 'other_merchant' | 'not_paid';
+export type MatchOutcome =
+  'created' | 'duplicate' | 'held_duplicate' | 'unknown_reference' | 'other_merchant' | 'not_paid';
 
 /**
  * Provider callbacks (B4.4, D-042): `POST /webhooks/payments/{provider}` reads the body, finds the merchant by its
@@ -156,11 +157,47 @@ export class PaymentWebhooksService implements EventSubscriber, OnModuleInit {
     await tx.paymentWebhook.update({
       where: { id: hook.id },
       data: {
-        outcome: outcomes.some((o) => o === 'created' || o === 'duplicate') ? 'processed' : 'ignored',
+        outcome: outcomes.some((o) => o === 'created' || o === 'duplicate' || o === 'held_duplicate')
+          ? 'processed'
+          : 'ignored',
         detail: outcomes.join(','),
         processedAt: this.clock.now(),
       },
     });
+  }
+
+  /** The hold of a provider payment that most likely repeats a transfer already booked (D-220), else undefined. */
+  private async duplicateHold(
+    tx: Tx,
+    qr: { status: string },
+    inv: { id: string; tenantId: string; billedPartyId: string; unitId: string | null },
+    row: ProviderPayment,
+  ): Promise<ConfirmInput['hold']> {
+    if (qr.status === 'paid') {
+      const earlier = await tx.payment.findFirst({
+        where: {
+          tenantId: inv.tenantId,
+          status: 'confirmed',
+          allocations: { some: { invoiceId: inv.id, reversedAt: null } },
+        },
+        orderBy: { paidAt: 'desc' },
+        select: { id: true },
+      });
+      return { reason: 'qr_already_paid', duplicateOfPaymentId: earlier?.id ?? null };
+    }
+    const same = await this.payments.sameTransfer(
+      tx,
+      {
+        tenantId: inv.tenantId,
+        invoiceId: inv.id,
+        payerPartyId: inv.billedPartyId,
+        unitId: inv.unitId,
+        amount: row.amount,
+        paidAt: row.paidAt,
+      },
+      ['transfer_slip', 'bank_transfer_manual'],
+    );
+    return same ? { reason: 'possible_duplicate_transfer', duplicateOfPaymentId: same.id } : undefined;
   }
 
   /**
@@ -194,6 +231,15 @@ export class PaymentWebhooksService implements EventSubscriber, OnModuleInit {
       return 'other_merchant';
     }
     const inv = qr.invoice;
+    // D-220 (review #2): one bank transfer is booked once. A QR already paid, or a slip / hand-recorded transfer of
+    // the same amount for the same payer × unit around the same time, means this is most likely the same money:
+    // held for the owner (confirm or dismiss), never a second receipt or a phantom credit.
+    await this.payments.lockPayer(tx, {
+      payerPartyId: inv.billedPartyId,
+      unitId: inv.unitId,
+      invoiceId: inv.id,
+    });
+    const hold = await this.duplicateHold(tx, qr, inv, row);
     try {
       const r = await this.payments.confirm(tx, {
         tenantId: inv.tenantId,
@@ -211,10 +257,11 @@ export class PaymentWebhooksService implements EventSubscriber, OnModuleInit {
         providerPayload: { reference: row.reference, amount: row.amount },
         bankAccountId: ma.account.id,
         qrCodeId: qr.id,
+        hold,
       });
       if (via === 'settlement_file')
         await tx.payment.update({ where: { id: r.payment.id }, data: { reconciledAt: this.clock.now() } });
-      return r.duplicate ? 'duplicate' : 'created';
+      return r.duplicate ? 'duplicate' : hold ? 'held_duplicate' : 'created';
     } catch (error) {
       if (PaymentsService.isDuplicate(error)) return 'duplicate';
       throw error;

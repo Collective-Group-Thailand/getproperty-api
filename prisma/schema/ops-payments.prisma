@@ -235,7 +235,16 @@ model Payment {
   updatedAt          DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
   updatedBy          String?              @map("updated_by") @db.Uuid
   version            Int                  @default(1)
+  /// D-220: why a provider payment was held for the owner (qr_already_paid, possible_duplicate_transfer).
+  heldReason           String?   @map("held_reason")
+  duplicateOfPaymentId String?   @map("duplicate_of_payment_id") @db.Uuid
+  dismissedAt          DateTime? @map("dismissed_at") @db.Timestamptz(6)
+  dismissedBy          String?   @map("dismissed_by") @db.Uuid
+  dismissReason        String?   @map("dismiss_reason")
 
+  duplicateOf      Payment?           @relation("PaymentDuplicateOf", fields: [duplicateOfPaymentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_duplicate_of_payment_id_fkey")
+  duplicates       Payment[]          @relation("PaymentDuplicateOf")
+  dismisser        UserAccount?       @relation("PaymentDismisser", fields: [dismissedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_dismissed_by_fkey")
   tenant           Tenant             @relation("PaymentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_tenant_id_fkey")
   building         Building           @relation("PaymentBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_building_id_fkey")
   unit             Unit?              @relation("PaymentUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_unit_id_fkey")
@@ -261,6 +270,8 @@ model Payment {
   @@index([status], map: "payment_status_pending_idx", where: raw("(status = 'pending'::ops.payment_status)"))
   @@index([buildingId], map: "payment_building_id_idx")
   @@index([unitId], map: "payment_unit_id_idx")
+  @@index([duplicateOfPaymentId], map: "payment_duplicate_of_payment_id_idx")
+  @@index([dismissedBy], map: "payment_dismissed_by_idx")
   @@index([leaseId], map: "payment_lease_id_idx")
   @@index([bankAccountId], map: "payment_bank_account_id_idx")
   @@index([qrCodeId], map: "payment_qr_code_id_idx")

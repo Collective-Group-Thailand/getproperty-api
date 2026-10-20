@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { bangkokDate } from '@common/time/bangkok';
+import { TenantTx } from '@database/tenant-tx';
 import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 import {
   type FakePaymentProviders,
@@ -9,6 +10,9 @@ import {
 } from '@integrations/payments/fake-payment-providers';
 import { PAYMENT_PROVIDERS } from '@integrations/payments/payment-provider.port';
 import { parseThaiQr } from '@integrations/payments/thai-qr';
+import { MerchantResolver } from '@modules/ops-payments/merchants';
+import { PaymentWebhooksService } from '@modules/ops-payments/payment-webhooks.service';
+import { PaymentsService } from '@modules/ops-payments/payments.service';
 import { SettlementsService } from '@modules/ops-payments/settlements.service';
 
 import { DEV } from '../../prisma/seed/run';
@@ -727,6 +731,275 @@ describe('B4.4 payments, slips, settlement, receipts (real PostgreSQL)', () => {
     expect(mine.body.data[0]).toMatchObject({ issuerName: expect.any(String), unitNo: 'A-101' });
     const dl = await t.http.get(`/v1/resident/receipts/${ids.receipt1}/document`).set(R()).expect(200);
     expect(dl.body).toMatchObject({ url: expect.any(String) });
+  });
+
+  // ------------------------------------------------------------------ release review #2 / #3 (D-220)
+  const due = async (invoiceId: string) =>
+    (await t.http.get(`/v1/resident/invoices/${invoiceId}/payment`).set(R()).expect(200)).body.due as string;
+  const credit = async () =>
+    (
+      await q<{ s: string }>(
+        `SELECT coalesce(sum(amount), 0)::text AS s FROM ops.payer_credit WHERE party_id = $1 AND unit_id = $2`,
+        [DEV.residentPartyId, unitId],
+      )
+    )[0]!.s;
+  const slipFor = async (invoiceId: string, transRef: string, amount: string) => {
+    const res = await t.http
+      .post(`/v1/resident/invoices/${invoiceId}/slips`)
+      .set(R())
+      .send({
+        image: slipImage({
+          transRef,
+          amount,
+          paidAt: t.clock.now().toISOString(),
+          receiverBankCode: '004',
+          receiverAccount: 'xxx-x-x7890-x',
+          senderName: 'นาย ทดสอบ',
+        }),
+        mimeType: 'image/png',
+      })
+      .expect(201);
+    await settle();
+    return res.body.id as string;
+  };
+  const qrCallback = async (ref: string, amount: string, providerRef: string) => {
+    const cb = fake.simulatePayment({
+      merchantRef: MERCHANT_A,
+      reference: ref,
+      amount,
+      providerRef,
+      paidAt: t.clock.now(),
+    });
+    await callback('kbank', cb.body, cb.headers).expect(200);
+    await settle();
+  };
+  /** Money received = allocated to invoices + kept as credit, for every booked payment (the two ledgers agree). */
+  const ledgersAgree = async () => {
+    const r = (
+      await q<{ received: string; allocated: string; credited: string }>(
+        `SELECT (SELECT coalesce(sum(amount + wht_amount), 0) FROM ops.payment WHERE status = 'confirmed' AND method <> 'offset')::text AS received,
+                (SELECT coalesce(sum(a.amount), 0) FROM ops.payment_allocation a JOIN ops.payment p ON p.id = a.payment_id
+                  WHERE p.status = 'confirmed' AND p.method <> 'offset' AND a.reversed_at IS NULL)::text AS allocated,
+                (SELECT coalesce(sum(credited_amount), 0) FROM ops.payment WHERE status = 'confirmed' AND method <> 'offset')::text AS credited`,
+      )
+    )[0]!;
+    expect(Number(r.allocated) + Number(r.credited)).toBeCloseTo(Number(r.received), 2);
+  };
+
+  it('a slip for a transfer the QR callback already booked waits for the owner (possible_qr_duplicate, D-220)', async () => {
+    const inv = await issue('700.00');
+    const amount = await due(inv.id);
+    // the resident uploads the slip while the bank callback of the same transfer is being booked
+    const slip = (
+      await t.http
+        .post(`/v1/resident/invoices/${inv.id}/slips`)
+        .set(R())
+        .send({
+          image: slipImage({
+            transRef: 'SLIP-DUP-0001',
+            amount,
+            paidAt: t.clock.now().toISOString(),
+            receiverBankCode: '004',
+            receiverAccount: 'xxx-x-x7890-x',
+            senderName: 'นาย ทดสอบ',
+          }),
+          mimeType: 'image/png',
+        })
+        .expect(201)
+    ).body.id as string;
+    const tx = t.app.get(TenantTx);
+    const ma = await tx.platform((p) => t.app.get(MerchantResolver).byId(p, accountA));
+    expect(
+      await tx.platform((p) =>
+        t.app
+          .get(PaymentWebhooksService)
+          .match(
+            p,
+            'kbank',
+            ma,
+            { providerRef: 'KB-DUP-0001', reference: inv.ref, amount, paidAt: t.clock.now(), status: 'paid' },
+            'webhook',
+          ),
+      ),
+    ).toBe('created');
+    expect((await invoice(inv.id)).status).toBe('paid');
+    const before = await credit();
+    await settle();
+    const row = (
+      await q<{ status: string; reasons: string[]; payment_id: string | null }>(
+        'SELECT status::text, reasons, payment_id FROM ops.slip_review WHERE id = $1',
+        [slip],
+      )
+    )[0]!;
+    expect(row.status).toBe('pending_review');
+    expect(row.reasons).toContain('possible_qr_duplicate');
+    expect(row.payment_id).toBeNull();
+    expect(await credit()).toBe(before);
+    await ledgersAgree();
+  });
+
+  it('the QR callback of a transfer already booked by slip is held, never a second receipt or credit (review #2)', async () => {
+    const inv = await issue('800.00');
+    const amount = await due(inv.id);
+    const slip = await slipFor(inv.id, 'SLIP-DUP-0002', amount);
+    const slipPayment = (
+      await q<{ payment_id: string }>('SELECT payment_id FROM ops.slip_review WHERE id = $1', [slip])
+    )[0]!.payment_id;
+    expect((await invoice(inv.id)).status).toBe('paid');
+    const before = await credit();
+    const receiptsBefore = (await q<{ n: number }>('SELECT count(*)::int AS n FROM ops.receipt'))[0]!.n;
+    // the same transfer arrives later through the bank callback (lost webhook / settlement file)
+    await qrCallback(inv.ref, amount, 'KB-DUP-0002');
+    const held = (await t.http.get('/v1/owner/payments?status=pending').set(O()).expect(200)).body.data as {
+      id: string;
+      providerRef: string;
+    }[];
+    const h = held.find((p) => p.providerRef === 'KB-DUP-0002')!;
+    const view = (await t.http.get(`/v1/owner/payments/${h.id}`).set(O()).expect(200)).body;
+    expect(view).toMatchObject({
+      status: 'pending',
+      heldReason: 'qr_already_paid',
+      duplicateOfPaymentId: slipPayment,
+      allocations: [],
+      receipts: [],
+      creditedAmount: '0.00',
+      nextActions: ['confirm', 'dismiss'],
+    });
+    expect(await credit()).toBe(before);
+    expect((await q<{ n: number }>('SELECT count(*)::int AS n FROM ops.receipt'))[0]!.n).toBe(receiptsBefore);
+    expect(
+      (
+        await q<{ outcome: string; detail: string }>(
+          `SELECT outcome::text, detail FROM ops.payment_webhook WHERE detail = 'held_duplicate'`,
+        )
+      ).length,
+    ).toBe(1);
+    // the owner dismisses it: never booked
+    const dismissed = await t.http
+      .post(`/v1/owner/payments/${h.id}/actions/dismiss`)
+      .set(O())
+      .set(idem())
+      .send({ reason: 'โอนครั้งเดียวกับสลิป' })
+      .expect(200);
+    expect(dismissed.body).toMatchObject({
+      status: 'failed',
+      dismissReason: 'โอนครั้งเดียวกับสลิป',
+      nextActions: [],
+    });
+    await t.http.post(`/v1/owner/payments/${h.id}/actions/confirm`).set(O()).set(idem()).expect(409);
+    await settle();
+    expect(await credit()).toBe(before);
+    await ledgersAgree();
+  });
+
+  it('a callback of the same amount as a recent slip on a re-issued QR is held; confirming books it as credit', async () => {
+    const inv = await issue('900.00');
+    const amount = await due(inv.id);
+    const slip = await slipFor(inv.id, 'SLIP-DUP-0003', amount);
+    const slipPayment = (
+      await q<{ payment_id: string }>('SELECT payment_id FROM ops.slip_review WHERE id = $1', [slip])
+    )[0]!.payment_id;
+    // the QR the resident scanned had been replaced (expired) before the slip paid the invoice
+    await q(`UPDATE ops.payment_qr_code SET status = 'expired' WHERE invoice_id = $1`, [inv.id]);
+    const before = await credit();
+    await qrCallback(inv.ref, amount, 'KB-DUP-0003');
+    const p = (
+      await q<{ id: string; status: string; held_reason: string; duplicate_of_payment_id: string }>(
+        `SELECT id, status::text, held_reason, duplicate_of_payment_id FROM ops.payment WHERE provider_ref = 'KB-DUP-0003'`,
+      )
+    )[0]!;
+    expect(p).toMatchObject({
+      status: 'pending',
+      held_reason: 'possible_duplicate_transfer',
+      duplicate_of_payment_id: slipPayment,
+    });
+    expect(await credit()).toBe(before);
+    // the owner checked the bank statement: two transfers really arrived → booked, the excess is credit
+    const booked = await t.http
+      .post(`/v1/owner/payments/${p.id}/actions/confirm`)
+      .set(O())
+      .set(idem())
+      .expect(200);
+    expect(booked.body).toMatchObject({
+      status: 'confirmed',
+      creditedAmount: amount,
+      nextActions: ['reverse'],
+    });
+    await settle();
+    expect(Number(await credit()) - Number(before)).toBeCloseTo(Number(amount), 2);
+    expect(
+      (await q<{ n: number }>('SELECT count(*)::int AS n FROM ops.receipt WHERE payment_id = $1', [p.id]))[0]!
+        .n,
+    ).toBe(1);
+    await ledgersAgree();
+  });
+
+  it('concurrent confirmations for one payer × unit never over-allocate: the excess is credit (review #3)', async () => {
+    // two open invoices of the same payer × unit; two payments arrive at once, each for one of them — both allocate
+    // oldest first, so without serialisation both would take the same open balance
+    const older = await issue('1500.00');
+    const newer = await issue('1600.00');
+    const amount = (await invoice(older.id)).balance;
+    expect(Number(amount)).toBeGreaterThan(0);
+    const allocatedSum = async () =>
+      Number(
+        (
+          await q<{ s: string }>(
+            `SELECT coalesce(sum(a.amount), 0)::text AS s FROM ops.payment_allocation a JOIN ops.payment p ON p.id = a.payment_id
+              WHERE p.unit_id = $1 AND p.status = 'confirmed' AND p.method <> 'offset' AND a.reversed_at IS NULL`,
+            [unitId],
+          )
+        )[0]!.s,
+      );
+    const creditBefore = Number(await credit());
+    const allocatedBefore = await allocatedSum();
+    const payments = t.app.get(PaymentsService);
+    const input = (invoiceId: string, n: number) =>
+      ({
+        tenantId: DEV.tenantId,
+        buildingId: DEV.buildingId,
+        unitId,
+        invoiceId,
+        payerPartyId: DEV.residentPartyId,
+        leaseId: DEV.leaseId,
+        amount,
+        method: 'cash',
+        confirmedVia: 'manual',
+        paidAt: t.clock.now(),
+        notes: `concurrent ${n}`,
+      }) as const;
+    // A confirms and keeps its transaction open; B confirms meanwhile (B must wait for A, then see A's allocation)
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let ready!: () => void;
+    const aConfirmed = new Promise<void>((r) => (ready = r));
+    const a = t.app.get(TenantTx).platform(
+      async (tx) => {
+        const r = await payments.confirm(tx, input(older.id, 1));
+        ready();
+        await gate;
+        return r;
+      },
+      { timeout: 30_000 },
+    );
+    await aConfirmed;
+    const b = t.app
+      .get(TenantTx)
+      .platform((tx) => payments.confirm(tx, input(newer.id, 2)), { timeout: 30_000 });
+    await new Promise((r) => setTimeout(r, 500));
+    release();
+    await Promise.all([a, b]);
+    // no invoice of the unit is paid beyond what it owed
+    const over = await q(
+      `SELECT id FROM ops.invoice WHERE unit_id = $1 AND paid_total > total + debited_total - credited_total`,
+      [unitId],
+    );
+    expect(over).toEqual([]);
+    // both payments are fully accounted for: allocated or kept as the payer's credit
+    const allocatedDelta = (await allocatedSum()) - allocatedBefore;
+    const creditDelta = Number(await credit()) - creditBefore;
+    expect(allocatedDelta + creditDelta).toBeCloseTo(2 * Number(amount), 2);
+    await ledgersAgree();
   });
 
   it('another tenant gets 404 on my payments, slips, receipts, credits; RLS hides the rows', async () => {

@@ -13,7 +13,8 @@ import { ReceiptsService } from './receipts.service';
 
 /**
  * LINE / in-app messages of payments (B4.4): the payer gets the receipt Flex (D-044); the owner and managers are
- * told when a slip waits for review (D-043) and when a settlement file shows discrepancies (D-042).
+ * told when a slip waits for review (D-043), when a provider payment is held as a possible duplicate (D-220) and
+ * when a settlement file shows discrepancies (D-042).
  */
 @Injectable()
 export class PaymentNotifications implements OnModuleInit {
@@ -53,6 +54,18 @@ export class PaymentNotifications implements OnModuleInit {
             data: {
               tenant: { name: await tenantName(tx, e.tenantId) },
               slip: { reasons: ((e.payload.reasons as string[] | undefined) ?? []).join(', ') },
+            },
+          }
+        : null,
+    );
+    // D-220: a provider payment held as a possible duplicate waits for the owner's decision
+    registerNotifiable('payment.held', async (tx, e) =>
+      e.tenantId
+        ? {
+            recipients: await operators(tx, e.tenantId, ['owner', 'manager'], 'owner'),
+            data: {
+              tenant: { name: await tenantName(tx, e.tenantId) },
+              payment: { amount: formatThb(typeof e.payload.amount === 'string' ? e.payload.amount : '0') },
             },
           }
         : null,

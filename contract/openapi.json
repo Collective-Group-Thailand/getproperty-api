@@ -20557,6 +20557,30 @@
             "pattern": "^-?\\d{1,12}\\.\\d{2}$",
             "type": "string"
           },
+          "dismissReason": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dismissedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "duplicateOfPaymentId": {
+            "description": "D-220: the booked payment this held one probably duplicates.",
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "evidenceDocumentId": {
             "example": null,
             "format": "uuid",
@@ -20564,6 +20588,18 @@
               "string",
               "null"
             ]
+          },
+          "heldReason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaymentHeldReason"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "D-220: set on a provider payment (QR callback or settlement file) held `pending` because it looks like a transfer already booked — its QR was already paid, or a slip / hand-recorded transfer of the same amount for the same payer × unit was booked within `payments.duplicate_window_hours`. A held payment is not allocated, credited or receipted until the owner confirms it (`confirm`) or dismisses it (`dismiss`).",
+            "example": null
           },
           "id": {
             "example": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -20587,6 +20623,7 @@
             "example": "qr"
           },
           "nextActions": {
+            "description": "`reverse` (confirmed), `confirm` and `dismiss` (held, D-220).",
             "example": [
               "reverse"
             ],
@@ -20731,12 +20768,24 @@
           "notes",
           "reversedAt",
           "reverseReason",
+          "heldReason",
+          "duplicateOfPaymentId",
+          "dismissedAt",
+          "dismissReason",
           "allocations",
           "receipts",
           "nextActions",
           "version"
         ],
         "type": "object"
+      },
+      "PaymentHeldReason": {
+        "description": "D-220: set on a provider payment (QR callback or settlement file) held `pending` because it looks like a transfer already booked — its QR was already paid, or a slip / hand-recorded transfer of the same amount for the same payer × unit was booked within `payments.duplicate_window_hours`. A held payment is not allocated, credited or receipted until the owner confirms it (`confirm`) or dismisses it (`dismiss`).",
+        "enum": [
+          "qr_already_paid",
+          "possible_duplicate_transfer"
+        ],
+        "type": "string"
       },
       "PaymentMethod": {
         "enum": [
@@ -29160,7 +29209,8 @@
           "receiver_mismatch",
           "amount_above_due",
           "amount_below_due",
-          "amount_unreadable"
+          "amount_unreadable",
+          "possible_qr_duplicate"
         ],
         "type": "string"
       },
@@ -29238,7 +29288,7 @@
             ]
           },
           "reasons": {
-            "description": "Why it was not confirmed automatically: `not_recognised`, `duplicate_reference`, `receiver_mismatch`, `amount_above_due`, `amount_below_due`, `amount_unreadable`.",
+            "description": "Why it was not confirmed automatically: `not_recognised`, `duplicate_reference`, `receiver_mismatch`, `amount_above_due`, `amount_below_due`, `amount_unreadable`, `possible_qr_duplicate` (a QR payment of the same amount was already booked, D-220).",
             "example": [
               "amount_below_due"
             ],
@@ -123077,7 +123127,11 @@
                       "confirmedAt": "2026-11-01T00:15:00+07:00",
                       "confirmedVia": "webhook",
                       "creditedAmount": "0.00",
+                      "dismissReason": null,
+                      "dismissedAt": null,
+                      "duplicateOfPaymentId": null,
                       "evidenceDocumentId": null,
+                      "heldReason": null,
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "invoiceId": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "method": "qr",
@@ -123355,7 +123409,11 @@
                   "confirmedAt": "2026-11-01T00:15:00+07:00",
                   "confirmedVia": "manual",
                   "creditedAmount": "0.00",
+                  "dismissReason": null,
+                  "dismissedAt": null,
+                  "duplicateOfPaymentId": null,
                   "evidenceDocumentId": null,
+                  "heldReason": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "invoiceId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "method": "cash",
@@ -123663,7 +123721,11 @@
                   "confirmedAt": "2026-11-01T00:15:00+07:00",
                   "confirmedVia": "webhook",
                   "creditedAmount": "0.00",
+                  "dismissReason": null,
+                  "dismissedAt": null,
+                  "duplicateOfPaymentId": null,
                   "evidenceDocumentId": null,
+                  "heldReason": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "invoiceId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "method": "qr",
@@ -123886,6 +123948,626 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/payments/{paymentId}/actions/confirm": {
+      "post": {
+        "description": "A provider payment held as a possible duplicate (`heldReason`, D-220) was in fact a second transfer: it is booked now — allocated to the payer’s open invoices of the unit oldest first, the rest as their credit — and the receipt follows. Only a held `pending` payment (`payment.invalid_state` otherwise). Audited.\n\nImplements: D-042, D-044, D-220.",
+        "operationId": "owner.payments.confirmHeld",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "paymentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "allocatedTotal": "5344.00",
+                  "allocations": [
+                    {
+                      "amount": "5344.00",
+                      "invoiceId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "invoiceNumber": "INV-2026-00042",
+                      "reversedAt": null
+                    }
+                  ],
+                  "amount": "5344.00",
+                  "confirmedAt": "2026-11-01T00:15:00+07:00",
+                  "confirmedVia": "webhook",
+                  "creditedAmount": "0.00",
+                  "dismissReason": null,
+                  "dismissedAt": null,
+                  "duplicateOfPaymentId": null,
+                  "evidenceDocumentId": null,
+                  "heldReason": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "invoiceId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "method": "qr",
+                  "nextActions": [
+                    "reverse"
+                  ],
+                  "notes": null,
+                  "paidAt": "2026-11-01T00:15:00+07:00",
+                  "payerName": "ผู้เช่า ทดสอบ",
+                  "payerPartyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "provider": "kbank",
+                  "providerRef": "KB202611040001",
+                  "receipts": [
+                    {
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "kind": "payment",
+                      "number": "RCP-2026-00001",
+                      "voided": false
+                    }
+                  ],
+                  "reconciledAt": null,
+                  "reverseReason": null,
+                  "reversedAt": null,
+                  "slipReviewId": null,
+                  "status": "confirmed",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "unitNo": "A-201",
+                  "version": 1,
+                  "whtAmount": "0.00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDto"
+                }
+              }
+            },
+            "description": "Booked",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "asset.read_only": {
+                    "$ref": "#/components/examples/problem.asset.read_only"
+                  },
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `asset.read_only`, `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "payment.invalid_state": {
+                    "$ref": "#/components/examples/problem.payment.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `payment.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Book a held payment",
+        "tags": [
+          "owner.payments"
+        ],
+        "x-required-permissions": [
+          "payment.record"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/payments/{paymentId}/actions/dismiss": {
+      "post": {
+        "description": "A provider payment held as a possible duplicate (D-220) is the same bank transfer already booked (by slip or by hand): it is closed `failed` with the reason and never allocated, credited or receipted. Only a held `pending` payment. Audited.\n\nImplements: D-042, D-220.",
+        "operationId": "owner.payments.dismissHeld",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "paymentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "reason": "โอนครั้งเดียวกับสลิปที่อนุมัติแล้ว"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "allocatedTotal": "0.00",
+                  "allocations": [],
+                  "amount": "5344.00",
+                  "confirmedAt": "2026-11-01T00:15:00+07:00",
+                  "confirmedVia": "webhook",
+                  "creditedAmount": "0.00",
+                  "dismissReason": "โอนครั้งเดียวกับสลิปที่อนุมัติแล้ว",
+                  "dismissedAt": "2026-11-01T00:15:00+07:00",
+                  "duplicateOfPaymentId": null,
+                  "evidenceDocumentId": null,
+                  "heldReason": "possible_duplicate_transfer",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "invoiceId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "method": "qr",
+                  "nextActions": [],
+                  "notes": null,
+                  "paidAt": "2026-11-01T00:15:00+07:00",
+                  "payerName": "ผู้เช่า ทดสอบ",
+                  "payerPartyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "provider": "kbank",
+                  "providerRef": "KB202611040001",
+                  "receipts": [],
+                  "reconciledAt": null,
+                  "reverseReason": null,
+                  "reversedAt": null,
+                  "slipReviewId": null,
+                  "status": "failed",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "unitNo": "A-201",
+                  "version": 1,
+                  "whtAmount": "0.00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDto"
+                }
+              }
+            },
+            "description": "Dismissed",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "asset.read_only": {
+                    "$ref": "#/components/examples/problem.asset.read_only"
+                  },
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `asset.read_only`, `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "payment.invalid_state": {
+                    "$ref": "#/components/examples/problem.payment.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `payment.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Dismiss a held payment",
+        "tags": [
+          "owner.payments"
+        ],
+        "x-required-permissions": [
+          "payment.record"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/payments/{paymentId}/actions/reverse": {
       "post": {
         "description": "A payment recorded by mistake or charged back: its allocations are undone (the invoices owe again), its credit withdrawn (refused when already used: `payment.credit_used`), its receipt voided; audited (D-044).\n\nImplements: D-044.",
@@ -123945,7 +124627,11 @@
                   "confirmedAt": "2026-11-01T00:15:00+07:00",
                   "confirmedVia": "webhook",
                   "creditedAmount": "0.00",
+                  "dismissReason": null,
+                  "dismissedAt": null,
+                  "duplicateOfPaymentId": null,
                   "evidenceDocumentId": null,
+                  "heldReason": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "invoiceId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "method": "qr",
