@@ -164,6 +164,16 @@ export const AUDIT_ACTIONS = [
   'access.credential_revoked',
   'access.credential_revealed',
   'access.log_read',
+  // B6.2 e-Tax & TM30
+  'etax.queued',
+  'etax.signed',
+  'etax.rejected',
+  'etax.retried',
+  'foreign_stay.opened',
+  'foreign_stay.file_generated',
+  'foreign_stay.file_downloaded',
+  'foreign_stay.submitted',
+  'foreign_stay.cancelled',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

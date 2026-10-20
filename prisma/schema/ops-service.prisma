@@ -137,6 +137,7 @@ model ServiceRequest {
   category         ServiceCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_request_category_id_fkey")
   workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_request_workflow_instance_id_fkey")
   workOrders       WorkOrder[]
+  csatResponses CsatResponse[]
 
   @@index([tenantId, buildingId, status], map: "service_request_tenant_id_building_id_status_idx")
   @@index([buildingId], map: "service_request_building_id_idx")

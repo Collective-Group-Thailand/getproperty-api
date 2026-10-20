@@ -40,6 +40,7 @@ import {
 import { OwnerComplianceController } from './compliance.controller';
 import { inspectionsController, OwnerDepositsController } from './deposits.controller';
 import { OwnerBillingDocumentsController, OwnerExportsController } from './documents.controller';
+import { OwnerEtaxController, OwnerTm30Controller } from './etax-tm30.controller';
 import {
   OwnerAssetGrantsController,
   OwnerAuditLogController,
@@ -86,6 +87,8 @@ import {
   controllers: [
     OwnerSubscriptionController,
     OwnerInsightsController,
+    OwnerEtaxController,
+    OwnerTm30Controller,
     OwnerServiceCategoriesController,
     serviceRequestsController(SURFACES.owner),
     workOrdersController(SURFACES.owner),

@@ -156,6 +156,7 @@ export enum ExportKindName {
   UnitsXlsx = 'units_xlsx',
   TaxAnnualSummary = 'tax_annual_summary',
   LossReportCsv = 'loss_report_csv',
+  EtaxMonthlyXlsx = 'etax_monthly_xlsx',
 }
 
 /** `ops.job_status`. */

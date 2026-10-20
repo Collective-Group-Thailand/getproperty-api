@@ -1578,7 +1578,7 @@ export class KpiValuesDto {
     type: String,
     nullable: true,
     example: null,
-    description: 'No rating source in R1 (B5 / B6.3).',
+    description: 'Average 1–5 of repair ratings (B5.1) and the LIFF survey (B6.3); null without any.',
   })
   csat!: string | null;
 }
@@ -1594,7 +1594,7 @@ export class Phase1AcceptanceDto {
     type: String,
     nullable: true,
     example: null,
-    description: 'Service requests arrive with B5.',
+    description: 'Requests reported by residents through LINE ÷ requests reported by people, % (B6.3).',
   })
   serviceRequestsViaLinePct!: string | null;
 

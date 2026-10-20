@@ -217,6 +217,18 @@ export const DOMAIN_EVENT_TYPES = {
     'An access credential was issued (resident at lease activation, visitor / staff / technician time-boxed).',
   'access.credential_revoked':
     'An access credential was revoked (lease end or termination, owner with a reason, work order end) — never for arrears (D-071).',
+  // B6.2 e-Tax & TM30 (D-050, D-052, D-215, D-216)
+  'etax.queued': 'A receipt / tax invoice was queued for its e-Tax service provider (D-215).',
+  'etax.signed':
+    'The e-Tax service provider signed a document; the signed XML and PDF are stored and the PDF goes to the payer (D-215).',
+  'etax.rejected': 'The e-Tax service provider rejected a document or every retry failed (D-215).',
+  'etax.monthly_summary': 'The e-Tax figures of a month are ready for the tenant’s accountant (D-215).',
+  'foreign_stay.due': 'A foreign occupant moved in: the TM30 notification is due within 24 h (D-052, D-216).',
+  'foreign_stay.file_generated':
+    'The Immigration Bureau upload file of a building was generated for pending TM30 notifications.',
+  'foreign_stay.submitted': 'The owner recorded the manual TM30 submission to the Immigration Bureau.',
+  // B6.3 analytics (D-083, D-217)
+  'csat.answered': 'A resident answered the 1-question satisfaction survey (D-083 CSAT).',
 } as const;
 export type DomainEventType = keyof typeof DOMAIN_EVENT_TYPES;
 

@@ -544,6 +544,17 @@
           "type": "https://errors.getproperty.co/consent.unknown_purpose"
         }
       },
+      "problem.csat.not_due": {
+        "summary": "csat.not_due",
+        "value": {
+          "code": "csat.not_due",
+          "detail": "คุณตอบแบบสอบถามความพึงพอใจไปเมื่อไม่นานนี้ ระบบจะถามอีกครั้งภายหลัง",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ตอบแบบสอบถามแล้ว",
+          "type": "https://errors.getproperty.co/csat.not_due"
+        }
+      },
       "problem.deposit.invalid_state": {
         "summary": "deposit.invalid_state",
         "value": {
@@ -718,6 +729,17 @@
           "status": 409,
           "title": "ผู้ประกอบการเป็นผู้ดำเนินการ",
           "type": "https://errors.getproperty.co/dsr.tenant_controlled"
+        }
+      },
+      "problem.etax.invalid_state": {
+        "summary": "etax.invalid_state",
+        "value": {
+          "code": "etax.invalid_state",
+          "detail": "ส่งซ้ำได้เฉพาะรายการที่ถูกปฏิเสธหรือส่งไม่สำเร็จ (สถานะปัจจุบัน: {status})",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ส่ง e-Tax ซ้ำไม่ได้",
+          "type": "https://errors.getproperty.co/etax.invalid_state"
         }
       },
       "problem.export.not_ready": {
@@ -1968,6 +1990,39 @@
           "status": 403,
           "title": "องค์กรอยู่ในโหมดอ่านอย่างเดียว",
           "type": "https://errors.getproperty.co/tenant.read_only"
+        }
+      },
+      "problem.tm30.data_missing": {
+        "summary": "tm30.data_missing",
+        "value": {
+          "code": "tm30.data_missing",
+          "detail": "ผู้พักชาวต่างชาติบางรายยังไม่มีข้อมูลที่สำนักงานตรวจคนเข้าเมืองต้องการ กรุณากรอกข้อมูลให้ครบก่อน",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 422,
+          "title": "ข้อมูลหนังสือเดินทางไม่ครบ",
+          "type": "https://errors.getproperty.co/tm30.data_missing"
+        }
+      },
+      "problem.tm30.invalid_state": {
+        "summary": "tm30.invalid_state",
+        "value": {
+          "code": "tm30.invalid_state",
+          "detail": "การแจ้ง ตม.30 ไม่อยู่ในสถานะที่ทำรายการนี้ได้ (สถานะปัจจุบัน: {status})",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "เปลี่ยนสถานะการแจ้ง ตม.30 ไม่ได้",
+          "type": "https://errors.getproperty.co/tm30.invalid_state"
+        }
+      },
+      "problem.tm30.nothing_pending": {
+        "summary": "tm30.nothing_pending",
+        "value": {
+          "code": "tm30.nothing_pending",
+          "detail": "อาคารนี้ไม่มีการแจ้ง ตม.30 ที่รอดำเนินการ",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ไม่มีรายการต้องแจ้ง",
+          "type": "https://errors.getproperty.co/tm30.nothing_pending"
         }
       },
       "problem.unit.invalid_status_transition": {
@@ -3873,6 +3928,89 @@
           "register",
           "unit",
           "quality"
+        ],
+        "type": "object"
+      },
+      "BenchmarkItemDto": {
+        "properties": {
+          "asOf": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "bucketKey": {
+            "description": "The bucket: tenant type, type × size band, or province / district (rent per m²).",
+            "example": "type:apartment|size:20-49",
+            "type": "string"
+          },
+          "k": {
+            "description": "Tenants in the bucket (never fewer than 5).",
+            "example": 7,
+            "type": "integer"
+          },
+          "metric": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BenchmarkMetric"
+              }
+            ],
+            "example": "on_time_payment_pct"
+          },
+          "mine": {
+            "description": "My own value over the last 90 days.",
+            "example": "91.2000",
+            "type": "string"
+          },
+          "p25": {
+            "example": "78.0000",
+            "type": "string"
+          },
+          "p50": {
+            "example": "86.5000",
+            "type": "string"
+          },
+          "p75": {
+            "example": "93.1000",
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric",
+          "bucketKey",
+          "k",
+          "p25",
+          "p50",
+          "p75",
+          "asOf",
+          "mine"
+        ],
+        "type": "object"
+      },
+      "BenchmarkMetric": {
+        "enum": [
+          "loss_pct",
+          "on_time_payment_pct",
+          "rent_per_m2"
+        ],
+        "type": "string"
+      },
+      "BenchmarksDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BenchmarkItemDto"
+            },
+            "type": "array"
+          },
+          "optedIn": {
+            "description": "An Owner of my tenant consented to anonymised analytics (`analytics.anonymised`); otherwise none.",
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "optedIn",
+          "items"
         ],
         "type": "object"
       },
@@ -6537,6 +6675,97 @@
         ],
         "type": "string"
       },
+      "CsatAnswerDto": {
+        "properties": {
+          "comment": {
+            "example": "แจ้งซ่อมได้เร็วดี",
+            "maxLength": 1000,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rating": {
+            "example": 4,
+            "maximum": 5,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unitId",
+          "rating"
+        ],
+        "type": "object"
+      },
+      "CsatQuestionDto": {
+        "properties": {
+          "en": {
+            "example": "Overall, how satisfied are you with living here and the building’s service?",
+            "type": "string"
+          },
+          "th": {
+            "example": "โดยรวมแล้ว คุณพึงพอใจกับการอยู่อาศัยและบริการของอาคารนี้มากน้อยเพียงใด",
+            "type": "string"
+          }
+        },
+        "required": [
+          "th",
+          "en"
+        ],
+        "type": "object"
+      },
+      "CsatSurveyDto": {
+        "properties": {
+          "due": {
+            "description": "Show the survey now.",
+            "example": true,
+            "type": "boolean"
+          },
+          "lastAnsweredAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nextDueOn": {
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "question": {
+            "$ref": "#/components/schemas/CsatQuestionDto"
+          },
+          "questionKey": {
+            "example": "csat.overall_v1",
+            "type": "string"
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unitId",
+          "due",
+          "questionKey",
+          "question",
+          "lastAnsweredAt",
+          "nextDueOn"
+        ],
+        "type": "object"
+      },
       "CurrentTariffDto": {
         "properties": {
           "capBasis": {
@@ -8841,6 +9070,320 @@
         ],
         "type": "string"
       },
+      "EtaxSignedTotalsDto": {
+        "properties": {
+          "documents": {
+            "example": 120,
+            "type": "integer"
+          },
+          "subtotal": {
+            "description": "Unit: THB",
+            "example": "540000.00",
+            "type": "string"
+          },
+          "total": {
+            "description": "Unit: THB",
+            "example": "541260.00",
+            "type": "string"
+          },
+          "vatAmount": {
+            "description": "Unit: THB",
+            "example": "1260.00",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documents",
+          "subtotal",
+          "vatAmount",
+          "total"
+        ],
+        "type": "object"
+      },
+      "EtaxStatus": {
+        "enum": [
+          "queued",
+          "submitted",
+          "signed",
+          "rejected",
+          "failed"
+        ],
+        "type": "string"
+      },
+      "EtaxStatusCountsDto": {
+        "properties": {
+          "failed": {
+            "example": 0,
+            "type": "integer"
+          },
+          "queued": {
+            "example": 0,
+            "type": "integer"
+          },
+          "rejected": {
+            "example": 1,
+            "type": "integer"
+          },
+          "signed": {
+            "example": 120,
+            "type": "integer"
+          },
+          "submitted": {
+            "example": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "queued",
+          "submitted",
+          "signed",
+          "rejected",
+          "failed"
+        ],
+        "type": "object"
+      },
+      "EtaxSubjectType": {
+        "enum": [
+          "receipt",
+          "tax_invoice",
+          "credit_note",
+          "debit_note"
+        ],
+        "type": "string"
+      },
+      "EtaxSubmissionDto": {
+        "properties": {
+          "attempts": {
+            "example": 1,
+            "type": "integer"
+          },
+          "buildingId": {
+            "example": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+            "format": "uuid",
+            "type": "string"
+          },
+          "documentTypeCode": {
+            "description": "ETDA document type (ขมธอ. 3-2560): T01 receipt, T03 receipt / tax invoice, 388 tax invoice.",
+            "example": "T01",
+            "type": "string"
+          },
+          "error": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "issuedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "nextActions": {
+            "example": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "nextAttemptAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "number": {
+            "example": "RC2611-0001",
+            "type": "string"
+          },
+          "provider": {
+            "example": "inet",
+            "type": "string"
+          },
+          "providerDocId": {
+            "example": "TX-20261101-0001",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "signedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "signedPdfDocumentId": {
+            "description": "The provider-signed PDF/A-3 (download with `GET /v1/owner/files/{fileId}`).",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "signedXmlDocumentId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceDocumentId": {
+            "description": "Our PDF.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EtaxStatus"
+              }
+            ],
+            "example": "signed"
+          },
+          "subjectId": {
+            "description": "The receipt / tax invoice.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "subjectType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EtaxSubjectType"
+              }
+            ],
+            "example": "receipt"
+          },
+          "submittedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subtotal": {
+            "description": "Unit: THB",
+            "example": "4500.00",
+            "type": "string"
+          },
+          "total": {
+            "description": "Unit: THB",
+            "example": "4500.00",
+            "type": "string"
+          },
+          "vatAmount": {
+            "description": "Unit: THB",
+            "example": "0.00",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nextActions",
+          "id",
+          "buildingId",
+          "subjectType",
+          "subjectId",
+          "number",
+          "documentTypeCode",
+          "issuedAt",
+          "subtotal",
+          "vatAmount",
+          "total",
+          "provider",
+          "providerDocId",
+          "status",
+          "attempts",
+          "nextAttemptAt",
+          "sourceDocumentId",
+          "signedPdfDocumentId",
+          "signedXmlDocumentId",
+          "submittedAt",
+          "signedAt",
+          "error"
+        ],
+        "type": "object"
+      },
+      "EtaxSummaryDto": {
+        "properties": {
+          "byType": {
+            "items": {
+              "$ref": "#/components/schemas/EtaxTypeTotalDto"
+            },
+            "type": "array"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/EtaxStatusCountsDto"
+          },
+          "enabled": {
+            "description": "`etax.enabled` at the end of the month.",
+            "example": true,
+            "type": "boolean"
+          },
+          "month": {
+            "example": "2026-11",
+            "type": "string"
+          },
+          "provider": {
+            "example": "inet",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "signed": {
+            "$ref": "#/components/schemas/EtaxSignedTotalsDto"
+          }
+        },
+        "required": [
+          "month",
+          "enabled",
+          "provider",
+          "counts",
+          "signed",
+          "byType"
+        ],
+        "type": "object"
+      },
+      "EtaxTypeTotalDto": {
+        "properties": {
+          "documents": {
+            "example": 100,
+            "type": "integer"
+          },
+          "total": {
+            "description": "Unit: THB",
+            "example": "450000.00",
+            "type": "string"
+          },
+          "typeCode": {
+            "example": "T01",
+            "type": "string"
+          }
+        },
+        "required": [
+          "typeCode",
+          "documents",
+          "total"
+        ],
+        "type": "object"
+      },
       "EventConsumptionDto": {
         "properties": {
           "attempts": {
@@ -9047,7 +9590,8 @@
           "tm30",
           "units_xlsx",
           "tax_annual_summary",
-          "loss_report_csv"
+          "loss_report_csv",
+          "etax_monthly_xlsx"
         ],
         "type": "string"
       },
@@ -10895,6 +11439,123 @@
           "processing_error"
         ],
         "type": "string"
+      },
+      "InsightMetric": {
+        "enum": [
+          "time_to_bill_hours",
+          "invoice_correction_rate_pct",
+          "on_time_payment_pct",
+          "auto_reconciled_pct",
+          "paid_by_qr_pct",
+          "reminder_effectiveness_pct",
+          "loss_pct",
+          "meter_uptime_pct",
+          "csat",
+          "compliance_score",
+          "above_cap_acknowledged_pct",
+          "service_requests_via_line_pct"
+        ],
+        "type": "string"
+      },
+      "InsightPointDto": {
+        "properties": {
+          "count": {
+            "description": "How many measurements the value stands on.",
+            "example": 40,
+            "type": "integer"
+          },
+          "month": {
+            "description": "First day of the Bangkok month.",
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "value": {
+            "description": "null = nothing measured.",
+            "example": "97.50",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "month",
+          "value",
+          "count"
+        ],
+        "type": "object"
+      },
+      "InsightSeriesDto": {
+        "properties": {
+          "metric": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InsightMetric"
+              }
+            ],
+            "example": "on_time_payment_pct"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/InsightPointDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "metric",
+          "points"
+        ],
+        "type": "object"
+      },
+      "InsightsDto": {
+        "properties": {
+          "asOf": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "benchmarks": {
+            "$ref": "#/components/schemas/BenchmarksDto"
+          },
+          "buildingId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KpiValuesDto"
+              }
+            ],
+            "description": "The seven D-083 KPIs over the last 90 days."
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/InsightSeriesDto"
+            },
+            "type": "array"
+          },
+          "tenantId": {
+            "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId",
+          "asOf",
+          "buildingId",
+          "current",
+          "series",
+          "benchmarks"
+        ],
+        "type": "object"
       },
       "InspectionComparisonDto": {
         "properties": {
@@ -13454,7 +14115,7 @@
             ]
           },
           "csat": {
-            "description": "No rating source in R1 (B5 / B6.3).",
+            "description": "Average 1–5 of repair ratings (B5.1) and the LIFF survey (B6.3); null without any.",
             "example": null,
             "type": [
               "string",
@@ -20045,7 +20706,7 @@
             ]
           },
           "serviceRequestsViaLinePct": {
-            "description": "Service requests arrive with B5.",
+            "description": "Requests reported by residents through LINE ÷ requests reported by people, % (B6.3).",
             "example": null,
             "type": [
               "string",
@@ -31096,6 +31757,270 @@
             "description": "Defaults to me.",
             "example": "3b241101-e2bb-4255-8caf-4136c566a962",
             "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Tm30CancelDto": {
+        "properties": {
+          "reason": {
+            "example": "ผู้เช่าเป็นคนไทย บันทึกสัญชาติผิด",
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "Tm30ExportDto": {
+        "properties": {
+          "arrivalDate": {
+            "example": "2026-10-30",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "buildingId": {
+            "example": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+            "format": "uuid",
+            "type": "string"
+          },
+          "cancelReason": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "downloadedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dueAt": {
+            "description": "Move-in + `tm30.notify_within_hours` (24 h, Immigration Act B.E. 2522 s.38).",
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "fileDocumentId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "format": {
+            "example": "immigration_xlsx_v1",
+            "type": "string"
+          },
+          "generatedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "leaseId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "missing": {
+            "description": "Fields the Immigration Bureau requires that are still missing on the party / occupant profile.",
+            "example": [
+              "passportNo"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "movedInAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "name": {
+            "example": "John Smith",
+            "type": "string"
+          },
+          "nationality": {
+            "description": "ISO 3166-1 alpha-2.",
+            "example": "GB",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nextActions": {
+            "example": [
+              "generate",
+              "mark-submitted",
+              "cancel"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "overdue": {
+            "example": false,
+            "type": "boolean"
+          },
+          "partyId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Tm30Status"
+              }
+            ],
+            "example": "due"
+          },
+          "submissionRef": {
+            "description": "Immigration receipt reference.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "submittedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "unitNo": {
+            "example": "A-101",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nextActions",
+          "id",
+          "buildingId",
+          "unitId",
+          "unitNo",
+          "leaseId",
+          "partyId",
+          "name",
+          "nationality",
+          "arrivalDate",
+          "movedInAt",
+          "dueAt",
+          "overdue",
+          "status",
+          "missing",
+          "format",
+          "generatedAt",
+          "fileDocumentId",
+          "downloadedAt",
+          "submittedAt",
+          "submissionRef",
+          "cancelReason"
+        ],
+        "type": "object"
+      },
+      "Tm30FileDto": {
+        "properties": {
+          "expiresAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "exports": {
+            "items": {
+              "$ref": "#/components/schemas/Tm30ExportDto"
+            },
+            "type": "array"
+          },
+          "fileDocumentId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": {
+            "example": "tm30-A-2026-11-01.xlsx",
+            "type": "string"
+          },
+          "url": {
+            "example": "https://storage.example.com/file?X-Amz-Signature=abc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fileDocumentId",
+          "title",
+          "url",
+          "expiresAt",
+          "exports"
+        ],
+        "type": "object"
+      },
+      "Tm30GenerateDto": {
+        "properties": {
+          "exportIds": {
+            "description": "Only these pending notifications (default: every pending one of the building).",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "Tm30Status": {
+        "enum": [
+          "due",
+          "generated",
+          "downloaded",
+          "submitted_manually",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "Tm30SubmittedDto": {
+        "properties": {
+          "reference": {
+            "example": "TM30-6611-000123",
+            "maxLength": 100,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "submittedAt": {
+            "description": "When it was submitted (default now; never in the future).",
+            "format": "date-time",
             "type": "string"
           }
         },
@@ -58025,7 +58950,7 @@
     },
     "/v1/admin/tenants/{tenantId}/pilot-kpis": {
       "get": {
-        "description": "The seven D-083 KPIs computed from the tenant’s data over the window (default 90 days): time to bill, invoice correction rate, on-time payment, auto-reconciled payments, utility loss identified, meter uptime, CSAT (no source in R1 → null) — against the baseline and targets of the pilot agreement, plus the Phase 1 acceptance measures. The result is also stored as a snapshot.\n\nImplements: D-083.",
+        "description": "The seven D-083 KPIs computed from the tenant’s data over the window (default 90 days): time to bill, invoice correction rate, on-time payment, auto-reconciled payments, utility loss identified, meter uptime, CSAT — read from the analytics rollups (B6.3, D-217) against the baseline and targets of the pilot agreement, plus the Phase 1 acceptance measures. The result is also stored as a snapshot.\n\nImplements: D-083, D-217.",
         "operationId": "admin.pilots.kpis",
         "parameters": [
           {
@@ -76529,6 +77454,318 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/buildings/{buildingId}/tm30-exports/actions/generate": {
+      "post": {
+        "description": "One `.xlsx` in the Immigration Bureau’s upload format (`immigration_xlsx_v1`: passport no., nationality, names, gender, birth date, arrival date, visa, port of entry, check-in date, room; dates DD/MM/YYYY พ.ศ.) for every pending notification of the building, or the chosen ones; passport numbers are decrypted for the file only (each reveal audited, D-148). 422 `tm30.data_missing` lists what to complete per person; 409 `tm30.nothing_pending`. Upload it on the Immigration Bureau’s site, then record the submission — the platform never submits (D-052).\n\nImplements: D-052, D-216, D-148.",
+        "operationId": "owner.tm30.generate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "buildingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {}
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/Tm30GenerateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "expiresAt": "2026-11-01T00:15:00+07:00",
+                  "exports": [
+                    {
+                      "arrivalDate": "2026-10-30",
+                      "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                      "cancelReason": null,
+                      "downloadedAt": null,
+                      "dueAt": "2026-11-01T00:15:00+07:00",
+                      "fileDocumentId": null,
+                      "format": "immigration_xlsx_v1",
+                      "generatedAt": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "missing": [],
+                      "movedInAt": "2026-11-01T00:15:00+07:00",
+                      "name": "John Smith",
+                      "nationality": "GB",
+                      "nextActions": [
+                        "generate",
+                        "mark-submitted",
+                        "cancel"
+                      ],
+                      "overdue": false,
+                      "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "status": "generated",
+                      "submissionRef": null,
+                      "submittedAt": null,
+                      "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "unitNo": "A-101"
+                    }
+                  ],
+                  "fileDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "title": "tm30-A-2026-11-01.xlsx",
+                  "url": "https://storage.example.com/file?X-Amz-Signature=abc"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Tm30FileDto"
+                }
+              }
+            },
+            "description": "The file (5-minute link) and the notifications in it",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "tm30.nothing_pending": {
+                    "$ref": "#/components/examples/problem.tm30.nothing_pending"
+                  },
+                  "workflow.invalid_transition": {
+                    "$ref": "#/components/examples/problem.workflow.invalid_transition"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `tm30.nothing_pending`, `workflow.invalid_transition`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "tm30.data_missing": {
+                    "$ref": "#/components/examples/problem.tm30.data_missing"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `tm30.data_missing`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Generate the Immigration Bureau upload file of a building",
+        "tags": [
+          "owner.tm30"
+        ],
+        "x-required-permissions": [
+          "tm30.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/buildings/{buildingId}/unit-imports/actions/commit": {
       "post": {
         "description": "Parses the same file again and writes the plan in one transaction when it still matches the preview (409 `import.preview_stale` otherwise); refuses files with row errors (422 `import.invalid_rows`). Audited (`unit.imported`).\n\nImplements: D-014.\n\n**Files:** upload first — `owner.files.presign` → PUT the bytes to the returned URL → `…/actions/complete` — then send the `fileId` (contract §3).",
@@ -89833,6 +91070,1051 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/etax/submissions": {
+      "get": {
+        "description": "Receipts and receipt-tax invoices sent to my e-Tax service provider (VAT-registered tenants with `etax.enabled`), newest first: status, the provider’s reference, the signed PDF / XML and any error (D-050, D-215).\n\nImplements: D-050, D-215.",
+        "operationId": "owner.etax.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sort field; each endpoint validates it against its own allow-list.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "example": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "description": "Free-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/EtaxStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subjectType",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/EtaxSubjectType"
+            }
+          },
+          {
+            "description": "Issued in this Bangkok month.",
+            "in": "query",
+            "name": "month",
+            "required": false,
+            "schema": {
+              "example": "2026-11",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "attempts": 1,
+                      "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                      "documentTypeCode": "T01",
+                      "error": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "issuedAt": "2026-11-01T00:15:00+07:00",
+                      "nextActions": [],
+                      "nextAttemptAt": null,
+                      "number": "RC2611-0001",
+                      "provider": "inet",
+                      "providerDocId": "TX-20261101-0001",
+                      "signedAt": "2026-11-01T00:15:00+07:00",
+                      "signedPdfDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "signedXmlDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "sourceDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "status": "signed",
+                      "subjectId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "subjectType": "receipt",
+                      "submittedAt": "2026-11-01T00:15:00+07:00",
+                      "subtotal": "4500.00",
+                      "total": "4500.00",
+                      "vatAmount": "0.00"
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "perPage": 25,
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/EtaxSubmissionDto"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "One page of results",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "e-Tax submissions",
+        "tags": [
+          "owner.etax"
+        ],
+        "x-required-permissions": [
+          "payment.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/etax/submissions/{submissionId}": {
+      "get": {
+        "description": "Status, provider reference, signed artefacts and the last error (D-215); another tenant’s is 404.\n\nImplements: D-215.",
+        "operationId": "owner.etax.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "submissionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "attempts": 1,
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "documentTypeCode": "T01",
+                  "error": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "issuedAt": "2026-11-01T00:15:00+07:00",
+                  "nextActions": [],
+                  "nextAttemptAt": null,
+                  "number": "RC2611-0001",
+                  "provider": "inet",
+                  "providerDocId": "TX-20261101-0001",
+                  "signedAt": "2026-11-01T00:15:00+07:00",
+                  "signedPdfDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "signedXmlDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "sourceDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "status": "signed",
+                  "subjectId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "subjectType": "receipt",
+                  "submittedAt": "2026-11-01T00:15:00+07:00",
+                  "subtotal": "4500.00",
+                  "total": "4500.00",
+                  "vatAmount": "0.00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/EtaxSubmissionDto"
+                }
+              }
+            },
+            "description": "The submission",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "One e-Tax submission",
+        "tags": [
+          "owner.etax"
+        ],
+        "x-required-permissions": [
+          "payment.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/etax/submissions/{submissionId}/actions/retry": {
+      "post": {
+        "description": "After fixing what the provider refused (e.g. the buyer’s tax id): back to `queued` with the attempts reset and sent at once (409 `etax.invalid_state` unless rejected or failed). Audited (D-215).\n\nImplements: D-215.",
+        "operationId": "owner.etax.retry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "submissionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "attempts": 1,
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "documentTypeCode": "T01",
+                  "error": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "issuedAt": "2026-11-01T00:15:00+07:00",
+                  "nextActions": [],
+                  "nextAttemptAt": null,
+                  "number": "RC2611-0001",
+                  "provider": "inet",
+                  "providerDocId": "TX-20261101-0001",
+                  "signedAt": null,
+                  "signedPdfDocumentId": null,
+                  "signedXmlDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "sourceDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "status": "submitted",
+                  "subjectId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "subjectType": "receipt",
+                  "submittedAt": "2026-11-01T00:15:00+07:00",
+                  "subtotal": "4500.00",
+                  "total": "4500.00",
+                  "vatAmount": "0.00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/EtaxSubmissionDto"
+                }
+              }
+            },
+            "description": "Queued again (or already submitted)",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "etax.invalid_state": {
+                    "$ref": "#/components/examples/problem.etax.invalid_state"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `etax.invalid_state`, `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Send a rejected or failed document again",
+        "tags": [
+          "owner.etax"
+        ],
+        "x-required-permissions": [
+          "receipt.issue"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/etax/summary": {
+      "get": {
+        "description": "For my accountant (D-051, D-215): documents per status, the signed totals (subtotal, VAT, total) and per ETDA type of the Bangkok month. The register itself is the `etax_monthly_xlsx` export; on the 1st the owner and accountant are told the previous month’s figures.\n\nImplements: D-051, D-215.",
+        "operationId": "owner.etax.summary",
+        "parameters": [
+          {
+            "description": "Bangkok month `YYYY-MM`.",
+            "in": "query",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "example": "2026-11",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "byType": [
+                    {
+                      "documents": 100,
+                      "total": "450000.00",
+                      "typeCode": "T01"
+                    }
+                  ],
+                  "counts": {
+                    "failed": 0,
+                    "queued": 0,
+                    "rejected": 1,
+                    "signed": 120,
+                    "submitted": 0
+                  },
+                  "enabled": true,
+                  "month": "2026-11",
+                  "provider": "inet",
+                  "signed": {
+                    "documents": 120,
+                    "subtotal": "540000.00",
+                    "total": "541260.00",
+                    "vatAmount": "1260.00"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/EtaxSummaryDto"
+                }
+              }
+            },
+            "description": "Summary",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "e-Tax figures of a month",
+        "tags": [
+          "owner.etax"
+        ],
+        "x-required-permissions": [
+          "payment.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/exports": {
       "get": {
         "description": "Export jobs, newest first, with their status (D-051).\n\nImplements: D-051.",
@@ -93451,6 +95733,276 @@
         ],
         "x-required-permissions": [
           "document.upload"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/insights": {
+      "get": {
+        "description": "From the analytics rollups (B6.3, D-217): the seven D-083 KPIs over the last 90 days, the month series of time to bill, correction rate, on-time payment, auto-reconciled and QR payments, reminder effectiveness, loss %, meter uptime, resident CSAT (repair ratings + the LIFF survey), compliance score, above-cap lines acknowledged and requests via LINE (null = nothing measured that month), and anonymised benchmarks (k ≥ 5 tenants per bucket) when an Owner of my tenant opted in.\n\nImplements: D-083, D-217, D-021, D-045.",
+        "operationId": "owner.insights.get",
+        "parameters": [
+          {
+            "description": "Months of series.",
+            "in": "query",
+            "name": "months",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "maximum": 24,
+              "minimum": 3,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Series of one building (the 90-day KPIs stay tenant-wide).",
+            "in": "query",
+            "name": "building",
+            "required": false,
+            "schema": {
+              "example": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "asOf": "2026-11-01",
+                  "benchmarks": {
+                    "items": [
+                      {
+                        "asOf": "2026-11-01",
+                        "bucketKey": "type:apartment|size:20-49",
+                        "k": 7,
+                        "metric": "on_time_payment_pct",
+                        "mine": "91.2000",
+                        "p25": "78.0000",
+                        "p50": "86.5000",
+                        "p75": "93.1000"
+                      }
+                    ],
+                    "optedIn": true
+                  },
+                  "buildingId": null,
+                  "current": {
+                    "autoReconciledPct": "95.00",
+                    "csat": null,
+                    "invoiceCorrectionRatePct": "0.00",
+                    "latestLossPct": "2.2706",
+                    "lossIdentified": true,
+                    "meterUptimePct": null,
+                    "onTimePaymentPct": "81.25",
+                    "timeToBillHours": "0.25"
+                  },
+                  "series": [
+                    {
+                      "metric": "on_time_payment_pct",
+                      "points": [
+                        {
+                          "count": 40,
+                          "month": "2026-11-01",
+                          "value": "86.50"
+                        }
+                      ]
+                    }
+                  ],
+                  "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsDto"
+                }
+              }
+            },
+            "description": "Insights",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Operating insights",
+        "tags": [
+          "owner.insights"
+        ],
+        "x-required-permissions": [
+          "report.read"
         ],
         "x-surface": "owner"
       }
@@ -135286,6 +137838,1373 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/tm30-exports": {
+      "get": {
+        "description": "Every foreign occupant who moved in, with the 24-hour deadline (Immigration Act B.E. 2522 s.38, `tm30.notify_within_hours`), the data still missing for the Immigration Bureau, the upload file it went into and the recorded submission — the building’s export log (D-052, D-216).\n\nImplements: D-052, D-216.",
+        "operationId": "owner.tm30.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sort field; each endpoint validates it against its own allow-list.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "example": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "description": "Free-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "building",
+            "required": false,
+            "schema": {
+              "example": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Tm30Status"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "arrivalDate": "2026-10-30",
+                      "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                      "cancelReason": null,
+                      "downloadedAt": null,
+                      "dueAt": "2026-11-01T00:15:00+07:00",
+                      "fileDocumentId": null,
+                      "format": "immigration_xlsx_v1",
+                      "generatedAt": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "missing": [],
+                      "movedInAt": "2026-11-01T00:15:00+07:00",
+                      "name": "John Smith",
+                      "nationality": "GB",
+                      "nextActions": [
+                        "generate",
+                        "mark-submitted",
+                        "cancel"
+                      ],
+                      "overdue": false,
+                      "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "status": "due",
+                      "submissionRef": null,
+                      "submittedAt": null,
+                      "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "unitNo": "A-101"
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "perPage": 25,
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/Tm30ExportDto"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "One page of results",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "TM30 notifications (export log)",
+        "tags": [
+          "owner.tm30"
+        ],
+        "x-required-permissions": [
+          "tm30.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/tm30-exports/{tm30ExportId}": {
+      "get": {
+        "description": "Deadline, missing data, file and submission of one foreign occupant’s notification (D-216).\n\nImplements: D-052, D-216.",
+        "operationId": "owner.tm30.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tm30ExportId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "arrivalDate": "2026-10-30",
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "cancelReason": null,
+                  "downloadedAt": null,
+                  "dueAt": "2026-11-01T00:15:00+07:00",
+                  "fileDocumentId": null,
+                  "format": "immigration_xlsx_v1",
+                  "generatedAt": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "missing": [],
+                  "movedInAt": "2026-11-01T00:15:00+07:00",
+                  "name": "John Smith",
+                  "nationality": "GB",
+                  "nextActions": [
+                    "generate",
+                    "mark-submitted",
+                    "cancel"
+                  ],
+                  "overdue": false,
+                  "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "status": "due",
+                  "submissionRef": null,
+                  "submittedAt": null,
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "unitNo": "A-101"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Tm30ExportDto"
+                }
+              }
+            },
+            "description": "The notification",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "One TM30 notification",
+        "tags": [
+          "owner.tm30"
+        ],
+        "x-required-permissions": [
+          "tm30.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/tm30-exports/{tm30ExportId}/actions/cancel": {
+      "post": {
+        "description": "Not due after all (e.g. the occupant is Thai and the nationality was wrong), with a reason; its timers stop. Audited (D-216).\n\nImplements: D-216.",
+        "operationId": "owner.tm30.cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tm30ExportId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "reason": "ผู้เช่าเป็นคนไทย บันทึกสัญชาติผิด"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/Tm30CancelDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "arrivalDate": "2026-10-30",
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "cancelReason": "ผู้เช่าเป็นคนไทย",
+                  "downloadedAt": null,
+                  "dueAt": "2026-11-01T00:15:00+07:00",
+                  "fileDocumentId": null,
+                  "format": "immigration_xlsx_v1",
+                  "generatedAt": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "missing": [],
+                  "movedInAt": "2026-11-01T00:15:00+07:00",
+                  "name": "John Smith",
+                  "nationality": "GB",
+                  "nextActions": [],
+                  "overdue": false,
+                  "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "status": "cancelled",
+                  "submissionRef": null,
+                  "submittedAt": null,
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "unitNo": "A-101"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Tm30ExportDto"
+                }
+              }
+            },
+            "description": "Cancelled",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tm30.invalid_state": {
+                    "$ref": "#/components/examples/problem.tm30.invalid_state"
+                  },
+                  "workflow.invalid_transition": {
+                    "$ref": "#/components/examples/problem.workflow.invalid_transition"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tm30.invalid_state`, `workflow.invalid_transition`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Cancel a TM30 notification",
+        "tags": [
+          "owner.tm30"
+        ],
+        "x-required-permissions": [
+          "tm30.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/tm30-exports/{tm30ExportId}/actions/mark-submitted": {
+      "post": {
+        "description": "I uploaded the file (or notified in person) at the Immigration Bureau: the notification closes with the time and the receipt reference; its deadline timers stop (D-052, D-216). Audited.\n\nImplements: D-052, D-216.",
+        "operationId": "owner.tm30.markSubmitted",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tm30ExportId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "reference": "TM30-6611-000123"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/Tm30SubmittedDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "arrivalDate": "2026-10-30",
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "cancelReason": null,
+                  "downloadedAt": null,
+                  "dueAt": "2026-11-01T00:15:00+07:00",
+                  "fileDocumentId": null,
+                  "format": "immigration_xlsx_v1",
+                  "generatedAt": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "missing": [],
+                  "movedInAt": "2026-11-01T00:15:00+07:00",
+                  "name": "John Smith",
+                  "nationality": "GB",
+                  "nextActions": [],
+                  "overdue": false,
+                  "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "status": "submitted_manually",
+                  "submissionRef": null,
+                  "submittedAt": "2026-11-01T00:15:00+07:00",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "unitNo": "A-101"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Tm30ExportDto"
+                }
+              }
+            },
+            "description": "Submitted",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "tm30.invalid_state": {
+                    "$ref": "#/components/examples/problem.tm30.invalid_state"
+                  },
+                  "workflow.invalid_transition": {
+                    "$ref": "#/components/examples/problem.workflow.invalid_transition"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `tm30.invalid_state`, `workflow.invalid_transition`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Record the TM30 submission",
+        "tags": [
+          "owner.tm30"
+        ],
+        "x-required-permissions": [
+          "tm30.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/tm30-exports/{tm30ExportId}/file": {
+      "get": {
+        "description": "A 5-minute link to the last file the notification went into; the notifications of that file become `downloaded`. Audited (D-216, D-025).\n\nImplements: D-216, D-025.",
+        "operationId": "owner.tm30.file",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tm30ExportId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "expiresAt": "2026-11-01T00:15:00+07:00",
+                  "exports": [],
+                  "fileDocumentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "title": "tm30-A-2026-11-01.xlsx",
+                  "url": "https://storage.example.com/file?X-Amz-Signature=abc"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Tm30FileDto"
+                }
+              }
+            },
+            "description": "Link",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tm30.invalid_state": {
+                    "$ref": "#/components/examples/problem.tm30.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tm30.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Download the upload file of a notification",
+        "tags": [
+          "owner.tm30"
+        ],
+        "x-required-permissions": [
+          "tm30.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/unit-profiles/{unitProfileId}": {
       "delete": {
         "description": "Soft delete; units keep the reference for history.\n\nImplements: D-151.",
@@ -158052,6 +161971,458 @@
         "summary": "Rate the repair",
         "tags": [
           "resident.serviceRequests"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/surveys/csat": {
+      "get": {
+        "description": "For one of my units: whether to show the 1-question survey now (I have not answered it for `analytics.csat_survey_interval_days`, 90) and the question in Thai and English (D-083, D-217). 404 outside my units.\n\nImplements: D-083, D-217.",
+        "operationId": "resident.surveys.csat",
+        "parameters": [
+          {
+            "description": "One of my units.",
+            "in": "query",
+            "name": "unitId",
+            "required": true,
+            "schema": {
+              "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "due": true,
+                  "lastAnsweredAt": null,
+                  "nextDueOn": null,
+                  "question": {
+                    "en": "Overall, how satisfied are you with living here and the building’s service?",
+                    "th": "โดยรวมแล้ว คุณพึงพอใจกับการอยู่อาศัยและบริการของอาคารนี้มากน้อยเพียงใด"
+                  },
+                  "questionKey": "csat.overall_v1",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CsatSurveyDto"
+                }
+              }
+            },
+            "description": "Survey state",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Is the satisfaction survey due?",
+        "tags": [
+          "resident.surveys"
+        ],
+        "x-surface": "resident"
+      },
+      "post": {
+        "description": "A 1–5 rating with an optional comment, counted in the building’s CSAT with the repair ratings (D-083). 409 `csat.not_due` when I answered within the interval.\n\nImplements: D-083, D-217.",
+        "operationId": "resident.surveys.csatAnswer",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "comment": "แจ้งซ่อมได้เร็วดี",
+                    "rating": 4,
+                    "unitId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CsatAnswerDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "due": false,
+                  "lastAnsweredAt": "2026-11-01T00:15:00+07:00",
+                  "nextDueOn": "2027-02-01",
+                  "question": {
+                    "en": "Overall, how satisfied are you with living here and the building’s service?",
+                    "th": "โดยรวมแล้ว คุณพึงพอใจกับการอยู่อาศัยและบริการของอาคารนี้มากน้อยเพียงใด"
+                  },
+                  "questionKey": "csat.overall_v1",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CsatSurveyDto"
+                }
+              }
+            },
+            "description": "Recorded",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "csat.not_due": {
+                    "$ref": "#/components/examples/problem.csat.not_due"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `csat.not_due`, `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Answer the satisfaction survey",
+        "tags": [
+          "resident.surveys"
         ],
         "x-surface": "resident"
       }
@@ -181156,6 +185527,10 @@
       "name": "owner.documents"
     },
     {
+      "description": "e-Tax Invoice & e-Receipt of a VAT-registered tenant: submissions to its service provider, signed PDF / XML, monthly figures (B6.2, D-050, D-215).",
+      "name": "owner.etax"
+    },
+    {
       "description": "Exports built by the worker: document archives (B4.3), Excel and accounting formats (B4.5), D-051.",
       "name": "owner.exports"
     },
@@ -181292,6 +185667,10 @@
       "name": "owner.tenant"
     },
     {
+      "description": "TM30 notifications of foreign occupants: 24-hour deadline, the Immigration Bureau upload file per building, submissions (B6.2, D-052, D-216).",
+      "name": "owner.tm30"
+    },
+    {
       "description": "The unit board of a building: floors with unit cards (B2.1, D-100).",
       "name": "owner.unitBoard"
     },
@@ -181406,6 +185785,10 @@
     {
       "description": "Reporting a problem of my unit with photos, following it and rating the repair (B5.1, D-072).",
       "name": "resident.serviceRequests"
+    },
+    {
+      "description": "The periodic 1-question satisfaction survey in the LIFF (B6.3, D-083).",
+      "name": "resident.surveys"
     },
     {
       "description": "Resident LINE Mini App (getproperty-liff, D-154) — lessees, co-occupants and condo owners, scoped to their leases and units (`resident` audience, D-060, D-151). System: ping.",

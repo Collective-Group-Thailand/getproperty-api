@@ -576,6 +576,69 @@ export const SETTINGS: readonly SettingDef[] = [
     },
     reason: 'seed: D-156 proposed pricing',
   },
+  // --- e-Tax, TM30 (B6.2) ------------------------------------------------------------------------------
+  {
+    key: 'etax.enabled',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-050 / D-215 (B6.2): receipts and receipt-tax invoices of a VAT-registered tenant are submitted to its e-Tax Invoice & e-Receipt service provider (the provider holds the certificate; off until the tenant has signed up with one).',
+    editableBy: OWNER_BILLING,
+    value: false,
+    reason: 'seed: D-215 (opt-in per tenant)',
+  },
+  {
+    key: 'etax.provider',
+    valueType: 'string',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-050 / D-215 (B6.2): the Revenue-Department-approved e-Tax service provider of the tenant (adapter key); the account secrets live in the secret store, never in settings.',
+    editableBy: OWNER_BILLING,
+    value: 'inet',
+    reason: 'seed: D-215 first adapter',
+    allowedValues: ['inet'],
+  },
+  {
+    key: 'etax.seller_branch',
+    valueType: 'string',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-050 / D-215 (B6.2): the 5-digit branch code of the tenant as registered with the Revenue Department (00000 = head office), sent with every e-Tax document.',
+    editableBy: OWNER_BILLING,
+    value: '00000',
+    reason: 'seed: D-215 head office default',
+  },
+  {
+    key: 'tm30.notify_within_hours',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-052 / D-216 ⚖ (Immigration Act B.E. 2522 s.38): the house master notifies the Immigration Bureau of a foreigner staying at the premises within this many hours of arrival (24); the TM30 workflow SLA.',
+    editableBy: ADMIN_COMPLIANCE,
+    value: 24,
+    reason: 'seed: D-052 (24-hour rule, legal reference to be confirmed by counsel)',
+  },
+  // --- analytics (B6.3) --------------------------------------------------------------------------------
+  {
+    key: 'analytics.csat_survey_interval_days',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-083 / D-217 (B6.3): the resident app offers the 1-question satisfaction survey when the resident has not answered it for this many days (90).',
+    editableBy: OWNER_SETTINGS,
+    value: 90,
+    reason: 'seed: D-217 founder pre-approved recommendation',
+  },
+  {
+    key: 'analytics.reminder_effective_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-045 / D-217 (B6.3): a payment reminder counts as effective when the invoice is paid within this many days after it (7).',
+    editableBy: ADMIN,
+    value: 7,
+    reason: 'seed: D-217 founder pre-approved recommendation',
+  },
   {
     key: 'ai.usage_metering',
     valueType: 'json',

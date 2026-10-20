@@ -205,6 +205,11 @@ export const ERROR_CODES = {
   'staff_task.not_completable': HttpStatus.CONFLICT,
   'dsr.tenant_controlled': HttpStatus.CONFLICT,
   'dsr.erasure_blocked': HttpStatus.CONFLICT,
+  'etax.invalid_state': HttpStatus.CONFLICT,
+  'tm30.invalid_state': HttpStatus.CONFLICT,
+  'tm30.data_missing': HttpStatus.UNPROCESSABLE_ENTITY,
+  'tm30.nothing_pending': HttpStatus.CONFLICT,
+  'csat.not_due': HttpStatus.CONFLICT,
   'internal.unexpected': HttpStatus.INTERNAL_SERVER_ERROR,
 } as const satisfies Record<string, HttpStatus>;
 

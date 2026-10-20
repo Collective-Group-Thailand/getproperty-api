@@ -3,7 +3,7 @@ import { type WorkflowDefinitionSpec } from './engine';
 /**
  * Workflow definitions in code (D-159), seeded into `ops.workflow_definition` (platform rows, tenant_id NULL).
  * A change is a new version; running instances keep theirs. First consumers: deposit settlement (B2.4, D-023),
- * data subject requests (B1.3, D-025); dunning (B4.5) and service requests (B5.1) add their definitions here.
+ * data subject requests (B1.3, D-025); dunning (B4.5), service requests (B5.1) and TM30 (B6.2) add their definitions here.
  */
 export const WORKFLOW_DEFINITIONS: readonly WorkflowDefinitionSpec[] = [
   {
@@ -201,6 +201,40 @@ export const WORKFLOW_DEFINITIONS: readonly WorkflowDefinitionSpec[] = [
         event: 'cancel',
         to: 'cancelled',
       },
+    ],
+  },
+  {
+    key: 'tm30_notification',
+    version: 1,
+    description:
+      'D-052 / D-216 (B6.2): the TM30 notification of a foreign occupant — due `tm30.notify_within_hours` (24) after the move-in (Immigration Act B.E. 2522 s.38), a reminder 6 h before, breach once (owner / manager told). The owner generates the Immigration Bureau upload file and records the manual submission; the platform never submits.',
+    initial: 'due',
+    states: [
+      {
+        key: 'due',
+        sla: {
+          settingKey: 'tm30.notify_within_hours',
+          settingUnit: 'hours',
+          calendar: 'calendar',
+          remindBefore: ['PT6H'],
+        },
+      },
+      {
+        key: 'generated',
+        sla: {
+          settingKey: 'tm30.notify_within_hours',
+          settingUnit: 'hours',
+          calendar: 'calendar',
+          remindBefore: ['PT6H'],
+        },
+      },
+      { key: 'submitted', terminal: true },
+      { key: 'cancelled', terminal: true },
+    ],
+    transitions: [
+      { from: ['due', 'generated'], event: 'generate', to: 'generated' },
+      { from: ['due', 'generated'], event: 'submit', to: 'submitted' },
+      { from: ['due', 'generated'], event: 'cancel', to: 'cancelled' },
     ],
   },
 ];
