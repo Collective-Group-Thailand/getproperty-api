@@ -11,7 +11,7 @@ export const API_TAGS: Record<string, string> = {
   'owner.system': `${SURFACE_DESCRIPTIONS[SURFACES.owner]} System: ping.`,
   'staff.system': `${SURFACE_DESCRIPTIONS[SURFACES.staff]} System: ping.`,
   'resident.system': `${SURFACE_DESCRIPTIONS[SURFACES.resident]} System: ping.`,
-  'technician.system': `${SURFACE_DESCRIPTIONS[SURFACES.technician]} Placeholder until B5 (ping only).`,
+  'technician.system': `${SURFACE_DESCRIPTIONS[SURFACES.technician]} System: ping.`,
   'admin.system': `${SURFACE_DESCRIPTIONS[SURFACES.admin]} System: ping and build information.`,
   'device.system': `${SURFACE_DESCRIPTIONS[SURFACES.device]} System: ping.`,
   'webhooks.system': `${SURFACE_DESCRIPTIONS[SURFACES.webhooks]} Ping.`,
@@ -24,7 +24,8 @@ export const API_TAGS: Record<string, string> = {
     'Operator sign-in (owner console, staff PWA): SMS OTP with invitation acceptance, email + password (+ TOTP when enabled) — contract §4, D-090.',
   'auth.resident':
     'Resident sign-in from the LINE Mini App: LIFF id-token exchange with party linking, SMS OTP fallback (D-060, D-154).',
-  'auth.technician': 'Technician sign-in from the LINE Mini App (work-order scopes arrive with B5, R2).',
+  'auth.technician':
+    'Technician sign-in from the LINE Mini App; the token carries `work_order:<uuid>` for the work orders assigned to me (B5.1, D-154).',
   'auth.platform':
     'Collective staff sign-in: email + password + mandatory TOTP, enrolment on first sign-in (D-161).',
   'auth.sessions':
@@ -98,7 +99,9 @@ export const API_TAGS: Record<string, string> = {
   'resident.dataSubjectRequests': 'PDPA requests filed by the resident (D-025).',
   'resident.notifications': 'In-app inbox of the resident.',
   'resident.realtime': 'Realtime auth and the server-sent events stream (contract §6).',
-  'technician.me': 'Who I am as a technician (work orders arrive with B5, R2).',
+  'technician.me': 'Who I am as a technician and the work orders my token covers (B5.1, D-154).',
+  'technician.workOrders':
+    'My work orders in the technician app (B5.1, D-072, D-154): accept, check in, before / after photos, parts and labour, complete.',
   'technician.notifications': 'In-app inbox of the technician.',
   'admin.me': 'Who I am in the platform admin zone: roles, permissions, menu, TOTP state (D-161).',
   'admin.pricePlans':
@@ -124,6 +127,17 @@ export const API_TAGS: Record<string, string> = {
     'Compliance rules in force for the tenant and its monthly compliance score (ADR-0007, D-020, D-021a, D-158).',
   'owner.billing':
     'Rate plans, billing cycles, invoices, credit/debit notes and one-off charges: readings → invoices at my rates with the utility-cap warning (D-011, D-021a, D-031, D-040, D-041).',
+  'owner.serviceRequests':
+    'Repair requests (B5.1, D-072): queue with SLA on the workflow engine (D-159), triage, work orders, warranty referral to getbuild (D-153), automatic requests from device health (D-034).',
+  'staff.serviceRequests': 'Repair requests of my buildings on the staff PWA (B5.1, D-072, D-090).',
+  'owner.workOrders':
+    'Work orders (B5.1, D-072): assignment to staff or external technicians, visit windows, before / after photos, parts and costs (B4.5 expenses), verification.',
+  'staff.workOrders': 'My work orders on the staff PWA: check in, photos, parts, complete (B5.1, D-072).',
+  'owner.serviceCategories':
+    'Repair categories and their SLA hours: platform defaults and my versions (D-072).',
+  'owner.maintenancePlans': 'Preventive maintenance of equipment every N days (B5.1).',
+  'resident.serviceRequests':
+    'Reporting a problem of my unit with photos, following it and rating the repair (B5.1, D-072).',
   'resident.invoices':
     'My invoices as issued, with registers, reading sources and what is still due (D-011, D-022).',
   'owner.documents':

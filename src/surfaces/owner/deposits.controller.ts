@@ -19,6 +19,7 @@ import { type Page } from '@common/pagination/pagination.dto';
 import { depositNextActions, type DepositRow, DepositsService } from '@modules/ops-deposits/deposits.service';
 import { type InspectionRow, InspectionsService } from '@modules/ops-deposits/inspections.service';
 import { ResidentDepositsService } from '@modules/ops-deposits/resident-deposits.service';
+import { ResidentServiceRequestsService } from '@modules/ops-service/field-access.service';
 import {
   Body,
   Controller,
@@ -66,6 +67,7 @@ import {
   type ResidentResponseName,
   ResidentUploadDto,
   ResidentUploadedDto,
+  ResidentUploadPurposeName,
   type SettlementDto,
   type SettlementStatusName,
 } from './deposits.dto';
@@ -1025,15 +1027,18 @@ export class ResidentDepositsController {
 @ApiSurface(SURFACES.resident)
 @Controller('resident/uploads')
 export class ResidentUploadsController {
-  constructor(private readonly deposits: ResidentDepositsService) {}
+  constructor(
+    private readonly deposits: ResidentDepositsService,
+    private readonly serviceRequests: ResidentServiceRequestsService,
+  ) {}
 
   @Post()
   @ApiEndpoint({
     id: 'resident.uploads.presign',
     summary: 'Upload a photo',
     description:
-      'Purpose `deposit_dispute`: a photo for my dispute of a proposed deposit settlement (JPEG / PNG / WebP ≤ 10 MB, with its SHA-256). Answers a 15-minute PUT URL; upload the bytes there, then send the `fileId` in `photoDocumentIds` of the dispute. The file is a photo of my unit, scanned like every upload (D-023, D-203). 409 `deposit.invalid_state` when the settlement is not waiting for my answer.',
-    implements: ['D-023', 'D-203'],
+      'Purpose `deposit_dispute` (with `depositId`): a photo for my dispute of a proposed deposit settlement — 409 `deposit.invalid_state` when the settlement is not waiting for my answer (D-023, D-203). Purpose `service_request` (with `unitId`, a unit I occupy): a photo of a problem I am about to report (B5.1, D-072). JPEG / PNG / WebP ≤ 10 MB with its SHA-256. Answers a 15-minute PUT URL; upload the bytes there, then send the `fileId` in `photoDocumentIds` of the dispute / request. The file is a photo of my unit, scanned like every upload.',
+    implements: ['D-023', 'D-072', 'D-203'],
   })
   @ApiJsonBody(ResidentUploadDto, {
     purpose: 'deposit_dispute',
@@ -1063,7 +1068,10 @@ export class ResidentUploadsController {
     'document.type_not_allowed',
   )
   async presign(@Body() body: ResidentUploadDto): Promise<ResidentUploadedDto> {
-    const r = await this.deposits.presignDisputePhoto(body.depositId, body);
+    const r =
+      body.purpose === ResidentUploadPurposeName.ServiceRequest
+        ? await this.serviceRequests.presignPhoto(body.unitId!, body)
+        : await this.deposits.presignDisputePhoto(body.depositId!, body);
     return {
       fileId: r.document.id,
       purpose: body.purpose,

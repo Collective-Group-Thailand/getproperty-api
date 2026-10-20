@@ -380,7 +380,11 @@ export class TechnicianMeDto {
   @ApiProperty({ type: () => MeUserDto })
   user!: MeUserDto;
 
-  @ApiProperty({ type: [String], example: [], description: 'Work order ids (B5).' })
+  @ApiProperty({
+    type: [String],
+    example: [],
+    description: 'Work order ids my token covers (B5.1, `work_order:<uuid>`).',
+  })
   workOrderIds!: string[];
 
   @ApiProperty({ type: [String], example: [] })

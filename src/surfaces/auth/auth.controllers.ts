@@ -222,7 +222,7 @@ export class TechnicianAuthController {
     id: 'auth.technicianLine.exchange',
     summary: 'Sign in a technician with a LINE id token',
     description:
-      'Same LINE exchange as residents; tokens of audience `technician` carry `work_order:<uuid>` scopes once work orders exist (B5, R2) — until then the technician surface shows the profile only.',
+      'Same LINE exchange as residents: parties carrying this LINE id are linked to the login, and the token of audience `technician` carries `work_order:<uuid>` for every work order assigned to such a party and not yet verified (B5.1); refresh to pick up new assignments.',
     implements: ['D-072', 'D-154', 'ADR-0003'],
   })
   @ApiJsonBody(LineExchangeDto, { idToken: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVMDAwMCJ9.c2lnbmF0dXJl' })
@@ -235,6 +235,53 @@ export class TechnicianAuthController {
   )
   async line(@Body() body: LineExchangeDto): Promise<TokenPairDto> {
     return tokenPairDto(await this.auth.lineLogin(body.idToken, 'technician'));
+  }
+
+  @Post('otp/request')
+  @HttpCode(200)
+  @Public()
+  @Throttle(LIMIT)
+  @ApiEndpoint({
+    id: 'auth.technicianOtp.request',
+    summary: 'Send a sign-in code by SMS to a technician',
+    description:
+      'For an external technician the owner entered with a phone number (B5.1): sends a code when the phone belongs to an account or to a party of a tenant; same answer otherwise (no enumeration).',
+    implements: ['D-072', 'D-154', 'ADR-0003'],
+  })
+  @ApiJsonBody(OtpRequestDto, { phone: '+66810001234', language: 'th' })
+  @ApiSuccess(200, {
+    description: 'Challenge created (or simulated)',
+    type: OtpChallengeDto,
+    example: OTP_EXAMPLE,
+  })
+  @ApiStandardErrors('validation.failed', 'http.bad_request', 'auth.otp_rate_limited', 'provider.unavailable')
+  async otpRequest(@Body() body: OtpRequestDto): Promise<OtpChallengeDto> {
+    return otpChallengeDto(await this.auth.technicianOtpRequest(body.phone, body.language));
+  }
+
+  @Post('otp/verify')
+  @HttpCode(200)
+  @Public()
+  @Throttle(LIMIT)
+  @ApiEndpoint({
+    id: 'auth.technicianOtp.verify',
+    summary: 'Sign in a technician with the SMS code',
+    description:
+      'Checks the code, creates the account on first use and links the parties carrying the verified phone (`phone_match`); the `technician` token carries `work_order:<uuid>` for the work orders assigned to them (B5.1).',
+    implements: ['D-072', 'D-154', 'ADR-0003'],
+  })
+  @ApiJsonBody(OtpVerifyDto, { challengeId: '3b241101-e2bb-4255-8caf-4136c566a962', code: '123456' })
+  @ApiSuccess(200, { description: 'Signed in', type: TokenPairDto, example: TOKEN_PAIR_EXAMPLE })
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.bad_request',
+    'auth.otp_invalid',
+    'auth.otp_expired',
+    'auth.otp_attempts_exceeded',
+    'auth.account_disabled',
+  )
+  async otpVerify(@Body() body: OtpVerifyDto): Promise<TokenPairDto> {
+    return tokenPairDto(await this.auth.technicianOtpVerify(body.challengeId, body.code));
   }
 }
 

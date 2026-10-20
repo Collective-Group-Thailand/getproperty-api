@@ -189,6 +189,10 @@ export const ERROR_CODES = {
   'install_order.items_open': HttpStatus.CONFLICT,
   'install_order.assignee_invalid': HttpStatus.UNPROCESSABLE_ENTITY,
   'support.read_only': HttpStatus.FORBIDDEN,
+  'service_request.invalid_state': HttpStatus.CONFLICT,
+  'service_request.in_warranty': HttpStatus.CONFLICT,
+  'work_order.invalid_state': HttpStatus.CONFLICT,
+  'work_order.photo_required': HttpStatus.UNPROCESSABLE_ENTITY,
   'internal.unexpected': HttpStatus.INTERNAL_SERVER_ERROR,
 } as const satisfies Record<string, HttpStatus>;
 

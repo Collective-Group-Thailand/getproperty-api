@@ -258,6 +258,16 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     description: 'Triage, assign and close repair requests',
     surfaces: ['owner', 'staff'],
   },
+  {
+    key: 'service_category.manage',
+    description: 'Repair categories and their SLA hours (D-072)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'maintenance_plan.manage',
+    description: 'Preventive maintenance plans of equipment (B5.1)',
+    surfaces: ['owner'],
+  },
   { key: 'parcel.manage', description: 'Record parcels and pick-ups', surfaces: ['owner', 'staff'] },
   { key: 'announcement.manage', description: 'Post announcements', surfaces: ['owner'] },
   // platform services in the tenant (B1.3)

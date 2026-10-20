@@ -18,6 +18,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -791,6 +792,7 @@ export class ResidentDisputeDto {
 
 export enum ResidentUploadPurposeName {
   DepositDispute = 'deposit_dispute',
+  ServiceRequest = 'service_request',
 }
 
 export enum ResidentUploadContentTypeName {
@@ -808,14 +810,24 @@ export class ResidentUploadDto {
   @IsEnum(ResidentUploadPurposeName)
   purpose!: ResidentUploadPurposeName;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     format: 'uuid',
     example: FAKE.uuid,
     description:
-      'The deposit whose proposal I dispute (`deposit_dispute`); it must be waiting for my answer.',
+      'The deposit whose proposal I dispute (`deposit_dispute`, required); it must be waiting for my answer.',
   })
+  @ValidateIf((o: ResidentUploadDto) => o.purpose === ResidentUploadPurposeName.DepositDispute)
   @IsUUID()
-  depositId!: string;
+  depositId?: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    example: FAKE.uuid,
+    description: 'The unit of the repair request I am about to send (`service_request`, required; B5.1).',
+  })
+  @ValidateIf((o: ResidentUploadDto) => o.purpose === ResidentUploadPurposeName.ServiceRequest)
+  @IsUUID()
+  unitId?: string;
 
   @ApiProperty({
     enum: ResidentUploadContentTypeName,

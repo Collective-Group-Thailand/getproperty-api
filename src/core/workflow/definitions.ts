@@ -159,6 +159,50 @@ export const WORKFLOW_DEFINITIONS: readonly WorkflowDefinitionSpec[] = [
       { from: 'overdue', event: 'cancel', to: 'cancelled' },
     ],
   },
+  {
+    key: 'service_request',
+    version: 1,
+    description:
+      'D-072 (B5.1): a repair request from report to close. One SLA clock from the report: the hours of its category (`context.slaHours`, tenant override or platform default), warning 2 h before, breach once (owner notified). Waiting for parts keeps the clock running; `done` (work finished, waiting for the resident) and a warranty referral to getbuild (`referred`, D-153) have no SLA.',
+    initial: 'new',
+    states: [
+      ...(['new', 'triaged', 'assigned', 'in_progress', 'waiting_parts'] as const).map((key) => ({
+        key,
+        sla: {
+          settingKey: 'context.slaHours',
+          settingUnit: 'hours' as const,
+          calendar: 'calendar' as const,
+          warnBefore: 'PT2H',
+        },
+      })),
+      { key: 'referred' },
+      { key: 'done' },
+      { key: 'closed', terminal: true },
+      { key: 'cancelled', terminal: true },
+    ],
+    transitions: [
+      { from: 'new', event: 'triage', to: 'triaged' },
+      { from: ['new', 'triaged'], event: 'refer_warranty', to: 'referred' },
+      {
+        from: ['new', 'triaged', 'assigned', 'in_progress', 'waiting_parts'],
+        event: 'assign',
+        to: 'assigned',
+      },
+      { from: ['assigned', 'waiting_parts'], event: 'start', to: 'in_progress' },
+      { from: ['assigned', 'in_progress'], event: 'wait_parts', to: 'waiting_parts' },
+      { from: ['assigned', 'in_progress', 'waiting_parts'], event: 'complete', to: 'done' },
+      { from: ['assigned', 'in_progress', 'waiting_parts'], event: 'unassign', to: 'triaged' },
+      { from: 'done', event: 'reopen', to: 'triaged' },
+      { from: 'done', event: 'close', to: 'closed' },
+      { from: 'referred', event: 'warranty_closed', to: 'closed' },
+      { from: 'referred', event: 'warranty_returned', to: 'triaged' },
+      {
+        from: ['new', 'triaged', 'assigned', 'in_progress', 'waiting_parts', 'referred'],
+        event: 'cancel',
+        to: 'cancelled',
+      },
+    ],
+  },
 ];
 
 export function workflowDefinition(key: string, version?: number): WorkflowDefinitionSpec {

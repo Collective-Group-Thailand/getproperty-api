@@ -52,6 +52,13 @@ import { OwnerPaymentsController } from './payments.controller';
 import { OwnerDashboardController, OwnerReceivablesController } from './receivables.controller';
 import { OwnerSearchController } from './search.controller';
 import {
+  OwnerMaintenancePlansController,
+  OwnerServiceCategoriesController,
+  OwnerWorkOrderVerifyController,
+  serviceRequestsController,
+  workOrdersController,
+} from './service.controller';
+import {
   deviceInstallsController,
   devicesController,
   meterReadingsController,
@@ -70,6 +77,11 @@ import {
 @Module({
   controllers: [
     OwnerSubscriptionController,
+    OwnerServiceCategoriesController,
+    serviceRequestsController(SURFACES.owner),
+    workOrdersController(SURFACES.owner),
+    OwnerWorkOrderVerifyController,
+    OwnerMaintenancePlansController,
     systemPingController(SURFACES.owner),
     OwnerMeController,
     OwnerTenantController,

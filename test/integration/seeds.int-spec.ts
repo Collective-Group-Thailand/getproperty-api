@@ -47,6 +47,7 @@ describe('seeds (reference + dev)', () => {
       'platform.price_plan': PRICE_PLANS.length,
       'platform.price_plan_version': PRICE_PLANS.length,
       'ops.workflow_definition': WORKFLOW_DEFINITIONS.length,
+      'ops.service_category': 8,
       'platform.user_credential': 5,
       'core.tenant': 1,
       'core.user_account': 5,

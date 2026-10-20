@@ -328,7 +328,7 @@ export class TechnicianMeController {
     id: 'technician.me.get',
     summary: 'Who I am in the technician app',
     description:
-      'The technician and the work orders their token covers (`work_order:<uuid>`; work orders arrive in B5, R2).',
+      'The technician and the work orders their token covers (`work_order:<uuid>`, B5.1); details in `GET /v1/technician/work-orders`.',
     implements: ['D-072', 'D-154'],
   })
   @ApiSuccess(200, {

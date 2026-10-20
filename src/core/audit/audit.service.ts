@@ -156,6 +156,10 @@ export const AUDIT_ACTIONS = [
   'site_survey.updated',
   'haas.registered',
   'haas.transitioned',
+  // B5 operations
+  'service_request.cancelled',
+  'work_order.cost_changed',
+  'work_order.verified',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
