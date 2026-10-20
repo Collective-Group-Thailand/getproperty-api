@@ -98,5 +98,7 @@ export function ApiSurface(surface: Surface) {
 
 /** The surface a route belongs to, from its path. */
 export function surfaceOfPath(path: string): Surface | undefined {
-  return (Object.keys(SURFACE_PREFIX) as Surface[]).find((s) => path.startsWith(SURFACE_PREFIX[s]));
+  // case-folded: routing is case-sensitive (configureApp), and the guard must never fail open on `/V1/ADMIN/…`
+  const lower = path.toLowerCase();
+  return (Object.keys(SURFACE_PREFIX) as Surface[]).find((s) => lower.startsWith(SURFACE_PREFIX[s]));
 }

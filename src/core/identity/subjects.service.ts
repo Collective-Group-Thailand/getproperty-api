@@ -1,3 +1,4 @@
+import { bangkokDate } from '@common/time/bangkok';
 import { type Tx } from '@database/prisma.service';
 import { type Audience } from '@generated/prisma/client';
 import { Inject, Injectable } from '@nestjs/common';
@@ -62,7 +63,8 @@ export class SubjectService {
   }
 
   async resident(tx: Tx, userId: string): Promise<Subject> {
-    const today = this.clock.now().toISOString().slice(0, 10);
+    // occupancy dates are Bangkok business dates (review #15)
+    const today = bangkokDate(this.clock.now());
     const links = await tx.partyUserLink.findMany({
       where: { userId, state: 'active' },
       select: { partyId: true },

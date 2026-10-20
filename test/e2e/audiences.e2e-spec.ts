@@ -70,6 +70,23 @@ describe('audience guard (e2e, fake data stores)', () => {
     }
   });
 
+  it('routes are case-sensitive: an upper-case prefix never reaches a handler past the audience guard (review #7)', async () => {
+    const resident = tokenFor('resident');
+    for (const path of [
+      '/V1/ADMIN/me',
+      '/V1/OWNER/me',
+      '/v1/Admin/me',
+      '/V1/RESIDENT/me',
+      '/v1/ADMIN/tenants',
+    ]) {
+      for (const auth of [undefined, `Bearer ${resident}`]) {
+        const req = request(app.getHttpServer()).get(path);
+        const res = await (auth ? req.set('Authorization', auth) : req);
+        expect({ path, status: res.status }).toEqual({ path, status: 404 });
+      }
+    }
+  });
+
   it('JWKS is public and lists the EdDSA key', async () => {
     const res = await request(app.getHttpServer()).get('/v1/auth/.well-known/jwks.json').expect(200);
     expect(res.body.keys[0]).toMatchObject({ kty: 'OKP', crv: 'Ed25519', alg: 'EdDSA', use: 'sig' });

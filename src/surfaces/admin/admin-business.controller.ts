@@ -458,6 +458,7 @@ export class AdminSubscriptionsController {
   }
 
   @Post(':subscriptionId/actions/change-plan')
+  @Idempotent()
   @HttpCode(200)
   @Can('admin.subscription.manage')
   @ApiEndpoint({
@@ -518,6 +519,7 @@ export class AdminSubscriptionsController {
   }
 
   @Post(':subscriptionId/actions/suspend')
+  @Idempotent()
   @HttpCode(200)
   @Can('admin.subscription.manage')
   @ApiEndpoint({
@@ -560,6 +562,7 @@ export class AdminSubscriptionsController {
   }
 
   @Post(':subscriptionId/actions/reinstate')
+  @Idempotent()
   @HttpCode(200)
   @Can('admin.subscription.manage')
   @ApiEndpoint({

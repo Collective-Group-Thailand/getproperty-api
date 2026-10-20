@@ -14,6 +14,16 @@ export const APP_VERSION: string = version;
  * so all three see exactly the same routes.
  */
 export function configureApp(app: INestApplication): void {
+  // Express matches routes case-insensitively by default, while the audience guard reads the lower-case surface
+  // prefix: `/V1/ADMIN/…` would reach an admin handler without the admin audience checks (review #7). Nest's adapter
+  // already created the router (its constructor mounts a middleware), so the flag is set on the router too; routes
+  // are added at `init()`, after this.
+  const http = app.getHttpAdapter().getInstance() as {
+    set?: (key: string, value: unknown) => void;
+    router?: { caseSensitive?: boolean };
+  };
+  http.set?.('case sensitive routing', true);
+  if (http.router) http.router.caseSensitive = true;
   app.use(helmet());
   app.use(jsonBodyParser());
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });

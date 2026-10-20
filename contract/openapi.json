@@ -54996,6 +54996,9 @@
             }
           },
           {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
             "$ref": "#/components/parameters/AcceptLanguage"
           }
         ],
@@ -55062,6 +55065,9 @@
             },
             "description": "Changed",
             "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"
               },
@@ -55082,6 +55088,12 @@
                 "examples": {
                   "http.bad_request": {
                     "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
                   }
                 },
                 "schema": {
@@ -55089,7 +55101,7 @@
                 }
               }
             },
-            "description": "Problem: `http.bad_request`",
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -55166,6 +55178,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
                   "subscription.invalid_state": {
                     "$ref": "#/components/examples/problem.subscription.invalid_state"
                   }
@@ -55175,7 +55190,7 @@
                 }
               }
             },
-            "description": "Problem: `subscription.invalid_state`",
+            "description": "Problem: `idempotency.in_progress`, `subscription.invalid_state`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -55186,6 +55201,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
                   "price_plan.not_sold": {
                     "$ref": "#/components/examples/problem.price_plan.not_sold"
                   },
@@ -55201,7 +55219,7 @@
                 }
               }
             },
-            "description": "Problem: `price_plan.not_sold`, `subscription.plan_mismatch`, `validation.failed`",
+            "description": "Problem: `idempotency.key_reused`, `price_plan.not_sold`, `subscription.plan_mismatch`, `validation.failed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -55281,6 +55299,9 @@
             }
           },
           {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
             "$ref": "#/components/parameters/AcceptLanguage"
           }
         ],
@@ -55344,6 +55365,9 @@
             },
             "description": "Reinstated",
             "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"
               },
@@ -55364,6 +55388,12 @@
                 "examples": {
                   "http.bad_request": {
                     "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
                   }
                 },
                 "schema": {
@@ -55371,7 +55401,7 @@
                 }
               }
             },
-            "description": "Problem: `http.bad_request`",
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -55445,6 +55475,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
                   "subscription.invalid_state": {
                     "$ref": "#/components/examples/problem.subscription.invalid_state"
                   }
@@ -55454,7 +55487,7 @@
                 }
               }
             },
-            "description": "Problem: `subscription.invalid_state`",
+            "description": "Problem: `idempotency.in_progress`, `subscription.invalid_state`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -55465,6 +55498,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
                   }
@@ -55474,7 +55510,7 @@
                 }
               }
             },
-            "description": "Problem: `validation.failed`",
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -55554,6 +55590,9 @@
             }
           },
           {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
             "$ref": "#/components/parameters/AcceptLanguage"
           }
         ],
@@ -55618,6 +55657,9 @@
             },
             "description": "Suspended",
             "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"
               },
@@ -55638,6 +55680,12 @@
                 "examples": {
                   "http.bad_request": {
                     "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
                   }
                 },
                 "schema": {
@@ -55645,7 +55693,7 @@
                 }
               }
             },
-            "description": "Problem: `http.bad_request`",
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -55719,6 +55767,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
                   "subscription.confirmation_mismatch": {
                     "$ref": "#/components/examples/problem.subscription.confirmation_mismatch"
                   },
@@ -55731,7 +55782,7 @@
                 }
               }
             },
-            "description": "Problem: `subscription.confirmation_mismatch`, `subscription.invalid_state`",
+            "description": "Problem: `idempotency.in_progress`, `subscription.confirmation_mismatch`, `subscription.invalid_state`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -55742,6 +55793,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
                   }
@@ -55751,7 +55805,7 @@
                 }
               }
             },
-            "description": "Problem: `validation.failed`",
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -90346,6 +90400,9 @@
         "operationId": "owner.deviceInstalls.provision",
         "parameters": [
           {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
             "$ref": "#/components/parameters/TenantIdHeader"
           },
           {
@@ -90387,6 +90444,9 @@
             },
             "description": "Code",
             "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"
               },
@@ -90408,6 +90468,12 @@
                   "http.bad_request": {
                     "$ref": "#/components/examples/problem.http.bad_request"
                   },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
                   "tenant.context_invalid": {
                     "$ref": "#/components/examples/problem.tenant.context_invalid"
                   },
@@ -90420,7 +90486,7 @@
                 }
               }
             },
-            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -90508,6 +90574,9 @@
                   },
                   "device.not_gateway": {
                     "$ref": "#/components/examples/problem.device.not_gateway"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
                   }
                 },
                 "schema": {
@@ -90515,7 +90584,7 @@
                 }
               }
             },
-            "description": "Problem: `device.invalid_state`, `device.not_gateway`",
+            "description": "Problem: `device.invalid_state`, `device.not_gateway`, `idempotency.in_progress`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -90526,6 +90595,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
                   }
@@ -90535,7 +90607,7 @@
                 }
               }
             },
-            "description": "Problem: `validation.failed`",
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -167118,6 +167190,9 @@
         "operationId": "staff.deviceInstalls.provision",
         "parameters": [
           {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
             "$ref": "#/components/parameters/TenantIdHeader"
           },
           {
@@ -167159,6 +167234,9 @@
             },
             "description": "Code",
             "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"
               },
@@ -167180,6 +167258,12 @@
                   "http.bad_request": {
                     "$ref": "#/components/examples/problem.http.bad_request"
                   },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
                   "tenant.context_invalid": {
                     "$ref": "#/components/examples/problem.tenant.context_invalid"
                   },
@@ -167192,7 +167276,7 @@
                 }
               }
             },
-            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -167280,6 +167364,9 @@
                   },
                   "device.not_gateway": {
                     "$ref": "#/components/examples/problem.device.not_gateway"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
                   }
                 },
                 "schema": {
@@ -167287,7 +167374,7 @@
                 }
               }
             },
-            "description": "Problem: `device.invalid_state`, `device.not_gateway`",
+            "description": "Problem: `device.invalid_state`, `device.not_gateway`, `idempotency.in_progress`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -167298,6 +167385,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
                   }
@@ -167307,7 +167397,7 @@
                 }
               }
             },
-            "description": "Problem: `validation.failed`",
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"

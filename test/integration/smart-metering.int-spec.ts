@@ -168,11 +168,29 @@ describe('smart metering B3 (real PostgreSQL + MQTT broker)', () => {
     gw1 = created.body.id;
 
     // staff scans the gateway QR on site → single-use code → the agent bootstraps with a CN=gw-provisioning CSR
+    // review #13: provisioning is irreversible (it voids the unused code) → Idempotency-Key required, replayed once
+    const provision = { serial: 'GP-GW-B3-0001', buildingId: DEV.buildingId };
+    const missing = await t.http
+      .post('/v1/staff/devices/actions/provision')
+      .set(bearer(staff))
+      .send(provision)
+      .expect(400);
+    expect(missing.body.code).toBe('idempotency.key_required');
+    const key = idem();
     const code = await t.http
       .post('/v1/staff/devices/actions/provision')
       .set(bearer(staff))
-      .send({ serial: 'GP-GW-B3-0001', buildingId: DEV.buildingId })
+      .set(key)
+      .send(provision)
       .expect(200);
+    const replay = await t.http
+      .post('/v1/staff/devices/actions/provision')
+      .set(bearer(staff))
+      .set(key)
+      .send(provision)
+      .expect(200);
+    expect(replay.headers['idempotent-replayed']).toBe('true');
+    expect(replay.body.code).toBe(code.body.code);
     const boot = await t.http
       .post('/v1/device/bootstrap')
       .send({
@@ -394,6 +412,7 @@ describe('smart metering B3 (real PostgreSQL + MQTT broker)', () => {
     await t.http
       .post('/v1/owner/devices/actions/provision')
       .set(B)
+      .set(idem())
       .send({ serial: 'GP-GW-B3-0001', buildingId: DEV.buildingId })
       .expect(404);
     await t.http
