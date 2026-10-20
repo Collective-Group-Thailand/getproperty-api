@@ -215,8 +215,10 @@ model IngestSeqMark {
   deviceId   String   @map("device_id") @db.Uuid
   seq        BigInt
   receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+  /// D-227: the gateway sequence space of the seq (<gatewayId>/<seqEpoch>).
+  seqStream  String   @default("") @map("seq_stream")
 
-  @@id([deviceId, seq], map: "ingest_seq_mark_pkey")
+  @@id([deviceId, seqStream, seq], map: "ingest_seq_mark_pkey")
   @@index([receivedAt], map: "ingest_seq_mark_received_at_idx")
   @@map("ingest_seq_mark")
   @@schema("smart")

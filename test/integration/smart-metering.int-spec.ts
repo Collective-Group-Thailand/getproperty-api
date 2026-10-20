@@ -936,6 +936,58 @@ describe('smart metering B3 (real PostgreSQL + MQTT broker)', () => {
       .expect(422);
   });
 
+  it('a re-flashed gateway restarting its seqs under a new epoch is not dropped as duplicates (review #4, D-227)', async () => {
+    // the gateway lost its state (same promotion bucket as seq 250 above: no extra billing candidate): new seqEpoch, seq restarts at numbers the old state already used
+    const reflashed = {
+      gatewayId: gw1,
+      configVersion: 2,
+      sentAt: new Date().toISOString(),
+      seqEpoch: '7b1e0c2a-5f44-4d0e-9a51-2f9a3c6d8e10',
+      readings: [
+        {
+          meterId: meterDevices['A-101'],
+          seq: 0,
+          readAt: '2026-10-09T15:31:00.000Z',
+          register: '162.800',
+          unit: 'kwh',
+          quality: 'good',
+        },
+        {
+          meterId: meterDevices['A-101'],
+          seq: 250,
+          readAt: '2026-10-09T15:32:00.000Z',
+          register: '162.850',
+          unit: 'kwh',
+          quality: 'good',
+        },
+      ],
+    };
+    const res = await t.http
+      .post('/v1/device/readings/batch')
+      .set(bearer(deviceToken))
+      .send(reflashed)
+      .expect(200);
+    expect(res.body).toEqual({ accepted: 2, duplicates: 0, rejected: [] });
+    const points = await q<{ n: number }>(
+      `SELECT count(*)::int AS n FROM smart.telemetry_point WHERE device_id = $1 AND time IN ('2026-10-09T15:31:00Z', '2026-10-09T15:32:00Z')`,
+      [meterDevices['A-101']],
+    );
+    expect(points[0]!.n).toBe(2);
+    // within the new epoch a replay is still a duplicate
+    const again = await t.http
+      .post('/v1/device/readings/batch')
+      .set(bearer(deviceToken))
+      .send(reflashed)
+      .expect(200);
+    expect(again.body).toEqual({ accepted: 0, duplicates: 2, rejected: [] });
+    // a malformed epoch is refused like any invalid payload
+    await t.http
+      .post('/v1/device/readings/batch')
+      .set(bearer(deviceToken))
+      .send({ ...reflashed, seqEpoch: 'x' })
+      .expect(422);
+  });
+
   it('3.2 health: LWT → offline (event + notification), heartbeat → online', async () => {
     await gw.publishAsync(`gp/v1/${gw1}/health`, JSON.stringify({ status: 'offline_lwt' }), { qos: 1 });
     const offline = await waitFor(

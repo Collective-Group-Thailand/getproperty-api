@@ -115,6 +115,8 @@ model MeterReading {
   confidence            Decimal            @db.Decimal(4, 3)
   quality               ReadingQuality?
   seq                   BigInt?
+  /// D-227: the gateway sequence space of seq (IoT readings); empty for other sources.
+  seqStream             String             @default("") @map("seq_stream")
   telemetryTime         DateTime?          @map("telemetry_time") @db.Timestamptz(6)
   reviewState           ReadingReviewState @map("review_state")
   reviewId              String?            @map("review_id") @db.Uuid
@@ -163,7 +165,7 @@ model MeterReading {
   estimateSettlementsAsAct EstimateSettlement[] @relation("EstimateSettlementActualReading")
 
   @@unique([assetItemId, readAt, source], map: "meter_reading_asset_item_id_read_at_source_key", where: raw("(review_state = ANY (ARRAY['accepted'::smart.reading_review_state, 'pending_review'::smart.reading_review_state]))"))
-  @@unique([deviceId, seq], map: "meter_reading_device_id_seq_key", where: raw("(seq IS NOT NULL)"))
+  @@unique([deviceId, seqStream, seq], map: "meter_reading_device_id_seq_stream_seq_key", where: raw("(seq IS NOT NULL)"))
   readingRequests ReadingRequest[] @relation("ReadingRequestFulfilled")
 
   @@index([tenantId, buildingId, assetItemId, readAt(sort: Desc)], map: "meter_reading_accepted_idx", where: raw("(review_state = 'accepted'::smart.reading_review_state)"))

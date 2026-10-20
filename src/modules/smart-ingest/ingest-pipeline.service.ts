@@ -239,8 +239,12 @@ export class IngestPipeline {
     const lagMs = Math.max(0, receivedAt.getTime() - new Date(batch.sentAt).getTime());
     this.counters.batches += 1;
     this.counters.lastLagMs = lagMs;
+    // D-227 (review #4): a seq is unique within the gateway's sequence space (gateway + its state epoch), not per meter
+    // — a replaced or re-flashed gateway, or a meter moved to another gateway, restarts at 1 without being dropped
+    const stream = seqStreamOf(gateway.id, batch.seqEpoch);
+    const recentKey = (meterId: string) => `${stream}|${meterId}`;
     // fast path: seqs this process stored recently are duplicates without a database round trip
-    const fresh = batch.readings.filter((r) => !this.recent.get(r.meterId)?.has(String(r.seq)));
+    const fresh = batch.readings.filter((r) => !this.recent.get(recentKey(r.meterId))?.has(String(r.seq)));
     const fastDuplicates = batch.readings.length - fresh.length;
     const seen: [string, string][] = [];
     const monthsReady: string[] = [];
@@ -272,8 +276,8 @@ export class IngestPipeline {
 
         // D-143: the dedup window decides; only newly marked (device, seq) pairs are stored
         const marked = await tx.$queryRaw<{ device_id: string; seq: string }[]>`
-          INSERT INTO smart.ingest_seq_mark (device_id, seq, received_at)
-          SELECT d::uuid, s::bigint, ${receivedAt} FROM unnest(${authorised.map((a) => a.r.meterId)}::text[], ${authorised.map((a) => String(a.r.seq))}::text[]) AS x(d, s)
+          INSERT INTO smart.ingest_seq_mark (device_id, seq_stream, seq, received_at)
+          SELECT d::uuid, ${stream}, s::bigint, ${receivedAt} FROM unnest(${authorised.map((a) => a.r.meterId)}::text[], ${authorised.map((a) => String(a.r.seq))}::text[]) AS x(d, s)
           ON CONFLICT DO NOTHING
           RETURNING device_id::text, seq::text`;
         const keep = new Set(marked.map((m) => `${m.device_id}|${m.seq}`));
@@ -339,7 +343,7 @@ export class IngestPipeline {
           UPDATE smart.device_health_latest SET ingest_lag_ms = ${Math.min(lagMs, 2_000_000_000)}::int WHERE gateway_device_id = ${gateway.id}::uuid`;
         await tx.$executeRaw`UPDATE smart.device SET last_seen_at = ${receivedAt} WHERE id = ${gateway.id}::uuid`;
 
-        const candidates = await this.candidates(tx, stored, quality, channel);
+        const candidates = await this.candidates(tx, stored, quality, channel, stream);
         return {
           accepted: stored.length,
           duplicates: fastDuplicates + authorised.length - stored.length,
@@ -350,10 +354,10 @@ export class IngestPipeline {
       { timeout: 30_000 },
     );
     for (const [meterId, seq] of seen) {
-      const set = this.recent.get(meterId) ?? new Set<string>();
+      const set = this.recent.get(recentKey(meterId)) ?? new Set<string>();
       set.add(seq);
       if (set.size > 5000) set.delete(set.values().next().value!);
-      this.recent.set(meterId, set);
+      this.recent.set(recentKey(meterId), set);
     }
     for (const month of monthsReady) this.months.add(month);
     this.counters.points += result.accepted;
@@ -375,6 +379,7 @@ export class IngestPipeline {
     stored: { r: TelemetryBatch['readings'][number]; c: ChannelRow; t: Date }[],
     quality: (a: { r: TelemetryBatch['readings'][number]; c: ChannelRow; t: Date }) => string,
     channel: 'mqtt' | 'https_batch',
+    stream: string,
   ): Promise<Candidate[]> {
     const out: Candidate[] = [];
     const intervals = new Map<string, number>();
@@ -399,12 +404,14 @@ export class IngestPipeline {
     // the first stored point of every (meter, interval) bucket in one statement
     const list = [...buckets.values()];
     const firsts = list.length
-      ? await tx.$queryRaw<{ asset_item_id: string; start: Date; device_id: string; seq: string }[]>`
-          SELECT b.aid AS asset_item_id, b.s AS start, f.device_id::text, f.seq::text
+      ? await tx.$queryRaw<
+          { asset_item_id: string; start: Date; device_id: string; seq: string; time: Date }[]
+        >`
+          SELECT b.aid AS asset_item_id, b.s AS start, f.device_id::text, f.seq::text, f.time
             FROM unnest(${list.map((b) => b.assetItemId)}::text[], ${list.map((b) => b.start.toISOString())}::text[],
                         ${list.map((b) => b.end.toISOString())}::text[]) AS b(aid, s, e)
             CROSS JOIN LATERAL (
-              SELECT t.device_id, t.seq FROM smart.telemetry_point t
+              SELECT t.device_id, t.seq, t.time FROM smart.telemetry_point t
                WHERE t.asset_item_id = b.aid::uuid AND t.time >= b.s::timestamptz AND t.time < b.e::timestamptz
                ORDER BY t.time ASC, t.seq ASC LIMIT 1) f`
       : [];
@@ -416,7 +423,9 @@ export class IngestPipeline {
         (x) =>
           x.c.meter_asset_item_id === b.assetItemId &&
           x.r.meterId === winner.device_id &&
-          String(x.r.seq) === winner.seq,
+          String(x.r.seq) === winner.seq &&
+          // D-227: seqs repeat across gateway sequence spaces — the winner is this batch's point only at its time
+          x.t.getTime() === new Date(winner.time).getTime(),
       );
       if (!a) continue; // the first reading of the bucket arrived earlier and was already a candidate
       const candidate: Candidate = {
@@ -425,6 +434,7 @@ export class IngestPipeline {
         buildingId: a.c.building_id,
         deviceId: a.r.meterId,
         seq: String(a.r.seq),
+        seqStream: stream,
         readAt: a.t.toISOString(),
         register: new Decimal(a.r.register).toFixed(3),
         quality: quality(a),
@@ -746,8 +756,15 @@ export interface Candidate {
   buildingId: string;
   deviceId: string;
   seq: string;
+  /** D-227: the gateway sequence space the seq belongs to (`<gatewayId>/<seqEpoch or ->`). */
+  seqStream: string;
   readAt: string;
   register: string;
   quality: string;
   via: 'mqtt' | 'https_batch';
+}
+
+/** D-227: the dedup scope of a gateway's seqs — the gateway and the epoch of its state database (`-` before 1.1). */
+export function seqStreamOf(gatewayId: string, seqEpoch: string | undefined | null): string {
+  return `${gatewayId}/${seqEpoch ?? '-'}`;
 }

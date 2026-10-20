@@ -30,6 +30,7 @@ export class ReadingCandidateSubscriber implements EventSubscriber, OnModuleInit
       assetItemId: string;
       deviceId: string;
       seq: string;
+      seqStream?: string;
       readAt: string;
       register: string;
       quality: ReadingQuality;

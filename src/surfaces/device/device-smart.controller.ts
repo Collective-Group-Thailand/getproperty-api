@@ -129,8 +129,8 @@ export class DeviceReadingsController {
     id: 'device.readings.batch',
     summary: 'Upload buffered readings over HTTPS',
     description:
-      'Fallback when MQTT is unavailable (api-conventions §7): the body is a protocol `TelemetryBatch` of the calling gateway and goes through the same pipeline as MQTT — authorisation per meter channel, dedup on `(meterId, seq)` (D-143), monthly partitions (D-162). Replays are harmless; an `Idempotency-Key` header is accepted and ignored (edge CR-009). Any 2xx means the readings are durable.',
-    implements: ['D-143', 'D-162', 'D-030'],
+      'Fallback when MQTT is unavailable (api-conventions §7): the body is a protocol `TelemetryBatch` of the calling gateway and goes through the same pipeline as MQTT — authorisation per meter channel, dedup on `(gatewayId, seqEpoch, meterId, seq)` (D-143, D-227: a re-flashed or replaced gateway sends a new `seqEpoch`), monthly partitions (D-162). Replays are harmless; an `Idempotency-Key` header is accepted and ignored (edge CR-009). Any 2xx means the readings are durable.',
+    implements: ['D-143', 'D-162', 'D-030', 'D-227'],
   })
   @ApiJsonBody(ReadingsBatchDto, {
     gatewayId: FAKE.gatewayId,
