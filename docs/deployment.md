@@ -100,7 +100,7 @@ under `collective/<env>/getproperty/…` — the only path the instance role may
 | `DATABASE_APP_ROLE`, `DATABASE_PLATFORM_ROLE` | `gp_app`, `gp_platform` — the login switches role per transaction so RLS applies |
 | `REDIS_URL` | `redis://:<valkey password>@valkey:6379/2` (getproperty's logical DB; getpack uses its own) |
 | `MQTT_USERNAME`, `MQTT_PASSWORD` | `getproperty-api`, random hex — EMQX's internal listener (the platform hook creates the user) |
-| `PUBLIC_API_BASE_URL`, `PUBLIC_WEB_APP_URL`, `PUBLIC_STAFF_APP_URL`, `PUBLIC_RESIDENT_APP_URL` | `https://<API_HOST>`, `https://<OWNER_HOST>`, `https://<STAFF_HOST>`, `https://<LIFF_HOST>` |
+| `PUBLIC_API_BASE_URL`, `PUBLIC_WEB_APP_URL`, `PUBLIC_STAFF_APP_URL`, `PUBLIC_RESIDENT_APP_URL` | `https://<API_HOST>`, `https://<OWNER_HOST>`, `https://<STAFF_HOST>`, `https://<LIFF_HOST>`. `https://<API_HOST>/brand/*` serves the logos emails and LINE messages link (D-232); LINE shows the logo only for an https origin |
 | `MQTT_PUBLIC_URL` | `mqtts://<MQTT_HOST>:8883` |
 | `MQTT_PUBLIC_WS_URL` | **unset** (do not add the key): the bootstrap then omits `mqtt.wsUrl` — no WSS endpoint verifies gateway certificates while O-012 is open (§5, D-231) |
 | `DEVICE_PUBLIC_BASE_URL` | **empty / unset**: device URLs (`ota_apply.manifestUrl`) are relative `/v1/device/…` paths the agent resolves against its device host; `https://<DEVICE_HOST>` is equivalent. Never `https://<API_HOST>` (D-231) |
@@ -119,9 +119,18 @@ Set by the compose file (not secrets): `NODE_ENV`, `TZ`, `INTEGRATIONS_MODE=real
 `AWS_REGION`, `S3_BUCKET`, `MQTT_URL=mqtt://platform-emqx-1:1883`, `TRUST_PROXY`, `TRUSTED_PROXY_CIDRS`,
 `METRICS_ALLOWED_CIDRS`, `DEVICE_MTLS_*`, `CLAMAV_HOST`, the provider secret prefixes, OTEL settings, ports.
 
-**`collective/<env>/getproperty/web`**, **`…/liff`**: each front end's own env (session secrets, LIFF id, public
-URLs, `NEXT_PUBLIC_ASSET_BASE_URL=https://collective-<env>-getproperty-assets.s3.ap-southeast-7.amazonaws.com`) →
-`/run/collective/getproperty-web.env` / `-liff.env`. The front ends never receive the API's secrets.
+**`collective/<env>/getproperty/web`**, **`…/liff`**: each front end's own run-time env (session secrets, hosts,
+`API_INTERNAL_URL`, …) → `/run/collective/getproperty-web.env` / `-liff.env`. The front ends never receive the API's
+secrets. The public `NEXT_PUBLIC_*` values are handled **differently by the two front ends** (until getproperty-liff
+moves to run-time values too):
+
+| Front end | `NEXT_PUBLIC_*` | Image per environment |
+|---|---|---|
+| **getproperty-web** | read **at run time on the server** (`src/lib/env`, web ADR-0009) from `collective/<env>/getproperty/web` like every other variable — e.g. `NEXT_PUBLIC_ASSET_BASE_URL=https://collective-<env>-getproperty-assets.s3.ap-southeast-7.amazonaws.com`, the Sentry DSN, the env badge — and handed to the browser as props / `<html data-*>`; a literal `process.env.NEXT_PUBLIC_…` read fails its tests. No build arguments. | **One image, promoted**: the image that passed UAT is re-tagged `:prod` unchanged (`promote.yml`); prod values come from the prod secret. |
+| **getproperty-liff** | **inlined at build time** by `next build` (server and browser code): `NEXT_PUBLIC_LIFF_ID`, `NEXT_PUBLIC_LINE_OA_ID`, `NEXT_PUBLIC_ASSET_BASE_URL`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_ENV_BADGE` are Docker build arguments its `deploy.yml` fills from repository variables (`UAT_*` / `PROD_*`) and the environment's bucket origin. Putting them in `…/liff` changes nothing in the browser. | **Built per environment, never promoted**: `main` builds the uat image, a `vX.Y.Z` tag builds the prod image with prod values; `promote.yml` must not re-tag the liff uat image as `:prod` (it would carry the UAT LIFF id). |
+
+So a changed public value means: web — update the secret and restart the container; liff — update the repository
+variable and rebuild/redeploy that environment.
 
 **`collective/<env>/getproperty/mqtt-tls`**: `{"server_pem", "server_key", "ca_pem"}` — §5.
 
@@ -239,9 +248,9 @@ On **uat** (8 GB) the limits over-commit (they are ceilings): set `POSTGRES_MEMO
   tag `vX.Y.Z` → `:prod` → deploy production (approval). Deploys run the migrate service first. GitHub Environments
   `uat` / `production` hold `AWS_DEPLOY_ROLE_ARN`, `INSTANCE_ID`, `AWS_REGION=ap-southeast-7`; the repo secret
   `ASSET_CORE_READ_TOKEN` (already used by CI) feeds the asset-core checkout.
-- **getproperty-web** / **getproperty-liff** (follow-up session — they need a standalone Next.js Dockerfile, an
-  `/api/healthz` route and `/api/metrics` first): the same workflow with their own image and `component`, no
-  migration, after the api image exists:
+- **getproperty-web** / **getproperty-liff** (both have their standalone Dockerfile, `/api/healthz` and
+  `/api/metrics`): the same workflow with their own image and `component`, no migration, after the api image
+  exists (liff adds build arguments, see below and §3):
 
 ```yaml
 # .github/workflows/deploy.yml in getproperty-web (liff: image getproperty/liff, component liff)
@@ -272,7 +281,10 @@ jobs:
 ```
 
 `component: web` makes the box record `WEB_IMAGE_TAG` and roll back only that image; until a front end's first
-deploy the box runs its moving `:uat` / `:prod` tag. `promote.yml` (manual uat → prod) re-tags all three images.
+deploy the box runs its moving `:uat` / `:prod` tag. `promote.yml` (manual uat → prod) re-tags the **api** and
+**web** images; the **liff** image is not promotable while it bakes `NEXT_PUBLIC_*` at build time (§3) — its prod
+image comes only from its own `build-prod` job (`build_args` with the `PROD_*` repository variables), so its
+`deploy.yml` differs from the web example above by those `build_args` and a `config` job that refuses an empty LIFF id.
 - **getproperty-edge** is not deployed by the platform (it runs on gateways): its `GP_API_URL` default is the device
   host; releases are published as in §5a.
 
