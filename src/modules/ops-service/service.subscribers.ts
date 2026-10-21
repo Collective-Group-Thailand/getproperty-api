@@ -425,7 +425,7 @@ export class WarrantyBridge implements EventSubscriber, OnModuleInit {
         photos: urls,
         reportedAt: sr.createdAt.toISOString(),
         // PII travels encrypted (blueprint "Integration contracts"); the platform key stands in for the shared
-        // Collective integration key until KMS (D-160) — the consumer re-encrypts with its own tenant key
+        // Collective integration key until KMS (D-230) — the consumer re-encrypts with its own tenant key
         reporter: {
           enc: Buffer.from(this.crypto.encrypt(reporter, 'integration:warranty.defect.reported')).toString(
             'base64',

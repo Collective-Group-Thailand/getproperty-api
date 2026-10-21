@@ -176,7 +176,9 @@ export class EnvironmentVariables {
   @Matches(/^[A-Za-z0-9_-]+$/, { message: 'MQTT_CLIENT_ID_PREFIX must be a plain token' })
   MQTT_CLIENT_ID_PREFIX = 'getproperty-api';
 
-  // --- AWS -----------------------------------------------------------------------------------------
+  // --- AWS (D-230: production runs on AWS ap-southeast-1 like getpack; LocalStack in development) -------------
+  // Credentials come from the default provider chain: the ECS task role in deployments (never keys in env),
+  // LocalStack's dummy keys locally.
 
   @IsString()
   AWS_REGION = 'ap-southeast-1';
@@ -200,35 +202,13 @@ export class EnvironmentVariables {
   })
   S3_KEY_PREFIX?: string;
 
+  /**
+   * Secrets Manager secret (JSON object of VAR=value) loaded into the environment before validation
+   * (`src/config/secrets.loader.ts`); explicit variables win. Each ECS task definition sets its own (D-230).
+   */
   @IsOptional()
   @IsString()
   AWS_SECRETS_ID?: string;
-
-  // --- GCP (D-160, D-207) ----------------------------------------------------------------------------
-
-  /** Object storage provider when it is real: `s3` (default) or `gcs` (Google Cloud Storage). */
-  @IsIn(['s3', 'gcs'])
-  OBJECT_STORAGE_DRIVER: 's3' | 'gcs' = 's3';
-
-  /** Secret store when integrations are real: `aws` (Secrets Manager, default) or `gcp` (Secret Manager). */
-  @IsIn(['aws', 'gcp'])
-  SECRETS_DRIVER: 'aws' | 'gcp' = 'aws';
-
-  @IsOptional()
-  @IsString()
-  GCP_PROJECT_ID?: string;
-
-  @IsOptional()
-  @IsString()
-  GCS_BUCKET?: string;
-
-  /** As `S3_KEY_PREFIX`, for a shared GCS bucket. */
-  @IsOptional()
-  @IsString()
-  @Matches(/^([A-Za-z0-9._-]+\/)*$/, {
-    message: 'GCS_KEY_PREFIX: path segments ending in /, e.g. getproperty/',
-  })
-  GCS_KEY_PREFIX?: string;
 
   // --- HTTP ----------------------------------------------------------------------------------------
 
@@ -247,8 +227,8 @@ export class EnvironmentVariables {
 
   /**
    * Number of trusted reverse-proxy hops in front of the API (Express `trust proxy`, counted from the right of
-   * `X-Forwarded-For`); 0 = none. Cloud Run (with or without the external HTTPS load balancer in front): 1 / 2 —
-   * RUNBOOK §7 (D-229).
+   * `X-Forwarded-For`); 0 = none. Behind the Application Load Balancer: 1 — the ALB is the socket peer and appends
+   * the address it saw (RUNBOOK §11, D-229, D-230). Add one per extra proxy that appends (e.g. CloudFront in front).
    */
   @Transform(toNumber)
   @IsInt()
@@ -257,14 +237,39 @@ export class EnvironmentVariables {
   TRUST_PROXY = 0;
 
   /**
-   * Egress addresses of our own BFFs (getproperty-web, getproperty-liff; their Cloud NAT IPs), comma-separated
-   * IPs/CIDRs: a hop from one of them is trusted too, so the end user's address the BFF forwards is `req.ip` (per-IP
-   * auth throttling, e-sign evidence). Empty = none (D-229).
+   * Where our own BFFs (getproperty-web, getproperty-liff ECS tasks) call the API from, comma-separated IPs/CIDRs —
+   * the VPC's private app subnets, since they reach the API through the internal ALB: a hop from there is trusted
+   * too, so the end user's address the BFF forwards is `req.ip` (per-IP auth throttling, e-sign evidence). Empty =
+   * none (D-229, D-230).
    */
   @IsOptional()
   @IsString()
   @Validate(IsCidrList)
   TRUSTED_PROXY_CIDRS?: string;
+
+  /**
+   * Who may read the API's `GET /metrics` (by `req.ip`, comma-separated IPs/CIDRs). Empty = loopback and the private
+   * ranges, i.e. Grafana Alloy on the platform's docker network; a request through Caddy carries the public client
+   * address and gets 404 (D-230).
+   */
+  @IsOptional()
+  @IsString()
+  @Validate(IsCidrList)
+  METRICS_ALLOWED_CIDRS?: string;
+
+  /** Port of the worker process's `/health` + `/metrics` server (the platform's image contract: 3001; D-230). */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  WORKER_HEALTH_PORT = 3001;
+
+  /** Port of the ingest process's `/health` + `/metrics` server (3002, D-230). */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  INGEST_HEALTH_PORT = 3002;
 
   @Transform(toNumber)
   @IsInt()
@@ -540,8 +545,9 @@ export class EnvironmentVariables {
 
   // --- Email (SES v2) -----------------------------------------------------------------------------------
 
+  /** Verified SES sender (the product SES identity in collective-infra, D-230); same name as getpack's. */
   @IsString()
-  EMAIL_FROM = 'getproperty <no-reply@getproperty.co>';
+  SES_FROM_ADDRESS = 'getproperty <no-reply@getproperty.co>';
 
   // --- Web push (VAPID) ---------------------------------------------------------------------------------
 
@@ -596,8 +602,10 @@ export class EnvironmentVariables {
    * Where the gateway's mTLS client certificate comes from on `/v1/device/*` (CR-002): `socket` = this process
    * terminates TLS and requests client certificates; `pem_header` = a trusted proxy forwards the URL-encoded PEM in
    * DEVICE_MTLS_HEADER (nginx `$ssl_client_escaped_cert`, Envoy); `sha256_header` = the proxy forwards the
-   * certificate's SHA-256 fingerprint (hex or base64; e.g. the GCP load balancer's `X-Client-Cert-Hash`). Header
-   * modes trust the header: the API must only be reachable through that proxy.
+   * certificate's SHA-256 fingerprint (hex or base64). On AWS (D-230) the device ALB verifies the chain against the
+   * device CA trust store and forwards the leaf as URL-encoded PEM in `X-Amzn-Mtls-Clientcert-Leaf`: `pem_header`
+   * with DEVICE_MTLS_HEADER=x-amzn-mtls-clientcert-leaf. Header modes trust the header: the API must only be
+   * reachable through that proxy.
    */
   @IsIn(['socket', 'pem_header', 'sha256_header'])
   DEVICE_MTLS_SOURCE: 'socket' | 'pem_header' | 'sha256_header' = 'socket';

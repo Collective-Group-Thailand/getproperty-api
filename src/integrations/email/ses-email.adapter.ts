@@ -4,7 +4,7 @@ import { ProviderError } from '../http/provider-http';
 import { type EmailMessage, type EmailPort } from './email.port';
 
 /**
- * Amazon SES v2 (master plan §4: SES now, a GCP-equivalent adapter in B6.5 behind the same port).
+ * Amazon SES v2 — the production email path on the Collective platform (D-230; getpack's `SES_FROM_ADDRESS`).
  * // UNVERIFIED against live provider: no SES account in the sandbox; written from the SESv2 SendEmail reference.
  */
 export class SesEmailAdapter implements EmailPort {

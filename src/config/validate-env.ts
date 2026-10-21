@@ -31,11 +31,6 @@ export function validateEnv(raw: Record<string, unknown>): EnvironmentVariables 
   if ((env.MQTT_MODE ?? env.DATA_STORES_MODE) === DataStoresMode.Real && !env.MQTT_URL)
     problems.push('MQTT_URL: required when the broker is real (DATA_STORES_MODE / MQTT_MODE)');
 
-  if (env.OBJECT_STORAGE_DRIVER === 'gcs' && !env.GCS_BUCKET)
-    problems.push('GCS_BUCKET: required when OBJECT_STORAGE_DRIVER=gcs');
-  if (env.SECRETS_DRIVER === 'gcp' && !env.GCP_PROJECT_ID)
-    problems.push('GCP_PROJECT_ID: required when SECRETS_DRIVER=gcp');
-
   if (env.NODE_ENV === NodeEnv.Production) {
     if (env.INTEGRATIONS_MODE === IntegrationsMode.Fake)
       problems.push('INTEGRATIONS_MODE: must be "real" when NODE_ENV=production');

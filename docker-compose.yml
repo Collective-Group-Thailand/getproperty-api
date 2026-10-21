@@ -65,9 +65,10 @@ services:
       retries: 20
 
   localstack:
+    # AWS stand-in like getpack's (D-230: production is the Collective platform on AWS): S3, SES, Secrets Manager.
     image: localstack/localstack:4
     environment:
-      SERVICES: s3,secretsmanager
+      SERVICES: s3,ses,secretsmanager
       AWS_DEFAULT_REGION: ap-southeast-1
     ports:
       - '4566:4566'
