@@ -34,6 +34,7 @@ import { EasySlipVerifier, RealPaymentProviders } from './payments/real-payment-
 import { FakePdfRenderer } from './pdf/fake-pdf-renderer';
 import { PDF_RENDERER, type PdfRendererPort } from './pdf/pdf-renderer.port';
 import { PuppeteerPdfRenderer } from './pdf/puppeteer-pdf-renderer';
+import { BullmqPdfRenderTransport, QueuePdfRenderer } from './pdf/queue-pdf-renderer';
 import { FakeObjectStorage } from './s3/fake-object-storage';
 import { OBJECT_STORAGE, type ObjectStorage } from './s3/object-storage.port';
 import { S3ObjectStorage } from './s3/s3-object-storage';
@@ -60,7 +61,8 @@ class MqttShutdown implements OnApplicationShutdown {
   async onApplicationShutdown(): Promise<void> {
     await this.mqtt.end().catch(() => undefined);
     // the headless browser of the real PDF renderer
-    if (this.pdf instanceof PuppeteerPdfRenderer) await this.pdf.close().catch(() => undefined);
+    if (this.pdf instanceof PuppeteerPdfRenderer || this.pdf instanceof QueuePdfRenderer)
+      await this.pdf.close().catch(() => undefined);
   }
 }
 
@@ -190,15 +192,32 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
       },
     },
     {
+      // D-236 / D-242 (ADR-0012): `queue` = the shared pdf-render queue (getpack's Chromium), `real` = own Chromium
       provide: PDF_RENDERER,
-      inject: [AppConfig],
-      useFactory: (config: AppConfig): PdfRendererPort =>
-        config.useFakePdfRenderer
-          ? new FakePdfRenderer()
-          : new PuppeteerPdfRenderer({
-              executablePath: required(config, 'PDF_CHROMIUM_EXECUTABLE'),
-              timeoutMs: config.get('PDF_RENDER_TIMEOUT_MS'),
-            }),
+      inject: [AppConfig, OBJECT_STORAGE],
+      useFactory: (config: AppConfig, storage: ObjectStorage): PdfRendererPort => {
+        const mode = config.pdfRendererMode;
+        if (mode === 'fake') return new FakePdfRenderer();
+        if (mode === 'queue')
+          return new QueuePdfRenderer(
+            new BullmqPdfRenderTransport(
+              (config.get('PDF_RENDER_REDIS_URL') ?? config.get('REDIS_URL'))!,
+              config.get('PDF_RENDER_QUEUE_PREFIX'),
+            ),
+            storage,
+            {
+              bucket: config.get('S3_BUCKET'),
+              keyPrefix: config.get('S3_KEY_PREFIX') ?? '',
+              product: 'getproperty',
+              renderTimeoutMs: config.get('PDF_RENDER_TIMEOUT_MS'),
+              waitTimeoutMs: config.get('PDF_RENDER_QUEUE_TIMEOUT_MS'),
+            },
+          );
+        return new PuppeteerPdfRenderer({
+          executablePath: required(config, 'PDF_CHROMIUM_EXECUTABLE'),
+          timeoutMs: config.get('PDF_RENDER_TIMEOUT_MS'),
+        });
+      },
     },
     {
       provide: SMS,

@@ -98,4 +98,20 @@ describe('validateEnv', () => {
     );
     expect(() => validateEnv({ MQTT_SHARED_GROUP: 'in gest' })).toThrow(/MQTT_SHARED_GROUP/);
   });
+
+  it('PDF_RENDERER_MODE: fake | real | queue; queue needs a Valkey; never fake in production (D-236, D-242)', () => {
+    expect(validateEnv({ PDF_RENDERER_MODE: 'queue', REDIS_URL: 'redis://v:6379/2' }).PDF_RENDERER_MODE).toBe(
+      'queue',
+    );
+    expect(() => validateEnv({ PDF_RENDERER_MODE: 'chromium' })).toThrow(/PDF_RENDERER_MODE/);
+    expect(() => validateEnv({ PDF_RENDERER_MODE: 'queue' })).toThrow(/PDF_RENDER_REDIS_URL/);
+    expect(() => validateEnv({ NODE_ENV: 'production', PDF_RENDERER_MODE: 'fake' })).toThrow(
+      /PDF_RENDERER_MODE: must be "real" or "queue"/,
+    );
+  });
+
+  it('DATABASE_POOL_MAX is 1…15 (the per-process ceiling is enforced at start-up, T-5)', () => {
+    expect(validateEnv({ DATABASE_POOL_MAX: '12' }).DATABASE_POOL_MAX).toBe(12);
+    expect(() => validateEnv({ DATABASE_POOL_MAX: '40' })).toThrow(/DATABASE_POOL_MAX/);
+  });
 });

@@ -12,12 +12,15 @@ export interface PdfRenderOptions {
 export type PdfPaper = 'a4' | 'thermal_80mm';
 
 /**
- * HTML → PDF (master plan §3: Puppeteer with embedded Thai fonts). The real adapter drives a headless Chromium; the
- * fake writes a small deterministic PDF carrying the document's text, so tests and `pnpm dev` need no browser.
+ * HTML → PDF (master plan §3: Puppeteer with embedded Thai fonts; D-236). `PDF_RENDERER_MODE`: `queue` renders through
+ * the shared `pdf-render` queue of the Collective platform (getpack's Chromium, docs/pdf-render-queue.md); `real` drives
+ * a headless Chromium in this process (development, and production only under ADR-0012 until the queue consumer is
+ * deployed, O-015 → D-242); the fake writes a small deterministic PDF carrying the document's text, so tests and `pnpm dev` need no browser.
  * Output must be deterministic for the same input in the fake; the real adapter's bytes vary by Chromium build, so
  * hashes are always computed from the bytes actually stored.
  */
 export interface PdfRendererPort {
-  readonly mode: 'fake' | 'real';
+  /** `fake` (tests, dev), `real` (in-process Chromium — dev and the O-015 interim, ADR-0012), `queue` (`pdf-render`). */
+  readonly mode: 'fake' | 'real' | 'queue';
   render(html: string, options: PdfRenderOptions): Promise<Buffer>;
 }
