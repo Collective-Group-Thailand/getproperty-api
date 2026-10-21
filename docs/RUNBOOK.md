@@ -16,18 +16,18 @@ compose project `getproperty` beside getpack (`docs/deployment.md` §1):
 
 | Process | Container | Role | Health |
 |---|---|---|---|
-| API | `getproperty-api` (`node dist/src/main.js`) | `/v1/*`, `/webhooks/*`, `/health`, `/docs` (allow-list) | `:3000/health` |
-| Worker | `getproperty-worker` (`worker.js`) | BullMQ consumers + repeatable maintenance jobs (`src/worker.runner.ts`), PDFs (own Chromium until the shared `pdf-render` queue, D-236) | `:3001/health` |
-| Ingest | `getproperty-ingest` (`ingest.js`) | MQTT shared subscription on EMQX → telemetry, health, readings | `:3002/health` |
+| API | `getproperty-api` (`node dist/src/main.js`) | `/v1/*`, `/webhooks/*`, `/health`, `/docs` (allow-list), `/internal/emqx/*` (EMQX HTTP authn/authz, docker network only — D-244) | `:3000/health` |
+| Worker | `getproperty-worker` (`worker.js`) | BullMQ consumers + repeatable maintenance jobs (`src/worker.runner.ts`), PDFs (own Chromium under ADR-0012 until getpack's `pdf-render` consumer exists, D-242), `integration-delivery` (D-247) | `:3001/health` |
+| Ingest | `getproperty-ingest` (`ingest.js`) | MQTT shared subscription on EMQX → telemetry, health, readings | `:3001/health` (own container, `INGEST_HEALTH_PORT=3001`; 3002 locally) |
 | Web | `getproperty-web` | owner console, staff PWA, platform admin (getproperty-web) | `:3000/api/healthz` |
 | LIFF | `getproperty-liff` | resident LINE Mini App (getproperty-liff) | `:3000/api/healthz` |
-| ClamAV | `getproperty-clamav` | upload virus scan (INSTREAM :3310) — moves to a shared platform service (D-233, blueprint T-2) | `clamdcheck.sh` |
+| ClamAV | `platform-clamav-1` (shared platform service, T-2) | upload virus scan (INSTREAM :3310, `CLAMAV_HOST`) | `clamdcheck.sh` |
 
 Shared platform services: PostgreSQL 18 `timescale/timescaledb-ha:pg18` (container `platform-postgres-1`, database
 `getproperty`, pgBackRest to S3, TimescaleDB available — D-162 as amended), Valkey (BullMQ, locks, caches;
-`noeviction`), EMQX 5.8 (`platform-emqx-1`; gateways on 8883 with mutual TLS), Caddy (TLS, host routing), Grafana
+`noeviction`), EMQX 5.8 (`platform-emqx-1`; gateways on 8883 with mutual TLS + device JWT, WSS fallback per gateway; authn / authz asked from getproperty-api), Caddy (TLS, host routing), Grafana
 Alloy (logs, metrics, traces → Grafana Cloud). Per product: S3 bucket `collective-<env>-getproperty-assets` (private,
-versioned, presigned URLs only), SES identity, Secrets Manager `collective/<env>/getproperty/*`.
+versioned, presigned URLs only), SES identity, **one** Secrets Manager secret `collective/<env>/getproperty/app` (+ platform secrets `platform/device-ca`, `platform/emqx`).
 
 Configuration: environment variables (`src/config/env.schema.ts`, validated at boot — a bad value stops the process
 before it serves) from the compose file and the env file the box renders from `collective/<env>/getproperty/app`
@@ -96,7 +96,8 @@ retried on the next tick; each job is idempotent.
 | `platform-subscriptions` | 1 h | trial end, 1st-of-month usage + platform invoice, overdue → past_due → suspended, cancellation (B6.1) | no platform invoices on the 1st; rerun via the job — usage snapshots are unique per month |
 | `payment-settlement` | 1 day | provider statements reconciliation (D-197) | discrepancies stay open; owners can upload the statement |
 | `receivables` | 1 h | overdue, dunning, late fee | reminders late; nothing lost |
-| `telemetry-rollup` / `telemetry-partitions` | 1 min / 1 day | rollups and monthly partitions (D-184) | usage charts stale; ingest creates partitions on demand |
+| `telemetry-rollup` / `telemetry-partitions` | 1 min / 1 day | hourly / daily rollups from raw points, monthly partitions and retention (D-184, D-241; 15-minute series are read from raw points, ADR-0014) | hourly / daily charts stale; 15-minute series stay current; ingest creates partitions on demand |
+| `integration-delivery` | 30 s | outbound integration events → partner products (webhook, D-247) | events stay `pending` / `failed` and are retried with backoff; `dead` ones show in the admin console (`/v1/admin/integration-events?state=dead`) |
 | `gateway-health`, `meter-health`, `config-drift`, `device-commands` | 1–5 min | smart health (B3) | stale health badges |
 | `etax-submissions` | 1 min | e-Tax submissions due: submit, poll, store the signed XML / PDF (B6.2, D-215) | documents stay `queued` / `submitted`; provider errors retry with backoff (10 attempts), then the owner is told; the owner can retry |
 | `etax-monthly` | 1 h (acts on the 1st) | last month's e-Tax figures to the owner and accountant (once per month) | notice late; figures stay available in the console |
@@ -135,7 +136,9 @@ retried on the next tick; each job is idempotent.
 |---|---|---|
 | Owners cannot log in | SMS provider status, `auth.*` 5xx, Redis | switch the SMS provider credentials (secret) and redeploy; tell owners through LINE OA |
 | Payments not confirmed | `/webhooks/payments/*` 401/5xx, provider status, `ops.payment_webhook` backlog | fix secret, replay callbacks from the provider portal; daily settlement catches misses |
-| Gateways offline | `docker ps` / logs of `platform-emqx-1`, port 8883 reachable, broker certificate expiry (`collective/<env>/getproperty/mqtt-tls`), device CA | renew the broker certificate (`pnpm device:broker-cert`, `docs/deployment.md` §5); `docker exec platform-emqx-1 emqx ctl listeners`; gateways buffer locally (store and forward) |
+| Gateways offline | `docker ps` / logs of `platform-emqx-1`, port 8883 reachable, broker certificate expiry (`collective/<env>/platform/device-ca`), the API up (EMQX asks `POST /internal/emqx/authn` — API down = every gateway refused), `EMQX_AUTH_TOKEN` = `platform/emqx` `getproperty_auth_token` (403 in the API log otherwise), audit `mqtt.authn_denied` reasons (`device_jwt_missing` = agents older than protocol 1.2 while `mqtt.authn.require_device_jwt` is on; `certificate_revoked`; `ws_fallback_disabled`) | renew the broker certificate (`pnpm device:broker-cert`, `docs/deployment.md` §5); `docker exec platform-emqx-1 emqx ctl listeners`; temporarily set `mqtt.authn.require_device_jwt` off (platform setting, audited) only if the fleet cannot run 1.2 yet; gateways buffer locally (store and forward) |
+| PDFs not produced | worker log `PdfRenderError` / Chromium crashes, `PDF_RENDERER_MODE` | `real` (ADR-0012): worker memory (1.5 GB) and `shm_size`; `queue`: getpack worker up, `pdf-render` depth in Grafana, `PDF_RENDER_REDIS_URL`; subscribers retry by themselves — documents appear once rendering works |
+| Provider calls refused (QR, locks, e-Tax) | `no credentials for …` in the worker log, `GET /v1/admin/provider-credentials?tenantId=…` | set or replace the credential (`POST /v1/admin/provider-credentials`, D-240); a leaked key: revoke it first (`…/{id}/actions/revoke`) |
 | Billing cycle stuck | worker logs `billing-cycles`, readings review queue | finish reviews; the cycle resumes on the next tick |
 | Database CPU high | `pg_stat_statements` (Grafana), long transactions, CPUCreditBalance | kill runaway export jobs; resize the box (collective-infra tfvars) |
 | Data restore needed | pgBackRest PITR (35 days) | `restore-drill.sh prod --pitr "<time>"` on uat to inspect, export the rows; never restore over prod (collective-infra README §5) |
@@ -146,13 +149,18 @@ Post-incident: a short write-up in `docs/incidents/` (what, impact, timeline, fi
 
 - Platform backups (locked decision 6, D-233): pgBackRest full (Sunday) / diff (daily 01:30) + WAL archive to
   `s3://collective-<env>-backups` (35 days, **RPO ≤ 5 min** via `archive_timeout` 300 s), EBS snapshot daily (DLM) with
-  a cross-region copy (region: O-016); the assets bucket is versioned. No managed failover. Readings acknowledged in
+  an encrypted cross-region copy to `ap-northeast-1` (Tokyo, 7 days — D-243, PDPA basis in
+  `docs/compliance/cross-border-backups.md`); the assets bucket is versioned. No managed failover. Readings acknowledged in
   the last ≤ 5 minutes before a loss are not re-sent by gateways, but bills come only from cumulative registers
   (D-030), so the next reading restores every total.
-- Restore drill (monthly, platform): `sudo /opt/collective/platform/bin/restore-drill.sh prod` on uat; for getproperty
-  also run the smoke tests (§11, an owner login, a cycle preview) against the restored `getproperty` database and
-  record the time it took — **RTO target 30 min** (platform; the former 4 h stays the tolerated ceiling). A product hook
-  for the drill is blueprint task T-15.
+- Restore drill (monthly, platform): `sudo /opt/collective/platform/bin/restore-drill.sh prod` on uat. The platform's
+  getproperty hook (`platform/products/getproperty/hooks/drill-smoke.sh`) checks the migration history and runs
+  **`node dist/src/drill-smoke.js`** from the deployed api image against the restored database (isolated network,
+  512 MB; D-248, T-15): `SMOKE migrations`, `rls_cross_tenant`, `freshness`, and — when the backup is this box's own
+  environment (`DRILL_SAME_ENV=true`) — `owner_login` (SMS OTP through the HTTP surface), `cross_tenant_api` (404) and
+  `billing_preview` (the current cycle of one property computed on the throw-away copy). Any `fail` fails the drill;
+  the drill report records `rto_seconds` against the **30-min target** (the former 4 h stays the tolerated ceiling).
+  Locally: `pnpm build && DATABASE_URL=<restored db> DRILL_SAME_ENV=true pnpm drill:smoke`.
 - **PDPA after a restore**: data-subject erasures (anonymisation, destroyed tenant keys) executed after the restore
   point are re-applied from `platform.data_subject_request` before the restored database serves traffic; copies age
   out of pgBackRest within 35 days and of EBS snapshots within 7 days, so an erasure is complete everywhere within
@@ -201,3 +209,46 @@ successor refresh token (derived with `FIELD_HASH_KEY`, never stored in clear) a
 revoked (`auth.refresh_reuse_detected`, D-163). A burst of `auth.refresh_grace_reused` from one family with different
 user agents / IPs is worth a look (stolen token racing the owner). Rotating `FIELD_HASH_KEY` makes in-flight graces
 count as reuse for at most the window.
+
+## 12. PDF rendering (D-236, D-242, ADR-0012)
+
+- Now: `PDF_RENDERER_MODE=real` — the worker's own Chromium (1.5 GB worker). Check: an invoice issued in the owner
+  console gets its PDF within a minute (`documents` subscriber), Thai text renders (Sarabun).
+- Switch to the shared queue when getpack's `pdf-render` consumer runs on the box (`docs/pdf-render-queue.md` §6):
+  collective-infra `platform/env/<env>.env` → `GETPROPERTY_PDF_RENDERER_MODE=queue`, `GETPROPERTY_WORKER_MEMORY=512M`,
+  `PDF_RENDER_REDIS_URL` in the product secret; deploy; issue one invoice (A4) and one receipt (80 mm) on uat and
+  compare them with the `real` output; then a follow-up release removes Chromium from the image (T-1, T-11).
+- A render that fails is retried by the subscriber; `PdfRenderError: … does not match the result` means the object in
+  `tmp/pdf-render/` was overwritten or truncated — look at the getpack worker.
+
+## 13. Provider credentials (D-240)
+
+- Entered by a platform admin with `admin.provider_credential.manage`: `POST /v1/admin/provider-credentials`
+  `{ tenantId | null, kind: payment|lock|etax, provider, merchantRef (payments), values: {…}, reason }`. Values are
+  write-only; the list shows key names, a fingerprint and the last 4 characters of the merchant reference. Every
+  decrypt by an adapter is an audit row `provider_credential.decrypted`.
+- Rotation: post the new values (the old row is revoked in the same transaction). A leak: `…/{id}/actions/revoke` at
+  once, then set the new key; QR codes, lock syncs or e-Tax submissions fail until then.
+- Migration from the former Secrets Manager sub-paths (once per environment): run
+  `node dist/src/credentials-import.js` in the api image with the normal env plus `PAYMENTS_SECRETS_PREFIX`,
+  `LOCKS_SECRETS_PREFIX`, `ETAX_SECRETS_PREFIX` (SSM Run Command, `docker compose run --rm api node
+  dist/src/credentials-import.js`); it reports `imported / already in the database / not found`; then delete the
+  sub-path secrets and the three prefix lines from the product compose file (collective-infra).
+
+## 14. Cross-product integration events (D-247)
+
+- Outbound: `bridge.integration_event` rows go to the partner configured by `INTEGRATION_<GETBUILD|GETPACK>_TRANSPORT`
+  (`none` until the partner consumes them). `failed` rows retry with backoff (30 s → 4 h); `dead` after a permanent
+  refusal (4xx) or 12 attempts — fix the cause, then set the row back to `pending` (SQL as `gp_platform`, audited
+  ticket) so the job resends it; partners dedupe on the idempotency key.
+- Inbound: `POST /webhooks/integration/<platform>`; a burst of 401 = keys out of step (`INTEGRATION_<P>_VERIFY_KEYS`
+  must contain the partner's current signing key — rotate by adding the new key on the receiver first, then switching
+  the sender).
+
+## 15. Telemetry growth and the DB box (D-241)
+
+- Watch getproperty's database size and the box's `/data` in Grafana; **trigger**: database > 100 GB **or** `/data` >
+  70 % → plan the move to a separate DB box within a quarter (collective-infra, locked decision 2); `/data` 120 → 250 GB
+  is planned for 2027-09-01 (A-2).
+- Volumes: raw points 24 months (compressed after 30 days on TimescaleDB), 15-minute series computed from them,
+  hourly / daily rollups 5 years, health samples 6 months (no per-meter array), dedup marks 90 days.

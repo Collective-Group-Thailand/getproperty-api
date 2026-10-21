@@ -7,12 +7,12 @@ what getproperty needs from the platform and how the image meets the platform's 
 needs in collective-infra are on its branch **`getproperty/r1-platform`** (patches: `collective-infra-patches/`
 beside this checkout); until that branch is merged and tagged, getproperty cannot be deployed.
 
-> **2026-10-21 — Collective's locked infrastructure decisions (D-233–D-238).** They win over anything below. Where
-> this page still describes what the branch does today and the locked decisions differ — one secret per product
-> (§3), the device CA in `collective/<env>/platform/device-ca` and EMQX HTTP authn/authz (§5), PDFs through the shared
-> `pdf-render` queue (§2), the ≈ 1.8 GB memory budget (§1, §6), the migrate command and the ingest health port (§2) —
-> the difference is a numbered gap task (T-1 … T-17) in `docs/platform-blueprint.md` § Infrastructure & operations,
-> which also holds the quantified infrastructure asks.
+> **2026-10-21 / 2026-10-22 — Collective's locked infrastructure decisions (D-233–D-238) and the gap tasks.** They win
+> over anything below. On 2026-10-22 getproperty-api implemented its side of the gap tasks (T-1, T-3, T-5–T-9, T-12–T-16)
+> and the founder resolved O-012–O-016 (D-239–D-243); collective-infra's branch `getproperty/r1-platform` carries the
+> matching platform side (EMQX HTTP authn/authz, device-CA secret, one product secret, shared ClamAV, budget limits,
+> ingest on :3001, DLM copy, restore-drill hook). The task table with its status is in `docs/platform-blueprint.md`
+> § Infrastructure & operations.
 
 | | uat | prod |
 |---|---|---|
@@ -28,16 +28,16 @@ Shell access, logs, backups, restore drills and resizing are platform runbooks: 
 `platform/products/getproperty/docker-compose.yml` (collective-infra), compose project `getproperty` on the external
 network `collective`:
 
-| Service | Image · command | Port | Health | Memory (branch today) | Budget (D-233) |
+| Service | Image · command | Port | Health | Memory (now) | Budget (D-233) |
 |---|---|---|---|---|---|
 | `web` | `getproperty/web:${WEB_IMAGE_TAG}` | 3000 | `/api/healthz` | 384M | 384M |
 | `liff` | `getproperty/liff:${LIFF_IMAGE_TAG}` | 3000 | `/api/healthz` | 256M | 192M |
 | `api` | `getproperty/api:${IMAGE_TAG}` · `node dist/src/main.js` | 3000 | `/health` (+ `/metrics`) | 640M | 512M |
-| `worker` | same · `node dist/src/worker.js` | 3001 | `/health` (+ `/metrics`) | 1G (Chromium PDFs) | 512M — PDFs via `pdf-render` (D-236, T-1); 1.5G only under an ADR (O-015) |
-| `ingest` | same · `node dist/src/ingest.js` | 3002 (→ 3001, T-10) | `/health` (+ `/metrics`) | 256M | 192M |
-| `clamav` | `clamav/clamav-debian:1.4` | 3310 | `clamdcheck.sh` | 1280M | 0 — shared platform service (T-2) |
+| `worker` | same · `node dist/src/worker.js` | 3001 | `/health` (+ `/metrics`) | 1536M (own Chromium, ADR-0012) | 512M once `pdf-render` is consumed (D-236, D-242); **1.5G until then** (ADR-0012) |
+| `ingest` | same · `node dist/src/ingest.js` | 3001 (`INGEST_HEALTH_PORT=3001` in its own container; image default 3002) | `/health` (+ `/metrics`) | 192M | 192M |
+| `clamav` | — (shared platform service `platform-clamav-1:3310`, T-2) | — | — | 0 | 0 |
 | `migrate` | same · `node dist/src/migrate.js` (one-shot, profile `tools`) | — | exit code | 512M | 512M one-shot (outside the steady state) |
-| **Total** | | | | **≈ 3.75 GB** | **1,792 MB ≈ 1.8 GB** |
+| **Total** | | | | **≈ 2.8 GB while ADR-0012 is active** | **1,792 MB ≈ 1.8 GB** |
 
 Exactly one `ingest` replica (EMQX shared subscription `$share/ingest/…` also works with more). The platform's
 Alloy scrapes every container labelled `collective.metrics` and receives OTLP traces on `platform-alloy-1:4318`.
@@ -50,7 +50,8 @@ One image (`Dockerfile`), built natively for `linux/arm64` by collective-infra's
   command as is; without one, `PROCESS=main|worker|ingest|migrate` picks it (local `docker run`).
 - **Health**: API `GET /health` on `:3000` (PostgreSQL, Redis, S3, MQTT; 503 when one is down). The worker and the
   ingest process serve `GET /health` + `GET /metrics` on their own port (`WORKER_HEALTH_PORT=3001`,
-  `INGEST_HEALTH_PORT=3002`; `src/common/observability/metrics.ts`): database + Redis (+ MQTT for ingest).
+  `INGEST_HEALTH_PORT` — 3001 in the platform's ingest container, T-10; image default 3002 so both run side by side
+  locally; `src/common/observability/metrics.ts`): database + Redis (+ MQTT for ingest).
 - **Metrics**: Prometheus text on `/metrics` — Node.js runtime metrics with label `service`, plus
   `http_server_request_duration_seconds{method,route,status}` on the API (route **pattern**, never the URL). The API
   answers `/metrics` only to `METRICS_ALLOWED_CIDRS` by client IP (default: loopback + private ranges = Alloy on the
@@ -58,113 +59,133 @@ One image (`Dockerfile`), built natively for `linux/arm64` by collective-infra's
 - **Traces**: OTLP/HTTP to `OTEL_EXPORTER_OTLP_ENDPOINT` (`src/instrument.ts`), `OTEL_SERVICE_NAME` per container.
 - **Time zone**: `TZ=Asia/Bangkok` (image + compose; `tzdata` installed). Business rules use Asia/Bangkok explicitly
   anyway; stored times are UTC.
-- **Chromium** (PDFs) from Debian, available for arm64 and amd64; `PDF_CHROMIUM_EXECUTABLE=/usr/bin/chromium` —
-  **interim**: locked decision 12 allows one Chromium per box (getpack's); getproperty moves to the shared `pdf-render`
-  queue (D-236, T-1) and then drops Chromium from the image. Kept on the platform only under an ADR with a 1.5 GB
-  worker (O-015).
+- **PDFs** (D-236, D-242, ADR-0012): `PDF_RENDERER_MODE` = `real` (default in the image: Debian's Chromium,
+  `PDF_CHROMIUM_EXECUTABLE=/usr/bin/chromium`, in the worker only) **until getpack's `pdf-render` consumer is
+  deployed**, then `queue` (the shared `pdf-render` BullMQ queue — `docs/pdf-render-queue.md`; `PDF_RENDER_REDIS_URL` =
+  the platform's shared-queue Valkey DB, prefix `collective`); collective-infra maps `GETPROPERTY_PDF_RENDERER_MODE`
+  and `GETPROPERTY_WORKER_MEMORY` (1536M now, 512M with `queue`). Chromium leaves the image after the switch.
+- **One-shot commands** besides `migrate.js`: `node dist/src/drill-smoke.js` (restore drill, T-15, D-248) and
+  `node dist/src/credentials-import.js` (provider credentials from the former Secrets Manager sub-paths, D-240).
+- **Pool** (T-5, D-246): `DATABASE_POOL_MAX` per container — api 10 (≤ 15), worker 10 (≤ 10), ingest 5 (≤ 5); a value
+  above the ceiling fails the start-up. getproperty's total ≤ 26 connections (+ migrate 1, + Python workers 5 from
+  Phase 2) ≤ 35 (A-1).
 - **Build input**: `@collective/asset-core` is a sibling source tree (ADR-0011) passed as the named build context
   `asset-core-src`; the Dockerfile builds it. CI passes it with `extra_repository` / `build_contexts`
   (`.github/workflows/deploy.yml`) until the package is published to GitHub Packages (then it becomes a normal
   dependency, like getpack's `@getpack/dieline`, and the extra checkout goes away).
 
-### Migrations — why not `npx prisma migrate deploy`
+### Migrations — why not `npx prisma migrate deploy` (ADR-0013)
 
-The platform template for getpack runs `npx prisma migrate deploy` (image contract, locked decision 11). For getproperty
-that would be wrong — the deviation is recorded as gap T-3 (an ADR plus collective-infra wording "the product
-compose's `migrate` service", which is what `deploy-product.sh` runs): the `core`
-schema belongs to `@collective/asset-core` and **must migrate first** (D-153, ADR-0011), and the runtime image has
-no Prisma CLI or schema engine. `node dist/src/migrate.js` (`src/database/migrations/deploy-migrations.ts`):
+The platform template for getpack runs `npx prisma migrate deploy`; collective-infra's README now names the product
+compose's **`migrate` service** instead, which for getproperty runs **`node dist/src/migrate.js`**
+(`src/database/migrations/deploy-migrations.ts`, ADR-0013): the `core` schema belongs to `@collective/asset-core` and
+**must migrate first** (D-153, ADR-0011), and the runtime image has no Prisma CLI or schema engine.
 
-1. `assetCoreMigrate()` — schema `core`, roles, helper functions (advisory-locked, checksummed, idempotent);
+1. `@collective/asset-core` migrations — schema `core`, roles, helper functions (advisory-locked, checksummed,
+   idempotent). **asset-core ≥ 0.4.0** is required (the command refuses an older package): as a non-superuser runner
+   it grants `gp_platform` `CREATE ON SCHEMA core` for the run itself (0007 hands its SECURITY DEFINER helpers to
+   `gp_platform`) and revokes it afterwards — getproperty's former workaround is gone (T-3);
 2. `prisma/migrations/*` in order, each in one transaction, recorded in `_prisma_migrations` with the same name and
    sha256 checksum `prisma migrate deploy` writes — either tool can follow the other (CI still runs the real
    `prisma migrate deploy` + `prisma migrate diff`);
-3. the optional TimescaleDB step of D-162 (`prisma/optional/timescale/001_telemetry_hypertables.sql`) when
-   `TIMESCALEDB_MIGRATION=auto` (default) and the extension is usable — on the platform it is: the two raw tables
-   become hypertables with retention policies, once, recorded in `_optional_migrations`. `off` skips it, `on`
-   requires it. Without the extension (tests, plain PostgreSQL) the native monthly partitions stay; the API reads
-   only rollup tables either way. **UNVERIFIED** against a live TimescaleDB until the first UAT deploy.
-
+3. the optional TimescaleDB steps (`prisma/optional/timescale/`) where the extension is usable —
+   `TIMESCALEDB_MIGRATION=auto` (default; **`on` in prod**, D-234, so a missing extension fails the deploy), `off`
+   skips: `001_telemetry_hypertables` (raw telemetry and health samples become hypertables with retention policies)
+   and `002_telemetry_compression` (raw telemetry platform-only without RLS, compressed after 30 days — T-12,
+   ADR-0014), each once, recorded in `_optional_migrations`. Without the extension (tests, plain PostgreSQL) the
+   native monthly partitions stay; tenants read the same rollups and 15-minute function either way. **UNVERIFIED**
+   against a live TimescaleDB until the first UAT deploy;
 4. the **reference seed** (`prisma/seed/run.ts reference`: RBAC catalogue, settings catalogue, compliance rules,
    invoice line kinds, utility tariffs, holidays, templates, price plans …) — idempotent, every insert is `ON
    CONFLICT` on a natural key; `SEED_REFERENCE=false` skips it. It runs as `gp_platform` (BYPASSRLS) via `SET ROLE`.
 
-It runs as the product login `getproperty` (not a superuser — `test/integration/platform-migrate.int-spec.ts`
-proves the whole sequence that way). asset-core 0007 hands its SECURITY DEFINER helpers to `gp_platform`, which
-PostgreSQL allows only when `gp_platform` may CREATE in schema `core`; the runner grants that for the duration of the
-core migrations and revokes it afterwards (`migrateCoreAsProductLogin`). A proper fix belongs in
-`@collective/asset-core` (grant in 0001 for non-superuser runners) — recorded for its next release.
+It runs as the product login `getproperty` (not a superuser — `test/integration/platform-migrate.int-spec.ts` proves
+the whole sequence that way). App migration 0039 hands its two SECURITY DEFINER telemetry functions to `gp_platform`
+the same way (a `CREATE ON SCHEMA smart` grant inside its own transaction).
 
-`pnpm db:migrate` (asset-core CLI + `prisma migrate deploy`) stays the developer command; it needs a superuser or the
-same temporary grant.
+`pnpm db:migrate` (asset-core CLI + `prisma migrate deploy`) stays the developer command.
 
 ## 3. Secrets and database roles
 
 The box renders Secrets Manager JSON into env files (`/run/collective/*.env`); **the app does not read its own
-secret** (`AWS_SECRETS_ID` stays empty). It does read **provider credentials** at run time through the secrets port
-(`PAYMENTS_SECRETS_PREFIX`, `LOCKS_SECRETS_PREFIX`, `ETAX_SECRETS_PREFIX`), so the compose file points those prefixes
-under `collective/<env>/getproperty/…` — the only path the instance role may read.
+secret** (`AWS_SECRETS_ID` stays empty). **One** product secret per environment (D-233, T-4):
+`collective/<env>/getproperty/app`. Keys without a prefix belong to the API image (api, worker, ingest, migrate);
+component keys carry a prefix that collective-infra's `fetch-secrets.sh` strips while splitting them into the
+component's own env file — **`WEB__…`** → `getproperty-web.env`, **`LIFF__…`** → `getproperty-liff.env`,
+**`MQTT_TLS__…`** (interim only, see §5) — so a front end never receives the API's secrets. Per-merchant provider
+credentials are **not** secrets any more but sealed rows in PostgreSQL (D-240, below). Platform-owned values come from
+platform secrets: the device CA (`collective/<env>/platform/device-ca`, D-245) and the EMQX hook token
+(`collective/<env>/platform/emqx` `getproperty_auth_token`), which collective-infra's getproperty hook writes into the
+API env file.
 
-> **D-233 / D-235 (2026-10-21)**: the target is **one** secret, `collective/<env>/getproperty/app`. The front ends'
-> keys move into it with component prefixes (`WEB__…`, `LIFF__…`) that `fetch-secrets.sh` splits into their own env
-> files (T-4) so a front end still never receives the API's secrets; `mqtt-tls` and `DEVICE_CA_*` move to the platform
-> secret `collective/<env>/platform/device-ca` (T-6); `getproperty_mqtt_password` disappears with the EMQX HTTP
-> authz (T-7); the per-merchant provider sub-paths are O-013. The tables below describe the branch as it is today.
-
-**`collective/<env>/getproperty/app`** (flat JSON; values never in git):
+**API keys of `collective/<env>/getproperty/app`** (flat JSON; values never in git):
 
 | Keys | Value / rule |
 |---|---|
-| `DATABASE_URL` | `postgresql://getproperty:<getproperty_password>@postgres:5432/getproperty` — the pool is the pg adapter's `max: 10` per process (api, worker, ingest: ≤ 15 / ≤ 10 of the image contract); a `connection_limit` query parameter has no effect (T-5) |
+| `DATABASE_URL` | `postgresql://getproperty:<getproperty_password>@postgres:5432/getproperty` — no `connection_limit` parameter (it has no effect with the pg adapter); the pool is `DATABASE_POOL_MAX` per container (T-5, set by the compose file) |
 | `DATABASE_APP_ROLE`, `DATABASE_PLATFORM_ROLE` | `gp_app`, `gp_platform` — the login switches role per transaction so RLS applies |
 | `REDIS_URL` | `redis://:<valkey password>@valkey:6379/2` (getproperty's logical DB; getpack uses its own) |
-| `MQTT_USERNAME`, `MQTT_PASSWORD` | `getproperty-api`, random hex — EMQX's internal listener (the platform hook creates the user) |
-| `PUBLIC_API_BASE_URL`, `PUBLIC_WEB_APP_URL`, `PUBLIC_STAFF_APP_URL`, `PUBLIC_RESIDENT_APP_URL` | `https://<API_HOST>`, `https://<OWNER_HOST>`, `https://<STAFF_HOST>`, `https://<LIFF_HOST>`. `https://<API_HOST>/brand/*` serves the logos emails and LINE messages link (D-232); LINE shows the logo only for an https origin |
+| `PDF_RENDER_REDIS_URL` | only with `PDF_RENDERER_MODE=queue`: the platform's shared-queue Valkey DB (`docs/pdf-render-queue.md`) |
+| `MQTT_USERNAME`, `MQTT_PASSWORD` | `getproperty-api`, random hex — EMQX's internal listener (the platform hook creates the built-in user); also the service user the authz endpoint allows below `gp/v1/` (`EMQX_SERVICE_USERNAMES` overrides the list) |
+| `PUBLIC_API_BASE_URL`, `PUBLIC_WEB_APP_URL`, `PUBLIC_STAFF_APP_URL`, `PUBLIC_RESIDENT_APP_URL` | `https://<API_HOST>`, `https://<OWNER_HOST>`, `https://<STAFF_HOST>`, `https://<LIFF_HOST>`. `https://<API_HOST>/brand/*` serves the logos emails and LINE messages link (D-232) |
 | `MQTT_PUBLIC_URL` | `mqtts://<MQTT_HOST>:8883` |
-| `MQTT_PUBLIC_WS_URL` | **unset** (do not add the key): the bootstrap then omits `mqtt.wsUrl` — no WSS endpoint verifies gateway certificates while O-012 is open (§5, D-231) |
+| `MQTT_PUBLIC_WS_URL` | `wss://<MQTT_HOST>/mqtt` — the WebSocket fallback (D-239); handed only to gateways whose fallback the platform admin enabled |
 | `DEVICE_PUBLIC_BASE_URL` | **empty / unset**: device URLs (`ota_apply.manifestUrl`) are relative `/v1/device/…` paths the agent resolves against its device host; `https://<DEVICE_HOST>` is equivalent. Never `https://<API_HOST>` (D-231) |
-| `FIELD_ENCRYPTION_KEY`, `FIELD_HASH_KEY` | 32 bytes base64; ≥ 32 characters |
+| `FIELD_ENCRYPTION_KEY`, `FIELD_HASH_KEY` | 32 bytes base64; ≥ 32 characters (the field key also seals the platform merchant's provider credentials, D-240) |
 | `AUTH_JWT_PRIVATE_KEY`, `AUTH_JWT_KID`, `AUTH_JWT_PREVIOUS_KEYS` | Ed25519 PKCS#8 (base64), key id, rotation set |
-| `DEVICE_CA_CERT`, `DEVICE_CA_KEY` | the platform device CA (EC P-256, base64 PEM) — also issues the broker certificate (§5) |
 | `OTA_SIGNING_PUBLIC_KEYS` | OTA manifest keys |
 | `LINE_LOGIN_CHANNEL_IDS`, `LINE_MESSAGING_ACCESS_TOKEN` | LINE channels |
 | `SMS_API_URL`, `SMS_API_KEY`, `SMS_API_SECRET` | SMS gateway |
 | `SES_FROM_ADDRESS` | `getproperty <no-reply@<ses_domain>>` — a verified identity (`ses_domain` in collective-infra tfvars) |
 | `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_PRIVATE_KEY`, `WEB_PUSH_SUBJECT` | VAPID |
+| `INTEGRATION_GETBUILD_*`, `INTEGRATION_GETPACK_*` | cross-product events (D-247), once a partner consumes them: `…_TRANSPORT=webhook`, `…_WEBHOOK_URL=http://<partner>-api:3000/webhooks/integration/getproperty`, `…_SIGNING_KEYS` (ours, ≥ 32 characters), `…_VERIFY_KEYS` (theirs); default `none` |
 | `SLIP_VERIFY_API_KEY`, `AI_GATEWAY_URL`, `AI_GATEWAY_API_KEY`, `SENTRY_DSN` | optional providers |
 | `DOCS_ENABLED`, `DOCS_ALLOWED_CIDRS` | `/docs` on uat only, by office IP |
 
-Set by the compose file (not secrets): `NODE_ENV`, `TZ`, `INTEGRATIONS_MODE=real`, `DATA_STORES_MODE=real`,
+**Written by collective-infra's getproperty hook** into the API env (not in the product secret): `DEVICE_CA_CERT`,
+`DEVICE_CA_KEY`, `DEVICE_CA_CHAIN` (base64 PEM from `platform/device-ca` `issuing_cert_pem`, `issuing_key_pem`,
+`ca_chain_pem` — D-245) and `EMQX_AUTH_TOKEN` (= `platform/emqx` `getproperty_auth_token`, D-244).
+
+**Set by the compose file** (not secrets): `NODE_ENV`, `TZ`, `INTEGRATIONS_MODE=real`, `DATA_STORES_MODE=real`,
 `AWS_REGION`, `S3_BUCKET`, `MQTT_URL=mqtt://platform-emqx-1:1883`, `TRUST_PROXY`, `TRUSTED_PROXY_CIDRS`,
-`METRICS_ALLOWED_CIDRS`, `DEVICE_MTLS_*`, `CLAMAV_HOST`, the provider secret prefixes, OTEL settings, ports.
+`METRICS_ALLOWED_CIDRS`, `DEVICE_MTLS_*`, `CLAMAV_HOST=platform-clamav-1`, `PDF_RENDERER_MODE`
+(`GETPROPERTY_PDF_RENDERER_MODE`), `DATABASE_POOL_MAX` per service, `INGEST_HEALTH_PORT=3001`, OTEL settings, ports.
+The three `*_SECRETS_PREFIX` lines go away once `credentials-import` ran (D-240, RUNBOOK §13).
 
-**`collective/<env>/getproperty/web`**, **`…/liff`**: each front end's own run-time env (session secrets, hosts,
-`API_INTERNAL_URL`, …) → `/run/collective/getproperty-web.env` / `-liff.env`. The front ends never receive the API's
-secrets. **Both front ends read every value at run time, the public `NEXT_PUBLIC_*` ones included** (web ADR-0009,
-liff ADR-0007): on the server from the secret like every other variable, handed to the browser as props or
-server-rendered `<html data-*>` attributes; a literal `process.env.NEXT_PUBLIC_…` read fails their tests (liff's one
-exception is `NEXT_PUBLIC_LIFF_MOCK`, the mock build flavour, never set for a platform image). No build arguments, so
-**one image per front end serves every environment** and `promote.yml` can ship the bytes UAT ran (§7).
+**Per-merchant provider credentials** (D-240): KBank / SCB / Opn merchants, TTLock / Tuya accounts, INET e-Tax
+accounts are entered by the platform admin (`POST /v1/admin/provider-credentials`, values write-only) and sealed with
+the tenant's data key in `platform.provider_credential`; the platform's own merchant with the platform field key. On a
+box that still holds the former sub-path secrets (`collective/<env>/getproperty/{payments,locks,etax}/…`): run
+`node dist/src/credentials-import.js` once with the `*_SECRETS_PREFIX` variables set, check its report, then delete the
+sub-path secrets and the prefixes.
 
-| Front end | Public keys in its secret (besides its own run-time env) |
+**Front ends** (`WEB__…`, `LIFF__…` keys of the same secret): each front end's own run-time env (session secrets,
+hosts, `API_INTERNAL_URL`, …). **Both front ends read every value at run time, the public `NEXT_PUBLIC_*` ones
+included** (web ADR-0009, liff ADR-0007): on the server from their env file like every other variable, handed to the
+browser as props or server-rendered `<html data-*>` attributes; a literal `process.env.NEXT_PUBLIC_…` read fails their
+tests (liff's one exception is `NEXT_PUBLIC_LIFF_MOCK`, the mock build flavour, never set for a platform image). No
+build arguments, so **one image per front end serves every environment** and `promote.yml` can ship the bytes UAT ran
+(§7).
+
+| Front end | Public keys (with their prefix in the product secret) |
 |---|---|
-| **getproperty-web** | `OWNER_HOST`, `STAFF_HOST`, `ADMIN_HOST` (= `caddy/sites.<env>.yml`), optional `NEXT_PUBLIC_ASSET_BASE_URL=https://collective-<env>-getproperty-assets.s3.ap-southeast-7.amazonaws.com`, `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_ENV_BADGE=uat`, `NEXT_PUBLIC_LINE_OA_ID` |
-| **getproperty-liff** | **`NEXT_PUBLIC_LIFF_ID`** (required — the LIFF app of *that environment's* LINE Login channel; a production container without it fails its start-up check and answers 500, `/api/healthz` included, so the deploy's health check fails and rolls back), `NEXT_PUBLIC_ASSET_BASE_URL` (the environment's bucket origin, as for web), `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (= this API's `WEB_PUSH_VAPID_PUBLIC_KEY`), optional `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_ENV_BADGE=uat` (empty or `production` = no badge), `NEXT_PUBLIC_LINE_OA_ID`, `FEATURE_TECHNICIAN`, `APP_ORIGIN` |
+| **getproperty-web** | `WEB__OWNER_HOST`, `WEB__STAFF_HOST`, `WEB__ADMIN_HOST` (= `caddy/sites.<env>.yml`), optional `WEB__NEXT_PUBLIC_ASSET_BASE_URL=https://collective-<env>-getproperty-assets.s3.ap-southeast-7.amazonaws.com`, `WEB__NEXT_PUBLIC_SENTRY_DSN`, `WEB__NEXT_PUBLIC_ENV_BADGE=uat`, `WEB__NEXT_PUBLIC_LINE_OA_ID` |
+| **getproperty-liff** | **`LIFF__NEXT_PUBLIC_LIFF_ID`** (required — the LIFF app of *that environment's* LINE Login channel; a production container without it fails its start-up check and answers 500, `/api/healthz` included, so the deploy's health check fails and rolls back), `LIFF__NEXT_PUBLIC_ASSET_BASE_URL`, `LIFF__NEXT_PUBLIC_VAPID_PUBLIC_KEY` (= this API's `WEB_PUSH_VAPID_PUBLIC_KEY`), optional `LIFF__NEXT_PUBLIC_SENTRY_DSN`, `LIFF__NEXT_PUBLIC_ENV_BADGE=uat`, `LIFF__NEXT_PUBLIC_LINE_OA_ID`, `LIFF__FEATURE_TECHNICIAN`, `LIFF__APP_ORIGIN` |
 
-So a changed public value means, for both front ends: update the secret and restart that container (the next deploy
-re-renders the env file). The liff repository variables `UAT_*` / `PROD_*` of the former per-environment builds are
-no longer read.
+A changed public value means, for both front ends: update the secret and restart that container (the next deploy
+re-renders the env file).
 
-**`collective/<env>/getproperty/mqtt-tls`**: `{"server_pem", "server_key", "ca_pem"}` — §5.
-
-**`collective/<env>/platform/postgres`** gets `getproperty_mqtt_password` (EMQX's authorization login).
+**Retired** (2026-10-22): the per-component secrets `collective/<env>/getproperty/{web,liff,mqtt-tls}` (moved into
+`app` with prefixes; collective-infra README §3 "Moving from the per-component secrets"), `DEVICE_CA_*` in the product
+secret, and `getproperty_mqtt_password` in `platform/postgres` with the `getproperty_mqtt` login (EMQX no longer reads
+PostgreSQL).
 
 **Database roles** (`platform/postgres/init/20-getproperty.sh`): the product login `getproperty` owns database
 `getproperty` and is `NOCREATEROLE`, so the init script (superuser) creates the asset-core group roles `gp_owner`,
-`gp_app` (NOBYPASSRLS), `gp_platform` (BYPASSRLS), `gp_reporting`, plus `gp_mqtt`, grants them to `getproperty`,
-creates the login `getproperty_mqtt` (member of `gp_mqtt`: reads only live rows of `smart.mqtt_acl`) and the
-extensions (`timescaledb`, `pgcrypto`, `citext`, `btree_gist`, `pg_trgm`). Idempotent; on a box initialised before
-it existed, run it once by SSM (command in the script header).
+`gp_app` (NOBYPASSRLS), `gp_platform` (BYPASSRLS), `gp_reporting`, grants them to `getproperty`, and creates the
+extensions (`timescaledb`, `pgcrypto`, `citext`, `btree_gist`, `pg_trgm`). `gp_mqtt` stays as a NOLOGIN role without
+members because migration 0010 (immutable) creates and grants to it on a fresh database; migration 0037 drops its
+policy and grants, so it has no access (D-244) — the init script may drop it on boxes migrated past 0037.
 
 ## 4. Hosts, Caddy and the client IP
 
@@ -190,52 +211,63 @@ Smoke check on the box: RUNBOOK §11.
 
 ## 5. MQTT and gateways
 
-> **Target contract (D-235, 2026-10-21)**: EMQX is the **shared platform broker**. 8883 public with mutual TLS against
-> the device CA from `collective/<env>/platform/device-ca`; 1883 internal only; 8083 ws behind Caddy only (not used
-> by getproperty). Gateways are authenticated by EMQX **HTTP authn** → `POST /internal/emqx/authn` on getproperty-api
-> (certificate CN `gw-<gatewayId>` = username + the device JWT as password, device protocol 1.2) and authorised by
-> **HTTP authz** → `POST /internal/emqx/authz` (publish `gp/v1/<id>/{telemetry,health,events,cmd/ack}`, subscribe
-> `gp/v1/<id>/{config,cmd}`; `gp/v1/#` reserved for getproperty). The certificate-only login and the PostgreSQL ACL
-> source below are the **interim** set-up of the branch until T-6–T-9 land (`docs/platform-blueprint.md`).
+EMQX 5.8 is the **shared platform broker** (D-235); getproperty-api is its **HTTP authn / authz authority** for gateways
+(D-244); the namespace `gp/v1/#` is getproperty's. Device protocol **1.2** (`docs/contract/device-protocol.md`).
 
-The device protocol does not change (§1 of `docs/contract/device-protocol.md`): MQTT 5 over TLS on **8883 with a
-per-gateway X.509 client certificate**, and the `caChainPem` a gateway receives at bootstrap is the **only** trust
-anchor it uses for the broker. The platform's original EMQX listener (`verify_none`, username/password, Let's
-Encrypt certificate) therefore cannot serve gateways; `getproperty/r1-platform` changes it:
+| Listener | Who | Authentication | Authorisation |
+|---|---|---|---|
+| `ssl:default` **8883** (public) | gateways | mutual TLS against `ca_chain_pem` of `platform/device-ca` (`verify_peer`, `fail_if_no_peer_cert`; zone `devices`: `peer_cert_as_username = cn`, `peer_cert_as_clientid = cn`) **+** HTTP authn → `POST /internal/emqx/authn` with `transport = mtls`: CN `gw-<gatewayId>` of a provisioned, non-retired gateway holding a current certificate, and its device JWT as password (setting `mqtt.authn.require_device_jwt`, on by default) | HTTP authz → `POST /internal/emqx/authz` |
+| `ws:default` **8083** (behind Caddy `wss://<MQTT_HOST>/mqtt`) | gateways of buildings that block 8883, **only with the per-gateway fallback on** (D-239) | HTTP authn with `transport = ws`: no certificate; a valid device JWT of that gateway is required | same |
+| `tcp:default` **1883** (docker network only) | getproperty api / worker / ingest | EMQX built-in users (`MQTT_USERNAME`) | same endpoint: service users below `gp/v1/` |
 
-- listener `ssl:default` (8883): `verify_peer` + `fail_if_no_peer_cert` against the getproperty device CA; server
-  certificate issued **from the same CA** for `MQTT_HOST`; `peer_cert_as_username = cn` (zone `devices`) so the
-  username is `gw-<gatewayId>`; no password on this listener;
-- authorization: file source (the API user `getproperty-api`: `gp/v1/+/#`, `$share/ingest/gp/v1/+/#`) → PostgreSQL
-  source `SELECT permission, action, topic FROM smart.mqtt_acl WHERE username = ${username} AND revoked_at IS NULL`
-  (login `getproperty_mqtt`) → `no_match = deny`, `deny_action = disconnect`. A gateway publishes only
-  `gp/v1/<its id>/+` and `…/cmd/ack`, subscribes only `…/config` and `…/cmd`;
-- internal listener 1883 (docker network only) and ws 8083: password users (built-in database). The API, worker and
-  ingest connect to `mqtt://platform-emqx-1:1883` as `MQTT_USERNAME`.
+- **Endpoints** (`src/surfaces/internal/emqx-auth.controller.ts`, `src/core/devices/emqx-auth.service.ts`): callers inside
+  `EMQX_HTTP_ALLOWED_CIDRS` (default loopback + private ranges); header `x-emqx-auth-token` = `EMQX_AUTH_TOKEN`
+  (constant-time; empty token = every request refused); `EMQX_HTTP_RATE_LIMIT` per minute (default 6,000); answers
+  `{"result":"allow"|"deny"|"ignore"}` (`is_superuser: false` with `allow`). Not in the OpenAPI contract; shapes in
+  `docs/contract/device-protocol.md` §1a. Caddy answers 404 for `/internal/*` on every public host.
+- **Authz** from `smart.mqtt_acl` (the source of truth, written at bootstrap): a gateway publishes only
+  `gp/v1/<id>/{telemetry,health,events,cmd/ack}` (QoS ≤ 1, never retained) and subscribes only to
+  `gp/v1/<id>/{config,cmd}`; anything else of a gateway is `deny` (EMQX `deny_action = disconnect`); other users are
+  denied inside `gp/v1/` and ignored outside. EMQX caches authz ≤ 1 min, so a revoked / retired gateway loses its
+  topics within a minute; its next connect is refused at once (no current certificate / revoked session family).
+- **Audit**: every gateway denial is `mqtt.authn_denied` / `mqtt.authz_denied` (reason, transport, topic, peer — never
+  the password), one row per subject, reason and minute.
+- **Fail closed**: the API down or the token missing = EMQX gets no `allow` → gateways stay disconnected and keep their
+  readings (store-and-forward 30 days), reconnecting with back-off.
 
-Issue the broker certificate with the device CA (the key never leaves the machine that runs it):
+**Device CA** (D-245): `collective/<env>/platform/device-ca` — `ca_chain_pem`, `issuing_cert_pem`, `issuing_key_pem`,
+`broker_cert_pem` (leaf + issuing CA), `broker_key_pem`. Issue the broker certificate with the device CA (the keys never
+leave the machine that runs it):
 
 ```bash
-DEVICE_CA_CERT=… DEVICE_CA_KEY=… pnpm device:broker-cert --host mqtt.getproperty.co --out .local/broker-cert
-aws secretsmanager put-secret-value --secret-id collective/prod/getproperty/mqtt-tls --secret-string "$(jq -n \
-  --rawfile s .local/broker-cert/server.pem --rawfile k .local/broker-cert/server.key --rawfile c .local/broker-cert/ca.pem \
-  '{server_pem: $s, server_key: $k, ca_pem: $c}')"
+DEVICE_CA_CERT=… DEVICE_CA_KEY=… [DEVICE_CA_CHAIN=…] pnpm device:broker-cert --host mqtt.getproperty.co --out .local/broker-cert
+aws secretsmanager put-secret-value --secret-id collective/prod/platform/device-ca \
+  --secret-string file://.local/broker-cert/device-ca-secret.json && rm -rf .local/broker-cert
 ```
 
-`products/getproperty/hooks/post-secrets.sh` installs it into `/data/emqx/certs/getproperty`, restarts the listener
-and gives Caddy the CA for `DEVICE_HOST`. Renew yearly (397 days) — calendar it in LAUNCH-CHECKLIST §5.
+collective-infra's `bin/render-device-ca.sh` installs it for EMQX (8883 + the WSS certificate on `MQTT_HOST`) and Caddy
+(`DEVICE_HOST` trust pool) and the getproperty hook writes `DEVICE_CA_*` into the API env; redeploy the API after a CA
+change. Broker certificate: 397 days (LAUNCH-CHECKLIST §5); gateway certificates 12 months (agent renews at 11).
+Interim only: while `platform/device-ca` is still empty on a box, collective-infra serves the listener from the product
+secret's `MQTT_TLS__SERVER_PEM` / `__SERVER_KEY` / `__CA_PEM` and the API keeps its own `DEVICE_CA_*`.
 
-**Gateway HTTPS** (`/v1/device/bootstrap`, `/v1/device/certificate/renew`, …): `DEVICE_HOST`, where Caddy verifies a
-presented client certificate against the device CA (`verify_if_given`: bootstrap has no certificate yet) and
-forwards only its SHA-256 in `X-Client-Cert-Sha256`; the API runs `DEVICE_MTLS_SOURCE=sha256_header`. Every other
-host strips that header, and the API container is not reachable from outside the docker network.
+**Gateway HTTPS** (`/v1/device/bootstrap`, `/v1/device/token`, `/v1/device/certificate/renew`, …): `DEVICE_HOST`, where
+Caddy verifies a presented client certificate against the device CA (`verify_if_given`: bootstrap has no certificate
+yet) and forwards only its SHA-256 in `X-Client-Cert-Sha256`; the API runs `DEVICE_MTLS_SOURCE=sha256_header`. Every
+other host strips that header, and the API container is not reachable from outside the docker network.
 
-**Open (O-012)**: the WSS fallback on 443 for buildings that block 8883 (device protocol §1). Caddy terminates TLS for
-`/mqtt` on the platform host, so EMQX cannot see the gateway certificate there. Until it is decided
-`MQTT_PUBLIC_WS_URL` stays **unset** and the bootstrap answer carries no `mqtt.wsUrl` (D-231, edge CR-013; the agent
-also ignores a WSS URL unless `GP_MQTT_WS_FALLBACK=on`). R1 gateways use 8883; the options
-(Caddy `client_auth` on an `mqtt-ws` host + EMQX `peer_cert_as_username` from a proxy header, or a TLS passthrough
-layer4 route) need a platform decision before a building without 8883 is onboarded.
+**WebSocket fallback (D-239, O-012 resolved)** — for a building whose firewall blocks outbound 8883:
+
+1. platform admin: `POST /v1/admin/devices/{deviceId}/actions/set-mqtt-transport` `{ "wsFallback": true, "reason": … }`
+   (audited) — before issuing the provisioning code, or re-provision the gateway afterwards (the URL arrives with the
+   bootstrap answer);
+2. the bootstrap answer then carries `mqtt.wsUrl = wss://<MQTT_HOST>/mqtt` (`MQTT_PUBLIC_WS_URL`);
+3. the agent (protocol 1.2, `GP_MQTT_WS_FALLBACK=on` on that gateway) connects there with username = client id =
+   `gw-<gatewayId>` and a fresh device JWT as password.
+
+Risks accepted for that path (ADR-0015): no client certificate — a stolen device JWT (≤ 1 h; issued only over mTLS to a
+non-retired gateway) lets its holder connect as that gateway until it expires, limited to that gateway's own topics;
+TLS ends at Caddy. Keep the fallback to the buildings that need it and switch it off when 8883 is opened.
 
 ## 5a. OTA releases (D-231)
 
@@ -269,12 +301,13 @@ applies only to overwritten versions — never overwrite a published version, bu
 
 **Budget (locked decision 14, D-233)**: on the 16 GB prod box platform ≈ 6 GB, getpack 3.2 GB, **getproperty ≈ 1.8 GB**,
 getpop ≈ 1.5 GB, hard limits in compose. getproperty's line: api 512M · worker 512M · ingest 192M · web 384M · liff
-192M = 1,792 MB (migrate 512M one-shot). The branch's limits today total 3.75 GB including ClamAV (1.25 GB) and a
-Chromium worker (1 GB); they come down with T-1 (`pdf-render`), T-2 (shared ClamAV) and T-11 (limits + the 300-meter /
-300-unit load test re-run under them). On **uat** (8 GB) the limits over-commit (they are ceilings): set
+192M = 1,792 MB (migrate 512M one-shot). ClamAV is a shared platform service (T-2); while ADR-0012 is active the worker
+runs its own Chromium at 1.5 GB (≈ 2.8 GB in total) until getpack's `pdf-render` consumer is deployed (D-242); the
+300-meter / 300-unit load test is re-run under the limits on UAT (T-11). On **uat** (8 GB) the limits over-commit (they are ceilings): set
 `POSTGRES_MEMORY_LIMIT=2g` for uat and watch `container_memory_working_set_bytes` in Grafana. The R1 load target
 (300 meters / 300 units, D-207) is a single-box workload; the telemetry volumes per KPI and the trigger for a DB box
-are in `docs/platform-blueprint.md` § Infrastructure asks (O-014).
+are in `docs/platform-blueprint.md` § Infrastructure asks; the **DB-box trigger** is getproperty's database > 100 GB
+or `/data` > 70 % (D-241, Grafana alerts in collective-infra).
 
 ## 7. CI/CD
 

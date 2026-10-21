@@ -2,11 +2,13 @@
 # One image, four commands (master plan §2; Collective platform image contract, docs/deployment.md):
 #   node dist/src/main.js     API            :3000  /health, /metrics            (default)
 #   node dist/src/worker.js   BullMQ worker  :3001  /health, /metrics            (WORKER_HEALTH_PORT)
-#   node dist/src/ingest.js   MQTT ingest    :3002  /health, /metrics            (INGEST_HEALTH_PORT)
-#   node dist/src/migrate.js  one-shot: @collective/asset-core migrations, then prisma/migrations, then the optional
-#                             TimescaleDB step where the extension exists (D-162, D-230)
+#   node dist/src/ingest.js   MQTT ingest    :3002  /health, /metrics            (INGEST_HEALTH_PORT; 3001 on the platform)
+#   node dist/src/migrate.js  one-shot: @collective/asset-core (>= 0.4.0) migrations, then prisma/migrations, then the
+#                             optional TimescaleDB steps where the extension exists, then the reference seed (ADR-0013)
+#   node dist/src/drill-smoke.js        one-shot: the restore drill's smoke checks (D-248)
+#   node dist/src/credentials-import.js one-shot: provider credentials from the former secret paths (D-240)
 # `PROCESS=main|worker|ingest|migrate` selects one when no command is given. Built natively for linux/arm64 on the
-# Collective platform (t4g, Graviton) and for amd64 in CI. Debian slim (not Alpine): Chromium + Thai fonts for the
+# Collective platform (t4g, Graviton) and for amd64 in CI. Debian slim (not Alpine): Chromium (interim, ADR-0012) + Thai fonts for the
 # server-side PDFs (Debian ships chromium for arm64 and amd64).
 
 ARG NODE_IMAGE=node:24-bookworm-slim
