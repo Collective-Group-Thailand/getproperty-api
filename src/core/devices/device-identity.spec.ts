@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { type Request } from 'express';
 
-import { clientCertificateOf } from './device-identity.service';
+import { clientCertificateOf, mqttEndpointOf } from './device-identity.service';
 
 const PEM = '-----BEGIN CERTIFICATE-----\nMIIBfake\n-----END CERTIFICATE-----\n';
 const fp = (pem: string) => createHash('sha256').update(pem).digest();
@@ -47,5 +47,23 @@ describe('clientCertificateOf (mTLS sources, CR-002)', () => {
     expect(cert?.pem).toContain(raw.toString('base64'));
     const unauthorised = { ...socket, authorized: false };
     expect(clientCertificateOf(req({}, unauthorised), 'socket', 'x-client-cert', fp)).toBeNull();
+  });
+});
+
+describe('mqttEndpointOf (edge CR-013 / CR-015, D-239, D-249)', () => {
+  const URL = 'mqtts://mqtt.test.invalid:8883';
+  const WS = 'wss://mqtt.test.invalid/mqtt';
+
+  it('always the mTLS listener; no wsUrl key at all while the gateway fallback is off', () => {
+    const out = mqttEndpointOf({ mqttWsFallback: false }, URL, WS);
+    expect(out).toEqual({ url: URL });
+    expect(Object.keys(out)).toEqual(['url']);
+  });
+
+  it('wsUrl only when the gateway fallback is on and the platform publishes one', () => {
+    expect(mqttEndpointOf({ mqttWsFallback: true }, URL, WS)).toEqual({ url: URL, wsUrl: WS });
+    // fail closed: the flag alone never invents a WebSocket endpoint (MQTT_PUBLIC_WS_URL unset or empty)
+    expect(mqttEndpointOf({ mqttWsFallback: true }, URL, undefined)).toEqual({ url: URL });
+    expect(mqttEndpointOf({ mqttWsFallback: true }, URL, '')).toEqual({ url: URL });
   });
 });

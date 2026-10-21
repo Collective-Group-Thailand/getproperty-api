@@ -72,12 +72,12 @@ export const MQTT_AUTH = {
     'a device JWT of this gateway (POST /v1/device/token over mTLS, aud=device, ≤ 1 h), fetched before every (re)connect',
   transports: {
     mtls: {
-      url: 'mqtts://<MQTT_HOST>:8883 (bootstrap mqtt.url)',
+      url: 'mqtts://<MQTT_HOST>:8883 (mqtt.url of the bootstrap answer and of every POST /v1/device/token answer)',
       clientCertificate: 'required (the bootstrap certificate, CN gw-<gatewayId>)',
       password: 'required while the platform setting mqtt.authn.require_device_jwt is on (default)',
     },
     ws: {
-      url: 'wss://<MQTT_HOST>/mqtt (bootstrap mqtt.wsUrl, only when the platform admin enabled the fallback for this gateway)',
+      url: 'wss://<MQTT_HOST>/mqtt (mqtt.wsUrl of the bootstrap answer and of every POST /v1/device/token answer, present only while the platform admin has the fallback of this gateway enabled — re-read on every token refresh, D-249)',
       clientCertificate: 'none (TLS ends at Caddy)',
       password: 'always required',
     },

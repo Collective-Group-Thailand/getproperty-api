@@ -12,6 +12,7 @@ import { AuthService, type TokenPair } from '../identity/auth.service';
 import { SessionService } from '../identity/session.service';
 import { TokenService } from '../identity/token.service';
 import { DeviceCaService } from './device-ca.service';
+import { mqttEndpointOf } from './device-identity.service';
 import { DeviceRegistryService } from './device-registry.service';
 
 export interface MqttAclEntry {
@@ -195,7 +196,6 @@ export class DeviceBootstrapService {
           arch: input.hardware?.arch ?? null,
         },
       });
-      const wsUrl = device.mqttWsFallback ? this.config.get('MQTT_PUBLIC_WS_URL') : undefined;
       return {
         invalid: false as const,
         value: {
@@ -209,8 +209,11 @@ export class DeviceBootstrapService {
           certificateSerial: cert.serialNumber,
           certificateNotAfter: cert.notAfter,
           mqtt: {
-            url: this.config.get('MQTT_PUBLIC_URL'),
-            ...(wsUrl ? { wsUrl } : {}),
+            ...mqttEndpointOf(
+              device,
+              this.config.get('MQTT_PUBLIC_URL'),
+              this.config.get('MQTT_PUBLIC_WS_URL') || undefined,
+            ),
             clientId,
             username: clientId,
             password: 'device_jwt' as const,

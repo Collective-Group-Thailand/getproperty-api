@@ -68,6 +68,26 @@ export function clientCertificateOf(
   return fingerprint.length === 32 ? { fingerprint, pem: null } : null;
 }
 
+/** A gateway's MQTT endpoints (device protocol §1). */
+export interface MqttEndpoint {
+  url: string;
+  wsUrl?: string;
+}
+
+/**
+ * The MQTT endpoints a gateway may use right now (D-239, edge CR-013 / CR-015, D-249): always the mTLS listener;
+ * the WebSocket fallback only when the platform publishes one **and** the platform admin enabled it for this very
+ * gateway. Shared by the bootstrap answer and every `POST /v1/device/token` answer so both always agree.
+ */
+export function mqttEndpointOf(
+  device: Pick<Device, 'mqttWsFallback'>,
+  publicUrl: string,
+  publicWsUrl: string | undefined,
+): MqttEndpoint {
+  const wsUrl = device.mqttWsFallback && publicWsUrl ? publicWsUrl : undefined;
+  return wsUrl ? { url: publicUrl, wsUrl } : { url: publicUrl };
+}
+
 /**
  * Device identity after bootstrap (CR-002, CR-003): `POST /v1/device/token` mints a short-lived device JWT from the
  * mTLS client certificate alone; `POST /v1/device/certificate/renew` signs a new CSR for the authenticated gateway
@@ -133,8 +153,23 @@ export class DeviceIdentityService {
     if (device.id !== deviceId) throw new DomainException('device.certificate_invalid');
   }
 
-  /** `POST /v1/device/token`: an access token for the certificate's device, in its current session family. */
-  async token(req: Request): Promise<{ accessToken: string; expiresAt: Date; deviceId: string }> {
+  /** The current MQTT endpoints of a gateway (see `mqttEndpointOf`). */
+  mqttEndpoint(device: Pick<Device, 'mqttWsFallback'>): MqttEndpoint {
+    return mqttEndpointOf(
+      device,
+      this.config.get('MQTT_PUBLIC_URL'),
+      this.config.get('MQTT_PUBLIC_WS_URL') || undefined,
+    );
+  }
+
+  /**
+   * `POST /v1/device/token`: an access token for the certificate's device, in its current session family, plus the
+   * gateway's current MQTT endpoints read from the same device row (edge CR-015, D-249) — so switching the WebSocket
+   * fallback on or off reaches an already-provisioned gateway at its next refresh, without a new bootstrap.
+   */
+  async token(
+    req: Request,
+  ): Promise<{ accessToken: string; expiresAt: Date; deviceId: string; mqtt: MqttEndpoint }> {
     const device = await this.deviceOf(this.presented(req));
     const subject = this.subjects.device({
       id: device.id,
@@ -167,7 +202,12 @@ export class DeviceIdentityService {
     await this.db.platform((tx) =>
       tx.device.update({ where: { id: device.id }, data: { lastSeenAt: this.clock.now() } }),
     );
-    return { accessToken: access.token, expiresAt: access.expiresAt, deviceId: device.id };
+    return {
+      accessToken: access.token,
+      expiresAt: access.expiresAt,
+      deviceId: device.id,
+      mqtt: this.mqttEndpoint(device),
+    };
   }
 
   /** `POST /v1/device/certificate/renew`: a new certificate for the calling gateway (old one valid until expiry). */

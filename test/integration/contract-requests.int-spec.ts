@@ -314,6 +314,17 @@ describe('consumer contract requests (real PostgreSQL)', () => {
         .expect(200);
       accessToken = res.body.accessToken;
       expect(res.body.expiresAt).toMatch(/\+07:00$/);
+      // edge CR-015 (D-249): current MQTT endpoints on every refresh; with MQTT_PUBLIC_WS_URL unset the fallback
+      // flag alone never produces a wsUrl (fail closed, D-231)
+      expect(res.body.mqtt).toEqual({ url: expect.stringMatching(/^mqtts:\/\//) });
+      await db.admin.query(`UPDATE smart.device SET mqtt_ws_fallback = true WHERE id = $1`, [gatewayId]);
+      const flagged = await t.http
+        .post('/v1/device/token')
+        .set('x-client-cert', encodeURIComponent(certificatePem))
+        .send({})
+        .expect(200);
+      expect(flagged.body.mqtt).not.toHaveProperty('wsUrl');
+      await db.admin.query(`UPDATE smart.device SET mqtt_ws_fallback = false WHERE id = $1`, [gatewayId]);
     });
 
     it('renews the certificate (old one stays valid) and presigns a log bundle', async () => {

@@ -106,7 +106,7 @@ export class MqttConnectionDto {
   @ApiPropertyOptional({
     example: 'wss://mqtt.getproperty.invalid/mqtt',
     description:
-      'WebSocket fallback for buildings whose network blocks 8883 (device protocol §1, D-239 — O-012 resolved): EMQX ws 8083 behind Caddy, authenticated by the device JWT **alone** (no client certificate on that path). **Omitted** unless the platform admin enabled the fallback for this gateway (`POST /v1/admin/devices/{deviceId}/actions/set-mqtt-transport`) and the platform publishes it (`MQTT_PUBLIC_WS_URL`); off by default (D-231, edge CR-013).',
+      'WebSocket fallback for buildings whose network blocks 8883 (device protocol §1, D-239 — O-012 resolved): EMQX ws 8083 behind Caddy, authenticated by the device JWT **alone** (no client certificate on that path). **Omitted** unless the platform admin enabled the fallback for this gateway (`POST /v1/admin/devices/{deviceId}/actions/set-mqtt-transport`) and the platform publishes it (`MQTT_PUBLIC_WS_URL`); off by default (D-231, edge CR-013). A later change reaches the gateway in the `mqtt` block of every `POST /v1/device/token` answer (edge CR-015, D-249).',
   })
   wsUrl?: string;
 
@@ -141,6 +141,36 @@ export class DeviceAccessTokenDto {
 
   @ApiProperty({ format: 'date-time', example: '2026-11-01T01:15:00+07:00' })
   expiresAt!: string;
+}
+
+/**
+ * The gateway's current MQTT endpoints (edge CR-015, D-249): returned with every `POST /v1/device/token` answer so a
+ * provisioned gateway learns a changed broker URL or a WebSocket fallback switched on / off without a new bootstrap.
+ */
+export class DeviceMqttEndpointDto {
+  @ApiProperty({
+    example: 'mqtts://mqtt.getproperty.invalid:8883',
+    description:
+      'mTLS listener (`MQTT_PUBLIC_URL`) — the same value the bootstrap answer carries as `mqtt.url`.',
+  })
+  url!: string;
+
+  @ApiPropertyOptional({
+    example: 'wss://mqtt.getproperty.invalid/mqtt',
+    description:
+      'WebSocket fallback (device protocol §1, D-239), **present only** while the platform admin has the fallback of **this** gateway enabled (`POST /v1/admin/devices/{deviceId}/actions/set-mqtt-transport`) **and** the platform publishes it (`MQTT_PUBLIC_WS_URL`). Absent = the gateway must not use (or must stop using) the WebSocket path; the broker refuses it anyway (D-244). Read on every refresh (edge CR-015, D-249).',
+  })
+  wsUrl?: string;
+}
+
+/** `POST /v1/device/token` answer: the device JWT plus the current MQTT endpoints (edge CR-015, D-249). */
+export class DeviceTokenDto extends DeviceAccessTokenDto {
+  @ApiProperty({
+    type: () => DeviceMqttEndpointDto,
+    description:
+      'Current MQTT connection info of this gateway, evaluated at the time of the call (protocol 1.2, additive — D-249).',
+  })
+  mqtt!: DeviceMqttEndpointDto;
 }
 
 export class DeviceBootstrapDto extends TokenPairDto {

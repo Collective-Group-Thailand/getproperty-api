@@ -8678,6 +8678,24 @@
         ],
         "type": "object"
       },
+      "DeviceMqttEndpointDto": {
+        "properties": {
+          "url": {
+            "description": "mTLS listener (`MQTT_PUBLIC_URL`) — the same value the bootstrap answer carries as `mqtt.url`.",
+            "example": "mqtts://mqtt.getproperty.invalid:8883",
+            "type": "string"
+          },
+          "wsUrl": {
+            "description": "WebSocket fallback (device protocol §1, D-239), **present only** while the platform admin has the fallback of **this** gateway enabled (`POST /v1/admin/devices/{deviceId}/actions/set-mqtt-transport`) **and** the platform publishes it (`MQTT_PUBLIC_WS_URL`). Absent = the gateway must not use (or must stop using) the WebSocket path; the broker refuses it anyway (D-244). Read on every refresh (edge CR-015, D-249).",
+            "example": "wss://mqtt.getproperty.invalid/mqtt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
       "DeviceMqttTransportDto": {
         "properties": {
           "reason": {
@@ -8750,6 +8768,34 @@
           "retired"
         ],
         "type": "string"
+      },
+      "DeviceTokenDto": {
+        "properties": {
+          "accessToken": {
+            "description": "Device JWT (`aud=device`).",
+            "example": "eyJhbGciOiJFZERTQSJ9.eyJhdWQiOiJkZXZpY2UifQ.c2lnbmF0dXJl",
+            "type": "string"
+          },
+          "expiresAt": {
+            "example": "2026-11-01T01:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "mqtt": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeviceMqttEndpointDto"
+              }
+            ],
+            "description": "Current MQTT connection info of this gateway, evaluated at the time of the call (protocol 1.2, additive — D-249)."
+          }
+        },
+        "required": [
+          "accessToken",
+          "expiresAt",
+          "mqtt"
+        ],
+        "type": "object"
       },
       "DeviceUnbindDto": {
         "properties": {
@@ -18176,7 +18222,7 @@
             "type": "string"
           },
           "wsUrl": {
-            "description": "WebSocket fallback for buildings whose network blocks 8883 (device protocol §1, D-239 — O-012 resolved): EMQX ws 8083 behind Caddy, authenticated by the device JWT **alone** (no client certificate on that path). **Omitted** unless the platform admin enabled the fallback for this gateway (`POST /v1/admin/devices/{deviceId}/actions/set-mqtt-transport`) and the platform publishes it (`MQTT_PUBLIC_WS_URL`); off by default (D-231, edge CR-013).",
+            "description": "WebSocket fallback for buildings whose network blocks 8883 (device protocol §1, D-239 — O-012 resolved): EMQX ws 8083 behind Caddy, authenticated by the device JWT **alone** (no client certificate on that path). **Omitted** unless the platform admin enabled the fallback for this gateway (`POST /v1/admin/devices/{deviceId}/actions/set-mqtt-transport`) and the platform publishes it (`MQTT_PUBLIC_WS_URL`); off by default (D-231, edge CR-013). A later change reaches the gateway in the `mqtt` block of every `POST /v1/device/token` answer (edge CR-015, D-249).",
             "example": "wss://mqtt.getproperty.invalid/mqtt",
             "type": "string"
           }
@@ -39225,7 +39271,7 @@
     },
     "/v1/admin/devices/{deviceId}/actions/set-mqtt-transport": {
       "post": {
-        "description": "For a building whose network blocks outbound 8883 (D-239, O-012 resolved): `wsFallback: true` lets the gateway connect over EMQX ws 8083 behind Caddy authenticated by its device JWT **alone** — no client certificate on that path, so a stolen JWT (≤ 1 h, issued only over mTLS to a non-retired gateway) is enough to connect for its lifetime. Off by default; the bootstrap answer carries `mqtt.wsUrl` only for such a gateway. Only gateways, never retired ones; audited with the reason; the next WebSocket connect is decided by the new value.\n\nImplements: D-235, D-239.",
+        "description": "For a building whose network blocks outbound 8883 (D-239, O-012 resolved): `wsFallback: true` lets the gateway connect over EMQX ws 8083 behind Caddy authenticated by its device JWT **alone** — no client certificate on that path, so a stolen JWT (≤ 1 h, issued only over mTLS to a non-retired gateway) is enough to connect for its lifetime. Off by default; the bootstrap answer and every `POST /v1/device/token` answer carry `mqtt.wsUrl` only for such a gateway, so a provisioned gateway picks the change up at its next token refresh (≤ 1 h, edge CR-015, D-249) — no new provisioning code. Only gateways, never retired ones; audited with the reason; the next WebSocket connect is decided by the new value.\n\nImplements: D-235, D-239, D-249.",
         "operationId": "admin.devices.setMqttTransport",
         "parameters": [
           {
@@ -67943,7 +67989,7 @@
     },
     "/v1/device/token": {
       "post": {
-        "description": "Authenticated by the gateway’s client certificate alone (mTLS, no bearer): a certificate issued by the platform device CA, not revoked, within its validity, of a gateway that is not retired → a short-lived JWT (`aud=device`, `DEVICE_ACCESS_TOKEN_TTL_SECONDS`) in the gateway’s current session family. The agent refreshes one minute before `expiresAt` and never stores the token (CR-002, D-130, D-165).\n\nImplements: D-130, D-165.",
+        "description": "Authenticated by the gateway’s client certificate alone (mTLS, no bearer): a certificate issued by the platform device CA, not revoked, within its validity, of a gateway that is not retired → a short-lived JWT (`aud=device`, `DEVICE_ACCESS_TOKEN_TTL_SECONDS`) in the gateway’s current session family. The agent refreshes one minute before `expiresAt` and never stores the token (CR-002, D-130, D-165). The answer also carries the gateway’s **current** MQTT endpoints (`mqtt { url, wsUrl? }`, edge CR-015, D-249): `wsUrl` is present only while the platform admin has this gateway’s WebSocket fallback on (D-239) and the platform publishes one — so switching the fallback on or off reaches an already-provisioned gateway at its next refresh, without a new provisioning code or a site visit. Additive within device protocol 1.2.\n\nImplements: D-130, D-165, D-239, D-249.",
         "operationId": "device.token.create",
         "parameters": [
           {
@@ -67956,14 +68002,17 @@
               "application/json": {
                 "example": {
                   "accessToken": "eyJhbGciOiJFZERTQSJ9.eyJhdWQiOiJkZXZpY2UifQ.c2lnbmF0dXJl",
-                  "expiresAt": "2026-11-01T01:15:00+07:00"
+                  "expiresAt": "2026-11-01T01:15:00+07:00",
+                  "mqtt": {
+                    "url": "mqtts://mqtt.getproperty.invalid:8883"
+                  }
                 },
                 "schema": {
-                  "$ref": "#/components/schemas/DeviceAccessTokenDto"
+                  "$ref": "#/components/schemas/DeviceTokenDto"
                 }
               }
             },
-            "description": "Token",
+            "description": "Token and current MQTT endpoints",
             "headers": {
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"

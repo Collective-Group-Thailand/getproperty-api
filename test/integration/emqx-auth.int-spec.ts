@@ -29,6 +29,7 @@ interface Gw {
   id: string;
   username: string;
   jwt: string;
+  cert: string;
 }
 
 /**
@@ -89,7 +90,12 @@ describe('EMQX HTTP authn / authz (D-235, D-239, real PostgreSQL)', () => {
       .post('/v1/device/bootstrap')
       .send({ provisioningCode: code.body.code, csrPem: await csr() })
       .expect(201);
-    return { id: boot.body.deviceId, username: boot.body.mqtt.username, jwt: boot.body.accessToken };
+    return {
+      id: boot.body.deviceId,
+      username: boot.body.mqtt.username,
+      jwt: boot.body.accessToken,
+      cert: boot.body.certificatePem,
+    };
   }
 
   beforeAll(async () => {
@@ -98,6 +104,7 @@ describe('EMQX HTTP authn / authz (D-235, D-239, real PostgreSQL)', () => {
       EMQX_AUTH_TOKEN: TOKEN,
       MQTT_USERNAME: 'getproperty-api',
       MQTT_PUBLIC_WS_URL: 'wss://mqtt.test.invalid/mqtt',
+      DEVICE_MTLS_SOURCE: 'pem_header',
       OTP_MAX_PER_HOUR: '20',
     });
     admin = await adminToken(t);
@@ -195,6 +202,74 @@ describe('EMQX HTTP authn / authz (D-235, D-239, real PostgreSQL)', () => {
       .set(idem())
       .send({ wsFallback: true, reason: 'nope nope' })
       .expect(404);
+  });
+
+  it('token refresh carries each gateway’s own current MQTT endpoints — the fallback switch reaches a provisioned gateway (edge CR-015, D-249)', async () => {
+    const WS = 'wss://mqtt.test.invalid/mqtt';
+    const refresh = async (g: Gw) =>
+      (
+        await t.http
+          .post('/v1/device/token')
+          .set('x-client-cert', encodeURIComponent(g.cert))
+          .send({})
+          .expect(200)
+      ).body as { accessToken: string; mqtt: Record<string, unknown> };
+    const transport = (g: Gw, wsFallback: boolean) =>
+      t.http
+        .post(`/v1/admin/devices/${g.id}/actions/set-mqtt-transport`)
+        .set(bearer(admin))
+        .set(idem())
+        .send({ wsFallback, reason: 'CR-015 refresh test' })
+        .expect(200);
+
+    // start from a known state: both off → no wsUrl key at all
+    await transport(gw, false);
+    await transport(other, false);
+    expect((await refresh(gw)).mqtt).toEqual({ url: expect.stringMatching(/^mqtts:\/\//) });
+    expect((await refresh(other)).mqtt).not.toHaveProperty('wsUrl');
+
+    // switched on for gw only, without a new bootstrap: the next refresh of gw carries wsUrl, other's does not
+    await transport(gw, true);
+    const on = await refresh(gw);
+    expect(on.mqtt).toEqual({ url: expect.any(String), wsUrl: WS });
+    expect((await authn(ws({ ...gw, jwt: on.accessToken })).expect(200)).body.result).toBe('allow');
+    expect((await refresh(other)).mqtt).not.toHaveProperty('wsUrl');
+    // other's certificate never yields gw's endpoints (the answer follows the presented certificate only)
+    const asOther = await t.http
+      .post('/v1/device/token')
+      .set('x-client-cert', encodeURIComponent(other.cert))
+      .send({ deviceId: gw.id })
+      .expect(200);
+    expect(asOther.body.mqtt).not.toHaveProperty('wsUrl');
+
+    // switched off again: the next refresh drops wsUrl and the broker refuses the WebSocket path
+    await transport(gw, false);
+    const off = await refresh(gw);
+    expect(off.mqtt).not.toHaveProperty('wsUrl');
+    expect((await authn(ws({ ...gw, jwt: off.accessToken })).expect(200)).body.result).toBe('deny');
+
+    // a retired gateway gets nothing (certificate refused), whatever its flag says
+    await db.admin.query(`UPDATE smart.device SET mqtt_ws_fallback = true WHERE id = $1`, [other.id]);
+    expect((await refresh(other)).mqtt).toEqual({ url: expect.any(String), wsUrl: WS });
+    const before = await db.admin.query<{ status: string }>(
+      `SELECT status::text FROM smart.device WHERE id = $1`,
+      [other.id],
+    );
+    await db.admin.query(`UPDATE smart.device SET status = 'retired', retired_at = now() WHERE id = $1`, [
+      other.id,
+    ]);
+    const retired = await t.http
+      .post('/v1/device/token')
+      .set('x-client-cert', encodeURIComponent(other.cert))
+      .send({})
+      .expect(401);
+    expect(retired.body.code).toBe('device.certificate_invalid');
+    expect(retired.body).not.toHaveProperty('mqtt');
+    await db.admin.query(
+      `UPDATE smart.device SET status = $2::smart.device_status, retired_at = NULL, mqtt_ws_fallback = false
+        WHERE id = $1`,
+      [other.id, before.rows[0]!.status],
+    );
   });
 
   it('authz: a gateway publishes only its four topics (QoS ≤ 1, not retained) and subscribes only to config / cmd', async () => {
