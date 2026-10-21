@@ -10,6 +10,10 @@ import { applyPrismaMigrations, type MigrationClient, prismaDir } from './app-mi
 export type TimescaleMode = 'auto' | 'on' | 'off';
 
 export const TIMESCALE_STEP = 'timescale/001_telemetry_hypertables';
+/** Step 2 (D-234, T-12, ADR-0014): raw telemetry without RLS (platform-only) and compressed after 30 days. */
+export const TIMESCALE_COMPRESSION_STEP = 'timescale/002_telemetry_compression';
+/** The optional TimescaleDB steps in apply order. */
+export const TIMESCALE_STEPS = [TIMESCALE_STEP, TIMESCALE_COMPRESSION_STEP] as const;
 
 /** pg_advisory_lock key serialising concurrent app migration runners ("gp-app-mig" as two int4). */
 const LOCK_KEY: [number, number] = [0x67702d61, 0x70706d67];
@@ -48,11 +52,12 @@ export async function timescaleUsable(db: MigrationClient): Promise<boolean> {
 }
 
 /**
- * The optional D-162 step (`prisma/optional/timescale/001_telemetry_hypertables.sql`): converts the raw telemetry
- * and gateway health tables to hypertables where TimescaleDB is usable, once, in one transaction, recorded in
- * `_optional_migrations` (not in `_prisma_migrations`, so `prisma migrate deploy` never sees an unknown migration).
- * Without the extension nothing happens and the native monthly partitions stay — the API reads only the rollup
- * tables either way.
+ * The optional TimescaleDB steps (D-162, D-234): `001_telemetry_hypertables` converts the raw telemetry and gateway
+ * health tables to hypertables, `002_telemetry_compression` makes raw telemetry platform-only without RLS and
+ * compresses it after 30 days (T-12, ADR-0014) — where TimescaleDB is usable, each once, each in its own transaction,
+ * recorded in `_optional_migrations` (not in `_prisma_migrations`, so `prisma migrate deploy` never sees an unknown
+ * migration). Without the extension nothing happens and the native monthly partitions stay; tenants read the same
+ * rollups and 15-minute function either way.
  */
 export async function applyOptionalTimescale(
   db: MigrationClient,
@@ -61,16 +66,20 @@ export async function applyOptionalTimescale(
 ): Promise<DeployMigrationsResult['timescale']> {
   if (mode === 'off') return 'skipped_off';
   await db.query(OPTIONAL_DDL);
-  const sql = readFileSync(join(dir, `${TIMESCALE_STEP}.sql`), 'utf8');
-  const checksum = createHash('sha256').update(sql).digest('hex');
-  const { rows } = await db.query(`SELECT checksum FROM public."_optional_migrations" WHERE name = $1`, [
-    TIMESCALE_STEP,
-  ]);
-  if (rows[0]) {
-    if (rows[0].checksum !== checksum)
-      throw new Error(`optional migration ${TIMESCALE_STEP} was modified after it was applied`);
-    return 'already_applied';
-  }
+  const steps = TIMESCALE_STEPS.map((name) => {
+    const sql = readFileSync(join(dir, `${name}.sql`), 'utf8');
+    return { name, sql, checksum: createHash('sha256').update(sql).digest('hex') };
+  });
+  const { rows } = await db.query(
+    `SELECT name, checksum FROM public."_optional_migrations" WHERE name = ANY ($1::text[])`,
+    [steps.map((s) => s.name)],
+  );
+  const done = new Map(rows.map((r) => [String(r.name), String(r.checksum)]));
+  for (const step of steps)
+    if (done.has(step.name) && done.get(step.name) !== step.checksum)
+      throw new Error(`optional migration ${step.name} was modified after it was applied`);
+  const pending = steps.filter((s) => !done.has(s.name));
+  if (pending.length === 0) return 'already_applied';
   if (!(await timescaleUsable(db))) {
     if (mode === 'on')
       throw new Error(
@@ -78,21 +87,23 @@ export async function applyOptionalTimescale(
       );
     return 'skipped_unavailable';
   }
-  // The file is hand-runnable (its own BEGIN/COMMIT); here it runs inside this runner's transaction with the record.
-  const body = sql.replace(/^\s*BEGIN;\s*$/m, '').replace(/^\s*COMMIT;\s*$/m, '');
-  await db.query('BEGIN');
-  try {
-    await db.query(body);
-    await db.query(`INSERT INTO public."_optional_migrations" (name, checksum) VALUES ($1, $2)`, [
-      TIMESCALE_STEP,
-      checksum,
-    ]);
-    await db.query('COMMIT');
-  } catch (error) {
-    await db.query('ROLLBACK');
-    throw new Error(`optional migration ${TIMESCALE_STEP} failed: ${(error as Error).message}`, {
-      cause: error,
-    });
+  for (const step of pending) {
+    // The files are hand-runnable (own BEGIN/COMMIT); here each runs inside this runner's transaction with its record.
+    const body = step.sql.replace(/^\s*BEGIN;\s*$/m, '').replace(/^\s*COMMIT;\s*$/m, '');
+    await db.query('BEGIN');
+    try {
+      await db.query(body);
+      await db.query(`INSERT INTO public."_optional_migrations" (name, checksum) VALUES ($1, $2)`, [
+        step.name,
+        step.checksum,
+      ]);
+      await db.query('COMMIT');
+    } catch (error) {
+      await db.query('ROLLBACK');
+      throw new Error(`optional migration ${step.name} failed: ${(error as Error).message}`, {
+        cause: error,
+      });
+    }
   }
   return 'applied';
 }

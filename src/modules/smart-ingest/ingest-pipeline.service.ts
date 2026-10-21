@@ -489,9 +489,14 @@ export class IngestPipeline {
         memPct: h.memPct,
         link: h.link,
         rssi: h.rssi,
-        meters: h.meters as unknown as Prisma.InputJsonValue,
         isLwt: false,
       });
+      // T-13: the per-meter state lives only in device_health_latest; a change of a meter's status is one event
+      const before = await tx.deviceHealthLatest.findUnique({
+        where: { gatewayDeviceId: gateway.id },
+        select: { meters: true },
+      });
+      await this.meterStatusChanges(tx, gateway, before?.meters ?? null, h, now);
       const latest = {
         tenantId: gateway.tenantId!,
         buildingId: gateway.buildingId!,
@@ -530,6 +535,36 @@ export class IngestPipeline {
         await this.configs.onGatewayReport(tx, gateway.id, h.configVersion, true, null);
     });
     this.gateways.delete(gateway.id);
+  }
+
+  /**
+   * T-13: one `meter_status_changed` device event per meter whose `Health.meters[].status` differs from the last
+   * heartbeat (a meter first seen counts as previously `ok`), instead of storing the whole array every 60 s.
+   */
+  private async meterStatusChanges(
+    tx: Tx,
+    gateway: Device,
+    previous: Prisma.JsonValue | null,
+    h: Health,
+    at: Date,
+  ): Promise<void> {
+    const prior = new Map<string, string>();
+    if (Array.isArray(previous))
+      for (const m of previous as { meterId?: unknown; status?: unknown }[])
+        if (typeof m?.meterId === 'string' && typeof m.status === 'string') prior.set(m.meterId, m.status);
+    for (const m of h.meters) {
+      const from: string = prior.get(m.meterId) ?? MeterHealthStatus.Ok;
+      const to: string = m.status;
+      if (from === to) continue;
+      await this.recordEvent(tx, gateway, {
+        type: 'meter_status_changed',
+        severity: m.status === MeterHealthStatus.Ok ? 'info' : 'warning',
+        occurredAt: at,
+        deviceId: m.meterId,
+        message: `meter ${m.meterId} ${from} → ${m.status}`,
+        data: { meterId: m.meterId, from, to: m.status, lastReadAt: m.lastReadAt },
+      });
+    }
   }
 
   private async sample(

@@ -864,6 +864,51 @@ describe('smart metering B3 (real PostgreSQL + MQTT broker)', () => {
         .slice(1)
         .every((p) => p.usage === '1.000' && p.points === 4),
     ).toBe(true);
+    // T-14 (ADR-0014): 15-minute buckets are computed from raw points — no stored duplicate, same usage rule
+    const quarter = await t.http
+      .get(
+        `/v1/owner/meters/${id}/series?from=2026-10-07T10:00:00%2B07:00&to=2026-10-07T11:00:00%2B07:00&bucket=15m`,
+      )
+      .set(bearer(owner))
+      .expect(200);
+    expect(quarter.body.points).toHaveLength(4);
+    expect(
+      (quarter.body.points as { usage: string; points: number }[]).every(
+        (p) => p.usage === '0.250' && p.points === 1,
+      ),
+    ).toBe(true);
+    expect(await q(`SELECT to_regclass('smart.telemetry_15m') AS t`)).toEqual([{ t: null }]);
+    // the 15-minute read path keeps tenant isolation: another tenant's context sees no rows, gp_app never the raw table
+    const outsider = await q<{ id: string }>(
+      `SELECT id::text FROM core.tenant WHERE id <> $1 ORDER BY created_at DESC LIMIT 1`,
+      [DEV.tenantId],
+    );
+    await db.admin.query('BEGIN');
+    try {
+      await db.admin.query('SET LOCAL ROLE gp_app');
+      await db.admin.query(`SELECT set_config('app.tenant_id', $1, true)`, [DEV.tenantId]);
+      const mine = await db.admin.query(
+        `SELECT count(*)::int AS n FROM smart.telemetry_15m_series(ARRAY[$1]::uuid[], '2026-10-07T03:00:00Z', '2026-10-07T04:00:00Z')`,
+        [id],
+      );
+      expect(mine.rows[0].n).toBe(4);
+      await db.admin.query(`SELECT set_config('app.tenant_id', $1, true)`, [outsider[0]!.id]);
+      const theirs = await db.admin.query(
+        `SELECT count(*)::int AS n FROM smart.telemetry_15m_series(ARRAY[$1]::uuid[], '2026-10-07T03:00:00Z', '2026-10-07T04:00:00Z')`,
+        [id],
+      );
+      expect(theirs.rows[0].n).toBe(0);
+      await db.admin.query('SAVEPOINT raw');
+      await expect(db.admin.query('SELECT 1 FROM smart.telemetry_point LIMIT 1')).rejects.toThrow(
+        /permission denied/,
+      );
+      await db.admin.query('ROLLBACK TO SAVEPOINT raw');
+      await expect(
+        db.admin.query(`SELECT 1 FROM smart.telemetry_15m_rows(ARRAY[$1]::uuid[], now(), now())`, [id]),
+      ).rejects.toThrow(/permission denied/);
+    } finally {
+      await db.admin.query('ROLLBACK');
+    }
     const daily = await t.http
       .get(
         `/v1/staff/meters/${id}/series?from=2026-10-07T00:00:00%2B07:00&to=2026-10-10T00:00:00%2B07:00&bucket=1d`,
@@ -1062,6 +1107,46 @@ describe('smart metering B3 (real PostgreSQL + MQTT broker)', () => {
       (rows) => rows[0]?.status === 'online',
     );
     expect(online[0]).toEqual({ status: 'online', config_applied_version: 2 });
+    // T-13: samples are slim; a meter's status change is one event, an unchanged status none
+    const meterId = '0199f2a0-0000-7000-8000-00000000ee01';
+    const heartbeat = (status: string) =>
+      gw.publishAsync(
+        `gp/v1/${gw1}/health`,
+        JSON.stringify({
+          gatewayId: gw1,
+          agentVersion: '0.3.0',
+          configVersion: 2,
+          uptimeS: 70,
+          bufferedReadings: 0,
+          diskFreeMb: 900,
+          cpuPct: 5,
+          memPct: 30,
+          link: 'ethernet',
+          rssi: null,
+          meters: [{ meterId, lastReadAt: '2026-10-08T00:00:00+07:00', status }],
+        }),
+        { qos: 1 },
+      );
+    const changes = () =>
+      q<{ data: { from: string; to: string }; severity: string }>(
+        `SELECT data, severity::text FROM smart.device_event
+          WHERE gateway_device_id = $1 AND type = 'meter_status_changed' ORDER BY received_at`,
+        [gw1],
+      );
+    await heartbeat('timeout');
+    await waitFor(changes, (rows) => rows.length === 1);
+    await heartbeat('timeout');
+    await heartbeat('ok');
+    const seen = await waitFor(changes, (rows) => rows.length === 2);
+    expect(seen.map((e) => [e.data.from, e.data.to, e.severity])).toEqual([
+      ['ok', 'timeout', 'warning'],
+      ['timeout', 'ok', 'info'],
+    ]);
+    expect(
+      await q(
+        `SELECT 1 FROM information_schema.columns WHERE table_schema = 'smart' AND table_name = 'device_health_sample' AND column_name = 'meters'`,
+      ),
+    ).toEqual([]);
     await t.worker.tick();
   });
 
