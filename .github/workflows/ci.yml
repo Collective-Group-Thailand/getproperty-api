@@ -161,9 +161,10 @@ jobs:
           build-args: GIT_COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: The image carries the three processes and the entrypoint picks them
+      - name: The image carries the four commands, the migrations, TZ, and the entrypoint picks them
         run: |
-          docker run --rm --entrypoint /bin/sh getproperty-api:ci -c 'ls dist/src/main.js dist/src/worker.js dist/src/ingest.js'
+          docker run --rm --entrypoint /bin/sh getproperty-api:ci -c 'ls dist/src/main.js dist/src/worker.js dist/src/ingest.js dist/src/migrate.js prisma/migrations prisma/optional/timescale'
+          docker run --rm getproperty-api:ci node -e "process.exit(Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Bangkok' ? 0 : 1)"
           docker run --rm -e PROCESS=bogus getproperty-api:ci && exit 1 || test $? -eq 64
       - name: Image scan (HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@0.33.1

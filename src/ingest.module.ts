@@ -1,4 +1,5 @@
 import { buildLoggerParams } from '@common/logging/logger.options';
+import { processServiceName } from '@common/observability/metrics';
 import { AppConfig } from '@config/app-config';
 import { AppConfigModule } from '@config/app-config.module';
 import { CoreModule } from '@core/core.module';
@@ -25,7 +26,7 @@ import { LoggerModule } from 'nestjs-pino';
         buildLoggerParams({
           level: config.get('LOG_LEVEL'),
           pretty: config.get('LOG_PRETTY'),
-          service: `${config.get('OTEL_SERVICE_NAME')}-ingest`,
+          service: processServiceName(config.get('OTEL_SERVICE_NAME'), 'ingest'),
         }),
     }),
     RedisModule,

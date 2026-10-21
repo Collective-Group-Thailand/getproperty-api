@@ -10,3 +10,4 @@ src/generated/
 .eslintcache
 *.tsbuildinfo
 __pycache__/
+.local/

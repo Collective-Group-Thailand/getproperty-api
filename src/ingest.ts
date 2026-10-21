@@ -1,5 +1,8 @@
 import './instrument';
 
+import { ProcessMetrics, processServiceName, startOpsServer } from '@common/observability/metrics';
+import { processChecks } from '@common/observability/process-checks';
+import { AppConfig } from '@config/app-config';
 import { loadSecretsIntoEnv } from '@config/secrets.loader';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
@@ -15,6 +18,14 @@ async function bootstrap(): Promise<void> {
   app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
   await app.init();
+  // `/health` + `/metrics` on INGEST_HEALTH_PORT (the Collective platform's image contract, D-230).
+  const config = app.get(AppConfig);
+  const server = await startOpsServer({
+    port: config.get('INGEST_HEALTH_PORT'),
+    metrics: new ProcessMetrics(processServiceName(config.get('OTEL_SERVICE_NAME'), 'ingest')),
+    checks: processChecks(app, { mqtt: true }),
+  });
+  process.once('SIGTERM', () => server.close());
 }
 
 bootstrap().catch((error: unknown) => {
