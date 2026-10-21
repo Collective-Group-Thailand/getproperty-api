@@ -20,7 +20,7 @@
 
 | | |
 |---|---|
-| Broker | the platform's Valkey 8 (`noeviction`, persistence on), logical DB reserved for **shared platform queues** — `PDF_RENDER_REDIS_URL` on the producer (e.g. `redis://:<pw>@platform-valkey-1:6379/0`), the same URL on the consumer. Products keep their own queues in their own logical DB |
+| Broker | the platform's Valkey 8 (`noeviction`, persistence on), logical DB **15**, reserved by collective-infra for **shared platform queues** (products use DBs 0–14; a URL without a DB number lands in 0, so 0 is never the shared DB) — `PDF_RENDER_REDIS_URL` on the producer (`redis://:<pw>@platform-valkey-1:6379/15`, built by the getproperty post-secrets hook from `REDIS_URL`), the same URL on the consumer. Products keep their own queues in their own logical DB |
 | Queue | BullMQ queue **`pdf-render`**, key prefix **`collective`** (`PDF_RENDER_QUEUE_PREFIX`) |
 | Job name | `render` |
 | Job id | the job's `idempotencyKey`: `<product>-<hex sha256(contract version, paper, title, footer, "\n", html)>` (BullMQ ids may not contain `:`). The same input is one job: a second `add` returns the queued or completed job |

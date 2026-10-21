@@ -183,9 +183,11 @@ PostgreSQL).
 **Database roles** (`platform/postgres/init/20-getproperty.sh`): the product login `getproperty` owns database
 `getproperty` and is `NOCREATEROLE`, so the init script (superuser) creates the asset-core group roles `gp_owner`,
 `gp_app` (NOBYPASSRLS), `gp_platform` (BYPASSRLS), `gp_reporting`, grants them to `getproperty`, and creates the
-extensions (`timescaledb`, `pgcrypto`, `citext`, `btree_gist`, `pg_trgm`). `gp_mqtt` stays as a NOLOGIN role without
-members because migration 0010 (immutable) creates and grants to it on a fresh database; migration 0037 drops its
-policy and grants, so it has no access (D-244) — the init script may drop it on boxes migrated past 0037.
+extensions (`timescaledb`, `pgcrypto`, `citext`, `btree_gist`, `pg_trgm`). The init script also creates `gp_mqtt` (NOLOGIN, no
+members) because migration 0010 (immutable) grants to it and the product login cannot create roles; migration 0037
+drops its policy and grants (D-244), and collective-infra's `hooks/post-migrate.sh` drops the role once 0037 is
+recorded as applied — on fresh and existing boxes alike. The shared `pdf-render` queue lives in Valkey DB 15
+(reserved for cross-product queues); getproperty's own queues use DB 2.
 
 ## 4. Hosts, Caddy and the client IP
 
