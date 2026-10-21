@@ -3,10 +3,15 @@ import { join } from 'node:path';
 
 import { assetCoreMigrate } from '@collective/asset-core';
 import { checkPrismaDrift } from '@collective/asset-core/testing';
+import { applyPrismaMigrations, listMigrations } from '@database/migrations/app-migrations';
+import {
+  applyOptionalTimescale,
+  runDeployMigrations,
+  timescaleUsable,
+} from '@database/migrations/deploy-migrations';
 
 import { createIntDatabase, type IntDatabase } from '../support/int-db';
 import { loadDmmf, schemaFiles } from '../support/prisma-dmmf';
-import { applyPrismaMigrations, listMigrations } from '../support/prisma-migrations';
 
 const APP_SCHEMAS = ['platform', 'ops', 'smart', 'bridge', 'juristic'];
 
@@ -68,6 +73,23 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
   it('is idempotent: re-running applies nothing', async () => {
     expect((await assetCoreMigrate({ client: db.admin })).applied).toEqual([]);
     expect(await applyPrismaMigrations(db.admin)).toEqual([]);
+  });
+
+  it('the image migrate command (D-230): core + app up to date, the TimescaleDB step skipped without the extension', async () => {
+    const lines: string[] = [];
+    const result = await runDeployMigrations(db.admin, { timescale: 'auto', log: (l) => lines.push(l) });
+    expect(result).toEqual({ core: [], app: [], timescale: 'skipped_unavailable' });
+    expect(lines).toContain('app: schema is up to date');
+    expect(await timescaleUsable(db.admin)).toBe(false);
+    expect(await applyOptionalTimescale(db.admin, 'off')).toBe('skipped_off');
+    await expect(applyOptionalTimescale(db.admin, 'on')).rejects.toThrow(/not available and preloaded/);
+    const recorded = await db.admin.query(`SELECT count(*)::int AS n FROM public."_optional_migrations"`);
+    expect(recorded.rows[0]).toEqual({ n: 0 });
+    // native partitions stay in place
+    const kind = await db.admin.query(
+      `SELECT relkind FROM pg_class WHERE oid = 'smart.telemetry_point'::regclass`,
+    );
+    expect(kind.rows[0]).toEqual({ relkind: 'p' });
   });
 
   it('has no drift between prisma/schema and the migrated database (structural check)', async () => {
