@@ -10,6 +10,7 @@ import { QUEUE, QUEUE_NAMES, type QueueJob, type QueuePort } from '@core/queue/q
 import { SupportGrantService } from '@core/tenancy/support-grant.service';
 import { WorkflowTimers } from '@core/workflow/workflow-timers.service';
 import { BULLMQ_REDIS, type RedisClient } from '@database/redis.module';
+import { IntegrationDeliveryService } from '@modules/bridge-integrations/integration-delivery.service';
 import { BillingCyclesService } from '@modules/ops-billing/billing-cycles.service';
 import { EtaxService } from '@modules/ops-etax/etax.service';
 import { LeasesService } from '@modules/ops-leases/leases.service';
@@ -70,6 +71,8 @@ export const MAINTENANCE_JOBS = {
   'notifications-requeue': 300_000,
   'gateway-config-publish': 60_000,
   'loss-recompute': 3_600_000,
+  // D-238 / T-16: outbox → partner products (webhook on the same box)
+  'integration-delivery': 30_000,
 } as const;
 type MaintenanceJob = keyof typeof MAINTENANCE_JOBS;
 
@@ -113,6 +116,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly tm30: Tm30Service,
     private readonly analytics: AnalyticsService,
     private readonly loss: UtilityLossService,
+    private readonly integrations: IntegrationDeliveryService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -224,6 +228,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'loss-recompute':
         await this.loss.recomputeStale();
+        break;
+      case 'integration-delivery':
+        await this.integrations.sweep();
         break;
       default:
         this.logger.warn(`unknown maintenance job ${job.name}`);

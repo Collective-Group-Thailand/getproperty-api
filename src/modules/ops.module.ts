@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 
+import { IntegrationDeliveryService } from './bridge-integrations/integration-delivery.service';
 import { IntegrationEventsService } from './bridge-integrations/integration-events.service';
 import { BillingCyclesService } from './ops-billing/billing-cycles.service';
 import { BillingInputs } from './ops-billing/billing-inputs';
@@ -116,6 +117,7 @@ const SERVICES = [
   ReceivablesNotifications,
   FinanceExports,
   IntegrationEventsService,
+  IntegrationDeliveryService,
   ServiceCategoriesService,
   ServiceRequestsService,
   WorkOrdersService,
