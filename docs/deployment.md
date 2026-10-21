@@ -121,16 +121,20 @@ Set by the compose file (not secrets): `NODE_ENV`, `TZ`, `INTEGRATIONS_MODE=real
 
 **`collective/<env>/getproperty/web`**, **`…/liff`**: each front end's own run-time env (session secrets, hosts,
 `API_INTERNAL_URL`, …) → `/run/collective/getproperty-web.env` / `-liff.env`. The front ends never receive the API's
-secrets. The public `NEXT_PUBLIC_*` values are handled **differently by the two front ends** (until getproperty-liff
-moves to run-time values too):
+secrets. **Both front ends read every value at run time, the public `NEXT_PUBLIC_*` ones included** (web ADR-0009,
+liff ADR-0007): on the server from the secret like every other variable, handed to the browser as props or
+server-rendered `<html data-*>` attributes; a literal `process.env.NEXT_PUBLIC_…` read fails their tests (liff's one
+exception is `NEXT_PUBLIC_LIFF_MOCK`, the mock build flavour, never set for a platform image). No build arguments, so
+**one image per front end serves every environment** and `promote.yml` can ship the bytes UAT ran (§7).
 
-| Front end | `NEXT_PUBLIC_*` | Image per environment |
-|---|---|---|
-| **getproperty-web** | read **at run time on the server** (`src/lib/env`, web ADR-0009) from `collective/<env>/getproperty/web` like every other variable — e.g. `NEXT_PUBLIC_ASSET_BASE_URL=https://collective-<env>-getproperty-assets.s3.ap-southeast-7.amazonaws.com`, the Sentry DSN, the env badge — and handed to the browser as props / `<html data-*>`; a literal `process.env.NEXT_PUBLIC_…` read fails its tests. No build arguments. | **One image, promoted**: the image that passed UAT is re-tagged `:prod` unchanged (`promote.yml`); prod values come from the prod secret. |
-| **getproperty-liff** | **inlined at build time** by `next build` (server and browser code): `NEXT_PUBLIC_LIFF_ID`, `NEXT_PUBLIC_LINE_OA_ID`, `NEXT_PUBLIC_ASSET_BASE_URL`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_ENV_BADGE` are Docker build arguments its `deploy.yml` fills from repository variables (`UAT_*` / `PROD_*`) and the environment's bucket origin. Putting them in `…/liff` changes nothing in the browser. | **Built per environment, never promoted**: `main` builds the uat image, a `vX.Y.Z` tag builds the prod image with prod values; `promote.yml` must not re-tag the liff uat image as `:prod` (it would carry the UAT LIFF id). |
+| Front end | Public keys in its secret (besides its own run-time env) |
+|---|---|
+| **getproperty-web** | `OWNER_HOST`, `STAFF_HOST`, `ADMIN_HOST` (= `caddy/sites.<env>.yml`), optional `NEXT_PUBLIC_ASSET_BASE_URL=https://collective-<env>-getproperty-assets.s3.ap-southeast-7.amazonaws.com`, `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_ENV_BADGE=uat`, `NEXT_PUBLIC_LINE_OA_ID` |
+| **getproperty-liff** | **`NEXT_PUBLIC_LIFF_ID`** (required — the LIFF app of *that environment's* LINE Login channel; a production container without it fails its start-up check and answers 500, `/api/healthz` included, so the deploy's health check fails and rolls back), `NEXT_PUBLIC_ASSET_BASE_URL` (the environment's bucket origin, as for web), `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (= this API's `WEB_PUSH_VAPID_PUBLIC_KEY`), optional `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_ENV_BADGE=uat` (empty or `production` = no badge), `NEXT_PUBLIC_LINE_OA_ID`, `FEATURE_TECHNICIAN`, `APP_ORIGIN` |
 
-So a changed public value means: web — update the secret and restart the container; liff — update the repository
-variable and rebuild/redeploy that environment.
+So a changed public value means, for both front ends: update the secret and restart that container (the next deploy
+re-renders the env file). The liff repository variables `UAT_*` / `PROD_*` of the former per-environment builds are
+no longer read.
 
 **`collective/<env>/getproperty/mqtt-tls`**: `{"server_pem", "server_key", "ca_pem"}` — §5.
 
@@ -248,9 +252,9 @@ On **uat** (8 GB) the limits over-commit (they are ceilings): set `POSTGRES_MEMO
   tag `vX.Y.Z` → `:prod` → deploy production (approval). Deploys run the migrate service first. GitHub Environments
   `uat` / `production` hold `AWS_DEPLOY_ROLE_ARN`, `INSTANCE_ID`, `AWS_REGION=ap-southeast-7`; the repo secret
   `ASSET_CORE_READ_TOKEN` (already used by CI) feeds the asset-core checkout.
-- **getproperty-web** / **getproperty-liff** (both have their standalone Dockerfile, `/api/healthz` and
-  `/api/metrics`): the same workflow with their own image and `component`, no migration, after the api image
-  exists (liff adds build arguments, see below and §3):
+- **getproperty-web** / **getproperty-liff** (both have their standalone Dockerfile without build arguments,
+  `/api/healthz` and `/api/metrics`): the same workflow with their own image and `component`, no migration, after the
+  api image exists:
 
 ```yaml
 # .github/workflows/deploy.yml in getproperty-web (liff: image getproperty/liff, component liff)
@@ -281,10 +285,11 @@ jobs:
 ```
 
 `component: web` makes the box record `WEB_IMAGE_TAG` and roll back only that image; until a front end's first
-deploy the box runs its moving `:uat` / `:prod` tag. `promote.yml` (manual uat → prod) re-tags the **api** and
-**web** images; the **liff** image is not promotable while it bakes `NEXT_PUBLIC_*` at build time (§3) — its prod
-image comes only from its own `build-prod` job (`build_args` with the `PROD_*` repository variables), so its
-`deploy.yml` differs from the web example above by those `build_args` and a `config` job that refuses an empty LIFF id.
+deploy the box runs its moving `:uat` / `:prod` tag. Instead of rebuilding on a tag, collective-infra's `promote.yml`
+(manual, `production` approval) re-tags what UAT runs as `:prod` and deploys it — per component, as the repos deploy:
+`component: api` (api image + migration), `web`, `liff` (that front end alone, `<NAME>_IMAGE_TAG`), or `all` (api,
+then web, then liff, each from its own `:uat` sha). The liff image is promotable like web's since it reads its LIFF id
+and other public values at run time (§3): the UAT bytes start in production with production's LIFF id.
 - **getproperty-edge** is not deployed by the platform (it runs on gateways): its `GP_API_URL` default is the device
   host; releases are published as in §5a.
 
