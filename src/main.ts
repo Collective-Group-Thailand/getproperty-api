@@ -1,5 +1,6 @@
 import './instrument';
 
+import { trustProxy } from '@common/http/trust-proxy';
 import { AppConfig } from '@config/app-config';
 import { loadSecretsIntoEnv } from '@config/secrets.loader';
 import { NestFactory } from '@nestjs/core';
@@ -19,8 +20,8 @@ async function bootstrap(): Promise<void> {
   const logger = app.get(Logger);
   app.useLogger(logger);
   const config = app.get(AppConfig);
-  // Client IP behind load balancers (rate limiting, docs allow-list).
-  app.set('trust proxy', config.get('TRUST_PROXY'));
+  // Client IP behind load balancers and our BFFs (rate limiting, docs allow-list, e-sign evidence) — D-229.
+  app.set('trust proxy', trustProxy(config.get('TRUST_PROXY'), config.get('TRUSTED_PROXY_CIDRS')));
   configureApp(app);
   setupDocs(app);
 

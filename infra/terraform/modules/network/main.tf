@@ -73,6 +73,10 @@ output "subnet_id" {
   value = google_compute_subnetwork.main.id
 }
 
+output "subnet_cidr" {
+  value = google_compute_subnetwork.main.ip_cidr_range
+}
+
 output "egress_ip" {
   value = google_compute_address.nat.address
 }
