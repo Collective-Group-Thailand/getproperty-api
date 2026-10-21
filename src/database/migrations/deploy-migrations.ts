@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { assetCoreMigrate } from '@collective/asset-core';
+import { assetCoreMigrate, PACKAGE_VERSION } from '@collective/asset-core';
 
 import { applyPrismaMigrations, type MigrationClient, prismaDir } from './app-migrations';
 
@@ -97,31 +97,36 @@ export async function applyOptionalTimescale(
   return 'applied';
 }
 
+/** The oldest `@collective/asset-core` whose runner migrates as a non-superuser product login by itself (ADR-0013). */
+export const MIN_ASSET_CORE_VERSION = '0.4.0';
+
+/** `a >= b` for plain `major.minor.patch` versions. */
+export function versionAtLeast(a: string, b: string): boolean {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < 3; i += 1) {
+    if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) > (pb[i] ?? 0);
+  }
+  return true;
+}
+
 /**
- * `@collective/asset-core` migrations when the login is not a superuser — the Collective platform's product login
- * `getproperty` owns its database but is NOCREATEROLE (D-230). asset-core 0007 hands its SECURITY DEFINER helpers to
- * `gp_platform` (`ALTER FUNCTION … OWNER TO gp_platform`), which PostgreSQL allows only when the new owner may
- * CREATE in the schema. The runner grants that for the duration of the core migrations and revokes it afterwards,
- * so `gp_platform` keeps no DDL right on `core` at run time. A superuser (CI, tests, local) needs none of this.
+ * `@collective/asset-core` migrations (schema `core`, roles, helpers). Since asset-core 0.4.0 the package's runner
+ * itself grants `gp_platform` the CREATE right on `core` that migration 0007 needs when the login is not a superuser
+ * (the Collective platform's product login `getproperty` is NOCREATEROLE, D-230) and revokes it afterwards — this
+ * repository's former workaround (`migrateCoreAsProductLogin`) is gone (blueprint T-3, ADR-0013). An older package
+ * is refused instead of failing half-way on the platform.
  */
-export async function migrateCoreAsProductLogin(
+export async function migrateCore(
   db: MigrationClient,
   log: (line: string) => void,
+  packageVersion: string = PACKAGE_VERSION,
 ): Promise<string[]> {
-  const { rows } = await db.query(
-    `SELECT (SELECT rolsuper FROM pg_roles WHERE rolname = current_user) AS superuser,
-            EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gp_platform') AS platform_role`,
-  );
-  const needsGrant = rows[0]?.superuser !== true && rows[0]?.platform_role === true;
-  if (needsGrant) {
-    await db.query('CREATE SCHEMA IF NOT EXISTS core');
-    await db.query('GRANT CREATE ON SCHEMA core TO gp_platform');
-  }
-  try {
-    return (await assetCoreMigrate({ client: db, log })).applied;
-  } finally {
-    if (needsGrant) await db.query('REVOKE CREATE ON SCHEMA core FROM gp_platform');
-  }
+  if (!versionAtLeast(packageVersion, MIN_ASSET_CORE_VERSION))
+    throw new Error(
+      `@collective/asset-core ${packageVersion} is too old for the migrate command: ${MIN_ASSET_CORE_VERSION} or newer is required (ADR-0013)`,
+    );
+  return (await assetCoreMigrate({ client: db, log })).applied;
 }
 
 /**
@@ -134,7 +139,7 @@ export async function runDeployMigrations(
   options: { timescale: TimescaleMode; log?: (line: string) => void },
 ): Promise<DeployMigrationsResult> {
   const log = options.log ?? (() => undefined);
-  const core = await migrateCoreAsProductLogin(db, log);
+  const core = await migrateCore(db, log);
   await db.query('SELECT pg_advisory_lock($1, $2)', LOCK_KEY);
   try {
     const app = await applyPrismaMigrations(db);

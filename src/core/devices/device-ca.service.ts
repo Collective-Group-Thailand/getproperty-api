@@ -14,6 +14,13 @@ x509.cryptoProvider.set(webcrypto as unknown as Parameters<typeof x509.cryptoPro
 
 const EC_SIGN = { name: 'ECDSA', hash: 'SHA-256' } as const;
 
+/** Every certificate of a concatenated PEM bundle (x509.X509Certificates parses PKCS#7 only). */
+export function pemCertificates(pem: string): x509.X509Certificate[] {
+  return (pem.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g) ?? []).map(
+    (block) => new x509.X509Certificate(block),
+  );
+}
+
 /** Placeholder subject of the agent's first CSR (getproperty-edge CR-001); the CA replaces it. */
 export const PROVISIONING_CN = 'gw-provisioning';
 
@@ -29,9 +36,11 @@ export interface IssuedCertificate {
 
 /**
  * The platform device CA (D-130, device protocol §1): signs each gateway's CSR at bootstrap into an X.509 client
- * certificate with `CN = gw-<deviceId>`, `clientAuth` only, valid `DEVICE_CERT_VALIDITY_DAYS`. The CA certificate and
- * its EC P-256 private key come from configuration/secrets (`DEVICE_CA_CERT`, `DEVICE_CA_KEY`; required in
- * production); development and tests generate an ephemeral CA per process. Accepted CSR keys: EC P-256/P-384 or
+ * certificate with `CN = gw-<deviceId>`, `clientAuth` only, valid `DEVICE_CERT_VALIDITY_DAYS`. The CA certificate, its
+ * EC P-256 private key and the chain gateways trust come from the platform-owned secret
+ * `collective/<env>/platform/device-ca`, rendered by the box into this process's env file (`DEVICE_CA_CERT`,
+ * `DEVICE_CA_KEY`, optional `DEVICE_CA_CHAIN`; D-235, blueprint T-6; required in production); development and tests
+ * generate an ephemeral CA per process. Accepted CSR keys: EC P-256/P-384 or
  * RSA ≥ 2048.
  */
 @Injectable()
@@ -39,6 +48,7 @@ export class DeviceCaService implements OnModuleInit {
   private readonly logger = new Logger(DeviceCaService.name);
   private caCert!: x509.X509Certificate;
   private caKey!: CryptoKey;
+  private chainPem: string | null = null;
 
   constructor(private readonly config: AppConfig) {}
 
@@ -55,6 +65,14 @@ export class DeviceCaService implements OnModuleInit {
         false,
         ['sign'],
       );
+      const chain = this.config.get('DEVICE_CA_CHAIN');
+      if (chain) {
+        const pem = pemFromEnv(chain);
+        // the chain gateways trust must contain the CA that signs them (T-6: a mismatch is a wrong secret)
+        if (!pemCertificates(pem).some((c) => c.equal(this.caCert)))
+          throw new Error('DEVICE_CA_CHAIN does not contain DEVICE_CA_CERT');
+        this.chainPem = pem;
+      }
       return;
     }
     const keys = await webcrypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, [
@@ -84,9 +102,12 @@ export class DeviceCaService implements OnModuleInit {
     return this.caCert.toString('pem');
   }
 
-  /** Trust chain handed to gateways (also the anchor of the broker's server certificate): the platform CA. */
+  /**
+   * Trust chain handed to gateways (also the anchor of the broker's server certificate): `DEVICE_CA_CHAIN` of the
+   * platform secret `collective/<env>/platform/device-ca` (issuing CA, then its issuers — T-6), else the issuing CA.
+   */
   get caChainPem(): string {
-    return this.caCertificatePem;
+    return this.chainPem ?? this.caCertificatePem;
   }
 
   /** SHA-256 of a PEM certificate's DER (the `smart.device_certificate.fingerprint_sha256` key). */

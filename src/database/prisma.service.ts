@@ -1,5 +1,6 @@
 import { type ActorKind, tenantScopeStatements } from '@collective/asset-core';
 import { AppConfig } from '@config/app-config';
+import { poolMaxFor, processRole } from '@config/process-role';
 import { type Prisma, PrismaClient } from '@generated/prisma/client';
 import { Injectable, type OnModuleDestroy } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -47,7 +48,7 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
     super({
       adapter: new PrismaPg({
         connectionString: url ?? UNUSED_URL,
-        max: 10,
+        max: poolMaxFor(processRole(), config.get('DATABASE_POOL_MAX')),
         connectionTimeoutMillis: 5_000,
         idleTimeoutMillis: 30_000,
         application_name: config.get('OTEL_SERVICE_NAME'),

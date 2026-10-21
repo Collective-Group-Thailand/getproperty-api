@@ -29,7 +29,7 @@ jobs:
       moving_tag: uat
       # @collective/asset-core is built from source inside the image (Dockerfile) until it is on GitHub Packages
       extra_repository: collective-group/collective-asset-core
-      extra_ref: v0.3.0
+      extra_ref: v0.4.0
       extra_path: .asset-core
       build_contexts: |
         asset-core-src=.asset-core
@@ -54,7 +54,7 @@ jobs:
       environment: production
       moving_tag: prod
       extra_repository: collective-group/collective-asset-core
-      extra_ref: v0.3.0
+      extra_ref: v0.4.0
       extra_path: .asset-core
       build_contexts: |
         asset-core-src=.asset-core
