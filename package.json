@@ -41,7 +41,8 @@
     "compliance:report": "pnpm build:fast && node dist/scripts/compliance-report.js",
     "sim:gateway": "node scripts/sim-gateway.mjs",
     "db:migrate:deploy": "node dist/src/migrate.js",
-    "device:broker-cert": "node scripts/broker-cert.mjs"
+    "device:broker-cert": "node scripts/broker-cert.mjs",
+    "brand:png": "node scripts/brand-assets.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1152.0",

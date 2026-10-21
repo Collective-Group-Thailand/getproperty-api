@@ -3,8 +3,9 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { htmlToText } from '@common/text/html-text';
+import { DEFAULT_PDF_BRAND, type PdfBrand, PlatformBrand } from '@core/brand/platform-brand.service';
 import { PDF_RENDERER, type PdfRendererPort } from '@integrations/pdf/pdf-renderer.port';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import Handlebars from 'handlebars';
 
 /** What a contract template receives (contract-template.ts documents the clauses that use it). */
@@ -72,6 +73,8 @@ table.sign td { width: 50%; text-align: center; vertical-align: bottom; }
 img.sig { max-height: 18mm; max-width: 60mm; display: block; margin: 0 auto 1mm; }
 .when { font-size: 10pt; color: #444; }
 footer.notes { margin-top: 8mm; font-size: 9pt; color: #555; }
+footer.platform { margin-top: 8mm; padding-top: 2mm; border-top: 0.2mm solid #ddd; display: flex; align-items: center; gap: 2mm; font-size: 8.5pt; color: #555; }
+img.platform-logo { height: 4.2mm; width: auto; }
 `;
 
 let fontCss: string | null = null;
@@ -100,13 +103,28 @@ const compiled = new Map<string, Handlebars.TemplateDelegate<ContractData>>();
 const hbs = Handlebars.create();
 
 /**
+ * The platform line after the document body (D-232): the getproperty logo + "issued via getproperty". Outside the
+ * body on purpose — `text()` / `contentSha256` cover the agreement itself, so the brand never changes a signed
+ * contract's hash.
+ */
+export function platformFooter(platform: PdfBrand): string {
+  const logo = platform.logoDataUrl
+    ? `<img class="platform-logo" src="${platform.logoDataUrl}" alt="${hbs.Utils.escapeExpression(platform.altText)}">`
+    : '';
+  return `<footer class="platform">${logo}<span>ออกเอกสารผ่านระบบ ${hbs.Utils.escapeExpression(platform.name)}</span></footer>`;
+}
+
+/**
  * Contract documents (B2.3, master plan §3): the template version's Handlebars body + `ContractData` → an HTML
  * document with embedded Thai fonts → PDF through the renderer port. `text()` is the canonical text of a contract
  * (what the golden test pins and what `contentSha256` hashes); the PDF footer carries the number and that hash.
  */
 @Injectable()
 export class ContractRenderer {
-  constructor(@Inject(PDF_RENDERER) private readonly pdf: PdfRendererPort) {}
+  constructor(
+    @Inject(PDF_RENDERER) private readonly pdf: PdfRendererPort,
+    @Optional() private readonly brand?: PlatformBrand,
+  ) {}
 
   body(templateBody: string, data: ContractData): string {
     let fn = compiled.get(templateBody);
@@ -117,9 +135,15 @@ export class ContractRenderer {
     return fn(data);
   }
 
-  document(body: string, title: string): string {
+  /** The printable HTML: the body, then the platform line (D-232). */
+  document(body: string, title: string, platform: PdfBrand = DEFAULT_PDF_BRAND): string {
     const esc = hbs.Utils.escapeExpression(title);
-    return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc}</title><style>${fonts()}\n${STYLE}</style></head><body>${body}</body></html>`;
+    return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc}</title><style>${fonts()}\n${STYLE}</style></head><body>${body}\n${platformFooter(platform)}</body></html>`;
+  }
+
+  /** `document()` with the platform brand in force (logo embedded). */
+  async brandedDocument(body: string, title: string): Promise<string> {
+    return this.document(body, title, (await this.brand?.pdf()) ?? DEFAULT_PDF_BRAND);
   }
 
   /** Canonical text of a rendered contract body (golden tests, content hash). */
@@ -138,7 +162,7 @@ export class ContractRenderer {
     const body = this.body(templateBody, data);
     const contentSha256 = this.contentSha256(body);
     const title = `สัญญาเช่า ${data.contract.number ?? '(ร่าง)'}`;
-    const pdf = await this.pdf.render(this.document(body, title), {
+    const pdf = await this.pdf.render(await this.brandedDocument(body, title), {
       title,
       footer: `สัญญาเลขที่ ${data.contract.number ?? 'ร่าง'} · SHA-256 ของข้อความ ${contentSha256.slice(0, 16)}…${contentSha256.slice(-8)}`,
     });

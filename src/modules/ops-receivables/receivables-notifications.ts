@@ -1,4 +1,5 @@
 import { AppConfig } from '@config/app-config';
+import { PlatformBrand } from '@core/brand/platform-brand.service';
 import { billedParty, registerNotifiable, tenantName } from '@core/notifications/notifiable-events';
 import { flexMessage, reminderBubble } from '@modules/ops-documents/flex';
 import { formatThb } from '@modules/ops-leases/thai-text';
@@ -11,7 +12,10 @@ import { Injectable, type OnModuleInit } from '@nestjs/common';
  */
 @Injectable()
 export class ReceivablesNotifications implements OnModuleInit {
-  constructor(private readonly config: AppConfig) {}
+  constructor(
+    private readonly config: AppConfig,
+    private readonly brand: PlatformBrand,
+  ) {}
 
   onModuleInit(): void {
     registerNotifiable('invoice.reminder_sent', async (tx, e) => {
@@ -36,7 +40,7 @@ export class ReceivablesNotifications implements OnModuleInit {
       };
       const flex = flexMessage(
         `แจ้งเตือนการชำระเงิน ${inv.number} ยอด ${formatThb(due)} บาท เลยกำหนด ${daysOverdue} วัน`,
-        [reminderBubble(item)],
+        [reminderBubble(item, await this.brand.flex())],
       );
       return {
         recipients: await billedParty(tx, inv.billedPartyId),

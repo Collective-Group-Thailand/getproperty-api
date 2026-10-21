@@ -1,5 +1,6 @@
 import { htmlToText } from '@common/text/html-text';
 import { bangkokDate } from '@common/time/bangkok';
+import { DEFAULT_PDF_BRAND, type PdfBrand, PlatformBrand } from '@core/brand/platform-brand.service';
 import { DocumentsService } from '@core/documents/documents.service';
 import { DomainEvents } from '@core/events/domain-events';
 import { type DomainEventEnvelope } from '@core/events/domain-events';
@@ -8,7 +9,7 @@ import { type Tx } from '@database/prisma.service';
 import { PDF_RENDERER, type PdfRendererPort } from '@integrations/pdf/pdf-renderer.port';
 import { hbs, STYLE_A4 } from '@modules/ops-documents/billing-templates';
 import { fonts } from '@modules/ops-leases/contract-renderer';
-import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, type OnModuleInit, Optional } from '@nestjs/common';
 import type Handlebars from 'handlebars';
 import QRCode from 'qrcode';
 
@@ -46,7 +47,16 @@ export interface PlatformDocView {
 
 const ISSUER = `<header class="issuer"><div><b>{{issuer.legalName}}</b>{{#if issuer.branch}} ({{issuer.branch}}){{/if}}{{#if issuer.address}}<br>{{issuer.address}}{{/if}}{{#if issuer.taxId}}<br>เลขประจำตัวผู้เสียภาษีอากร {{issuer.taxId}}{{/if}}{{#if issuer.email}}<br>{{issuer.email}}{{/if}}</div></header>`;
 
-const PLATFORM_DOC = `${ISSUER}
+/** Collective's own documents carry the getproperty brand on top (D-232), the issuer block under it. */
+const BRAND = `<div class="brand">{{#if platform.logoDataUrl}}<img class="brand-logo" src="{{platform.logoDataUrl}}" alt="{{platform.altText}}">{{else}}<b>{{platform.name}}</b>{{/if}}</div>`;
+
+const BRAND_STYLE = `
+div.brand { display: flex; justify-content: flex-end; margin-bottom: 2mm; padding-bottom: 2mm; border-bottom: 0.4mm solid #1A4BA3; }
+img.brand-logo { height: 9mm; width: auto; }
+`;
+
+const PLATFORM_DOC = `${BRAND}
+${ISSUER}
 <h1>{{title}}</h1>
 <table class="meta">
 <tr><td>เลขที่</td><td><b>{{number}}</b></td><td>วันที่</td><td>{{date issuedOn}}</td></tr>
@@ -67,7 +77,7 @@ const PLATFORM_DOC = `${ISSUER}
 </table>
 {{#if qrDataUrl}}<div class="qr"><img src="{{qrDataUrl}}" alt="Thai QR"><div>สแกนชำระด้วย Thai QR · อ้างอิง {{reference}}</div></div>{{/if}}
 {{#if note}}<p class="note">{{note}}</p>{{/if}}
-<footer class="note">getproperty · {{issuer.legalName}}</footer>`;
+<footer class="note">{{platform.name}} · {{issuer.legalName}}</footer>`;
 
 let compiled: Handlebars.TemplateDelegate | null = null;
 
@@ -91,23 +101,25 @@ export class PlatformDocuments implements EventSubscriber, OnModuleInit {
     private readonly billing: PlatformBillingService,
     private readonly events: DomainEvents,
     private readonly registry: EventSubscriberRegistry,
+    @Optional() private readonly brand?: PlatformBrand,
   ) {}
 
   onModuleInit(): void {
     this.registry.register(this);
   }
 
-  body(view: PlatformDocView): string {
+  body(view: PlatformDocView, platform: PdfBrand = DEFAULT_PDF_BRAND): string {
     compiled ??= hbs.compile(PLATFORM_DOC, { strict: false });
-    return compiled(view);
+    return compiled({ ...view, platform });
   }
 
   text(view: PlatformDocView): string {
     return htmlToText(this.body(view).replace(/<img\b[^>]*>/gi, ''));
   }
 
-  pdf(view: PlatformDocView): Promise<Buffer> {
-    const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${hbs.Utils.escapeExpression(`${view.title} ${view.number}`)}</title><style>${fonts()}\n${STYLE_A4}</style></head><body>${this.body(view)}</body></html>`;
+  async pdf(view: PlatformDocView): Promise<Buffer> {
+    const platform = (await this.brand?.pdf()) ?? DEFAULT_PDF_BRAND;
+    const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${hbs.Utils.escapeExpression(`${view.title} ${view.number}`)}</title><style>${fonts()}\n${STYLE_A4}\n${BRAND_STYLE}</style></head><body>${this.body(view, platform)}</body></html>`;
     return this.renderer.render(html, {
       title: `${view.title} ${view.number}`,
       footer: `${view.title} เลขที่ ${view.number} · ${view.issuer.legalName}`,

@@ -11,6 +11,7 @@ import {
 import { Inject, Injectable } from '@nestjs/common';
 
 import { AuditService } from '../audit/audit.service';
+import { PlatformBrand } from '../brand/platform-brand.service';
 import { CLOCK, type Clock } from '../clock/clock';
 import { DomainEvents } from '../events/domain-events';
 import { type RenderedMessage, renderTemplate, TemplateRenderError } from './renderer';
@@ -49,6 +50,7 @@ export class NotificationTemplatesService {
     private readonly audit: AuditService,
     private readonly events: DomainEvents,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly brand: PlatformBrand,
   ) {}
 
   list(key?: string) {
@@ -68,7 +70,7 @@ export class NotificationTemplatesService {
     data: Record<string, unknown>,
   ) {
     try {
-      return await renderTemplate({ format, subject, body }, data);
+      return await renderTemplate({ format, subject, body }, data, await this.brand.email());
     } catch (error) {
       if (error instanceof TemplateRenderError)
         throw new DomainException('notification.template_invalid', {

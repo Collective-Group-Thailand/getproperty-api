@@ -1,5 +1,6 @@
 import { bangkokDate } from '@common/time/bangkok';
 import { AppConfig } from '@config/app-config';
+import { PlatformBrand } from '@core/brand/platform-brand.service';
 import {
   billedParty,
   type NotifiableResolver,
@@ -19,7 +20,10 @@ import { depositStatementBubble, flexMessage, invoiceAltText, invoiceBubble } fr
  */
 @Injectable()
 export class BillingNotifications implements OnModuleInit {
-  constructor(private readonly config: AppConfig) {}
+  constructor(
+    private readonly config: AppConfig,
+    private readonly brand: PlatformBrand,
+  ) {}
 
   onModuleInit(): void {
     const invoice: NotifiableResolver = async (tx, e) => {
@@ -31,7 +35,7 @@ export class BillingNotifications implements OnModuleInit {
         promptpayRef: inv.promptpayRef,
         link: `${this.config.get('PUBLIC_RESIDENT_APP_URL')}/invoices/${inv.id}`,
       });
-      const flex = flexMessage(invoiceAltText(view), [invoiceBubble(view)]);
+      const flex = flexMessage(invoiceAltText(view), [invoiceBubble(view, await this.brand.flex())]);
       return {
         recipients: await billedParty(tx, inv.billedPartyId),
         templateKey: 'invoice.issued',
@@ -64,18 +68,21 @@ export class BillingNotifications implements OnModuleInit {
       if (!st) return null;
       const lease = st.deposit.lease;
       const issuerName = await tenantName(tx, e.tenantId);
-      const bubble = depositStatementBubble({
-        number: st.statementNumber,
-        unitNo: lease.unit.unitNo,
-        issuerName,
-        depositHeld: st.depositHeld.toFixed(2),
-        deductionsTotal: st.deductionsTotal.toFixed(2),
-        utilitiesFinal: st.utilitiesFinal.toFixed(2),
-        advanceRentUnused: st.advanceRentUnused.toFixed(2),
-        refund: (st.refundAmount ?? st.agreedRefund ?? st.proposedRefund)?.toFixed(2) ?? '0.00',
-        deadlineOn: bangkokDate(st.deadlineAt),
-        link: `${this.config.get('PUBLIC_RESIDENT_APP_URL')}/deposits/${st.depositId}`,
-      });
+      const bubble = depositStatementBubble(
+        {
+          number: st.statementNumber,
+          unitNo: lease.unit.unitNo,
+          issuerName,
+          depositHeld: st.depositHeld.toFixed(2),
+          deductionsTotal: st.deductionsTotal.toFixed(2),
+          utilitiesFinal: st.utilitiesFinal.toFixed(2),
+          advanceRentUnused: st.advanceRentUnused.toFixed(2),
+          refund: (st.refundAmount ?? st.agreedRefund ?? st.proposedRefund)?.toFixed(2) ?? '0.00',
+          deadlineOn: bangkokDate(st.deadlineAt),
+          link: `${this.config.get('PUBLIC_RESIDENT_APP_URL')}/deposits/${st.depositId}`,
+        },
+        await this.brand.flex(),
+      );
       const refund = (st.refundAmount ?? st.agreedRefund ?? st.proposedRefund)?.toFixed(2) ?? '0.00';
       const flex = flexMessage(`คืนเงินประกันห้อง ${lease.unit.unitNo} ${formatThb(refund)} บาท`, [bubble]);
       return {

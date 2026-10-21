@@ -8,6 +8,8 @@ import { type BillingDocType } from './document-views';
  * invoices and receipts. Versioned by key (`documentTemplate` in the invoice snapshot names the key + version the
  * invoice was issued with). The VAT block appears only for VAT-registered issuers (O-004); invoices carry the
  * disclosure of every meter line (registers, dates, reading source, the utility's rate, D-022).
+ * The issuer block is the TENANT's (name, address, tax id, logo); the platform appears only in the closing
+ * "issued via getproperty" line with the getproperty logo (`platform`, D-232) — version 2 of every template.
  */
 export const hbs = Handlebars.create();
 hbs.registerHelper('thb', (v: unknown) =>
@@ -41,6 +43,12 @@ const ISSUER = `<header class="issuer">
 {{#if issuer.logoDataUrl}}<img class="logo" src="{{issuer.logoDataUrl}}" alt="">{{/if}}
 <div><b>{{issuer.name}}</b>{{#if issuer.branch}} ({{issuer.branch}}){{/if}}<br>{{issuer.address}}{{#if issuer.taxId}}<br>เลขประจำตัวผู้เสียภาษีอากร {{issuer.taxId}}{{/if}}</div>
 </header>`;
+
+/** The platform line closing every A4 document (D-232): the getproperty logo + "issued via getproperty". */
+const PLATFORM_A4 = `<footer class="platform">{{#if platform.logoDataUrl}}<img class="platform-logo" src="{{platform.logoDataUrl}}" alt="{{platform.altText}}">{{/if}}<span>ออกเอกสารผ่านระบบ {{platform.name}}</span></footer>`;
+
+/** The same on the 80 mm roll: the house mark, centred. */
+const PLATFORM_80MM = `<div class="c platform">{{#if platform.markDataUrl}}<img class="platform-mark" src="{{platform.markDataUrl}}" alt="{{platform.altText}}">{{/if}}<span>ออกผ่านระบบ {{platform.name}}</span></div>`;
 
 const VAT_ROWS = `{{#if vat}}<tr><td>ภาษีมูลค่าเพิ่ม {{vat.ratePct}}%</td><td class="num">{{thb vat.amount}}</td></tr>{{/if}}`;
 
@@ -82,7 +90,8 @@ ${VAT_ROWS}
 <footer class="notes">
 <p>ค่าไฟฟ้าและค่าน้ำประปาคำนวณจากเลขมิเตอร์ตามรายการข้างต้น แสดงเลขครั้งก่อน เลขครั้งนี้ วันที่อ่าน และแหล่งที่มาของเลขมิเตอร์ (ประกาศคณะกรรมการว่าด้วยสัญญา พ.ศ. 2568 ข้อ 4 (8))</p>
 {{#unless issuer.vatRegistered}}<p>ผู้ให้เช่าไม่ได้จดทะเบียนภาษีมูลค่าเพิ่ม เอกสารนี้ไม่ใช่ใบกำกับภาษี</p>{{/unless}}
-</footer>`;
+</footer>
+${PLATFORM_A4}`;
 
 const INVOICE_80MM = `<div class="c"><b>{{issuer.displayName}}</b>{{#if issuer.taxId}}<br>เลขผู้เสียภาษี {{issuer.taxId}}{{/if}}</div>
 <h1>{{title}}</h1>
@@ -96,7 +105,8 @@ ${VAT_ROWS}
 {{#if hasPrior}}<tr><td>ค้างยกมา</td><td class="num">{{thb priorBalance}}</td></tr><tr class="grand"><td>ต้องชำระ</td><td class="num">{{thb amountDue}}</td></tr>{{/if}}
 </table>
 {{#if payment.qrDataUrl}}<div class="c"><img class="qr" src="{{payment.qrDataUrl}}" alt="Thai QR"><br>อ้างอิง {{payment.reference}}</div>{{/if}}
-{{#if payment.bankName}}<p class="c">{{payment.bankName}} {{payment.accountMasked}}</p>{{/if}}`;
+{{#if payment.bankName}}<p class="c">{{payment.bankName}} {{payment.accountMasked}}</p>{{/if}}
+${PLATFORM_80MM}`;
 
 const NOTE_A4 = `${ISSUER}
 <h1>{{title}}</h1>
@@ -116,7 +126,8 @@ const NOTE_A4 = `${ISSUER}
 ${VAT_ROWS}
 <tr class="grand"><td>รวมทั้งสิ้น</td><td class="num">{{thb total}}</td></tr>
 <tr><td colspan="2" class="text">({{totalText}})</td></tr>
-</table>`;
+</table>
+${PLATFORM_A4}`;
 
 const RECEIPT_A4 = `${ISSUER}
 <h1>{{title}}</h1>
@@ -134,25 +145,27 @@ ${VAT_ROWS}
 <tr class="grand"><td>รวมทั้งสิ้น</td><td class="num">{{thb total}}</td></tr>
 <tr><td colspan="2" class="text">({{totalText}})</td></tr>
 </table>
-<p>ชำระโดย {{method}}{{#if paymentReference}} อ้างอิง {{paymentReference}}{{/if}}</p>`;
+<p>ชำระโดย {{method}}{{#if paymentReference}} อ้างอิง {{paymentReference}}{{/if}}</p>
+${PLATFORM_A4}`;
 
 const RECEIPT_80MM = `<div class="c"><b>{{issuer.displayName}}</b>{{#if issuer.taxId}}<br>เลขผู้เสียภาษี {{issuer.taxId}}{{/if}}</div>
 <h1>{{title}}</h1>
 <p>เลขที่ {{number}}<br>วันที่ {{date issuedOn}}<br>{{customer.name}}{{#if unitNo}} · ห้อง {{unitNo}}{{/if}}</p>
 <table class="items">{{#each items}}<tr><td>{{description}}{{#if reference}}<div class="sub">{{reference}}</div>{{/if}}</td><td class="num">{{thb amount}}</td></tr>{{/each}}</table>
 <table class="totals">${VAT_ROWS}<tr class="grand"><td>รวม</td><td class="num">{{thb total}}</td></tr></table>
-<p class="c">ชำระโดย {{method}}</p>`;
+<p class="c">ชำระโดย {{method}}</p>
+${PLATFORM_80MM}`;
 
 export const TEMPLATES: Record<string, TemplateDef> = {
-  invoice_a4: { key: 'invoice_a4_th', version: 1, source: INVOICE_A4 },
-  invoice_thermal_80mm: { key: 'invoice_80mm_th', version: 1, source: INVOICE_80MM },
-  credit_note_a4: { key: 'credit_note_a4_th', version: 1, source: NOTE_A4 },
-  debit_note_a4: { key: 'debit_note_a4_th', version: 1, source: NOTE_A4 },
-  receipt_a4: { key: 'receipt_a4_th', version: 1, source: RECEIPT_A4 },
-  receipt_thermal_80mm: { key: 'receipt_80mm_th', version: 1, source: RECEIPT_80MM },
-  tax_invoice_a4: { key: 'tax_invoice_a4_th', version: 1, source: RECEIPT_A4 },
-  receipt_tax_invoice_a4: { key: 'receipt_tax_invoice_a4_th', version: 1, source: RECEIPT_A4 },
-  receipt_tax_invoice_thermal_80mm: { key: 'receipt_tax_invoice_80mm_th', version: 1, source: RECEIPT_80MM },
+  invoice_a4: { key: 'invoice_a4_th', version: 2, source: INVOICE_A4 },
+  invoice_thermal_80mm: { key: 'invoice_80mm_th', version: 2, source: INVOICE_80MM },
+  credit_note_a4: { key: 'credit_note_a4_th', version: 2, source: NOTE_A4 },
+  debit_note_a4: { key: 'debit_note_a4_th', version: 2, source: NOTE_A4 },
+  receipt_a4: { key: 'receipt_a4_th', version: 2, source: RECEIPT_A4 },
+  receipt_thermal_80mm: { key: 'receipt_80mm_th', version: 2, source: RECEIPT_80MM },
+  tax_invoice_a4: { key: 'tax_invoice_a4_th', version: 2, source: RECEIPT_A4 },
+  receipt_tax_invoice_a4: { key: 'receipt_tax_invoice_a4_th', version: 2, source: RECEIPT_A4 },
+  receipt_tax_invoice_thermal_80mm: { key: 'receipt_tax_invoice_80mm_th', version: 2, source: RECEIPT_80MM },
 };
 
 /** The template of a document type and paper (thermal exists for invoices and receipts only). */
@@ -185,6 +198,8 @@ td.text { text-align: right; font-size: 10pt; }
 .warn { color: #b00000; font-weight: 700; }
 img.qr { width: 38mm; height: 38mm; }
 footer.notes { margin-top: 6mm; font-size: 8.5pt; color: #555; }
+footer.platform { margin-top: 6mm; padding-top: 2mm; border-top: 0.2mm solid #ddd; display: flex; align-items: center; gap: 2mm; font-size: 8pt; color: #555; }
+img.platform-logo { height: 4.2mm; width: auto; }
 `;
 
 export const STYLE_80MM = `
@@ -198,4 +213,6 @@ td.num { text-align: right; white-space: nowrap; padding-left: 2mm; }
 tr.grand td { font-weight: 700; border-top: 0.3mm dashed #000; }
 .sub { font-size: 7.5pt; }
 img.qr { width: 40mm; height: 40mm; }
+.platform { margin-top: 2mm; font-size: 7pt; }
+img.platform-mark { height: 4mm; width: 4mm; vertical-align: middle; margin-right: 1mm; }
 `;

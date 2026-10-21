@@ -5,6 +5,8 @@
  * backdated). Descriptions MUST cite the decision (the database CHECKs for a D-/O- id).
  * ⚖ = value waits for legal confirmation (O-002); "Proposed" = business value not yet confirmed (D-156, D-161).
  */
+import { DEFAULT_PLATFORM_BRAND, platformBrandProblems } from '../brand/brand-setting';
+
 export type SettingValueType =
   'string' | 'int' | 'decimal' | 'bool' | 'json' | 'duration' | 'money' | 'date' | 'time';
 export type SettingScope = 'platform' | 'tenant' | 'property';
@@ -21,6 +23,8 @@ export interface SettingDef {
   reason: string;
   /** Closed set of allowed values (validated on every write). */
   allowedValues?: readonly unknown[];
+  /** Structural problems of a value beyond its type (a json setting's shape); empty = valid. */
+  check?: (value: unknown) => string[];
 }
 
 const OWNER_SETTINGS = ['tenant.settings.update'];
@@ -522,6 +526,17 @@ export const SETTINGS: readonly SettingDef[] = [
       vatRegistered: true,
     },
     reason: 'seed: D-204 placeholder (O-008)',
+  },
+  {
+    key: 'platform.brand',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-001 / D-232: the getproperty brand where the platform itself appears — the "issued via getproperty" line of tenant documents, platform invoices/receipts/credit notes, emails sent by the platform and the header of LINE messages from the getproperty Official Account (tenant documents keep the tenant\'s own name and logo). Images are asset:<file> (bundled assets/brand, public at <PUBLIC_API_BASE_URL>/brand/<file>) or https URLs the platform admin hosts; colours #RRGGBB.',
+    editableBy: ADMIN,
+    value: DEFAULT_PLATFORM_BRAND,
+    reason: 'seed: D-232 official getproperty logo (founder supplied 2026-10-21)',
+    check: platformBrandProblems,
   },
   {
     key: 'platform.payments.merchant',
