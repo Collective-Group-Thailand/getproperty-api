@@ -3,7 +3,9 @@
 **Status:** Accepted (2026-10-16, B1.1)
 **Decision ids:** D-002, D-004, D-030, D-032, D-034, D-040, D-046 · master plan §3, §5
 
-> **Amendment (ADR-0009, 2026-10-17).** Names below are v1. In schema-design v2: `org_id` → `tenant_id` (RLS enforced for the application role on `app.tenant_id`, not only for reporting), `readings` → `smart.meter_reading`, `telemetry_points` → `smart.telemetry_point`; tables live in schemas `core` / `platform` / `ops` / `smart` / `bridge` / `juristic`, and `core` migrations come from `collective-asset-core` (ADR-0010). Hosting is GCP (D-160): Cloud SQL must offer the TimescaleDB extension, otherwise TimescaleDB is self-managed or Timescale Cloud — open as O-005.
+> **Amendment (ADR-0009, 2026-10-17).** Names below are v1. In schema-design v2: `org_id` → `tenant_id` (RLS enforced for the application role on `app.tenant_id`, not only for reporting), `readings` → `smart.meter_reading`, `telemetry_points` → `smart.telemetry_point`; tables live in schemas `core` / `platform` / `ops` / `smart` / `bridge` / `juristic`, and `core` migrations come from `collective-asset-core` (ADR-0010). ~~Hosting is GCP (D-160): Cloud SQL must offer the TimescaleDB extension, otherwise TimescaleDB is self-managed or Timescale Cloud — open as O-005.~~ (see the next amendment)
+
+> **Amendment (D-162, 2026-10-17; D-230, 2026-10-21).** TimescaleDB is optional (D-162): the telemetry tables are native monthly partitions with hand-written rollups, and `prisma/optional/timescale/001_telemetry_hypertables.sql` converts the two raw tables to hypertables where the extension exists. Hosting is no longer GCP / Cloud SQL (D-160 superseded): getproperty runs on Collective's shared AWS platform (D-230), whose PostgreSQL 18 is `timescale/timescaledb-ha:pg18` — TimescaleDB available — so the image's migrate command applies the optional step automatically there (`TIMESCALEDB_MIGRATION=auto`; no compression, the tables carry RLS). Native partitions remain the behaviour wherever the extension is absent (test suites, plain PostgreSQL, a future move of the database to RDS); the API reads only the rollup tables in both cases.
 
 ## Context
 getproperty stores two very different kinds of data under one roof:
@@ -27,5 +29,5 @@ D-030 keeps the two apart in meaning: bills come only from `readings` (one accep
 
 ## Consequences
 - One backup/restore story, one tenancy model (`org_id` + RLS as a second line for the reporting role).
-- Managed hosting must offer the TimescaleDB extension (Timescale Cloud, or self-managed on a VM); plain RDS does not — noted as an infrastructure constraint for the launch runbook (B6.5).
+- Managed hosting must offer the TimescaleDB extension (Timescale Cloud, or self-managed on a VM); plain RDS does not — noted as an infrastructure constraint for the launch runbook (B6.5). *(Resolved by D-162 + D-230: optional; the Collective platform's self-managed PostgreSQL has it.)*
 - Series queries go through the aggregates only; raw `telemetry_points` is never read by an API endpoint.

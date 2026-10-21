@@ -333,7 +333,7 @@ getproperty เป็นเจ้าของ `collective-asset-core` — packag
 
 ## Integration contracts with getbuild & getpack
 
-ทุกการสื่อสารข้าม platform เป็น event ผ่าน Pub/Sub + REST callback ที่นิยามใน `collective-asset-core` (`packages/contracts`) ทั้งสองฝั่ง deserialize ด้วย schema เดียวกัน (zod) และบันทึกลง `integration_event` เพื่อ replay ได้
+ทุกการสื่อสารข้าม platform เป็น event ผ่าน ~~Pub/Sub~~ (GCP; D-230 → เลือก bus ตอนสร้าง integration แรก: REST callback หรือ SQS) + REST callback ที่นิยามใน `collective-asset-core` (`packages/contracts`) ทั้งสองฝั่ง deserialize ด้วย schema เดียวกัน (zod) และบันทึกลง `integration_event` เพื่อ replay ได้
 
 | Event | ทิศทาง | Payload หลัก | Trigger / ผลที่ getproperty |
 | --- | --- | --- | --- |
@@ -358,7 +358,7 @@ getproperty เป็นเจ้าของ `collective-asset-core` — packag
 | API | `getproperty-api` NestJS: `core/*` (asset core, identity, billing engine, workflow, documents, notification), `modules/ops-*` (A), `modules/juristic-*` (B), `modules/smart-*` (C), `modules/bridge-*` (D), `ai/gateway`, `integrations/*` | Nest module boundary ชัดเพื่อแยกเป็น service ภายหลัง |
 | Workers | BullMQ: billing run, notification, reading-to-bill, dunning timers; Python (`getproperty-ai-workers`): OCR มิเตอร์, STT, forecast, RAG indexing | ใช้ AI gateway ร่วม getbuild |
 | IoT edge | `getproperty-edge`: EMQX (MQTT), device registry, protocol adapters (LoRaWAN NS, Modbus/TCP gateway, vendor cloud API สำหรับประตู/กล้อง), TimescaleDB writer | ทำงานได้บน on-prem mini PC ต่ออาคารเมื่อเน็ตล่ม (store & forward) |
-| Data | PostgreSQL (Cloud SQL) + TimescaleDB extension (readings, energy) + pgvector (B2); Object storage (GCS) สำหรับรูป/สัญญา; Redis | ฐานเดียว แยก schema `core / ops / juristic / smart / bridge` |
+| Data | PostgreSQL 18 + TimescaleDB (self-managed `timescaledb-ha` บน Collective platform, D-230; ~~Cloud SQL~~) + pgvector (B2); Object storage (S3, ~~GCS~~) สำหรับรูป/สัญญา; Redis (Valkey) | ฐานเดียว แยก schema `core / ops / juristic / smart / bridge` |
 | External | LINE Messaging/Login/LIFF, PromptPay (Bill Payment API ธนาคาร) + card gateway, e-Tax provider, LLM providers (Claude/Gemini), vendor APIs ของอุปกรณ์, Zoom/Meet (B1) | adapter pattern ทุกตัว |
 | Shared packages | `collective-shared` (UI, auth, LINE, notification, billing types), `collective-asset-core` (schema + migrations + contracts — owned โดย repo นี้) | publish เป็น private npm package, version ตาม semver |
 
@@ -376,7 +376,7 @@ getproperty เป็นเจ้าของ `collective-asset-core` — packag
 
 **Multi-tenancy & security**: `tenant_id` ทุกตาราง + RLS; `operator_tenant_id`/`owner_tenant_id` บน building + `asset_access_grant` สำหรับสิทธิ์ข้าม tenant; PII เข้ารหัสระดับคอลัมน์; signed URL อายุสั้น; audit log append-only 10 ปี; อุปกรณ์ IoT ใช้ per-device certificate (mTLS) และ topic ACL ต่อ tenant
 
-**Deployment**: Docker บน GCP (Cloud Run web/api, Cloud Run jobs workers, GKE Autopilot สำหรับ EMQX), Cloud SQL, GCS, Memorystore; edge box ต่ออาคารเป็น optional (Docker Compose บน mini PC); Terraform และ CI pipeline เดียวกับ getpack; environment dev / uat / prod
+**Deployment** *(D-230 แทน D-160)*: Docker บน Collective shared AWS platform เหมือน getpack (collective-infra: EC2 ต่อ env + docker compose — Caddy, PostgreSQL 18 + TimescaleDB, Valkey, EMQX, Grafana Alloy; S3, SES, Secrets Manager, ECR) ~~GCP (Cloud Run, GKE Autopilot, Cloud SQL, GCS, Memorystore)~~; edge box ต่ออาคารเป็น optional (Docker Compose บน mini PC); CI เรียก reusable workflows ของ collective-infra; environment uat / prod
 
 **Observability**: OpenTelemetry → Cloud Trace/Logging, Sentry, device health dashboard (ออนไลน์/ค่าล่าสุด/แบตเตอรี่), AI cost ต่อ tenant, billing run audit; backup รายวัน + PITR 7 วัน
 

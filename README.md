@@ -21,6 +21,7 @@ PostgreSQL 18 (ADR-0001 as amended by D-162). Schemas: `core` (owned by `@collec
 | Command | What |
 |---|---|
 | `pnpm db:migrate` | `asset-core migrate` (schema `core`, roles, helper functions) then `prisma migrate deploy` (this repo) |
+| `pnpm db:migrate:deploy` | the image's migrate command (`node dist/src/migrate.js`, after `pnpm build`): asset-core, then `prisma/migrations` without the Prisma CLI, then the optional TimescaleDB step (D-162, D-230) |
 | `pnpm db:diff` | `prisma migrate diff` between the database and `prisma/schema` — must be empty |
 | `pnpm db:seed` / `pnpm db:seed:dev` | reference data (roles, permissions, settings, compliance rules, utility tariffs, holidays, consents, templates, retention) / + the development tenant "หอพักตัวอย่าง" — idempotent |
 | `pnpm prisma:core` | regenerate `prisma/schema/core.prisma` from the package (after changing a relation to a core model or bumping the package) |
@@ -43,3 +44,11 @@ DATA_STORES_MODE=real pnpm dev   # Redis and the MQTT broker are still needed in
   use). Where that host is blocked, `pnpm i`/`pnpm prisma:generate` still work (WebAssembly) and
   `EMBEDDED_PG=1 pnpm test:int` applies the migrations with its own runner; see ADR-0011.
 - Docker users: `docker compose up -d` (PostgreSQL, Redis, EMQX, LocalStack, Mailpit) and the same `db:*` commands.
+
+## Deployment
+getproperty runs on **Collective's shared AWS platform** like getpack (D-230): one EC2 box per environment in
+`ap-southeast-7` running docker compose (Caddy, PostgreSQL 18 + TimescaleDB, Valkey, EMQX, Grafana Alloy), S3, SES,
+Secrets Manager and ECR per product. Infrastructure lives only in **collective-infra**; this repo ships the image and
+`.github/workflows/deploy.yml` (main → uat, tag → production). What getproperty needs from the platform — image
+contract (`main` / `worker` / `ingest` / `migrate`, `/health` + `/metrics` on 3000 / 3001 / 3002), secrets, hosts, MQTT
+mutual TLS (`pnpm device:broker-cert`), sizing — is in `docs/deployment.md`; operations in `docs/RUNBOOK.md`.

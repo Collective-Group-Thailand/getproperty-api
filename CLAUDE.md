@@ -12,7 +12,7 @@ Sibling repos: `getproperty-web` (owner console, staff PWA, platform admin), `ge
 
 ## Read before every task
 1. `docs/prompts/00-master-plan.md` — architecture, conventions, run order, Definition of Done.
-2. `docs/decisions.md` — **business and legal decisions (D-###). They override everything else**; D-150–D-161 supersede conflicting earlier text.
+2. `docs/decisions.md` — **business and legal decisions (D-###). They override everything else**; D-150–D-161 supersede conflicting earlier text; D-230 (deployment on Collective's AWS platform, `docs/deployment.md`) supersedes D-160.
 3. `docs/schema-design.md` (v2) — every table, column, enum, index, RLS rule and which deliverable migrates it. A deviation is a PR to that file first.
 4. `docs/contract/api-conventions.md` — API contract rules shared with `getproperty-web`, `getproperty-liff` and `getproperty-edge`; `docs/contract/device-protocol.md` for anything touching gateways or readings.
 5. The prompt you were asked to execute (`docs/prompts/B*.md`) — **only the deliverable you were given**.
@@ -35,4 +35,4 @@ Sibling repos: `getproperty-web` (owner console, staff PWA, platform admin), `ge
 - Plan Mode first for each deliverable; wait for approval. Small vertical slices, Conventional Commits, CI green per slice. When ambiguous: record the assumption in `docs/PROGRESS.md` and choose the most conservative option; never guess a legal or business value — write an `O-###` in `docs/decisions.md`.
 
 ## Commands
-`pnpm dev` · `pnpm dev:worker` · `pnpm dev:ingest` · `pnpm lint` · `pnpm format:check` · `pnpm typecheck` · `pnpm test` · `EMBEDDED_PG=1 pnpm test:int` (or `INT_DATABASE_URL=…`) · `pnpm test:e2e` · `pnpm contract:build` · `pnpm contract:lint` · `pnpm build` · `pnpm db:local` (embedded PostgreSQL 18, no Docker) · `pnpm db:migrate` (asset-core migrations, then this repo's) · `pnpm db:diff` · `pnpm db:seed` / `pnpm db:seed:dev` · `pnpm prisma:core` (regenerate `prisma/schema/core.prisma`, ADR-0011) · `pnpm rbac:build` · `pnpm sim:gateway` (publishes fake telemetry for a seeded building) · `docker compose up -d`
+`pnpm dev` · `pnpm dev:worker` · `pnpm dev:ingest` · `pnpm lint` · `pnpm format:check` · `pnpm typecheck` · `pnpm test` · `EMBEDDED_PG=1 pnpm test:int` (or `INT_DATABASE_URL=…`) · `pnpm test:e2e` · `pnpm contract:build` · `pnpm contract:lint` · `pnpm build` · `pnpm db:local` (embedded PostgreSQL 18, no Docker) · `pnpm db:migrate` (asset-core migrations, then this repo's) · `pnpm db:migrate:deploy` (the image's migrate command, after `pnpm build`) · `pnpm device:broker-cert --host <mqtt host>` (EMQX server certificate from the device CA) · `pnpm db:diff` · `pnpm db:seed` / `pnpm db:seed:dev` · `pnpm prisma:core` (regenerate `prisma/schema/core.prisma`, ADR-0011) · `pnpm rbac:build` · `pnpm sim:gateway` (publishes fake telemetry for a seeded building) · `docker compose up -d`

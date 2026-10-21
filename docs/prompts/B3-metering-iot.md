@@ -1,7 +1,7 @@
 # B3 — Smart meter & utility billing inputs (A3): devices, ingest, meter readings, health, utility loss
 
 > อ่าน `CLAUDE.md`, `00-master-plan.md`, `docs/decisions.md`, `docs/contract/api-conventions.md`, **`docs/contract/device-protocol.md`**, `docs/schema-design.md` (v2) ก่อน · ต้องทำ B1 และ B2.1 เสร็จแล้ว · ทำทีละ Deliverable (3.1 → 3.4) ต่อ 1 session · Plan Mode ทุกครั้ง
-> ส่วนที่รันบน gateway อยู่ใน repo `getproperty-edge` — repo นี้ทำฝั่ง cloud เท่านั้น · O-005 (TimescaleDB บน GCP) ต้องมีคำตอบก่อน 3.2
+> ส่วนที่รันบน gateway อยู่ใน repo `getproperty-edge` — repo นี้ทำฝั่ง cloud เท่านั้น · O-005 (TimescaleDB บน GCP) ต้องมีคำตอบก่อน 3.2 — *resolved: D-162 (native partitions) + D-230 (Collective platform มี TimescaleDB, optional step อัตโนมัติ)*
 
 ---
 
