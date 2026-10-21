@@ -59,7 +59,8 @@ export function clientCertificateOf(
       return null;
     }
   }
-  // sha256_header — UNVERIFIED against the live GCP load balancer header format (hex or base64 accepted).
+  // sha256_header — for proxies that forward only a fingerprint (hex or base64 accepted). On AWS the device ALB forwards
+  // the leaf PEM (`pem_header`, D-230).
   const trimmed = value.trim().replace(/^:|:$/g, '');
   const fingerprint = /^[0-9a-f]{64}$/i.test(trimmed)
     ? Buffer.from(trimmed, 'hex')

@@ -14,7 +14,7 @@ export const DEV_FIELD_ENCRYPTION_KEY = createHash('sha256')
 
 /**
  * AES-256-GCM with the **platform key** for secrets that belong to no tenant (`platform.user_credential.totp_secret_enc`)
- * and as the local key-encryption key that wraps tenant data keys until Cloud KMS (schema-design §4.7, D-160/B6.5).
+ * and as the local key-encryption key that wraps tenant data keys until a KMS adapter (AWS KMS, D-230; schema-design §4.7).
  * Layout: version (1) · iv (12) · tag (16) · ciphertext. The key comes from `FIELD_ENCRYPTION_KEY` (required in
  * production, validate-env); development and tests use a fixed development key (B1.3: a per-process key could not
  * read a local database after a restart). Tenant PII uses the per-tenant envelope (`TenantDataKeys`).
