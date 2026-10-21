@@ -50,16 +50,18 @@ suite('pdf-render queue over BullMQ (D-236, T-1)', () => {
       stdio: 'ignore',
     });
     url = `redis://127.0.0.1:${port}/3`;
-    const probe = new Redis(url, { lazyConnect: true, maxRetriesPerRequest: 1 });
-    for (let i = 0; i < 50; i += 1) {
+    // wait for the server: one short-lived client per attempt, no automatic reconnects left behind
+    for (let i = 0; i < 100; i += 1) {
+      const probe = new Redis(url, { lazyConnect: true, maxRetriesPerRequest: 1, retryStrategy: () => null });
       try {
         await probe.connect();
+        await probe.quit();
         break;
       } catch {
+        probe.disconnect();
         await new Promise((r) => setTimeout(r, 100));
       }
     }
-    await probe.quit();
     workerConnection = new Redis(url, { maxRetriesPerRequest: null });
     worker = new Worker<PdfRenderJobV1>(
       PDF_RENDER_QUEUE,
@@ -89,7 +91,11 @@ suite('pdf-render queue over BullMQ (D-236, T-1)', () => {
     await pdf?.close();
     await worker?.close();
     workerConnection?.disconnect();
-    server?.kill('SIGTERM');
+    if (server && server.exitCode === null) {
+      const exited = new Promise((r) => server.once('exit', r));
+      server.kill('SIGTERM');
+      await exited;
+    }
   });
 
   it('renders through the queue and reads the verified PDF back; the same input is one job', async () => {
