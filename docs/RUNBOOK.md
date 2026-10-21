@@ -17,11 +17,11 @@ compose project `getproperty` beside getpack (`docs/deployment.md` §1):
 | Process | Container | Role | Health |
 |---|---|---|---|
 | API | `getproperty-api` (`node dist/src/main.js`) | `/v1/*`, `/webhooks/*`, `/health`, `/docs` (allow-list) | `:3000/health` |
-| Worker | `getproperty-worker` (`worker.js`) | BullMQ consumers + repeatable maintenance jobs (`src/worker.runner.ts`), PDFs | `:3001/health` |
+| Worker | `getproperty-worker` (`worker.js`) | BullMQ consumers + repeatable maintenance jobs (`src/worker.runner.ts`), PDFs (own Chromium until the shared `pdf-render` queue, D-236) | `:3001/health` |
 | Ingest | `getproperty-ingest` (`ingest.js`) | MQTT shared subscription on EMQX → telemetry, health, readings | `:3002/health` |
 | Web | `getproperty-web` | owner console, staff PWA, platform admin (getproperty-web) | `:3000/api/healthz` |
 | LIFF | `getproperty-liff` | resident LINE Mini App (getproperty-liff) | `:3000/api/healthz` |
-| ClamAV | `getproperty-clamav` | upload virus scan (INSTREAM :3310) | `clamdcheck.sh` |
+| ClamAV | `getproperty-clamav` | upload virus scan (INSTREAM :3310) — moves to a shared platform service (D-233, blueprint T-2) | `clamdcheck.sh` |
 
 Shared platform services: PostgreSQL 18 `timescale/timescaledb-ha:pg18` (container `platform-postgres-1`, database
 `getproperty`, pgBackRest to S3, TimescaleDB available — D-162 as amended), Valkey (BullMQ, locks, caches;
@@ -75,7 +75,8 @@ seconds `compose up` needs to replace a container (single box, no blue/green —
   (second platform admin), reason mandatory.
 - **PDPA requests** (D-025): owners handle their tenants' requests in the owner console; platform-level requests are
   listed at `GET /v1/admin/data-subject-requests` with their due dates (`privacy.dsr_due_days`).
-- **Secrets**: AWS Secrets Manager `collective/<env>/getproperty/{app,web,liff,mqtt-tls}`; rotate by putting a new
+- **Secrets**: AWS Secrets Manager `collective/<env>/getproperty/{app,web,liff,mqtt-tls}` today; target one secret
+  `collective/<env>/getproperty/app` + the platform's `collective/<env>/platform/device-ca` (D-233, D-235); rotate by putting a new
   value — the box re-renders hourly (`secrets-refresh.timer`) and the next deploy (or `deploy-product.sh getproperty
   <same tag>`) restarts with it. Payment provider credentials live under
   `collective/<env>/getproperty/payments/<tenant|platform>/<provider>/<merchantRef>` (`PAYMENTS_SECRETS_PREFIX`;
@@ -143,11 +144,19 @@ Post-incident: a short write-up in `docs/incidents/` (what, impact, timeline, fi
 
 ## 9. Backups and restore (UNVERIFIED until the drill in the launch checklist)
 
-- Platform backups: pgBackRest full (Sunday) / diff (daily 01:30) + WAL archive to `s3://collective-<env>-backups`
-  (35 days, RPO ≤ 5 min via `archive_timeout`), EBS snapshot daily; the assets bucket is versioned.
+- Platform backups (locked decision 6, D-233): pgBackRest full (Sunday) / diff (daily 01:30) + WAL archive to
+  `s3://collective-<env>-backups` (35 days, **RPO ≤ 5 min** via `archive_timeout` 300 s), EBS snapshot daily (DLM) with
+  a cross-region copy (region: O-016); the assets bucket is versioned. No managed failover. Readings acknowledged in
+  the last ≤ 5 minutes before a loss are not re-sent by gateways, but bills come only from cumulative registers
+  (D-030), so the next reading restores every total.
 - Restore drill (monthly, platform): `sudo /opt/collective/platform/bin/restore-drill.sh prod` on uat; for getproperty
   also run the smoke tests (§11, an owner login, a cycle preview) against the restored `getproperty` database and
-  record the time it took (RTO target 4 h).
+  record the time it took — **RTO target 30 min** (platform; the former 4 h stays the tolerated ceiling). A product hook
+  for the drill is blueprint task T-15.
+- **PDPA after a restore**: data-subject erasures (anonymisation, destroyed tenant keys) executed after the restore
+  point are re-applied from `platform.data_subject_request` before the restored database serves traffic; copies age
+  out of pgBackRest within 35 days and of EBS snapshots within 7 days, so an erasure is complete everywhere within
+  35 days.
 
 ## 10. Load expectations (R1)
 

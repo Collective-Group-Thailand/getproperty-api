@@ -7,11 +7,18 @@ what getproperty needs from the platform and how the image meets the platform's 
 needs in collective-infra are on its branch **`getproperty/r1-platform`** (patches: `collective-infra-patches/`
 beside this checkout); until that branch is merged and tagged, getproperty cannot be deployed.
 
+> **2026-10-21 — Collective's locked infrastructure decisions (D-233–D-238).** They win over anything below. Where
+> this page still describes what the branch does today and the locked decisions differ — one secret per product
+> (§3), the device CA in `collective/<env>/platform/device-ca` and EMQX HTTP authn/authz (§5), PDFs through the shared
+> `pdf-render` queue (§2), the ≈ 1.8 GB memory budget (§1, §6), the migrate command and the ingest health port (§2) —
+> the difference is a numbered gap task (T-1 … T-17) in `docs/platform-blueprint.md` § Infrastructure & operations,
+> which also holds the quantified infrastructure asks.
+
 | | uat | prod |
 |---|---|---|
 | Box | `t4g.large` (2 vCPU / 8 GB), Mon–Fri 08:00–20:00 Asia/Bangkok | `t4g.xlarge` (4 vCPU / 16 GB), 24×7 |
 | Shared services | Caddy 2.10 · PostgreSQL 18 `timescale/timescaledb-ha:pg18` (pgBackRest → S3) · Valkey 8 (`noeviction`) · EMQX 5.8 · Grafana Alloy → Grafana Cloud | same |
-| Per product | S3 bucket `collective-<env>-getproperty-assets` · Secrets Manager `collective/<env>/getproperty/*` · SES identity · ECR `getproperty/{api,web,liff}` · the instance role (no keys) | same |
+| Per product | S3 bucket `collective-<env>-getproperty-assets` · **one** Secrets Manager secret `collective/<env>/getproperty/app` (D-233; the branch still uses `…/{app,web,liff,mqtt-tls}` — T-4, T-6) · SES identity · ECR `getproperty/{api,web,liff}` · the instance role (no keys) | same |
 | Deploys | GitHub Actions (OIDC) → ECR → SSM `deploy-product.sh` (pull · migrate · up · health · rollback) | + GitHub Environment `production` approval |
 
 Shell access, logs, backups, restore drills and resizing are platform runbooks: collective-infra `README.md` §5.
@@ -21,15 +28,16 @@ Shell access, logs, backups, restore drills and resizing are platform runbooks: 
 `platform/products/getproperty/docker-compose.yml` (collective-infra), compose project `getproperty` on the external
 network `collective`:
 
-| Service | Image · command | Port | Health | Memory |
-|---|---|---|---|---|
-| `web` | `getproperty/web:${WEB_IMAGE_TAG}` | 3000 | `/api/healthz` | 384M |
-| `liff` | `getproperty/liff:${LIFF_IMAGE_TAG}` | 3000 | `/api/healthz` | 256M |
-| `api` | `getproperty/api:${IMAGE_TAG}` · `node dist/src/main.js` | 3000 | `/health` (+ `/metrics`) | 640M |
-| `worker` | same · `node dist/src/worker.js` | 3001 | `/health` (+ `/metrics`) | 1G (Chromium PDFs) |
-| `ingest` | same · `node dist/src/ingest.js` | 3002 | `/health` (+ `/metrics`) | 256M |
-| `clamav` | `clamav/clamav-debian:1.4` | 3310 | `clamdcheck.sh` | 1280M |
-| `migrate` | same · `node dist/src/migrate.js` (one-shot, profile `tools`) | — | exit code | 512M |
+| Service | Image · command | Port | Health | Memory (branch today) | Budget (D-233) |
+|---|---|---|---|---|---|
+| `web` | `getproperty/web:${WEB_IMAGE_TAG}` | 3000 | `/api/healthz` | 384M | 384M |
+| `liff` | `getproperty/liff:${LIFF_IMAGE_TAG}` | 3000 | `/api/healthz` | 256M | 192M |
+| `api` | `getproperty/api:${IMAGE_TAG}` · `node dist/src/main.js` | 3000 | `/health` (+ `/metrics`) | 640M | 512M |
+| `worker` | same · `node dist/src/worker.js` | 3001 | `/health` (+ `/metrics`) | 1G (Chromium PDFs) | 512M — PDFs via `pdf-render` (D-236, T-1); 1.5G only under an ADR (O-015) |
+| `ingest` | same · `node dist/src/ingest.js` | 3002 (→ 3001, T-10) | `/health` (+ `/metrics`) | 256M | 192M |
+| `clamav` | `clamav/clamav-debian:1.4` | 3310 | `clamdcheck.sh` | 1280M | 0 — shared platform service (T-2) |
+| `migrate` | same · `node dist/src/migrate.js` (one-shot, profile `tools`) | — | exit code | 512M | 512M one-shot (outside the steady state) |
+| **Total** | | | | **≈ 3.75 GB** | **1,792 MB ≈ 1.8 GB** |
 
 Exactly one `ingest` replica (EMQX shared subscription `$share/ingest/…` also works with more). The platform's
 Alloy scrapes every container labelled `collective.metrics` and receives OTLP traces on `platform-alloy-1:4318`.
@@ -50,7 +58,10 @@ One image (`Dockerfile`), built natively for `linux/arm64` by collective-infra's
 - **Traces**: OTLP/HTTP to `OTEL_EXPORTER_OTLP_ENDPOINT` (`src/instrument.ts`), `OTEL_SERVICE_NAME` per container.
 - **Time zone**: `TZ=Asia/Bangkok` (image + compose; `tzdata` installed). Business rules use Asia/Bangkok explicitly
   anyway; stored times are UTC.
-- **Chromium** (PDFs) from Debian, available for arm64 and amd64; `PDF_CHROMIUM_EXECUTABLE=/usr/bin/chromium`.
+- **Chromium** (PDFs) from Debian, available for arm64 and amd64; `PDF_CHROMIUM_EXECUTABLE=/usr/bin/chromium` —
+  **interim**: locked decision 12 allows one Chromium per box (getpack's); getproperty moves to the shared `pdf-render`
+  queue (D-236, T-1) and then drops Chromium from the image. Kept on the platform only under an ADR with a 1.5 GB
+  worker (O-015).
 - **Build input**: `@collective/asset-core` is a sibling source tree (ADR-0011) passed as the named build context
   `asset-core-src`; the Dockerfile builds it. CI passes it with `extra_repository` / `build_contexts`
   (`.github/workflows/deploy.yml`) until the package is published to GitHub Packages (then it becomes a normal
@@ -58,7 +69,9 @@ One image (`Dockerfile`), built natively for `linux/arm64` by collective-infra's
 
 ### Migrations — why not `npx prisma migrate deploy`
 
-The platform template for getpack runs `npx prisma migrate deploy`. For getproperty that would be wrong: the `core`
+The platform template for getpack runs `npx prisma migrate deploy` (image contract, locked decision 11). For getproperty
+that would be wrong — the deviation is recorded as gap T-3 (an ADR plus collective-infra wording "the product
+compose's `migrate` service", which is what `deploy-product.sh` runs): the `core`
 schema belongs to `@collective/asset-core` and **must migrate first** (D-153, ADR-0011), and the runtime image has
 no Prisma CLI or schema engine. `node dist/src/migrate.js` (`src/database/migrations/deploy-migrations.ts`):
 
@@ -92,11 +105,17 @@ secret** (`AWS_SECRETS_ID` stays empty). It does read **provider credentials** a
 (`PAYMENTS_SECRETS_PREFIX`, `LOCKS_SECRETS_PREFIX`, `ETAX_SECRETS_PREFIX`), so the compose file points those prefixes
 under `collective/<env>/getproperty/…` — the only path the instance role may read.
 
+> **D-233 / D-235 (2026-10-21)**: the target is **one** secret, `collective/<env>/getproperty/app`. The front ends'
+> keys move into it with component prefixes (`WEB__…`, `LIFF__…`) that `fetch-secrets.sh` splits into their own env
+> files (T-4) so a front end still never receives the API's secrets; `mqtt-tls` and `DEVICE_CA_*` move to the platform
+> secret `collective/<env>/platform/device-ca` (T-6); `getproperty_mqtt_password` disappears with the EMQX HTTP
+> authz (T-7); the per-merchant provider sub-paths are O-013. The tables below describe the branch as it is today.
+
 **`collective/<env>/getproperty/app`** (flat JSON; values never in git):
 
 | Keys | Value / rule |
 |---|---|
-| `DATABASE_URL` | `postgresql://getproperty:<getproperty_password>@postgres:5432/getproperty?connection_limit=10` |
+| `DATABASE_URL` | `postgresql://getproperty:<getproperty_password>@postgres:5432/getproperty` — the pool is the pg adapter's `max: 10` per process (api, worker, ingest: ≤ 15 / ≤ 10 of the image contract); a `connection_limit` query parameter has no effect (T-5) |
 | `DATABASE_APP_ROLE`, `DATABASE_PLATFORM_ROLE` | `gp_app`, `gp_platform` — the login switches role per transaction so RLS applies |
 | `REDIS_URL` | `redis://:<valkey password>@valkey:6379/2` (getproperty's logical DB; getpack uses its own) |
 | `MQTT_USERNAME`, `MQTT_PASSWORD` | `getproperty-api`, random hex — EMQX's internal listener (the platform hook creates the user) |
@@ -171,6 +190,14 @@ Smoke check on the box: RUNBOOK §11.
 
 ## 5. MQTT and gateways
 
+> **Target contract (D-235, 2026-10-21)**: EMQX is the **shared platform broker**. 8883 public with mutual TLS against
+> the device CA from `collective/<env>/platform/device-ca`; 1883 internal only; 8083 ws behind Caddy only (not used
+> by getproperty). Gateways are authenticated by EMQX **HTTP authn** → `POST /internal/emqx/authn` on getproperty-api
+> (certificate CN `gw-<gatewayId>` = username + the device JWT as password, device protocol 1.2) and authorised by
+> **HTTP authz** → `POST /internal/emqx/authz` (publish `gp/v1/<id>/{telemetry,health,events,cmd/ack}`, subscribe
+> `gp/v1/<id>/{config,cmd}`; `gp/v1/#` reserved for getproperty). The certificate-only login and the PostgreSQL ACL
+> source below are the **interim** set-up of the branch until T-6–T-9 land (`docs/platform-blueprint.md`).
+
 The device protocol does not change (§1 of `docs/contract/device-protocol.md`): MQTT 5 over TLS on **8883 with a
 per-gateway X.509 client certificate**, and the `caChainPem` a gateway receives at bootstrap is the **only** trust
 anchor it uses for the broker. The platform's original EMQX listener (`verify_none`, username/password, Let's
@@ -240,11 +267,14 @@ applies only to overwritten versions — never overwrite a published version, bu
 
 ## 6. Sizing
 
-Limits of getproperty's containers: 3.75 GB including ClamAV (1.25 GB) and the transient migrate. On **prod**
-(16 GB) with getpack (3.2 GB), the platform services (1.7 GB) and PostgreSQL (4 GB) there is headroom for page cache.
-On **uat** (8 GB) the limits over-commit (they are ceilings): set `POSTGRES_MEMORY_LIMIT=2g` for uat and watch
-`container_memory_working_set_bytes` in Grafana; if the box swaps, move ClamAV to one shared platform service first
-(getpack can use it too). The R1 load target (300 meters / 300 units, D-207) is a single-box workload.
+**Budget (locked decision 14, D-233)**: on the 16 GB prod box platform ≈ 6 GB, getpack 3.2 GB, **getproperty ≈ 1.8 GB**,
+getpop ≈ 1.5 GB, hard limits in compose. getproperty's line: api 512M · worker 512M · ingest 192M · web 384M · liff
+192M = 1,792 MB (migrate 512M one-shot). The branch's limits today total 3.75 GB including ClamAV (1.25 GB) and a
+Chromium worker (1 GB); they come down with T-1 (`pdf-render`), T-2 (shared ClamAV) and T-11 (limits + the 300-meter /
+300-unit load test re-run under them). On **uat** (8 GB) the limits over-commit (they are ceilings): set
+`POSTGRES_MEMORY_LIMIT=2g` for uat and watch `container_memory_working_set_bytes` in Grafana. The R1 load target
+(300 meters / 300 units, D-207) is a single-box workload; the telemetry volumes per KPI and the trigger for a DB box
+are in `docs/platform-blueprint.md` § Infrastructure asks (O-014).
 
 ## 7. CI/CD
 
