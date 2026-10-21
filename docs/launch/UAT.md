@@ -7,6 +7,11 @@ Write ✅ / ❌ + note in the right column; a ❌ needs a ticket and an accepted
 Preparation (platform admin): tenant onboarded, subscription on the pilot's plan with the pilot discount, pilot
 agreement recorded, utility tariff of the provider published (maker + checker), owner invited.
 
+Environment: the uat box of the Collective platform (D-230, `docs/deployment.md`) — it runs **Mon–Fri 08:00–20:00
+Asia/Bangkok** only; for a session outside those hours wake it first (collective-infra `platform/bin/wake.sh uat`)
+and keep the field engineer's gateway buffering meanwhile (store and forward). Before A1: LAUNCH-CHECKLIST §3 lines
+for uat ticked (secrets, migrate incl. the TimescaleDB step, EMQX mutual TLS, device host, client IP smoke check).
+
 ## A. Install day (Smart buildings; Starter skips A3–A6)
 
 | # | Who / where | Step | Expected | Result |

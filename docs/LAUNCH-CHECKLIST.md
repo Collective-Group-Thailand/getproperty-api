@@ -27,18 +27,24 @@ Legend: **B** = blocking · ☐ open · ☑ done (with date and link to the evid
 | B ☐ | Notification templates (TH) reviewed: invoice, receipt, reminder, deposit statement, OTP, platform invoice | Ops | template versions published |
 | ☐ | Building rules clauses in the contract template of the pilot (D-203 acknowledgement) | Pilot owner | lease template |
 
-## 3. Infrastructure (prod workspace)
+## 3. Infrastructure (Collective platform, D-230 — `docs/deployment.md`)
 
 | | Item | Owner | Evidence |
 |---|---|---|---|
-| B ☐ | `terraform validate` + `plan` reviewed, `apply` on prod (UNVERIFIED in the sandbox — run in CI with the real providers) | Platform engineer | CI run |
-| B ☐ | Cloud SQL PG 18 private, PITR on, backups 30 days; **restore drill done** (RUNBOOK §9) with measured RTO | Platform engineer | drill notes |
-| B ☐ | Secrets created and versioned (no value in state); runtime accounts least-privilege | Platform engineer | IAM review |
-| B ☐ | GCS adapter checked against the real bucket: presigned PUT, multipart (≥ 2 parts), signed GET, copy, delete — the GCS/Secret Manager adapters are **UNVERIFIED** until this passes | Platform engineer | smoke script output |
-| B ☐ | EMQX on GKE Autopilot with mTLS, gateway certificates issued, public MQTT address in the gateway config | IoT engineer | `kubectl` + gateway log |
-| B ☐ | Alerts wired (RUNBOOK §3) and a test alert received | Platform engineer | screenshot |
-| ☐ | Cloud Armor / rate limits on public services; `/docs` only from the allow-list | Platform engineer | policy |
-| ☐ | Egress NAT IP given to the bank(s) if they allow-list | Finance | email |
+| B ☐ | collective-infra branch `getproperty/r1-platform` reviewed, merged and tagged (`v1` moved or `v2`); `terraform plan/apply` of uat and prod through its CI (`terraform fmt -check` / `validate` were not run in the getproperty sandbox) | Platform engineer | collective-infra PR + CI run |
+| B ☐ | Secrets filled: `collective/<env>/getproperty/{app,web,liff,mqtt-tls}`, `getproperty_mqtt_password` in `platform/postgres` (no value in git, tfvars or GitHub) | Platform engineer | `fetch-secrets.sh getproperty` log (key counts only) |
+| B ☐ | `postgres/init/20-getproperty.sh` applied (roles `gp_*`, `getproperty_mqtt`, timescaledb); first `deploy-product.sh getproperty` ran the migrate service: core + app migrations and **the TimescaleDB step `applied`** (UNVERIFIED until then) | Platform engineer | deploy log |
+| B ☐ | pgBackRest full + WAL for the cluster; **restore drill done** (RUNBOOK §9) including the getproperty smoke tests, measured RTO | Platform engineer | drill report in `s3://…-backups/drills/` |
+| B ☐ | S3 adapter checked against the real bucket from the box (instance role): presigned PUT from a browser (CORS), multipart (≥ 2 parts), signed GET, copy, delete — same adapter as getpack's, which runs on uat already | Platform engineer | smoke output |
+| B ☐ | SES identity verified (DKIM), out of the sandbox, `SES_FROM_ADDRESS` sends an invitation | Platform engineer | message id |
+| B ☐ | EMQX 8883 with mutual TLS: broker certificate from the device CA (`pnpm device:broker-cert`), a test gateway connects, publishes its own topics, is **refused** on another gateway's topic; a client without a certificate is refused (UNVERIFIED until then) | IoT engineer | gateway log + EMQX log |
+| B ☐ | Device host: bootstrap without a certificate works, `/v1/device/*` with the gateway certificate works, without it 401 | IoT engineer | edge log |
+| B ☐ | Client IP smoke check (RUNBOOK §11) on uat and prod | Platform engineer | audit rows |
+| B ☐ | Alerts wired (RUNBOOK §3) and a test alert received; Grafana shows getproperty api/worker/ingest metrics and traces | Platform engineer | screenshot |
+| B ☐ | Memory on uat under load (`docs/deployment.md` §6): no OOM kill during a 300-unit cycle | Platform engineer | Grafana panel |
+| ☐ | Rate limits on public hosts; `/docs` only from the allow-list; `/metrics` 404 from outside | Platform engineer | curl output |
+| ☐ | The box's Elastic IP given to the bank(s) if they allow-list | Finance | email |
+| ☐ | Broker certificate renewal (397 days) and device CA expiry in the ops calendar | IoT engineer | calendar |
 
 ## 4. Product acceptance
 

@@ -980,7 +980,7 @@ SELECT create_hypertable('smart.device_health', by_range('time', INTERVAL '7 day
 SELECT add_compression_policy('smart.device_health', INTERVAL '7 days');
 SELECT add_retention_policy('smart.device_health', INTERVAL '6 months');
 ```
-Series endpoints (`?from&to&bucket=15m|1h|1d`) read only the aggregates; the API never selects from `smart.telemetry_point` (ADR-0001). If O-005 ends without TimescaleDB on GCP, the same tables become native range-partitioned tables with rollup jobs writing `telemetry_15m/1h/1d` as plain tables — the API contract does not change.
+Series endpoints (`?from&to&bucket=15m|1h|1d`) read only the aggregates; the API never selects from `smart.telemetry_point` (ADR-0001). If O-005 ends without TimescaleDB on GCP *(resolved: D-162 native partitions; on the Collective platform, D-230, the optional hypertable step is applied automatically)*, the same tables become native range-partitioned tables with rollup jobs writing `telemetry_15m/1h/1d` as plain tables — the API contract does not change.
 
 ### 4.4 Gapless document numbering (D-050, D-146)
 ```sql
@@ -1038,7 +1038,7 @@ CREATE POLICY p_rls_read ON platform.utility_tariff_version FOR SELECT USING (tr
 **Operator change** (PM company replaced, juristic person takes over from the developer): one transaction closes the current `core.building_operator_period`, opens the next, updates `building.operator_tenant_id` (and `owner_tenant_id` when the juristic is formed), revokes/creates grants (`reason = pm_contract | juristic_handover | warranty`), writes `building.operator_changed` to the audit log and the outbox. Nothing is copied: history stays on the building's rows, and RLS visibility follows the new operator immediately.
 
 ### 4.7 PII encryption with a per-tenant key (blueprint rule 5, D-025, D-148)
-- **Envelope encryption.** Each tenant has an active data-encryption key (`core.tenant_data_key`): a random 256-bit DEK wrapped by a KMS key-encryption key (Cloud KMS on GCP, D-160; the secrets port in dev). The app unwraps DEKs on demand and caches them in memory for minutes; DEKs never reach logs or the database in clear.
+- **Envelope encryption.** Each tenant has an active data-encryption key (`core.tenant_data_key`): a random 256-bit DEK wrapped by a key-encryption key (~~Cloud KMS on GCP, D-160~~ — D-230: AWS KMS on the Collective platform when a KMS adapter lands behind `KEY_WRAP`; until then `LocalKeyWrap` with `FIELD_ENCRYPTION_KEY` from Secrets Manager; the secrets port in dev). The app unwraps DEKs on demand and caches them in memory for minutes; DEKs never reach logs or the database in clear.
 - **Ciphertext format** (`*_enc bytea`): `version(1) || kid(2) || iv(12) || ciphertext || tag(16)`, AES-256-GCM, AAD = `tenant_id || table || column || row id` (a ciphertext copied to another row or tenant does not decrypt). Columns: `core.party.id_number_enc`, `core.party.emergency_contact.phoneEnc`, `platform.tenant_bank_account.account_no_enc / promptpay_id_enc / provider_merchant_ref_enc`, `platform.data_subject_request.requester_contact_enc`. Platform secrets (`platform.user_credential.totp_secret_enc`) use the platform key (tenant-less).
 - **Lookup hashes** (`*_hash bytea`) = HMAC-SHA256(`FIELD_HASH_KEY`, `tenant_id || normalised value`) for equality search within a tenant (`phone_hash` on users is tenant-less: HMAC of the phone alone, for login); never reversible; indexed. Cross-tenant identity linking uses LINE ids (`identity.party.linked`), never ID numbers.
 - **Access logging.** Every decrypt of an ID number or bank account writes `platform.audit_log` `pii.decrypted` (who, which party/account, purpose); list views use masked columns (`account_no_masked`) to avoid decrypting.
@@ -1391,13 +1391,13 @@ erDiagram
 | D-157 | Prepaid/cut-off out of scope; breakers modelled as assets | `core.asset_category = breaker`, `smart.device_kind = breaker`; no command type | — |
 | D-158 | สคบ. scope ≥ 3 units | setting `tenant.subject_to_ocpb_2568` (default true for apartment/landlord); legal-reference §1 | — |
 | D-159 | Workflow engine | `ops.workflow_definition/instance/event/timer`; `workflow_instance_id` on deposit settlement, service request, work order, dunning | — |
-| D-160 | GCP deployment | no table; KMS key refs in `core.tenant_data_key.kek_ref`; storage keys in `core.document.storage_bucket` | ⚖ O-005 TimescaleDB on Cloud SQL |
+| ~~D-160~~ D-230 | ~~GCP~~ Collective AWS platform deployment | no table; KMS key refs in `core.tenant_data_key.kek_ref`; storage keys in `core.document.storage_bucket` (S3 bucket) | TimescaleDB available (optional step, D-162) |
 | D-161 | Admin: onboarding, IoT inventory, support, AI usage cost | `platform.ai_usage_record`, `platform.price_plan_version.included_allowances`, `platform_invoice_line.kind = ai_overage`; inventory = `smart.device.tenant_id null` | allowance values Proposed |
 | O-001 | Payment provider | `platform.payment_provider` enum `kbank\|scb\|opn\|none`; `tenant_bank_account.payment_provider` default `none` | ⚖ flags decide |
 | O-002 | สคบ. values | settings `deposit.*`, `late_fee.enabled`, `estimate_policy`; `platform.compliance_rule.status` | ⚖ Proposed values; rules pending |
 | O-003 | Pilot meter/gateway models | `smart.device.model/driver`, `smart.meter_channel.bus_type` | ⚖ free text |
 | O-004 | Pilot VAT | `core.tenant.vat_registered`, `ops.invoice.vat_amount`, `ops.tax_invoice`, `export_kind = vat_pp30` | ⚖ default false |
-| O-005 | TimescaleDB on GCP | `smart.telemetry_point`, `smart.device_health`, `smart.access_event`, `platform.analytics_fact`, continuous aggregates | ⚖ fallback = native partitions + rollup tables (§4.3) |
+| ~~O-005~~ | TimescaleDB on GCP — resolved by D-162 / D-230 | `smart.telemetry_point`, `smart.device_health`, `smart.access_event`, `platform.analytics_fact`, continuous aggregates | ⚖ fallback = native partitions + rollup tables (§4.3) |
 
 Every D-### and O-### in `decisions.md` appears above; D-003, D-100, D-155 and D-160 have no tables of their own and say so.
 
