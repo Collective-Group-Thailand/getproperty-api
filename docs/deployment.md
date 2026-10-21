@@ -101,7 +101,9 @@ under `collective/<env>/getproperty/…` — the only path the instance role may
 | `REDIS_URL` | `redis://:<valkey password>@valkey:6379/2` (getproperty's logical DB; getpack uses its own) |
 | `MQTT_USERNAME`, `MQTT_PASSWORD` | `getproperty-api`, random hex — EMQX's internal listener (the platform hook creates the user) |
 | `PUBLIC_API_BASE_URL`, `PUBLIC_WEB_APP_URL`, `PUBLIC_STAFF_APP_URL`, `PUBLIC_RESIDENT_APP_URL` | `https://<API_HOST>`, `https://<OWNER_HOST>`, `https://<STAFF_HOST>`, `https://<LIFF_HOST>` |
-| `MQTT_PUBLIC_URL`, `MQTT_PUBLIC_WS_URL` | `mqtts://<MQTT_HOST>:8883`; WSS: see §5 (open) |
+| `MQTT_PUBLIC_URL` | `mqtts://<MQTT_HOST>:8883` |
+| `MQTT_PUBLIC_WS_URL` | **unset** (do not add the key): the bootstrap then omits `mqtt.wsUrl` — no WSS endpoint verifies gateway certificates while O-012 is open (§5, D-231) |
+| `DEVICE_PUBLIC_BASE_URL` | **empty / unset**: device URLs (`ota_apply.manifestUrl`) are relative `/v1/device/…` paths the agent resolves against its device host; `https://<DEVICE_HOST>` is equivalent. Never `https://<API_HOST>` (D-231) |
 | `FIELD_ENCRYPTION_KEY`, `FIELD_HASH_KEY` | 32 bytes base64; ≥ 32 characters |
 | `AUTH_JWT_PRIVATE_KEY`, `AUTH_JWT_KID`, `AUTH_JWT_PREVIOUS_KEYS` | Ed25519 PKCS#8 (base64), key id, rotation set |
 | `DEVICE_CA_CERT`, `DEVICE_CA_KEY` | the platform device CA (EC P-256, base64 PEM) — also issues the broker certificate (§5) |
@@ -189,9 +191,39 @@ forwards only its SHA-256 in `X-Client-Cert-Sha256`; the API runs `DEVICE_MTLS_S
 host strips that header, and the API container is not reachable from outside the docker network.
 
 **Open (O-012)**: the WSS fallback on 443 for buildings that block 8883 (device protocol §1). Caddy terminates TLS for
-`/mqtt` on the platform host, so EMQX cannot see the gateway certificate there. R1 gateways use 8883; the options
+`/mqtt` on the platform host, so EMQX cannot see the gateway certificate there. Until it is decided
+`MQTT_PUBLIC_WS_URL` stays **unset** and the bootstrap answer carries no `mqtt.wsUrl` (D-231, edge CR-013; the agent
+also ignores a WSS URL unless `GP_MQTT_WS_FALLBACK=on`). R1 gateways use 8883; the options
 (Caddy `client_auth` on an `mqtt-ws` host + EMQX `peer_cert_as_username` from a proxy header, or a TLS passthrough
 layer4 route) need a platform decision before a building without 8883 is onboarded.
+
+## 5a. OTA releases (D-231)
+
+Gateways reach only `DEVICE_HOST:443` and `MQTT_HOST:8883`, so the agent binary is served **by the API on the
+device host** from the private product bucket — no public bucket, CDN or presigned URL:
+
+| | |
+|---|---|
+| Object | `s3://collective-<env>-getproperty-assets/releases/edge/<version>/getproperty-edge-<version>-linux-<arch>` (`S3_KEY_PREFIX` is empty on the platform; versioned, SSE-S3) |
+| Manifest `artifact.url` | `https://<DEVICE_HOST>/v1/device/ota/artifacts/<version>/<file>` — getproperty-edge `pnpm image --base-url https://<DEVICE_HOST>/v1/device/ota/artifacts` |
+| Served by | `GET /v1/device/ota/artifacts/{version}/{file}` (device JWT + the gateway's client certificate; only a registered, non-deprecated release of its architecture; `Content-Length`, `ETag` = sha256) |
+| Caddy | `DEVICE_HOST` route `/v1/device/ota/artifacts/*`: GET/HEAD only, upstream `read_timeout 10m` (slow building links) |
+| Who writes | a release engineer whose IAM identity has `collective-<env>-getproperty-release-publisher` (put/get/list on `releases/*`). The instance role **reads** `releases/*` only: put/delete there are explicitly denied, so a compromised API cannot replace a binary (it would also fail the ed25519 signature and sha256 checks on the gateway) |
+
+Publishing a release:
+
+```bash
+# getproperty-edge, on the release machine (signing key never leaves it)
+OTA_SIGNING_KEY_FILE=… OTA_KEY_ID=gp-ota-2026 pnpm image --arch arm64 --node ./node-arm64/bin/node \
+  --base-url https://device.getproperty.co/v1/device/ota/artifacts --channel stable
+aws s3 cp dist/release/0.4.0/getproperty-edge-0.4.0-linux-arm64 \
+  s3://collective-prod-getproperty-assets/releases/edge/0.4.0/ --content-type application/octet-stream
+# then the platform admin registers dist/release/0.4.0/manifest-arm64.json (POST /v1/admin/ota/releases): the API
+# refuses it (422 ota.artifact_missing) until the object exists with the signed size; then rollouts ring by ring.
+```
+
+Deprecating a release stops its download at once; the object stays (bucket versioning, 30-day noncurrent expiry
+applies only to overwritten versions — never overwrite a published version, bump it).
 
 ## 6. Sizing
 
@@ -241,8 +273,8 @@ jobs:
 
 `component: web` makes the box record `WEB_IMAGE_TAG` and roll back only that image; until a front end's first
 deploy the box runs its moving `:uat` / `:prod` tag. `promote.yml` (manual uat → prod) re-tags all three images.
-- **getproperty-edge** is not deployed by the platform (it runs on gateways); its `apiBaseUrl` default and docs
-  should name `DEVICE_HOST` and the MQTT host.
+- **getproperty-edge** is not deployed by the platform (it runs on gateways): its `GP_API_URL` default is the device
+  host; releases are published as in §5a.
 
 ## 8. Local development
 
