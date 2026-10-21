@@ -14,6 +14,7 @@ export const AUDIT_ACTIONS = [
   'auth.login_failed',
   'auth.logout',
   'auth.refresh_reuse_detected',
+  'auth.refresh_grace_reused',
   'auth.permission_denied',
   'auth.password_changed',
   'auth.totp_enabled',
