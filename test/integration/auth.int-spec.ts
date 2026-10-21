@@ -65,6 +65,7 @@ describe('auth (B1.3 acceptance, real PostgreSQL)', () => {
       .send({ refreshToken: first.refreshToken })
       .expect(200);
     expect(second.body.refreshToken).not.toBe(first.refreshToken);
+    t.clock.advance(31_000); // past the rotation grace window (D-229)
     const reuse = await t.http
       .post('/v1/auth/refresh')
       .send({ refreshToken: first.refreshToken })
@@ -77,6 +78,71 @@ describe('auth (B1.3 acceptance, real PostgreSQL)', () => {
       `SELECT count(*)::int AS n FROM platform.audit_log WHERE action = 'auth.refresh_reuse_detected'`,
     );
     expect(rows[0].n).toBe(1);
+  });
+
+  it('D-229: two concurrent refreshes with the same token both get the same successor; the family survives', async () => {
+    const first = await operatorLogin(t);
+    const [a, b] = await Promise.all([
+      t.http.post('/v1/auth/refresh').send({ refreshToken: first.refreshToken }),
+      t.http.post('/v1/auth/refresh').send({ refreshToken: first.refreshToken }),
+    ]);
+    expect([a.status, b.status]).toEqual([200, 200]);
+    expect(a.body.refreshToken).toBe(b.body.refreshToken);
+    expect(a.body.refreshToken).not.toBe(first.refreshToken);
+    // both access tokens work and the successor keeps rotating normally
+    await t.http.get('/v1/owner/me').set('Authorization', `Bearer ${a.body.accessToken}`).expect(200);
+    await t.http.get('/v1/owner/me').set('Authorization', `Bearer ${b.body.accessToken}`).expect(200);
+    const next = await t.http
+      .post('/v1/auth/refresh')
+      .send({ refreshToken: a.body.refreshToken })
+      .expect(200);
+    await t.http.get('/v1/owner/me').set('Authorization', `Bearer ${next.body.accessToken}`).expect(200);
+    const { rows } = await db.admin.query(
+      `SELECT count(*)::int AS n FROM platform.auth_session s
+        WHERE s.family_id = (SELECT family_id FROM platform.auth_session WHERE refresh_token_hash = sha256(convert_to($1, 'UTF8')))
+          AND s.revoked_at IS NOT NULL`,
+      [first.refreshToken],
+    );
+    expect(rows[0].n).toBe(0);
+  });
+
+  it('D-229: the grace covers only the immediately previous token while its successor is unused', async () => {
+    const first = await operatorLogin(t);
+    const second = await t.http
+      .post('/v1/auth/refresh')
+      .send({ refreshToken: first.refreshToken })
+      .expect(200);
+    const third = await t.http
+      .post('/v1/auth/refresh')
+      .send({ refreshToken: second.body.refreshToken })
+      .expect(200);
+    // `first`'s successor (`second`) is already rotated → reuse, the family dies although we are inside 30 s
+    const reuse = await t.http
+      .post('/v1/auth/refresh')
+      .send({ refreshToken: first.refreshToken })
+      .expect(401);
+    expect(reuse.body.code).toBe('auth.refresh_reused');
+    await t.http.post('/v1/auth/refresh').send({ refreshToken: third.body.refreshToken }).expect(401);
+  });
+
+  it('D-229: resident audience — a replay within the window answers the same pair, after it the family is revoked', async () => {
+    const idToken = fakeLineIdToken({ sub: 'U00000000000000000000000000000077', name: 'ผู้เช่า เกรซ' });
+    const login = await t.http.post('/v1/auth/resident/line').send({ idToken }).expect(200);
+    const a = await t.http
+      .post('/v1/auth/refresh')
+      .send({ refreshToken: login.body.refreshToken })
+      .expect(200);
+    t.clock.advance(10_000);
+    const b = await t.http
+      .post('/v1/auth/refresh')
+      .send({ refreshToken: login.body.refreshToken })
+      .expect(200);
+    expect(b.body.refreshToken).toBe(a.body.refreshToken);
+    expect(b.body.subject.audience).toBe('resident');
+    await t.http.get('/v1/resident/me').set('Authorization', `Bearer ${b.body.accessToken}`).expect(200);
+    t.clock.advance(21_000);
+    await t.http.post('/v1/auth/refresh').send({ refreshToken: login.body.refreshToken }).expect(401);
+    await t.http.post('/v1/auth/refresh').send({ refreshToken: a.body.refreshToken }).expect(401);
   });
 
   it('logout revokes the session', async () => {

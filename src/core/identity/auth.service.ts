@@ -602,7 +602,10 @@ export class AuthService {
 
   // ---------------------------------------------------------------------------------------- refresh, logout
 
-  /** `POST /v1/auth/refresh`: single-use rotation; reuse revokes the family (401 `auth.refresh_reused`). */
+  /**
+   * `POST /v1/auth/refresh`: single-use rotation; reuse revokes the family (401 `auth.refresh_reused`), except the
+   * immediately previous token again within the grace window (D-229), which answers the same successor.
+   */
   async refresh(refreshToken: string): Promise<TokenPair> {
     const outcome = await this.db.platform(async (tx) => {
       const claim = await this.sessions.claim(tx, refreshToken);
@@ -624,12 +627,30 @@ export class AuthService {
         await this.sessions.revokeFamily(tx, previous.familyId, 'admin');
         return { error: 'auth.refresh_invalid' as const, familyId: previous.familyId };
       }
-      const next = await this.sessions.rotate(tx, previous, subject.scopes);
+      // D-229: a concurrent refresh with the same token inside the grace window gets the same successor (already
+      // issued, scopes as rotated); a fresh access token of the family goes with it. Nothing is rotated again.
+      const next =
+        claim.kind === 'grace'
+          ? { session: claim.session, refreshToken: claim.refreshToken }
+          : await this.sessions.rotate(tx, previous, subject.scopes, refreshToken);
+      const scopes = claim.kind === 'grace' ? claim.session.scopes : subject.scopes;
+      if (claim.kind === 'grace') {
+        await tx.authSession.update({
+          where: { id: claim.session.id },
+          data: { lastUsedAt: this.clock.now() },
+        });
+        await this.audit.record(tx, {
+          action: 'auth.refresh_grace_reused',
+          subjectType: previous.deviceId ? 'smart.device' : 'core.user_account',
+          subjectId: previous.deviceId ?? previous.userId,
+          metadata: { sessionId: previous.familyId },
+        });
+      }
       const access = this.tokens.issue({
         sub: subject.id,
         aud: subject.audience,
         sid: previous.familyId,
-        scopes: subject.scopes,
+        scopes,
         ...(subject.tenantId ? { tid: subject.tenantId } : {}),
         ...(subject.buildingId ? { bid: subject.buildingId } : {}),
       });

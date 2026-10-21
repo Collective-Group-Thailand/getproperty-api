@@ -245,12 +245,26 @@ export class EnvironmentVariables {
   @Validate(IsCidrList)
   DOCS_ALLOWED_CIDRS?: string;
 
-  /** Number of trusted reverse-proxy hops in front of the API (Express `trust proxy`); 0 = none. */
+  /**
+   * Number of trusted reverse-proxy hops in front of the API (Express `trust proxy`, counted from the right of
+   * `X-Forwarded-For`); 0 = none. Cloud Run (with or without the external HTTPS load balancer in front): 1 / 2 —
+   * RUNBOOK §7 (D-229).
+   */
   @Transform(toNumber)
   @IsInt()
   @Min(0)
   @Max(5)
   TRUST_PROXY = 0;
+
+  /**
+   * Egress addresses of our own BFFs (getproperty-web, getproperty-liff; their Cloud NAT IPs), comma-separated
+   * IPs/CIDRs: a hop from one of them is trusted too, so the end user's address the BFF forwards is `req.ip` (per-IP
+   * auth throttling, e-sign evidence). Empty = none (D-229).
+   */
+  @IsOptional()
+  @IsString()
+  @Validate(IsCidrList)
+  TRUSTED_PROXY_CIDRS?: string;
 
   @Transform(toNumber)
   @IsInt()
@@ -355,6 +369,17 @@ export class EnvironmentVariables {
   @Min(1)
   @Max(180)
   REFRESH_TOKEN_TTL_DAYS = 30;
+
+  /**
+   * Grace window of refresh-token rotation (review LIFF M3, D-229): presenting the immediately previous refresh token
+   * again within this many seconds of its rotation answers the same successor refresh token (and a fresh access token)
+   * instead of revoking the family — two BFF instances refreshing at once must not sign the user out. 0 = off.
+   */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(0)
+  @Max(60)
+  REFRESH_REUSE_GRACE_SECONDS = 30;
 
   /** Refresh token family lifetime for platform staff (shorter: TOTP-protected admin surface). */
   @Transform(toNumber)
