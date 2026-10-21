@@ -9,7 +9,7 @@ import { seconds, Throttle } from '@nestjs/throttler';
 import { SubjectType, TOKEN_PAIR_EXAMPLE, TokenAudience } from '../shared/auth.dto';
 import { AUTH_RATE_LIMIT, iso } from '../shared/mappers';
 import { ApiSurface, SURFACES } from '../surfaces';
-import { DeviceBootstrapDto, DeviceBootstrapRequestDto, MqttAclAction } from './device.dto';
+import { DeviceBootstrapDto, DeviceBootstrapRequestDto, MqttAclAction, MqttPasswordMode } from './device.dto';
 
 @ApiTags('device.bootstrap')
 @ApiSurface(SURFACES.device)
@@ -25,8 +25,8 @@ export class DeviceBootstrapController {
     id: 'device.bootstrap.create',
     summary: 'Bootstrap a gateway: certificate, device JWT and broker ACL',
     description:
-      'The gateway sends the one-time provisioning code from its QR (the serial is optional), a CSR (`CN=gw-provisioning` — the CA sets `CN=gw-<gatewayId>`), its agent version and hardware; the platform CA signs a client certificate (12 months, clientAuth), the EMQX ACL rows are written (publish `gp/v1/<id>/+` and `…/cmd/ack`, subscribe `…/config` and `…/cmd`), and a device session starts (JWT `aud=device` + refresh token, also as `deviceToken`). A second bootstrap of the same gateway revokes the previous certificate, ACL and sessions. Not idempotent by key: the code is single-use (second use → 401 `device.provisioning_code_invalid`); a lost response needs a new code (D-130, D-165, device protocol §1).',
-    implements: ['D-033', 'D-130', 'ADR-0003'],
+      'The gateway sends the one-time provisioning code from its QR (the serial is optional), a CSR (`CN=gw-provisioning` — the CA sets `CN=gw-<gatewayId>`), its agent version and hardware; the platform CA signs a client certificate (12 months, clientAuth), the broker ACL rows are written (publish only `gp/v1/<id>/telemetry`, `…/health`, `…/events`, `…/cmd/ack`; subscribe `…/config` and `…/cmd` — answered by the API’s EMQX HTTP authz, D-235), the MQTT password is the device JWT (protocol 1.2), `mqtt.wsUrl` appears only for a gateway whose WebSocket fallback the platform admin enabled (D-239), and a device session starts (JWT `aud=device` + refresh token, also as `deviceToken`). A second bootstrap of the same gateway revokes the previous certificate, ACL and sessions. Not idempotent by key: the code is single-use (second use → 401 `device.provisioning_code_invalid`); a lost response needs a new code (D-130, D-165, device protocol §1).',
+    implements: ['D-033', 'D-130', 'D-235', 'D-239', 'ADR-0003'],
   })
   @ApiJsonBody(DeviceBootstrapRequestDto, {
     provisioningCode: 'ABCD-EFGH-JKLM-NPQR',
@@ -65,8 +65,11 @@ export class DeviceBootstrapController {
         url: 'mqtts://mqtt.getproperty.invalid:8883',
         clientId: `gw-${FAKE.gatewayId}`,
         username: `gw-${FAKE.gatewayId}`,
+        password: MqttPasswordMode.DeviceJwt,
         acl: [
-          { action: MqttAclAction.Publish, topic: `gp/v1/${FAKE.gatewayId}/+` },
+          { action: MqttAclAction.Publish, topic: `gp/v1/${FAKE.gatewayId}/telemetry` },
+          { action: MqttAclAction.Publish, topic: `gp/v1/${FAKE.gatewayId}/health` },
+          { action: MqttAclAction.Publish, topic: `gp/v1/${FAKE.gatewayId}/events` },
           { action: MqttAclAction.Publish, topic: `gp/v1/${FAKE.gatewayId}/cmd/ack` },
           { action: MqttAclAction.Subscribe, topic: `gp/v1/${FAKE.gatewayId}/config` },
           { action: MqttAclAction.Subscribe, topic: `gp/v1/${FAKE.gatewayId}/cmd` },
@@ -107,6 +110,7 @@ export class DeviceBootstrapController {
       certificateNotAfter: iso(r.certificateNotAfter),
       mqtt: {
         ...r.mqtt,
+        password: MqttPasswordMode.DeviceJwt,
         acl: r.mqtt.acl.map((a) => ({ action: a.action as MqttAclAction, topic: a.topic })),
       },
     };

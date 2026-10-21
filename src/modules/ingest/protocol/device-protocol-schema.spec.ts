@@ -47,6 +47,23 @@ describe('device-protocol.json generation', () => {
     );
   });
 
+  it('protocol 1.2 publishes the MQTT identity and the exact gateway ACL (D-235, T-9)', () => {
+    const schema = buildDeviceProtocolSchema('0.0.0-test') as unknown as {
+      'x-protocol-version': string;
+      'x-acl': { publish: string[] };
+      'x-mqtt-auth': { transports: Record<string, unknown> };
+    };
+    expect(schema['x-protocol-version']).toBe('1.2');
+    expect(schema['x-acl'].publish).toEqual([
+      'gp/v1/<gatewayId>/telemetry',
+      'gp/v1/<gatewayId>/health',
+      'gp/v1/<gatewayId>/events',
+      'gp/v1/<gatewayId>/cmd/ack',
+    ]);
+    expect(schema['x-acl'].publish.some((t) => t.endsWith('/+'))).toBe(false);
+    expect(Object.keys(schema['x-mqtt-auth'].transports)).toEqual(['mtls', 'ws']);
+  });
+
   it('validates the documented payload examples with a JSON Schema validator (edge-side behaviour)', () => {
     const ajv = new Ajv2020({ strict: false, allErrors: true });
     addFormats(ajv);

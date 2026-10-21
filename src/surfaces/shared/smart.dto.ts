@@ -295,6 +295,13 @@ export class FleetDeviceDto {
   @ApiProperty({ enum: OtaRingName, enumName: 'OtaRing', example: OtaRingName.All })
   otaRing!: OtaRingName;
 
+  @ApiProperty({
+    example: false,
+    description:
+      'Gateways: the WebSocket fallback (EMQX ws behind Caddy, device JWT only, no client certificate) is enabled for this gateway (D-239). Off by default.',
+  })
+  mqttWsFallback!: boolean;
+
   @ApiProperty({ type: String, format: 'date-time', nullable: true, example: FAKE.dateTime })
   lastSeenAt!: string | null;
 
@@ -620,6 +627,20 @@ export class DeviceAssignDto {
   @IsOptional()
   @IsEnum(OtaRingName)
   otaRing?: OtaRingName;
+}
+
+export class DeviceMqttTransportDto {
+  @ApiProperty({
+    example: true,
+    description: 'true = the gateway may use the WebSocket fallback with its device JWT only (D-239).',
+  })
+  @IsBoolean()
+  wsFallback!: boolean;
+
+  @ApiProperty({ example: 'building firewall blocks outbound 8883 (ticket INC-2026-021)' })
+  @IsString()
+  @Length(3, 500)
+  reason!: string;
 }
 
 export class DeviceRingDto {

@@ -90,8 +90,13 @@ export class MqttAclEntryDto {
   @ApiProperty({ enum: MqttAclAction, enumName: 'MqttAclAction', example: MqttAclAction.Publish })
   action!: MqttAclAction;
 
-  @ApiProperty({ example: `gp/v1/${FAKE.gatewayId}/+` })
+  @ApiProperty({ example: `gp/v1/${FAKE.gatewayId}/telemetry` })
   topic!: string;
+}
+
+/** What the gateway sends as the MQTT password (device protocol 1.2, D-235). */
+export enum MqttPasswordMode {
+  DeviceJwt = 'device_jwt',
 }
 
 export class MqttConnectionDto {
@@ -101,7 +106,7 @@ export class MqttConnectionDto {
   @ApiPropertyOptional({
     example: 'wss://mqtt.getproperty.invalid/mqtt',
     description:
-      'WebSocket fallback for networks that block 8883 (device protocol §1). **Omitted** unless the platform enables it (`MQTT_PUBLIC_WS_URL`): while O-012 is open the Collective platform has no WSS endpoint that verifies the gateway certificate (D-231, edge CR-013).',
+      'WebSocket fallback for buildings whose network blocks 8883 (device protocol §1, D-239 — O-012 resolved): EMQX ws 8083 behind Caddy, authenticated by the device JWT **alone** (no client certificate on that path). **Omitted** unless the platform admin enabled the fallback for this gateway (`POST /v1/admin/devices/{deviceId}/actions/set-mqtt-transport`) and the platform publishes it (`MQTT_PUBLIC_WS_URL`); off by default (D-231, edge CR-013).',
   })
   wsUrl?: string;
 
@@ -110,9 +115,18 @@ export class MqttConnectionDto {
 
   @ApiProperty({
     example: `gw-${FAKE.gatewayId}`,
-    description: 'Broker username = certificate CN (EMQX ACL key).',
+    description: 'Broker username = client id = certificate CN (`gw-<gatewayId>`).',
   })
   username!: string;
+
+  @ApiProperty({
+    enum: MqttPasswordMode,
+    enumName: 'MqttPasswordMode',
+    example: MqttPasswordMode.DeviceJwt,
+    description:
+      'Device protocol 1.2 (D-235): the MQTT password is a fresh device JWT (`POST /v1/device/token`, ≤ 1 h) fetched before every (re)connect. Required on the WebSocket fallback; on 8883 required while the platform setting `mqtt.authn.require_device_jwt` is on (default), otherwise the certificate alone is accepted.',
+  })
+  password!: MqttPasswordMode;
 
   @ApiProperty({ type: () => [MqttAclEntryDto] })
   acl!: MqttAclEntryDto[];

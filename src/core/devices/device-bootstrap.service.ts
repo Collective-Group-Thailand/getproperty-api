@@ -19,11 +19,17 @@ export interface MqttAclEntry {
   topic: string;
 }
 
-/** Device protocol §1: publish only to gp/v1/<id>/+ (and the two-level cmd/ack), subscribe only to config and cmd. */
+/**
+ * Device protocol §1 (1.2, D-235, T-9): a gateway publishes only its four explicit topics (`telemetry`, `health` —
+ * also its LWT —, `events`, `cmd/ack`) and subscribes only to `config` and `cmd`. The rows land in `smart.mqtt_acl`,
+ * which the EMQX HTTP authz endpoint answers from.
+ */
 export function gatewayAcl(deviceId: string): MqttAclEntry[] {
   const base = `gp/v1/${deviceId}`;
   return [
-    { action: 'publish', topic: `${base}/+` },
+    { action: 'publish', topic: `${base}/telemetry` },
+    { action: 'publish', topic: `${base}/health` },
+    { action: 'publish', topic: `${base}/events` },
     { action: 'publish', topic: `${base}/cmd/ack` },
     { action: 'subscribe', topic: `${base}/config` },
     { action: 'subscribe', topic: `${base}/cmd` },
@@ -39,8 +45,20 @@ export interface BootstrapResult extends TokenPair {
   caCertificatePem: string;
   certificateSerial: string;
   certificateNotAfter: Date;
-  /** `wsUrl` only when `MQTT_PUBLIC_WS_URL` is set (D-231: omitted while O-012 is open, edge CR-013). */
-  mqtt: { url: string; wsUrl?: string; clientId: string; username: string; acl: MqttAclEntry[] };
+  /**
+   * `wsUrl` only when `MQTT_PUBLIC_WS_URL` is set **and** the platform admin enabled the gateway's WebSocket fallback
+   * (D-239, O-012 resolved; edge CR-013). `password` (protocol 1.2, D-235): what the gateway sends as the MQTT
+   * password — `device_jwt` = a fresh `POST /v1/device/token` before every (re)connect; required on ws, and on mTLS
+   * while the setting `mqtt.authn.require_device_jwt` is on.
+   */
+  mqtt: {
+    url: string;
+    wsUrl?: string;
+    clientId: string;
+    username: string;
+    password: 'device_jwt';
+    acl: MqttAclEntry[];
+  };
 }
 
 /**
@@ -177,7 +195,7 @@ export class DeviceBootstrapService {
           arch: input.hardware?.arch ?? null,
         },
       });
-      const wsUrl = this.config.get('MQTT_PUBLIC_WS_URL');
+      const wsUrl = device.mqttWsFallback ? this.config.get('MQTT_PUBLIC_WS_URL') : undefined;
       return {
         invalid: false as const,
         value: {
@@ -195,6 +213,7 @@ export class DeviceBootstrapService {
             ...(wsUrl ? { wsUrl } : {}),
             clientId,
             username: clientId,
+            password: 'device_jwt' as const,
             acl,
           },
         } satisfies BootstrapResult,

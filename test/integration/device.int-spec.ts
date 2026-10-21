@@ -31,7 +31,7 @@ describe('device bootstrap (B1.3 acceptance, real PostgreSQL)', () => {
 
   beforeAll(async () => {
     db = await createIntDatabase({ prefix: 'gp_device' });
-    // MQTT_PUBLIC_WS_URL is the explicit switch that sends `mqtt.wsUrl` (D-231; unset → omitted, see contract-requests)
+    // MQTT_PUBLIC_WS_URL is set, but `mqtt.wsUrl` goes only to a gateway whose WebSocket fallback is on (D-239)
     t = await createIntApp(db, {
       OTP_MAX_PER_HOUR: '20',
       MQTT_PUBLIC_WS_URL: 'wss://mqtt-ws.test.invalid/mqtt',
@@ -84,8 +84,9 @@ describe('device bootstrap (B1.3 acceptance, real PostgreSQL)', () => {
       deviceId,
       tenantId: DEV.tenantId,
       buildingId: DEV.buildingId,
-      mqtt: { username: expect.any(String), wsUrl: 'wss://mqtt-ws.test.invalid/mqtt' },
+      mqtt: { username: expect.any(String), password: 'device_jwt' },
     });
+    expect(res.body.mqtt.wsUrl).toBeUndefined();
     const cert = new x509.X509Certificate(res.body.certificatePem);
     const ca = new x509.X509Certificate(res.body.caCertificatePem);
     expect(cert.subject).toBe(`CN=gw-${deviceId}`);
@@ -103,17 +104,8 @@ describe('device bootstrap (B1.3 acceptance, real PostgreSQL)', () => {
           r.topic.startsWith('gp/v1/'),
       ),
     ).toBe(true);
-    // gp_mqtt (the EMQX authorizer login) reads the ACL rows
-    await db.admin.query('BEGIN');
-    try {
-      await db.admin.query('SET LOCAL ROLE gp_mqtt');
-      const seen = await db.admin.query(`SELECT count(*)::int AS n FROM smart.mqtt_acl WHERE username = $1`, [
-        res.body.mqtt.username,
-      ]);
-      expect(seen.rows[0].n).toBe(acl.rows.length);
-    } finally {
-      await db.admin.query('ROLLBACK');
-    }
+    // T-9: four explicit publish topics; no wildcard that would also match config / cmd (D-235)
+    expect((acl.rows as { topic: string }[]).some((r) => r.topic.endsWith('/+'))).toBe(false);
     const certRow = await db.admin.query(
       `SELECT serial_number AS serial FROM smart.device_certificate WHERE device_id = $1`,
       [deviceId],

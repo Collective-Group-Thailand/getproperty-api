@@ -87,6 +87,8 @@ model Device {
   lastSeq              BigInt?         @map("last_seq")
   configAppliedVersion Int?            @map("config_applied_version")
   otaRing              OtaRing         @default(all) @map("ota_ring")
+  /// D-239 (O-012): ws 8083 behind Caddy with the device JWT only; off by default.
+  mqttWsFallback       Boolean         @default(false) @map("mqtt_ws_fallback")
   arch                 String?
   busConfig            Json            @default("[]") @map("bus_config")
   retiredAt            DateTime?       @map("retired_at") @db.Timestamptz(6)
@@ -178,7 +180,7 @@ model ProvisioningCode {
   @@schema("smart")
 }
 
-/// EMQX PostgreSQL authorization source (device protocol §1); read by the broker as gp_mqtt.
+/// Broker ACL of each gateway: the source of truth of the API's EMQX HTTP authz endpoint (D-235).
 model MqttAcl {
   id         String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
   deviceId   String         @map("device_id") @db.Uuid
