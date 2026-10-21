@@ -39,7 +39,8 @@ export interface BootstrapResult extends TokenPair {
   caCertificatePem: string;
   certificateSerial: string;
   certificateNotAfter: Date;
-  mqtt: { url: string; wsUrl: string; clientId: string; username: string; acl: MqttAclEntry[] };
+  /** `wsUrl` only when `MQTT_PUBLIC_WS_URL` is set (D-231: omitted while O-012 is open, edge CR-013). */
+  mqtt: { url: string; wsUrl?: string; clientId: string; username: string; acl: MqttAclEntry[] };
 }
 
 /**
@@ -176,6 +177,7 @@ export class DeviceBootstrapService {
           arch: input.hardware?.arch ?? null,
         },
       });
+      const wsUrl = this.config.get('MQTT_PUBLIC_WS_URL');
       return {
         invalid: false as const,
         value: {
@@ -190,7 +192,7 @@ export class DeviceBootstrapService {
           certificateNotAfter: cert.notAfter,
           mqtt: {
             url: this.config.get('MQTT_PUBLIC_URL'),
-            wsUrl: this.config.get('MQTT_PUBLIC_WS_URL'),
+            ...(wsUrl ? { wsUrl } : {}),
             clientId,
             username: clientId,
             acl,

@@ -291,9 +291,11 @@ describe('consumer contract requests (real PostgreSQL)', () => {
       expect(res.body).toMatchObject({
         gatewayId,
         deviceId: gatewayId,
-        mqtt: { wsUrl: expect.stringMatching(/^wss:\/\//) },
+        mqtt: { url: expect.stringMatching(/^mqtts:\/\//) },
         deviceToken: { accessToken: res.body.accessToken, expiresAt: res.body.accessTokenExpiresAt },
       });
+      // edge CR-013 / D-231: no WSS URL while O-012 is open (MQTT_PUBLIC_WS_URL unset)
+      expect(res.body.mqtt).not.toHaveProperty('wsUrl');
       expect(res.body.caChainPem).toContain('BEGIN CERTIFICATE');
       certificatePem = res.body.certificatePem;
       expect(new x509.X509Certificate(certificatePem).subject).toBe(`CN=gw-${gatewayId}`);

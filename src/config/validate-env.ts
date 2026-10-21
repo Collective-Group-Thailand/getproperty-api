@@ -40,6 +40,12 @@ export function validateEnv(raw: Record<string, unknown>): EnvironmentVariables 
       problems.push('FIELD_ENCRYPTION_KEY: 32 bytes base64 required when NODE_ENV=production');
     if (env.PUBLIC_API_BASE_URL.includes('localhost'))
       problems.push('PUBLIC_API_BASE_URL: set the real origin when NODE_ENV=production');
+    if (env.MQTT_PUBLIC_WS_URL && !env.MQTT_PUBLIC_WS_URL.startsWith('wss://'))
+      problems.push('MQTT_PUBLIC_WS_URL: wss:// only when NODE_ENV=production (or leave it unset, D-231)');
+    if (env.DEVICE_PUBLIC_BASE_URL && !env.DEVICE_PUBLIC_BASE_URL.startsWith('https://'))
+      problems.push(
+        'DEVICE_PUBLIC_BASE_URL: https:// only when NODE_ENV=production (or leave it empty, D-231)',
+      );
     if (env.REDIS_MODE === DataStoresMode.Fake)
       problems.push('REDIS_MODE: must not be "fake" when NODE_ENV=production');
     if (env.MQTT_MODE === DataStoresMode.Fake)

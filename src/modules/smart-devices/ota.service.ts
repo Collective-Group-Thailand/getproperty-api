@@ -1,4 +1,5 @@
 import { createPublicKey, verify } from 'node:crypto';
+import { type Readable } from 'node:stream';
 
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
@@ -10,6 +11,7 @@ import { DomainEvents } from '@core/events/domain-events';
 import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
 import { type OtaRing, type Prisma, type RolloutStatus } from '@generated/prisma/client';
+import { OBJECT_STORAGE, type ObjectStorage } from '@integrations/s3/object-storage.port';
 import { sortKeys } from '@modules/ingest/protocol/device-protocol-schema';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -98,6 +100,40 @@ export function manifestProblems(m: Partial<OtaManifest>): string[] {
   return p;
 }
 
+/** Device-surface path of release artefacts served by the API from the product bucket (D-231). */
+export const OTA_ARTIFACT_PATH = '/v1/device/ota/artifacts/';
+/** Bucket prefix of release artefacts (`releases/edge/<version>/<file>`); read-only for the app's instance role. */
+export const OTA_ARTIFACT_KEY_PREFIX = 'releases/edge/';
+const ARTIFACT_FILE = /^[0-9A-Za-z][0-9A-Za-z._+-]{0,127}$/;
+
+/**
+ * `<origin>/v1/device/ota/artifacts/<version>/<file>` (or the relative path) → its bucket key; `null` for an artefact
+ * on another origin or path (a CDN / presigned URL, fetched by the agent without credentials).
+ */
+export function deviceArtifact(url: string): { version: string; file: string; key: string } | null {
+  let path: string;
+  try {
+    path = new URL(url, 'https://device.invalid').pathname;
+  } catch {
+    return null;
+  }
+  if (!path.startsWith(OTA_ARTIFACT_PATH)) return null;
+  const parts = path.slice(OTA_ARTIFACT_PATH.length).split('/');
+  if (parts.length !== 2) return null;
+  const [version, file] = parts as [string, string];
+  if (!SEMVER.test(version) || !ARTIFACT_FILE.test(file) || file.includes('..')) return null;
+  return { version, file, key: `${OTA_ARTIFACT_KEY_PREFIX}${version}/${file}` };
+}
+
+/**
+ * A URL handed to a gateway for the `/v1/device/*` surface: on `DEVICE_PUBLIC_BASE_URL` when set, else relative (the
+ * agent resolves it against its device host). Never the public API host, which strips client certificates (D-231,
+ * edge CR-012).
+ */
+export function deviceUrl(deviceBaseUrl: string | undefined, pathAndQuery: string): string {
+  return `${deviceBaseUrl ?? ''}${pathAndQuery}`;
+}
+
 const RING_ORDER: OtaRing[] = ['canary', 'pilot', 'all'];
 /** Gateways of each ring a rollout targets: a pilot rollout includes the canary ring; `all` every gateway. */
 const RING_MEMBERS: Record<OtaRing, OtaRing[]> = {
@@ -141,6 +177,7 @@ export class OtaService extends TenantScopedRepository {
     private readonly events: DomainEvents,
     private readonly config: AppConfig,
     @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
   ) {
     super();
   }
@@ -162,6 +199,23 @@ export class OtaService extends TenantScopedRepository {
         errors: problems.map((message) => ({ path: 'manifest', code: 'manifest', message })),
       });
     if (!verifyManifest(manifest, this.trustedKeys())) throw new DomainException('ota.signature_invalid');
+    // An artefact served from the device host must already be in the bucket with the signed size (D-231).
+    const hosted = deviceArtifact(manifest.artifact.url);
+    if (hosted) {
+      if (hosted.version !== manifest.version)
+        throw new DomainException('validation.failed', {
+          errors: [
+            {
+              path: 'manifest.artifact.url',
+              code: 'manifest',
+              message: 'the artefact path must carry the manifest version',
+            },
+          ],
+        });
+      const stored = await this.storage.head(hosted.key);
+      if (!stored || stored.sizeBytes !== manifest.artifact.size)
+        throw new DomainException('ota.artifact_missing', { params: { key: hosted.key } });
+    }
     return this.db.platform(async (tx) => {
       const exists = await tx.otaRelease.findFirst({
         where: { version: manifest.version, arch: manifest.arch },
@@ -290,7 +344,10 @@ export class OtaService extends TenantScopedRepository {
               compareSemver(current, rollout.release.minAgentVersion) < 0
             )
               continue;
-            const manifestUrl = `${this.config.get('PUBLIC_API_BASE_URL')}/v1/device/ota/manifest?releaseId=${rollout.release.id}`;
+            const manifestUrl = deviceUrl(
+              this.config.get('DEVICE_PUBLIC_BASE_URL'),
+              `/v1/device/ota/manifest?releaseId=${rollout.release.id}`,
+            );
             const command = await this.commands.issueAsPlatform(g.id, 'ota_apply', { manifestUrl }, tx);
             await tx.otaRolloutDevice.create({
               data: {
@@ -431,5 +488,35 @@ export class OtaService extends TenantScopedRepository {
         throw new DomainException('http.not_found');
       return release.manifest as unknown as OtaManifest;
     });
+  }
+
+  /**
+   * `GET /v1/device/ota/artifacts/{version}/{file}`: the release artefact for the calling gateway, streamed from the
+   * product bucket (`releases/edge/…`, D-231) — only a registered, non-deprecated release of the gateway's
+   * architecture whose artefact URL is that path; anything else is a 404.
+   */
+  async artifactFor(
+    gatewayId: string,
+    version: string,
+    file: string,
+  ): Promise<{ stream: Readable; sizeBytes: number; sha256: string }> {
+    const wanted = deviceArtifact(`${OTA_ARTIFACT_PATH}${version}/${file}`);
+    if (!wanted) throw new DomainException('http.not_found');
+    const release = await this.db.platform(async (tx) => {
+      const gateway = this.found(await tx.device.findUnique({ where: { id: gatewayId } }));
+      const candidates = await tx.otaRelease.findMany({
+        where: { version, deprecatedAt: null, ...(gateway.arch ? { arch: gateway.arch } : {}) },
+      });
+      return candidates.find((r) => deviceArtifact(r.artifactUrl)?.key === wanted.key) ?? null;
+    });
+    if (!release) throw new DomainException('http.not_found');
+    const stored = await this.storage.head(wanted.key);
+    if (!stored || stored.sizeBytes !== Number(release.sizeBytes))
+      throw new DomainException('http.not_found');
+    return {
+      stream: await this.storage.getStream(wanted.key),
+      sizeBytes: stored.sizeBytes,
+      sha256: Buffer.from(release.artifactSha256).toString('hex'),
+    };
   }
 }

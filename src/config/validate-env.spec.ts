@@ -70,6 +70,27 @@ describe('validateEnv', () => {
     );
   });
 
+  it('device-facing URLs: no WSS URL and no device origin by default; device origin is an origin (D-231)', () => {
+    const env = validateEnv({});
+    expect(env.MQTT_PUBLIC_WS_URL).toBeUndefined();
+    expect(env.DEVICE_PUBLIC_BASE_URL).toBeUndefined();
+    expect(validateEnv({ MQTT_PUBLIC_WS_URL: '' }).MQTT_PUBLIC_WS_URL).toBeUndefined();
+    expect(
+      validateEnv({ DEVICE_PUBLIC_BASE_URL: 'https://device.getproperty.co' }).DEVICE_PUBLIC_BASE_URL,
+    ).toBe('https://device.getproperty.co');
+    expect(() => validateEnv({ DEVICE_PUBLIC_BASE_URL: 'https://device.getproperty.co/' })).toThrow(
+      /DEVICE_PUBLIC_BASE_URL/,
+    );
+    expect(() => validateEnv({ MQTT_PUBLIC_WS_URL: 'https://x/mqtt' })).toThrow(/MQTT_PUBLIC_WS_URL/);
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'production',
+        MQTT_PUBLIC_WS_URL: 'ws://x/mqtt',
+        DEVICE_PUBLIC_BASE_URL: 'http://d',
+      }),
+    ).toThrow(/MQTT_PUBLIC_WS_URL: wss:\/\/ only[\s\S]*DEVICE_PUBLIC_BASE_URL: https:\/\/ only/);
+  });
+
   it('validates the docs CIDR allow-list and the shared group token', () => {
     expect(() => validateEnv({ DOCS_ALLOWED_CIDRS: '10.0.0.0/8, 203.0.113.7' })).not.toThrow();
     expect(() => validateEnv({ DOCS_ALLOWED_CIDRS: 'not-an-ip' })).toThrow(

@@ -98,11 +98,12 @@ export class MqttConnectionDto {
   @ApiProperty({ example: 'mqtts://mqtt.getproperty.invalid:8883' })
   url!: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'wss://mqtt.getproperty.invalid/mqtt',
-    description: 'WebSocket fallback for networks that block 8883 (device protocol §1).',
+    description:
+      'WebSocket fallback for networks that block 8883 (device protocol §1). **Omitted** unless the platform enables it (`MQTT_PUBLIC_WS_URL`): while O-012 is open the Collective platform has no WSS endpoint that verifies the gateway certificate (D-231, edge CR-013).',
   })
-  wsUrl!: string;
+  wsUrl?: string;
 
   @ApiProperty({ example: `gw-${FAKE.gatewayId}` })
   clientId!: string;
