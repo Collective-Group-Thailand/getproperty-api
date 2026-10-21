@@ -42,6 +42,7 @@
     "sim:gateway": "node scripts/sim-gateway.mjs",
     "db:migrate:deploy": "node dist/src/migrate.js",
     "credentials:import": "node dist/src/credentials-import.js",
+    "drill:smoke": "node dist/src/drill-smoke.js",
     "device:broker-cert": "node scripts/broker-cert.mjs",
     "brand:png": "node scripts/brand-assets.mjs"
   },
