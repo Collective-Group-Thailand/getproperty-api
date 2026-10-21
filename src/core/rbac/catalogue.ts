@@ -364,6 +364,12 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     surfaces: ['admin'],
   },
   {
+    key: 'admin.provider_credential.manage',
+    description:
+      'Set, replace and revoke per-merchant provider credentials (payments, locks, e-Tax); values write-only (D-240)',
+    surfaces: ['admin'],
+  },
+  {
     key: 'admin.subscription.manage',
     description: 'Price plans, subscriptions, pilot agreements (D-156, D-083)',
     surfaces: ['admin'],

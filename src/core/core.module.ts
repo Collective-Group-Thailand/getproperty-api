@@ -23,6 +23,7 @@ import { ComplianceAcknowledgementService } from './compliance/compliance-acknow
 import { ComplianceGate } from './compliance/compliance-gate.service';
 import { ComplianceRulesService } from './compliance/compliance-rules.service';
 import { ComplianceScoreService } from './compliance/compliance-score.service';
+import { ProviderCredentialsService } from './credentials/provider-credentials.service';
 import { DeviceBootstrapService } from './devices/device-bootstrap.service';
 import { DeviceCaService } from './devices/device-ca.service';
 import { DeviceIdentityService } from './devices/device-identity.service';
@@ -125,6 +126,7 @@ const SERVICES = [
   DeviceBootstrapService,
   DeviceIdentityService,
   EmqxAuthService,
+  ProviderCredentialsService,
   DocumentsService,
   NotificationService,
   NotificationRoutesService,

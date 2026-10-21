@@ -6,6 +6,7 @@ import { bangkokDate } from '@common/time/bangkok';
 import { AppConfig } from '@config/app-config';
 import { AuditService } from '@core/audit/audit.service';
 import { CLOCK, type Clock } from '@core/clock/clock';
+import { ProviderCredentialsService } from '@core/credentials/provider-credentials.service';
 import { DocumentsService } from '@core/documents/documents.service';
 import { type DomainEventEnvelope, DomainEvents } from '@core/events/domain-events';
 import { type EventSubscriber, EventSubscriberRegistry } from '@core/events/subscribers';
@@ -26,7 +27,6 @@ import {
   type EtaxProviderKey,
   type EtaxProviderRegistry,
 } from '@integrations/etax/etax-provider.port';
-import { SECRETS_PROVIDER, type SecretsProvider } from '@integrations/secrets/secrets.port';
 import { formatAddress } from '@modules/ops-documents/document-views';
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import Decimal from 'decimal.js';
@@ -80,7 +80,7 @@ export class EtaxService extends TenantScopedRepository implements EventSubscrib
     private readonly registry: EventSubscriberRegistry,
     private readonly config: AppConfig,
     @Inject(ETAX_PROVIDERS) private readonly providers: EtaxProviderRegistry,
-    @Inject(SECRETS_PROVIDER) private readonly secrets: SecretsProvider,
+    private readonly credentialStore: ProviderCredentialsService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
     super();
@@ -270,15 +270,13 @@ export class EtaxService extends TenantScopedRepository implements EventSubscrib
   }
 
   private async account(s: EtaxSubmission): Promise<{ account: EtaxAccount } | { error: string }> {
-    let credentials: Record<string, string> = {};
-    try {
-      credentials = await this.secrets.getJsonSecret(
-        `${this.config.get('ETAX_SECRETS_PREFIX')}/${s.provider}/${s.tenantId}`,
-      );
-    } catch (error) {
-      if (this.providers.mode === 'real') return { error: `no ${s.provider} account secrets for the tenant` };
-      void error;
-    }
+    const stored = await this.credentialStore.get(
+      { tenantId: s.tenantId, kind: 'etax', provider: s.provider },
+      'etax.submit',
+    );
+    if (!stored && this.providers.mode === 'real')
+      return { error: `no ${s.provider} account credentials for the tenant` };
+    const credentials: Record<string, string> = stored ?? {};
     return { account: { provider: s.provider as EtaxProviderKey, credentials } };
   }
 

@@ -553,7 +553,7 @@ export const SETTINGS: readonly SettingDef[] = [
     valueType: 'json',
     scopeAllowed: ['platform'],
     description:
-      "D-204 (⚖ O-008, O-001): the platform's own merchant account for the Thai QR of platform invoices (provider, merchant reference, account name); credentials in the secret store under payments/platform/<provider>/<merchantRef>. Disabled until the account exists (O-001: provider not chosen; with fake integrations the fake adapter of that provider answers).",
+      "D-204 (⚖ O-008, O-001): the platform's own merchant account for the Thai QR of platform invoices (provider, merchant reference, account name); credentials in platform.provider_credential (tenant_id NULL, D-240). Disabled until the account exists (O-001: provider not chosen; with fake integrations the fake adapter of that provider answers).",
     editableBy: ['admin.subscription.manage'],
     value: {
       enabled: false,

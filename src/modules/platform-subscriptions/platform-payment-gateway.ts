@@ -1,5 +1,6 @@
 import { AppConfig } from '@config/app-config';
 import { CLOCK, type Clock } from '@core/clock/clock';
+import { ProviderCredentialsService } from '@core/credentials/provider-credentials.service';
 import { SettingsService } from '@core/settings/settings.service';
 import {
   type Merchant,
@@ -9,7 +10,6 @@ import {
   type QrPaymentAdapter,
   type QrProvider,
 } from '@integrations/payments/payment-provider.port';
-import { SECRETS_PROVIDER, type SecretsProvider } from '@integrations/secrets/secrets.port';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 /** `platform.payments.merchant` (D-042 model applied to Collective's own receivables, D-204; ⚖ O-008). */
@@ -28,8 +28,8 @@ export interface PlatformMerchant {
 /**
  * The platform's own payment adapter (B6.1): platform invoices are collected by Collective Group (Thailand) through
  * its own merchant account — the same `QrPaymentAdapter` ports as the tenants' (KBank / SCB / Opn), but the merchant
- * comes from the platform setting `platform.payments.merchant` and its credentials from the secret store under
- * `${PAYMENTS_SECRETS_PREFIX}/platform/<provider>/<merchantRef>`. In fake mode the fake provider always answers; in
+ * comes from the platform setting `platform.payments.merchant` and its credentials from `platform.provider_credential`
+ * (tenant_id NULL, sealed with the platform field key — D-240). In fake mode the fake provider always answers; in
  * real mode the merchant must be enabled and its credentials present (otherwise invoices carry no QR and Finance
  * records transfers).
  */
@@ -39,7 +39,7 @@ export class PlatformPaymentGateway {
 
   constructor(
     @Inject(PAYMENT_PROVIDERS) private readonly providers: PaymentProviderRegistry,
-    @Inject(SECRETS_PROVIDER) private readonly secrets: SecretsProvider,
+    private readonly credentialStore: ProviderCredentialsService,
     private readonly settings: SettingsService,
     private readonly config: AppConfig,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -57,18 +57,15 @@ export class PlatformPaymentGateway {
     );
     if (!this.isQrProvider(s.provider)) return null;
     if (this.providers.mode === 'real' && !s.enabled) return null;
-    let credentials: Record<string, string> = {};
-    try {
-      credentials = await this.secrets.getJsonSecret(
-        `${this.config.get('PAYMENTS_SECRETS_PREFIX')}/platform/${s.provider}/${s.merchantRef}`,
-      );
-    } catch (error) {
-      if (this.providers.mode === 'real') {
-        this.logger.error(`no credentials for the platform ${s.provider} merchant`);
-        return null;
-      }
-      void error;
+    const stored = await this.credentialStore.get(
+      { tenantId: null, kind: 'payment', provider: s.provider, merchantRef: s.merchantRef },
+      'payments.platform_merchant',
+    );
+    if (!stored && this.providers.mode === 'real') {
+      this.logger.error(`no credentials for the platform ${s.provider} merchant`);
+      return null;
     }
+    const credentials: Record<string, string> = stored ?? {};
     return {
       merchant: { provider: s.provider, merchantRef: s.merchantRef, accountName: s.accountName, credentials },
       adapter: this.providers.adapter(s.provider),

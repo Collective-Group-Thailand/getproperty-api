@@ -88,6 +88,8 @@ export const DOMAIN_EVENT_TYPES = {
   'device.assigned': 'A device left the platform inventory for a tenant building (D-033).',
   'device.retired': 'A device was retired; certificates and broker ACL revoked (D-033).',
   'device.certificate_revoked': 'A gateway certificate was revoked by the platform admin (D-130).',
+  'provider_credential.changed':
+    'A provider credential (payments, locks, e-Tax) was set, replaced or revoked by the platform admin — never its values (D-240).',
   'device.mqtt_transport_changed':
     'The platform admin switched a gateway’s WebSocket fallback (ws 8083 with the device JWT only) on or off (D-239).',
   'device.installed': 'A meter device was installed on a meter position with its install reading (D-033).',

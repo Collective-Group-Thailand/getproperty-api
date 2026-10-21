@@ -1,5 +1,5 @@
 import { LookupHasher } from '@common/crypto/lookup-hasher';
-import { AppConfig } from '@config/app-config';
+import { ProviderCredentialsService } from '@core/credentials/provider-credentials.service';
 import { FeatureFlagsService } from '@core/feature-flags/feature-flags.service';
 import { merchantRefHash } from '@core/tenancy/bank-account.service';
 import { TenantDataKeys } from '@core/tenancy/data-keys.service';
@@ -13,7 +13,6 @@ import {
   type QrPaymentAdapter,
   type QrProvider,
 } from '@integrations/payments/payment-provider.port';
-import { SECRETS_PROVIDER, type SecretsProvider } from '@integrations/secrets/secrets.port';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 export interface MerchantAccount {
@@ -25,7 +24,7 @@ export interface MerchantAccount {
 /**
  * The tenant's receiving account at its payment provider (D-042): the active bank account with a provider (one
  * limited to the invoice's building first, else the default), its merchant reference (sealed with the tenant key)
- * and the per-merchant credentials from the secret store. A real provider is used only where its feature flag is
+ * and the per-merchant credentials from `platform.provider_credential` (D-240). A real provider is used only where its feature flag is
  * on for the tenant (`payments.provider.<provider>`, O-001); fakes everywhere in fake mode.
  */
 @Injectable()
@@ -34,11 +33,10 @@ export class MerchantResolver {
 
   constructor(
     @Inject(PAYMENT_PROVIDERS) private readonly providers: PaymentProviderRegistry,
-    @Inject(SECRETS_PROVIDER) private readonly secrets: SecretsProvider,
     private readonly keys: TenantDataKeys,
     private readonly hasher: LookupHasher,
     private readonly flags: FeatureFlagsService,
-    private readonly config: AppConfig,
+    private readonly credentialStore: ProviderCredentialsService,
   ) {}
 
   private isQrProvider(p: string): p is QrProvider {
@@ -66,18 +64,16 @@ export class MerchantResolver {
       },
       account.providerMerchantRefEnc,
     );
-    let credentials: Record<string, string> = {};
-    try {
-      credentials = await this.secrets.getJsonSecret(
-        `${this.config.get('PAYMENTS_SECRETS_PREFIX')}/${provider}/${merchantRef}`,
-      );
-    } catch (error) {
-      if (this.providers.mode === 'real') {
-        this.logger.error(`no credentials for ${provider} merchant of tenant ${account.tenantId}`);
-        return null;
-      }
-      void error;
+    // D-240: sealed in platform.provider_credential with the tenant key, the decrypt audited
+    const stored = await this.credentialStore.get(
+      { tenantId: account.tenantId, kind: 'payment', provider, merchantRef },
+      'payments.merchant',
+    );
+    if (!stored && this.providers.mode === 'real') {
+      this.logger.error(`no credentials for ${provider} merchant of tenant ${account.tenantId}`);
+      return null;
     }
+    const credentials: Record<string, string> = stored ?? {};
     return {
       account,
       merchant: { provider, merchantRef, accountName: account.accountName, credentials },
