@@ -107,7 +107,13 @@ module "run_api" {
   min_instances   = local.size.api_min_instances
   max_instances   = local.size.api_max_instances
   public          = true
-  env             = merge(local.common_env, { PROCESS_ROLE = "api" })
+  # Client IP (D-229, RUNBOOK §11): one hop for Cloud Run's front end; the BFFs (web, liff) reach the API from the
+  # subnet (Private Google Access) or the NAT address, and their forwarded end-user address is trusted from there.
+  env = merge(local.common_env, {
+    PROCESS_ROLE        = "api"
+    TRUST_PROXY         = "1"
+    TRUSTED_PROXY_CIDRS = "${module.network.subnet_cidr},${module.network.egress_ip}/32"
+  })
   secrets         = local.common_secrets
   labels          = local.labels
 }
@@ -171,7 +177,8 @@ module "run_liff" {
   min_instances   = local.size.api_min_instances
   max_instances   = 10
   public          = true
-  env             = { API_INTERNAL_URL = module.run_api.uri, APP_ENV = local.env }
+  # TRUSTED_HOPS: X-Forwarded-For entries appended by our edge, counted from the right (Cloud Run front end = 1).
+  env             = { API_INTERNAL_URL = module.run_api.uri, APP_ENV = local.env, TRUSTED_HOPS = "1" }
   secrets         = { SESSION_SECRET = module.secrets.ids["liff-session-secret"] }
   labels          = local.labels
 }

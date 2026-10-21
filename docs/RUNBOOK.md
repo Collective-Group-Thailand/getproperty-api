@@ -136,3 +136,32 @@ as a store-and-forward backfill and extrapolated to a month; the worker's IoT pr
 runs concurrently on BullMQ in production, one job at a time in the in-memory test queue). If a real cycle gets
 close to the budget: scale the worker (`max_instances`), check Cloud SQL CPU, and keep `readings.iot_promotion_minutes`
 at its default. Production sizing in `infra/terraform/locals.tf`.
+
+## 11. Client IP, proxies and session refresh (D-229)
+
+The API uses the client IP for the per-IP auth / OTP throttle, the `/docs` allow-list, audit rows, session rows and the
+e-signature evidence (D-062). It is Express `req.ip` with `trust proxy` = `trustProxy(TRUST_PROXY, TRUSTED_PROXY_CIDRS)`
+(`src/common/http/trust-proxy.ts`):
+
+- `X-Forwarded-For` is read **from the right**. Every Google front end *appends* the address it saw, so the left-most
+  entries are whatever the caller sent and are never trusted. The socket peer and the next `TRUST_PROXY − 1` entries
+  are our own edge; `req.ip` is the next one.
+- `TRUST_PROXY`: `1` when clients reach the `run.app` URL (Cloud Run front end only — the current Terraform), `2` when
+  an external HTTPS load balancer (Cloud Armor) sits in front of the service. Never more than the real number of
+  hops: one too many lets a caller choose its IP. **UNVERIFIED** against the live edge: on uat, call
+  `GET /v1/public/plans` with `X-Forwarded-For: 6.6.6.6` and check the request log's `ip` is your own address.
+- `TRUSTED_PROXY_CIDRS`: the addresses our BFFs (getproperty-web, getproperty-liff) reach the API from — the VPC
+  subnet (Private Google Access to `run.app`) and the Cloud NAT address; Terraform sets both. A hop from there is
+  trusted too, so the end-user address the BFF forwards becomes `req.ip`; a direct caller cannot pose as a BFF because
+  its real address is appended after anything it sends. Without this, every resident would share the BFF's address
+  and one throttle bucket.
+- The BFFs apply the same rule on their side: getproperty-liff takes the entry `TRUSTED_HOPS` from the right of the
+  inbound header (Cloud Run = 1) and forwards that single address; it never forwards the inbound header as is.
+
+**Refresh rotation grace** (`REFRESH_REUSE_GRACE_SECONDS`, default 30, 0 = off): the immediately previous refresh token
+presented again within the window — two instances of a BFF refreshing the same session at once — answers the **same**
+successor refresh token (derived with `FIELD_HASH_KEY`, never stored in clear) and a fresh access token; audited
+`auth.refresh_grace_reused`. After the window, or once the successor itself was used, it is reuse: the family is
+revoked (`auth.refresh_reuse_detected`, D-163). A burst of `auth.refresh_grace_reused` from one family with different
+user agents / IPs is worth a look (stolen token racing the owner). Rotating `FIELD_HASH_KEY` makes in-flight graces
+count as reuse for at most the window.
