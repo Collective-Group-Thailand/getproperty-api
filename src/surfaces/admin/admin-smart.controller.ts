@@ -96,7 +96,7 @@ const MANIFEST_EXAMPLE = {
   channel: 'stable',
   arch: 'arm64',
   artifact: {
-    url: 'https://releases.getproperty.co/edge/0.4.0/arm64.tar.zst',
+    url: 'https://device.getproperty.co/v1/device/ota/artifacts/0.4.0/getproperty-edge-0.4.0-linux-arm64',
     sha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
     size: 48211234,
   },
@@ -110,7 +110,8 @@ const RELEASE_EXAMPLE = {
   version: '0.4.0',
   arch: 'arm64',
   channel: 'stable',
-  artifactUrl: 'https://releases.getproperty.co/edge/0.4.0/arm64.tar.zst',
+  artifactUrl:
+    'https://device.getproperty.co/v1/device/ota/artifacts/0.4.0/getproperty-edge-0.4.0-linux-arm64',
   sha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
   keyId: 'gp-ota-2026',
   releasedAt: FAKE.dateTime,
@@ -451,12 +452,18 @@ export class AdminOtaController {
     id: 'admin.ota.createRelease',
     summary: 'Register a signed release',
     description:
-      'The manifest produced by `getproperty-edge` (`pnpm image`); its ed25519 signature must verify against a trusted key (`OTA_SIGNING_PUBLIC_KEYS`) — the agent verifies it again before applying (D-131, edge CR-011). One release per version × architecture. Audited.',
+      'The manifest produced by `getproperty-edge` (`pnpm image`); its ed25519 signature must verify against a trusted key (`OTA_SIGNING_PUBLIC_KEYS`) — the agent verifies it again before applying (D-131, edge CR-011). One release per version × architecture. An artefact URL on the device surface (`…/v1/device/ota/artifacts/<version>/<file>`, D-231) must carry the manifest version and its object `releases/edge/<version>/<file>` must already be in the product bucket with the signed size (`ota.artifact_missing`). Audited.',
     implements: ['D-131'],
   })
   @ApiJsonBody(OtaReleaseCreateDto, { manifest: MANIFEST_EXAMPLE, notes: 'Modbus timeouts fixed' })
   @ApiSuccess(201, { description: 'Registered', type: OtaReleaseDto, example: RELEASE_EXAMPLE })
-  @ApiStandardErrors('ota.signature_invalid', 'ota.release_exists', 'validation.failed', 'http.bad_request')
+  @ApiStandardErrors(
+    'ota.signature_invalid',
+    'ota.release_exists',
+    'ota.artifact_missing',
+    'validation.failed',
+    'http.bad_request',
+  )
   async createRelease(@Body() body: OtaReleaseCreateDto): Promise<OtaReleaseDto> {
     return releaseDto(await this.ota.createRelease(body.manifest, body.notes ?? null));
   }

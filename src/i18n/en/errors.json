@@ -612,6 +612,10 @@
       "title": "Release exists",
       "detail": "A release with this version and architecture already exists."
     },
+    "artifact_missing": {
+      "title": "Release artefact missing",
+      "detail": "The release artefact is not in the releases bucket with the manifest's size; upload it first."
+    },
     "ring_order": {
       "title": "Ring order",
       "detail": "The previous ring must complete before this ring starts."

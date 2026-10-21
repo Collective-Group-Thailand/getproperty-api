@@ -31,7 +31,11 @@ describe('device bootstrap (B1.3 acceptance, real PostgreSQL)', () => {
 
   beforeAll(async () => {
     db = await createIntDatabase({ prefix: 'gp_device' });
-    t = await createIntApp(db, { OTP_MAX_PER_HOUR: '20' });
+    // MQTT_PUBLIC_WS_URL is the explicit switch that sends `mqtt.wsUrl` (D-231; unset → omitted, see contract-requests)
+    t = await createIntApp(db, {
+      OTP_MAX_PER_HOUR: '20',
+      MQTT_PUBLIC_WS_URL: 'wss://mqtt-ws.test.invalid/mqtt',
+    });
     const admin = await adminToken(t);
     const device = await t.http
       .post('/v1/admin/devices')
@@ -80,7 +84,7 @@ describe('device bootstrap (B1.3 acceptance, real PostgreSQL)', () => {
       deviceId,
       tenantId: DEV.tenantId,
       buildingId: DEV.buildingId,
-      mqtt: { username: expect.any(String) },
+      mqtt: { username: expect.any(String), wsUrl: 'wss://mqtt-ws.test.invalid/mqtt' },
     });
     const cert = new x509.X509Certificate(res.body.certificatePem);
     const ca = new x509.X509Certificate(res.body.caCertificatePem);

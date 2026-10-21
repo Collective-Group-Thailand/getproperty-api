@@ -139,6 +139,7 @@ export const ERROR_CODES = {
   'reading.unreadable': HttpStatus.UNPROCESSABLE_ENTITY,
   'ota.signature_invalid': HttpStatus.UNPROCESSABLE_ENTITY,
   'ota.release_exists': HttpStatus.CONFLICT,
+  'ota.artifact_missing': HttpStatus.UNPROCESSABLE_ENTITY,
   'ota.ring_order': HttpStatus.CONFLICT,
   'ota.invalid_transition': HttpStatus.CONFLICT,
   'command.not_allowed': HttpStatus.FORBIDDEN,

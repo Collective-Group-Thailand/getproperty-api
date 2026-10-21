@@ -1,10 +1,11 @@
 import 'reflect-metadata';
 
-import { generateKeyPairSync, sign, webcrypto } from 'node:crypto';
+import { createHash, generateKeyPairSync, randomBytes, sign, webcrypto } from 'node:crypto';
 
 import { AppConfig } from '@config/app-config';
 import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 import { MQTT_CLIENT, type MqttClientPort } from '@integrations/mqtt/mqtt-client.port';
+import { OBJECT_STORAGE, type ObjectStorage } from '@integrations/s3/object-storage.port';
 import { IngestService } from '@modules/ingest/ingest.service';
 import { IngestSubscriber } from '@modules/ingest/ingest.subscriber';
 import { GatewayConfigService } from '@modules/smart-devices/gateway-config.service';
@@ -578,16 +579,19 @@ describe('smart metering B3 (real PostgreSQL + MQTT broker)', () => {
     expect(done[0]!.status).toBe('done');
   });
 
-  it('3.1 OTA: signed release → ring order → canary rollout → ota_apply → manifest → applied → completed', async () => {
+  it('3.1 OTA: signed release → ring order → canary rollout → ota_apply → manifest → artefact → applied → completed', async () => {
+    // D-231: the artefact lives in the product bucket under releases/edge/ and is served on the device surface
+    const binary = randomBytes(4096);
+    const file = 'getproperty-edge-0.4.0-linux-arm64';
     const unsigned = {
       schema: 1,
       version: '0.4.0',
       channel: 'stable',
       arch: 'arm64',
       artifact: {
-        url: 'https://releases.getproperty.invalid/edge/0.4.0/arm64.tar.zst',
-        sha256: 'b'.repeat(64),
-        size: 4096,
+        url: `https://device.getproperty.invalid/v1/device/ota/artifacts/0.4.0/${file}`,
+        sha256: createHash('sha256').update(binary).digest('hex'),
+        size: binary.length,
       },
       minAgentVersion: '0.3.0',
       releasedAt: '2026-10-15T09:00:00Z',
@@ -609,6 +613,18 @@ describe('smart metering B3 (real PostgreSQL + MQTT broker)', () => {
       .send({ manifest: { ...manifest, version: '0.4.1' } })
       .expect(422);
     expect(forged.body.code).toBe('ota.signature_invalid');
+    // not uploaded yet → refused; the wrong size → refused
+    const storage = t.app.get<ObjectStorage>(OBJECT_STORAGE);
+    const missing = await t.http
+      .post('/v1/admin/ota/releases')
+      .set(bearer(admin))
+      .set(idem())
+      .send({ manifest })
+      .expect(422);
+    expect(missing.body.code).toBe('ota.artifact_missing');
+    await storage.put(`releases/edge/0.4.0/${file}`, binary.subarray(0, 100), 'application/octet-stream');
+    await t.http.post('/v1/admin/ota/releases').set(bearer(admin)).set(idem()).send({ manifest }).expect(422);
+    await storage.put(`releases/edge/0.4.0/${file}`, binary, 'application/octet-stream');
     const release = await t.http
       .post('/v1/admin/ota/releases')
       .set(bearer(admin))
@@ -647,12 +663,32 @@ describe('smart metering B3 (real PostgreSQL + MQTT broker)', () => {
       `SELECT type::text, args FROM smart.device_command WHERE gateway_device_id = $1 AND type = 'ota_apply'`,
       [gw1],
     );
-    expect(command[0]!.args.manifestUrl).toContain(`/v1/device/ota/manifest?releaseId=${release.body.id}`);
-    const served = await t.http
-      .get(`/v1/device/ota/manifest?releaseId=${release.body.id}`)
-      .set(bearer(deviceToken))
-      .expect(200);
+    // edge CR-012: relative (DEVICE_PUBLIC_BASE_URL unset), never on PUBLIC_API_BASE_URL
+    expect(command[0]!.args.manifestUrl).toBe(`/v1/device/ota/manifest?releaseId=${release.body.id}`);
+    const served = await t.http.get(command[0]!.args.manifestUrl).set(bearer(deviceToken)).expect(200);
     expect(served.body).toEqual(manifest);
+    const artefact = await t.http
+      .get(new URL(manifest.artifact.url).pathname)
+      .set(bearer(deviceToken))
+      .buffer(true)
+      .parse((res, done) => {
+        const parts: Buffer[] = [];
+        res.on('data', (c: Buffer) => parts.push(c));
+        res.on('end', () => done(null, Buffer.concat(parts)));
+      })
+      .expect(200);
+    expect(artefact.headers['content-type']).toBe('application/octet-stream');
+    expect(artefact.headers['content-length']).toBe(String(binary.length));
+    expect(artefact.headers.etag).toBe(`"${manifest.artifact.sha256}"`);
+    expect(Buffer.compare(artefact.body as Buffer, binary)).toBe(0);
+    // only registered artefacts of a release, only to devices
+    await t.http
+      .get('/v1/device/ota/artifacts/0.4.0/getproperty-edge-0.4.0-linux-x64')
+      .set(bearer(deviceToken))
+      .expect(404);
+    await t.http.get('/v1/device/ota/artifacts/0.9.9/x').set(bearer(deviceToken)).expect(404);
+    await t.http.get(new URL(manifest.artifact.url).pathname).expect(401);
+    await t.http.get(new URL(manifest.artifact.url).pathname).set(bearer(owner)).expect(403); // another audience
     for (const type of ['ota_started', 'ota_applied'])
       await gw.publishAsync(
         `gp/v1/${gw1}/events`,

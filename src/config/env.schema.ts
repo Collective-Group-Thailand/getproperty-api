@@ -593,10 +593,28 @@ export class EnvironmentVariables {
   @IsString()
   OTA_SIGNING_PUBLIC_KEYS?: string;
 
-  /** WebSocket broker URL for buildings whose network blocks 8883 (device protocol §1: WSS on 443). */
+  /**
+   * WebSocket broker URL for buildings whose network blocks 8883 (device protocol §1: WSS on 443). **Unset** (the
+   * default): the bootstrap answer carries no `mqtt.wsUrl` — the Collective platform has no WSS endpoint that sees the
+   * gateway certificate while O-012 is open (D-231, edge CR-013). Setting it is the explicit switch that sends it.
+   */
+  @IsOptional()
   @IsString()
-  @Matches(/^wss?:\/\//, { message: 'MQTT_PUBLIC_WS_URL must be a ws(s):// URL' })
-  MQTT_PUBLIC_WS_URL = 'wss://mqtt.getproperty.invalid/mqtt';
+  @Matches(/^(wss?:\/\/\S+)?$/, { message: 'MQTT_PUBLIC_WS_URL must be a ws(s):// URL or empty' })
+  MQTT_PUBLIC_WS_URL?: string;
+
+  /**
+   * Origin of the device host (Caddy `DEVICE_HOST`, gateway client certificates — D-230), no trailing slash. URLs the
+   * API hands to gateways (`ota_apply.manifestUrl`) are built on it; empty (the default) → they are relative
+   * `/v1/device/…` paths, which the agent resolves against its own device host (protocol §6, D-231, edge CR-012).
+   * Never the public API host: it strips the certificate header.
+   */
+  @IsOptional()
+  @IsString()
+  @Matches(/^(https?:\/\/[^/\s]+)?$/, {
+    message: 'DEVICE_PUBLIC_BASE_URL must be an origin without a trailing slash, or empty',
+  })
+  DEVICE_PUBLIC_BASE_URL?: string;
 
   /**
    * Where the gateway's mTLS client certificate comes from on `/v1/device/*` (CR-002): `socket` = this process

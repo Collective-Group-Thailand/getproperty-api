@@ -9,6 +9,8 @@ import { type ChannelInput, compileGatewayConfig, configContentHash } from './co
 import {
   canonicalManifest,
   compareSemver,
+  deviceArtifact,
+  deviceUrl,
   manifestProblems,
   type OtaManifest,
   rolloutNextActions,
@@ -127,6 +129,48 @@ describe('gateway commands (protocol §2, D-131)', () => {
     expect(() => commandArgs('identify', { seconds: 9999 })).toThrow(DomainException);
     expect(() => commandArgs('set_log_level', { level: 'trace' })).toThrow(DomainException);
     expect(() => commandArgs('ota_apply', { manifestUrl: 'ftp://x' })).toThrow(DomainException);
+    // relative device paths (protocol §6, D-231) and absolute https URLs; nothing else
+    expect(commandArgs('ota_apply', { manifestUrl: '/v1/device/ota/manifest?releaseId=x' })).toEqual({
+      manifestUrl: '/v1/device/ota/manifest?releaseId=x',
+    });
+    expect(
+      commandArgs('ota_apply', { manifestUrl: 'https://device.getproperty.co/v1/device/ota/manifest' }),
+    ).toEqual({ manifestUrl: 'https://device.getproperty.co/v1/device/ota/manifest' });
+    for (const bad of ['/v1/owner/x', '//evil.example/v1/device/x', 'https://', 'javascript:alert(1)'])
+      expect(() => commandArgs('ota_apply', { manifestUrl: bad })).toThrow(DomainException);
+  });
+});
+
+describe('device-facing URLs (D-231, edge CR-012)', () => {
+  it('builds device URLs on the device host or relative, never on the public API host', () => {
+    expect(deviceUrl(undefined, '/v1/device/ota/manifest?releaseId=r')).toBe(
+      '/v1/device/ota/manifest?releaseId=r',
+    );
+    expect(deviceUrl('https://device.getproperty.co', '/v1/device/ota/manifest?releaseId=r')).toBe(
+      'https://device.getproperty.co/v1/device/ota/manifest?releaseId=r',
+    );
+  });
+
+  it('maps device-hosted artefact URLs to the releases prefix and nothing else', () => {
+    const file = 'getproperty-edge-0.4.0-linux-arm64';
+    expect(deviceArtifact(`https://device.getproperty.co/v1/device/ota/artifacts/0.4.0/${file}`)).toEqual({
+      version: '0.4.0',
+      file,
+      key: `releases/edge/0.4.0/${file}`,
+    });
+    expect(deviceArtifact(`/v1/device/ota/artifacts/0.4.0-rc.1/${file}`)?.key).toBe(
+      `releases/edge/0.4.0-rc.1/${file}`,
+    );
+    for (const other of [
+      'https://releases.getproperty.co/edge/0.4.0/x',
+      'https://device.getproperty.co/v1/device/ota/artifacts/0.4.0',
+      'https://device.getproperty.co/v1/device/ota/artifacts/latest/x',
+      'https://device.getproperty.co/v1/device/ota/artifacts/0.4.0/a/b',
+      'https://device.getproperty.co/v1/device/ota/artifacts/0.4.0/..',
+      'https://device.getproperty.co/v1/device/ota/artifacts/0.4.0/x..y',
+      'https://device.getproperty.co/v1/device/ota/artifacts/0.4.0/%2e%2e%2fsecret',
+    ])
+      expect(deviceArtifact(other)).toBeNull();
   });
 });
 

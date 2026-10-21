@@ -64,8 +64,13 @@ export function commandArgs(
       return { level: a.level };
     }
     case 'ota_apply': {
-      if (typeof a.manifestUrl !== 'string' || !/^https?:\/\//.test(a.manifestUrl))
-        throw bad('manifestUrl: URL');
+      // An https(s) URL or a relative `/v1/device/…` path, which the agent fetches from its device host (D-231, CR-012)
+      if (
+        typeof a.manifestUrl !== 'string' ||
+        a.manifestUrl.length > 2048 ||
+        !/^(https?:\/\/[^/\s]+\/|\/v1\/device\/)\S*$/.test(a.manifestUrl)
+      )
+        throw bad('manifestUrl: an https URL or a /v1/device/… path');
       return { manifestUrl: a.manifestUrl };
     }
     case 'restart':

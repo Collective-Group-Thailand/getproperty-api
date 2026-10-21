@@ -63,7 +63,6 @@ export class DeviceBootstrapController {
       certificateNotAfter: '2027-11-01T00:15:00+07:00',
       mqtt: {
         url: 'mqtts://mqtt.getproperty.invalid:8883',
-        wsUrl: 'wss://mqtt.getproperty.invalid/mqtt',
         clientId: `gw-${FAKE.gatewayId}`,
         username: `gw-${FAKE.gatewayId}`,
         acl: [

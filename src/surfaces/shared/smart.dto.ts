@@ -949,7 +949,11 @@ export class MeterSwappedDto {
 // ------------------------------------------------------------------------------------------------ OTA
 
 export class OtaArtifactDto {
-  @ApiProperty({ example: 'https://releases.getproperty.co/edge/0.4.0/arm64.tar.zst' })
+  @ApiProperty({
+    example: 'https://device.getproperty.co/v1/device/ota/artifacts/0.4.0/getproperty-edge-0.4.0-linux-arm64',
+    description:
+      'HTTPS. On the platform (D-231) `https://<DEVICE_HOST>/v1/device/ota/artifacts/<version>/<file>`: the API serves the object `releases/edge/<version>/<file>` of the product bucket to the gateways only, and the release is registered only when that object exists with this size.',
+  })
   @IsString()
   @Matches(/^https:\/\//)
   url!: string;
@@ -1046,7 +1050,9 @@ export class OtaReleaseDto {
   @ApiProperty({ example: 'stable' })
   channel!: string;
 
-  @ApiProperty({ example: 'https://releases.getproperty.co/edge/0.4.0/arm64.tar.zst' })
+  @ApiProperty({
+    example: 'https://device.getproperty.co/v1/device/ota/artifacts/0.4.0/getproperty-edge-0.4.0-linux-arm64',
+  })
   artifactUrl!: string;
 
   @ApiProperty({ example: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08' })
