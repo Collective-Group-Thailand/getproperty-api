@@ -16,6 +16,7 @@ import {
 import { GrantService } from './asset/grant.service';
 import { AuditService } from './audit/audit.service';
 import { AuditQueryService } from './audit/audit-query.service';
+import { PlatformBrand } from './brand/platform-brand.service';
 import { BusinessCalendarService } from './calendar/business-calendar.service';
 import { CLOCK, type Clock, SystemClock } from './clock/clock';
 import { ComplianceAcknowledgementService } from './compliance/compliance-acknowledgement.service';
@@ -87,6 +88,7 @@ const SERVICES = [
   EventConsumer,
   OutboxAdminService,
   SettingsService,
+  PlatformBrand,
   FeatureFlagsService,
   BusinessCalendarService,
   WorkflowService,

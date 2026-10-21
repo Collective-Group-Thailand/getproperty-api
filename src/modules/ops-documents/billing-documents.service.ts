@@ -1,5 +1,6 @@
 import { htmlToText } from '@common/text/html-text';
 import { AppConfig } from '@config/app-config';
+import { DEFAULT_PDF_BRAND, type PdfBrand, PlatformBrand } from '@core/brand/platform-brand.service';
 import { DocumentsService, type UploadedGenerated } from '@core/documents/documents.service';
 import { DomainEvents } from '@core/events/domain-events';
 import { type Tx } from '@database/prisma.service';
@@ -7,7 +8,7 @@ import { TenantTx } from '@database/tenant-tx';
 import { type Document } from '@generated/prisma/client';
 import { PDF_RENDERER, type PdfRendererPort } from '@integrations/pdf/pdf-renderer.port';
 import { fonts } from '@modules/ops-leases/contract-renderer';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import Decimal from 'decimal.js';
 import type Handlebars from 'handlebars';
 import QRCode from 'qrcode';
@@ -39,11 +40,13 @@ export class BillingDocuments {
     private readonly events: DomainEvents,
     private readonly config: AppConfig,
     private readonly db: TenantTx,
+    @Optional() private readonly brand?: PlatformBrand,
   ) {}
 
   // ------------------------------------------------------------------------------------------- rendering (pure)
 
-  body(view: DocumentView, paper: Paper): string {
+  /** The document body; `platform` is the getproperty brand of the closing "issued via" line (D-232). */
+  body(view: DocumentView, paper: Paper, platform: PdfBrand = DEFAULT_PDF_BRAND): string {
     const t = templateFor(view.docType, paper);
     const id = `${t.key}@${t.version}`;
     let fn = compiled.get(id);
@@ -51,13 +54,13 @@ export class BillingDocuments {
       fn = hbs.compile(t.source, { strict: false });
       compiled.set(id, fn);
     }
-    return fn(view);
+    return fn({ ...view, platform });
   }
 
-  html(view: DocumentView, paper: Paper): string {
+  html(view: DocumentView, paper: Paper, platform: PdfBrand = DEFAULT_PDF_BRAND): string {
     const title = hbs.Utils.escapeExpression(`${view.title} ${view.number}`);
     const style = paper === 'thermal_80mm' ? STYLE_80MM : STYLE_A4;
-    return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${title}</title><style>${fonts()}\n${style}</style></head><body>${this.body(view, paper)}</body></html>`;
+    return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${title}</title><style>${fonts()}\n${style}</style></head><body>${this.body(view, paper, platform)}</body></html>`;
   }
 
   /** The canonical text of a document (snapshot tests, the fake PDF). */
@@ -65,8 +68,9 @@ export class BillingDocuments {
     return htmlToText(this.body(view, paper).replace(/<img\b[^>]*>/gi, ''));
   }
 
-  pdf(view: DocumentView, paper: Paper = 'a4'): Promise<Buffer> {
-    return this.renderer.render(this.html(view, paper), {
+  async pdf(view: DocumentView, paper: Paper = 'a4'): Promise<Buffer> {
+    const platform = (await this.brand?.pdf()) ?? DEFAULT_PDF_BRAND;
+    return this.renderer.render(this.html(view, paper, platform), {
       title: `${view.title} ${view.number}`,
       footer: `${view.title} เลขที่ ${view.number} · ${view.issuer.displayName}`,
       paper,

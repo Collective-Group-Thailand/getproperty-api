@@ -40,6 +40,20 @@ describe('B1.1 foundation (e2e, fake data stores)', () => {
     },
   );
 
+  it('GET /brand/* serves the platform logos for emails and LINE (D-232), nothing else', async () => {
+    const png = await request(app.getHttpServer()).get('/brand/getproperty-logo-white.png').expect(200);
+    expect(png.headers['content-type']).toBe('image/png');
+    expect(png.headers['cross-origin-resource-policy']).toBe('cross-origin');
+    expect(png.headers['cache-control']).toMatch(/max-age=86400/);
+    expect((png.body as Buffer).subarray(1, 4).toString()).toBe('PNG');
+    const svg = await request(app.getHttpServer()).get('/brand/getproperty-logo.svg').expect(200);
+    expect(svg.headers['content-type']).toMatch(/^image\/svg\+xml/);
+    expect(svg.headers['content-security-policy']).toContain("default-src 'self'");
+    await request(app.getHttpServer()).get('/brand/missing.png').expect(404);
+    await request(app.getHttpServer()).get('/brand/').expect(404);
+    await request(app.getHttpServer()).get('/brand/..%2Fpackage.json').expect(404);
+  });
+
   it('GET /webhooks/ping is version-neutral', async () => {
     const res = await request(app.getHttpServer()).get('/webhooks/ping').expect(200);
     expect(res.body.surface).toBe('webhooks');

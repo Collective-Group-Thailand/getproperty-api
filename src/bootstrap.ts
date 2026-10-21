@@ -1,8 +1,10 @@
 import { jsonBodyParser } from '@common/http/json-body-parser';
 import { setupDocs as setupDocsRoutes } from '@common/openapi/docs';
 import { createValidationPipe } from '@common/validation/validation';
+import { brandAssetsDir } from '@core/brand/brand-setting';
 import { type INestApplication, VersioningType } from '@nestjs/common';
 import { type OpenAPIObject } from '@nestjs/swagger';
+import express from 'express';
 import helmet from 'helmet';
 
 import { version } from '../package.json';
@@ -25,6 +27,22 @@ export function configureApp(app: INestApplication): void {
   http.set?.('case sensitive routing', true);
   if (http.router) http.router.caseSensitive = true;
   app.use(helmet());
+  // The platform brand files (D-232): logos linked by emails and LINE messages. Static files outside the versioned
+  // API (no OpenAPI operation, no auth): images any client may load, so the cross-origin resource policy is opened
+  // for this path only. Unknown names fall through to the 404 problem response.
+  app.use(
+    '/brand',
+    express.static(brandAssetsDir(), {
+      index: false,
+      dotfiles: 'ignore',
+      fallthrough: true,
+      maxAge: '1d',
+      setHeaders: (res) => {
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+      },
+    }),
+  );
   app.use(jsonBodyParser());
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
   app.useGlobalPipes(createValidationPipe());

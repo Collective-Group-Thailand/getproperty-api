@@ -74,6 +74,8 @@ COPY --from=build --chown=node:node /app/package.json ./package.json
 # exactly as `prisma migrate deploy` does, so either tool can follow the other).
 COPY --from=build --chown=node:node /app/prisma/migrations ./prisma/migrations
 COPY --from=build --chown=node:node /app/prisma/optional ./prisma/optional
+# The platform brand (D-232): logos embedded in PDFs and served at /brand/* for emails and LINE messages.
+COPY --from=build --chown=node:node /app/assets ./assets
 COPY --chown=node:node docker/entrypoint.sh /app/entrypoint.sh
 USER node
 EXPOSE 3000 3001 3002

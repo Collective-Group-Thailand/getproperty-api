@@ -262,7 +262,7 @@ describe('B4.3 documents, series, Flex, archive (real PostgreSQL)', () => {
       .set(A)
       .send({ sample: 'tax_invoice' })
       .expect(200);
-    expect(preview.body).toMatchObject({ templateKey: 'tax_invoice_a4_th', templateVersion: 1 });
+    expect(preview.body).toMatchObject({ templateKey: 'tax_invoice_a4_th', templateVersion: 2 });
     expect(preview.body.text).toContain('ใบกำกับภาษี');
     expect(
       Buffer.from(preview.body.pdfBase64 as string, 'base64')

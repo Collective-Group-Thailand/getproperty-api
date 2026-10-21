@@ -8,7 +8,7 @@ const DURATION = /^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S
 
 /** Validates a setting value against its catalogue type and allowed values; returns problems. */
 export function settingValueProblems(
-  def: Pick<SettingDef, 'valueType' | 'allowedValues'>,
+  def: Pick<SettingDef, 'valueType' | 'allowedValues' | 'check'>,
   value: unknown,
 ): string[] {
   const problems: string[] = [];
@@ -43,6 +43,7 @@ export function settingValueProblems(
       if (value === undefined || typeof value === 'function') problems.push('must be JSON');
       break;
   }
+  if (def.check && !problems.length) problems.push(...def.check(value));
   if (def.allowedValues && !def.allowedValues.some((a) => JSON.stringify(a) === JSON.stringify(value)))
     problems.push(`must be one of ${def.allowedValues.map((v) => JSON.stringify(v)).join(', ')}`);
   return problems;

@@ -86,7 +86,7 @@ export class DepositDocuments {
   ) {}
 
   private async render(title: string, number: string, body: string): Promise<Buffer> {
-    return this.pdf.render(this.contracts.document(body, title), {
+    return this.pdf.render(await this.contracts.brandedDocument(body, title), {
       title,
       footer: `${title} เลขที่ ${number}`,
     });

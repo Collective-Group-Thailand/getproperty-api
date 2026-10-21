@@ -1,3 +1,4 @@
+import { PlatformBrand } from '@core/brand/platform-brand.service';
 import {
   billedParty,
   type NotifiableResolver,
@@ -18,7 +19,10 @@ import { ReceiptsService } from './receipts.service';
  */
 @Injectable()
 export class PaymentNotifications implements OnModuleInit {
-  constructor(private readonly receipts: ReceiptsService) {}
+  constructor(
+    private readonly receipts: ReceiptsService,
+    private readonly brand: PlatformBrand,
+  ) {}
 
   onModuleInit(): void {
     const receipt =
@@ -29,7 +33,7 @@ export class PaymentNotifications implements OnModuleInit {
         if (!id || !payer || !e.tenantId) return null;
         const view = await this.receipts.viewOf(tx, kind, id);
         const flex = flexMessage(`${view.title} ${view.number} ยอด ${formatThb(view.total)} บาท`, [
-          receiptBubble(view),
+          receiptBubble(view, await this.brand.flex()),
         ]);
         return {
           recipients: await billedParty(tx, payer),

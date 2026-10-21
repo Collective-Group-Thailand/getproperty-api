@@ -27,6 +27,7 @@ import {
   type NoteReason,
   type Prisma,
 } from '@generated/prisma/client';
+import { TEMPLATES } from '@modules/ops-documents/billing-templates';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
@@ -870,7 +871,7 @@ export class InvoicesService extends TenantScopedRepository {
         amountDue: D(meta.priorBalance).plus(inv.total.toString()).toFixed(2),
         rounding: 'half_up_satang_per_line',
       },
-      documentTemplate: { key: 'invoice_a4_th', version: 1 },
+      documentTemplate: { key: TEMPLATES.invoice_a4!.key, version: TEMPLATES.invoice_a4!.version },
       engine: { version: ENGINE_VERSION, gitSha: this.config.get('GIT_COMMIT') ?? null },
     };
   }

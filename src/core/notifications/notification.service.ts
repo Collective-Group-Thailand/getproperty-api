@@ -10,6 +10,7 @@ import {
 } from '@generated/prisma/client';
 import { Inject, Injectable } from '@nestjs/common';
 
+import { type EmailBrand, PlatformBrand } from '../brand/platform-brand.service';
 import { CLOCK, type Clock } from '../clock/clock';
 import { type DomainEventEnvelope } from '../events/domain-events';
 import { QUEUE, QUEUE_NAMES, type QueuePort } from '../queue/queue.port';
@@ -39,6 +40,7 @@ export class NotificationService {
     private readonly settings: SettingsService,
     @Inject(QUEUE) private readonly queue: QueuePort,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly brand: PlatformBrand,
   ) {}
 
   /** Channels for an event and audience: tenant routes override platform defaults per channel. */
@@ -148,6 +150,7 @@ export class NotificationService {
     const now = this.clock.now();
     const queued: string[] = [];
     const templateKey = input.templateKey ?? event.type;
+    let brand: EmailBrand | undefined;
     for (const recipient of input.recipients) {
       const channels = input.channels
         ? input.channels.map((channel) => ({ channel, urgent: input.urgent ?? false }))
@@ -204,10 +207,12 @@ export class NotificationService {
           }
         } else {
           try {
-            rendered = (await renderTemplate(version, {
-              ...input.data,
-              recipient: { language: recipient.language },
-            })) as unknown as Prisma.InputJsonValue;
+            brand ??= await this.brand.email();
+            rendered = (await renderTemplate(
+              version,
+              { ...input.data, recipient: { language: recipient.language } },
+              brand,
+            )) as unknown as Prisma.InputJsonValue;
           } catch (error) {
             state = 'failed';
             failedReason = error instanceof TemplateRenderError ? error.message : String(error);
