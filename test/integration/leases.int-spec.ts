@@ -443,19 +443,45 @@ describe('B2.3 leases, e-signature, notices (real PostgreSQL)', () => {
       const short = await t.http
         .post(`/v1/resident/leases/${ids.lease}/notice`)
         .set(R)
+        .set(idem())
         .send({ effectiveDate: addDays(today, 10) })
         .expect(422);
       expect(short.body.code).toBe('compliance.notice_period');
       expect(short.body.legalRef).toContain('ข้อ 4 (11)');
+      // D-229: the notice is irreversible — the key is required
+      const keyless = await t.http
+        .post(`/v1/resident/leases/${ids.lease}/notice`)
+        .set(R)
+        .send({ effectiveDate: addDays(today, 31), reason: 'ย้ายที่ทำงาน' })
+        .expect(400);
+      expect(keyless.body.code).toBe('idempotency.key_required');
+      const key = idem();
       const ok = await t.http
         .post(`/v1/resident/leases/${ids.lease}/notice`)
         .set(R)
+        .set(key)
         .send({ effectiveDate: addDays(today, 31), reason: 'ย้ายที่ทำงาน' })
         .expect(200);
       expect(ok.body).toMatchObject({
         status: 'notice_given',
         notice: { by: 'lessee', effectiveDate: addDays(today, 31) },
       });
+      // the answer was lost: the retry with the same key answers the recorded notice, not 409
+      const retry = await t.http
+        .post(`/v1/resident/leases/${ids.lease}/notice`)
+        .set(R)
+        .set(key)
+        .send({ effectiveDate: addDays(today, 31), reason: 'ย้ายที่ทำงาน' })
+        .expect(200);
+      expect(retry.headers['idempotent-replayed']).toBe('true');
+      expect(retry.body).toEqual(ok.body);
+      const again = await t.http
+        .post(`/v1/resident/leases/${ids.lease}/notice`)
+        .set(R)
+        .set(idem())
+        .send({ effectiveDate: addDays(today, 31), reason: 'ย้ายที่ทำงาน' })
+        .expect(409);
+      expect(again.body.code).toBe('lease.invalid_state');
     });
   });
 

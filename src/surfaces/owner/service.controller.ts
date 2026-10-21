@@ -1391,12 +1391,13 @@ export class TechnicianWorkOrdersController {
 
   @Post(':workOrderId/actions/complete')
   @HttpCode(200)
+  @Idempotent({ optional: true })
   @ApiEndpoint({
     id: 'technician.workOrders.complete',
     summary: 'Complete the job',
     description:
-      'With at least one after photo uploaded (`POST …/photos`, role `after`; 422 `work_order.photo_required`) and an optional note.',
-    implements: ['D-072'],
+      'With at least one after photo uploaded (`POST …/photos`, role `after`; 422 `work_order.photo_required`) and an optional note. Irreversible: send an `Idempotency-Key` so a retry after a lost answer replays it instead of 409 (D-229).',
+    implements: ['D-072', 'D-229'],
   })
   @ApiJsonBody(WorkOrderNoteDto, { note: 'เปลี่ยนก๊อกใหม่แล้ว ทดสอบไม่รั่ว' })
   @ApiSuccess(200, {
@@ -1468,11 +1469,13 @@ export class TechnicianWorkOrdersController {
   }
 
   @Post(':workOrderId/cost-lines')
+  @Idempotent({ optional: true })
   @ApiEndpoint({
     id: 'technician.workOrders.addCost',
     summary: 'Record parts / labour',
-    description: 'THB decimal strings; the owner verifies them with the work order.',
-    implements: ['D-072', 'D-046'],
+    description:
+      'THB decimal strings; the owner verifies them with the work order. Send an `Idempotency-Key`: a retry with the same key and body replays the answer instead of adding the line twice (D-229).',
+    implements: ['D-072', 'D-046', 'D-229'],
   })
   @ApiJsonBody(CostLineCreateDto, {
     kind: 'part',

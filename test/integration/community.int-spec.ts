@@ -7,7 +7,7 @@ import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';
-import { adminToken, bearer, onboardTenant, operatorToken, ownerToken } from '../support/int-auth';
+import { adminToken, bearer, idem, onboardTenant, operatorToken, ownerToken } from '../support/int-auth';
 import { createIntDatabase, type IntDatabase } from '../support/int-db';
 import { uploadFile } from '../support/int-files';
 
@@ -285,8 +285,23 @@ describe('B5.3 community (real PostgreSQL)', () => {
     expect((facilities.body.data as { id: string }[]).map((f) => f.id)).toEqual([ids.facility]);
     await t.http.get(`/v1/resident/facilities?unitId=${ids.a102}`).set(R1).expect(404);
 
-    const first = await t.http.post('/v1/resident/facility-bookings').set(R1).send(slot(10)).expect(201);
+    const bookKey = idem();
+    const first = await t.http
+      .post('/v1/resident/facility-bookings')
+      .set(R1)
+      .set(bookKey)
+      .send(slot(10))
+      .expect(201);
     expect(first.body).toMatchObject({ status: 'confirmed', unitNo: 'A-101' });
+    // D-229: the retry of the same booking (same key, same body) answers it again, not 409 for my own slot
+    const replay = await t.http
+      .post('/v1/resident/facility-bookings')
+      .set(R1)
+      .set(bookKey)
+      .send(slot(10))
+      .expect(201);
+    expect(replay.headers['idempotent-replayed']).toBe('true');
+    expect(replay.body.id).toBe(first.body.id);
     // the same slot again: the exclusion constraint refuses it
     await t.http
       .post('/v1/resident/facility-bookings')
