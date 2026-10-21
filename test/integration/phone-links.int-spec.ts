@@ -1,5 +1,7 @@
 import 'reflect-metadata';
 
+import { RealtimeHub } from '@core/realtime/realtime.hub';
+
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';
 import { adminToken, bearer, idem, onboardTenant, operatorToken, ownerToken } from '../support/int-auth';
@@ -25,6 +27,23 @@ describe('phone-matched logins wait for the owner (real PostgreSQL)', () => {
   const O = () => bearer(owner);
   const settle = async (n = 4) => {
     for (let i = 0; i < n; i += 1) await t.worker.tick();
+  };
+  /** Realtime messages heard on `channels` while `run` runs (types + ids only, contract §6). */
+  const hear = async (channels: string[], run: () => Promise<unknown>) => {
+    const heard: { type: string; ids?: Record<string, unknown>; data?: string }[] = [];
+    const sub = t.app
+      .get(RealtimeHub)
+      .stream(channels)
+      .subscribe((m: { type?: string; data?: string }) => {
+        if (m.type && m.type !== 'ready' && m.type !== 'heartbeat') heard.push(m as never);
+      });
+    try {
+      await run();
+      await settle();
+    } finally {
+      sub.unsubscribe();
+    }
+    return heard;
   };
   const signIn = async (phone: string) => {
     t.clock.advance(61_000); // one SMS per phone per minute
@@ -119,13 +138,33 @@ describe('phone-matched logins wait for the owner (real PostgreSQL)', () => {
       .set(staff)
       .set(idem())
       .expect(403);
-    const reject = await t.http
-      .post(`/v1/owner/party-link-requests/${ids.request}/actions/reject`)
-      .set(O())
-      .set(idem())
-      .send({ reason: 'ไม่ใช่ผู้เช่า เบอร์โทรพิมพ์ผิด' })
-      .expect(200);
+    let reject!: { body: Record<string, unknown> };
+    // LIFF #31 (D-228): the waiting login hears the rejection on its own user: channel — ids only, no reason
+    const heard = await hear([`user:${ids.user}`], async () => {
+      reject = await t.http
+        .post(`/v1/owner/party-link-requests/${ids.request}/actions/reject`)
+        .set(O())
+        .set(idem())
+        .send({ reason: 'ไม่ใช่ผู้เช่า เบอร์โทรพิมพ์ผิด' })
+        .expect(200);
+    });
     expect(reject.body).toMatchObject({ state: 'rejected', linkId: null });
+    expect(heard.map((m) => m.type)).toContain('party.link_changed');
+    expect(JSON.stringify(heard)).not.toContain('เบอร์โทรพิมพ์ผิด');
+    const ev = await q<{ payload: Record<string, unknown> }>(
+      `SELECT payload FROM platform.domain_event WHERE type = 'party.link_changed' AND payload->>'requestId' = $1`,
+      [ids.request],
+    );
+    expect(ev).toEqual([
+      {
+        payload: {
+          partyId: DEV.residentPartyId,
+          requestId: ids.request,
+          userId: ids.user,
+          change: 'rejected',
+        },
+      },
+    ]);
     await t.http
       .post(`/v1/owner/party-link-requests/${ids.request}/actions/confirm`)
       .set(O())
@@ -156,12 +195,17 @@ describe('phone-matched logins wait for the owner (real PostgreSQL)', () => {
     const request = (pending.body.data as { id: string; userId: string }[]).find(
       (r) => r.userId === signed.subject.id,
     )!;
-    const confirmed = await t.http
-      .post(`/v1/owner/party-link-requests/${request.id}/actions/confirm`)
-      .set(O())
-      .set(idem())
-      .expect(200);
+    let confirmed!: { body: Record<string, unknown> };
+    const heard = await hear([`user:${signed.subject.id}`], async () => {
+      confirmed = await t.http
+        .post(`/v1/owner/party-link-requests/${request.id}/actions/confirm`)
+        .set(O())
+        .set(idem())
+        .expect(200);
+    });
     expect(confirmed.body).toMatchObject({ state: 'confirmed', linkId: expect.any(String) });
+    // LIFF #31 (D-228): the confirmed login hears it on its own user: channel
+    expect(heard.map((m) => m.type)).toContain('party.link_changed');
     const link = await q<{ linked_via: string }>(
       `SELECT linked_via::text FROM core.party_user_link WHERE id = $1 AND state = 'active'`,
       [confirmed.body.linkId],
@@ -181,6 +225,50 @@ describe('phone-matched logins wait for the owner (real PostgreSQL)', () => {
     expect((await t.http.get('/v1/resident/me').set(R).expect(200)).body.linkRequestsPending).toBe(0);
   });
 
+  it('a technician signed in by SMS sees how many link requests wait for the office (LIFF #29)', async () => {
+    const TECH_PHONE = '+660000000291';
+    await t.http
+      .post('/v1/owner/parties')
+      .set(O())
+      .send({ type: 'person', displayName: 'ช่างประปา F8', phone: TECH_PHONE })
+      .expect(201);
+    t.clock.advance(61_000);
+    const challenge = await t.http
+      .post('/v1/auth/technician/otp/request')
+      .send({ phone: TECH_PHONE })
+      .expect(200);
+    const signed = await t.http
+      .post('/v1/auth/technician/otp/verify')
+      .send({ challengeId: challenge.body.challengeId, code: t.sms.lastCodeTo(TECH_PHONE) })
+      .expect(200);
+    const T = bearer(signed.body.accessToken as string);
+    const me = await t.http.get('/v1/technician/me').set(T).expect(200);
+    expect(me.body).toMatchObject({ workOrderIds: [], linkRequestsPending: 1 });
+    ids.techUser = signed.body.subject.id as string;
+    const pending = await t.http.get('/v1/owner/party-link-requests?state=pending').set(O()).expect(200);
+    ids.techRequest = (pending.body.data as { id: string; userId: string }[]).find(
+      (r) => r.userId === ids.techUser,
+    )!.id;
+    // another tenant's owner cannot decide it (404), and the count stays
+    const other = bearer(await ownerTokenOfOther());
+    await t.http
+      .post(`/v1/owner/party-link-requests/${ids.techRequest}/actions/reject`)
+      .set(other)
+      .set(idem())
+      .send({ reason: 'ไม่รู้จัก' })
+      .expect(404);
+    expect((await t.http.get('/v1/technician/me').set(T).expect(200)).body.linkRequestsPending).toBe(1);
+    const heard = await hear([`user:${ids.techUser}`], () =>
+      t.http
+        .post(`/v1/owner/party-link-requests/${ids.techRequest}/actions/confirm`)
+        .set(O())
+        .set(idem())
+        .expect(200),
+    );
+    expect(heard.map((m) => m.type)).toContain('party.link_changed');
+    expect((await t.http.get('/v1/technician/me').set(T).expect(200)).body.linkRequestsPending).toBe(0);
+  });
+
   it('another tenant cannot see or decide my link requests', async () => {
     const res = await t.http.get('/v1/owner/party-link-requests').set(O()).expect(200);
     expect(res.body.data.length).toBeGreaterThan(0);
@@ -197,8 +285,11 @@ describe('phone-matched logins wait for the owner (real PostgreSQL)', () => {
       .expect(404);
   });
 
+  let otherOwner: string | undefined;
   async function ownerTokenOfOther(): Promise<string> {
-    return (await onboardTenant(t, await adminToken(t), { slug: 'other-links', phone: '+660000000302' }))
-      .token;
+    otherOwner ??= (
+      await onboardTenant(t, await adminToken(t), { slug: 'other-links', phone: '+660000000302' })
+    ).token;
+    return otherOwner;
   }
 });

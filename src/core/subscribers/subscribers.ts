@@ -133,6 +133,9 @@ export const RESIDENT_REALTIME_EVENTS: readonly string[] = [
   'payment.confirmed',
   'payment.failed',
   'payment.reversed',
+  // D-228 (LIFF #30): my transfer is held for the office / the office decided — the pay sheet refetches `checking`
+  'payment.held',
+  'payment.dismissed',
   'receipt.issued',
   'receipt.voided',
   'tax_invoice.issued',

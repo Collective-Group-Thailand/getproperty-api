@@ -171,3 +171,14 @@ What changed for the apps when the 15 findings of `../REVIEW-api-core-edge.md` w
 | 13 | Subscribers render PDFs / call the slip verifier outside their transaction; after-commit effects have sweeps (`notifications-requeue`, `gateway-config-publish`, `loss-recompute`) and failures are recorded on `platform.event_consumption.last_error` (D-225). |
 | 14 | New domain events `payment.held`, `payment.dismissed`, `party.link_requested` (realtime ids-only messages on the tenant channels like every event). |
 | 15 | Edge status page: loopback by default, local admin token for LAN clients (edge `29b4506`). |
+
+## F8 — LIFF #29–#31 (requests from the F7 adoption, D-228)
+
+All additive; in the committed `contract/openapi.json`. Nothing under `/v1/owner`, `/v1/staff` or `/v1/admin` changed (the owner web stream additionally receives `party.link_changed` when a link request is **rejected** — same type and ids-only shape as the existing confirm / unlink messages).
+
+| # | Request | Answer | Status |
+|---|---|---|---|
+| 29 | `GET /v1/technician/me` → `linkRequestsPending` | `TechnicianMeDto.linkRequestsPending: integer` (required) — my pending phone-match link requests (D-226), same meaning as `ResidentMeDto.linkRequestsPending`. Show "waiting for the office to confirm you" when it is > 0 and `workOrderIds` is empty. | **done** F8 |
+| 30 | `GET /v1/resident/invoices/{invoiceId}/payment` → held transfers | `ResidentPaymentDto.checking: ResidentPaymentCheckingDto \| null` with `{ count: integer ≥ 1, since: date-time }` — payments of my own linked parties for this invoice that D-220 holds for the office; null when none. No amount, reason, provider reference or duplicate id. Realtime `payment.held` / `payment.dismissed` now reach `unit:` and my `user:` channel → refetch the pay sheet. | **done** F8 |
+| 31 | `party.link_changed` on the waiting login's `user:` channel, confirm and reject | Every `party.link_changed` (confirmed → `linked`, rejected → `rejected`, unlink) is also published to `user:<userId>` of that login; a rejection now records the event too. Ids and type only (the reject reason stays with the office). On it: reload `/me` and rotate the session (`/auth/rescope`). An in-app / LINE notification of the decision is not added (D-228). | **done** F8 |
+

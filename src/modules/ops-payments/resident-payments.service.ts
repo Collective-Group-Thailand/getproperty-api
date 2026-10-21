@@ -5,6 +5,7 @@ import { CLOCK, type Clock } from '@core/clock/clock';
 import { DocumentsService } from '@core/documents/documents.service';
 import { SettingsService } from '@core/settings/settings.service';
 import { TenantDataKeys } from '@core/tenancy/data-keys.service';
+import { type Tx } from '@database/prisma.service';
 import { TenantTx } from '@database/tenant-tx';
 import { type Prisma } from '@generated/prisma/client';
 import { ResidentInvoicesService } from '@modules/ops-billing/resident-invoices.service';
@@ -12,6 +13,11 @@ import { signedPdfs } from '@modules/ops-etax/etax-documents';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { PaymentsService } from './payments.service';
+
+/** The resident's “being checked” summary of held payments (D-228): null for none. */
+export function heldSummary(count: number, since: Date | null): { count: number; since: Date } | null {
+  return count > 0 && since ? { count, since } : null;
+}
 
 /**
  * The resident's side of paying (B4.4, D-042, D-043, D-063): the invoice's Thai QR for what is due now (created on
@@ -89,10 +95,37 @@ export class ResidentPaymentsService {
             : null,
           allowSlip: (await this.settings.valueAt<boolean>('payments.allow_slip', now, scope)) === true,
           allowPartial: (await this.settings.valueAt<boolean>('payments.allow_partial', now, scope)) === true,
+          checking: await this.checking(tx, inv.id),
         };
       },
       { timeout: 30_000 },
     );
+  }
+
+  /**
+   * LIFF #30 (D-228): payments of mine (payer = one of my linked parties) for this invoice that D-220 holds for the
+   * office (`pending` with a held reason) — a count and the oldest receipt time only; the duplicate's amount, reason
+   * and the payment it repeats stay with the office. Null when none.
+   */
+  private async checking(tx: Tx, invoiceId: string): Promise<{ count: number; since: Date } | null> {
+    const actor = RequestContext.actor();
+    if (actor?.type !== 'user') throw new DomainException('auth.unauthenticated');
+    const links = await tx.partyUserLink.findMany({
+      where: { userId: actor.publicId, state: 'active' },
+      select: { partyId: true },
+    });
+    if (!links.length) return null;
+    const held = await tx.payment.aggregate({
+      where: {
+        invoiceId,
+        status: 'pending',
+        heldReason: { not: null },
+        payerPartyId: { in: links.map((l) => l.partyId) },
+      },
+      _count: { _all: true },
+      _min: { createdAt: true },
+    });
+    return heldSummary(held._count._all, held._min.createdAt);
   }
 
   private async partyIds(): Promise<string[]> {

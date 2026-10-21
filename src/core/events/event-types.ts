@@ -51,7 +51,8 @@ export const DOMAIN_EVENT_TYPES = {
     'A meter was bound to a unit or common area, or its assignment closed (B2.1, D-012).',
   'asset_item.changed': 'An appliance, furniture or other asset item of a unit changed (B2.1).',
   // B2.2 parties
-  'party.link_changed': 'A resident login was linked to or unlinked from a party (D-061).',
+  'party.link_changed':
+    'A resident / technician login was linked to or unlinked from a party, or its link request was rejected (D-061, D-226, D-228).',
   'party.link_requested':
     'An SMS-OTP login matched a party by its phone; the link waits for the Owner (D-226, review #6).',
   // B2.3 leases

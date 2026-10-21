@@ -481,7 +481,7 @@ export class PartiesService extends TenantScopedRepository {
   /**
    * The Owner confirms a phone-match link request (D-226): the login is linked to the party (`linked_via admin` —
    * linked by the tenant after checking who signed in); the new scopes arrive with the next token refresh. Audited
-   * `party.linked`, event `party.link_changed`.
+   * `party.linked`, event `party.link_changed` (also on a rejection, D-228 — tenant channels and the login's `user:`).
    */
   async decideLinkRequest(
     ctx: TenantContext,
@@ -505,6 +505,14 @@ export class PartiesService extends TenantScopedRepository {
           subjectType: 'ops.party_link_request',
           subjectId: id,
           metadata: { partyId: req.partyId, userId: req.userId, reason: input.reason },
+        });
+        // D-228 (LIFF #31): the waiting login hears the decision on its `user:` channel (ids only, no reason)
+        await this.events.record(tx, {
+          type: 'party.link_changed',
+          aggregateType: 'party',
+          aggregateId: req.partyId,
+          tenantId: ctx.tenantId,
+          payload: { partyId: req.partyId, requestId: id, userId: req.userId, change: 'rejected' },
         });
         return;
       }
@@ -539,7 +547,13 @@ export class PartiesService extends TenantScopedRepository {
         aggregateType: 'party',
         aggregateId: req.partyId,
         tenantId: ctx.tenantId,
-        payload: { partyId: req.partyId, linkId: link.id, userId: req.userId, change: 'linked' },
+        payload: {
+          partyId: req.partyId,
+          linkId: link.id,
+          requestId: id,
+          userId: req.userId,
+          change: 'linked',
+        },
       });
     });
     return this.db.tenant(ctx, async (tx) =>

@@ -771,8 +771,8 @@ export class ResidentPaymentsController {
     id: 'resident.invoices.payment',
     summary: 'Pay an invoice: Thai QR and account',
     description:
-      'What is due now (this invoice and earlier unpaid ones, oldest paid first, D-193), the Thai QR for it (Tag 30, created when missing, expired or for another amount — the money goes to the landlord’s own account, D-042), the account for a plain transfer (in full with its bank code while something is due — the reveal is audited, D-209), and whether slips and partial payments are accepted.',
-    implements: ['D-042', 'D-043', 'D-154', 'D-209'],
+      'What is due now (this invoice and earlier unpaid ones, oldest paid first, D-193), the Thai QR for it (Tag 30, created when missing, expired or for another amount — the money goes to the landlord’s own account, D-042), the account for a plain transfer (in full with its bank code while something is due — the reveal is audited, D-209), and whether slips and partial payments are accepted. `checking` tells me a transfer of mine for this invoice is held for the office (D-220, D-228) — never its amount, reason or the payment it may repeat.',
+    implements: ['D-042', 'D-043', 'D-154', 'D-209', 'D-228'],
   })
   @ApiSuccess(200, {
     description: 'Payment',
@@ -796,6 +796,7 @@ export class ResidentPaymentsController {
       },
       allowSlip: true,
       allowPartial: false,
+      checking: null,
     },
   })
   @ApiStandardErrors('auth.unauthenticated', 'http.not_found', 'validation.failed')
@@ -824,6 +825,7 @@ export class ResidentPaymentsController {
         : null,
       allowSlip: r.allowSlip,
       allowPartial: r.allowPartial,
+      checking: r.checking ? { count: r.checking.count, since: r.checking.since.toISOString() } : null,
     };
   }
 

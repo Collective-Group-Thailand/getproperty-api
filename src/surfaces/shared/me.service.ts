@@ -238,10 +238,13 @@ export class MeService {
         tenants,
       ),
       scopes: actor && 'scopes' in actor ? [...actor.scopes] : [],
-      linkRequestsPending: await this.db.platform((tx) =>
-        tx.partyLinkRequest.count({ where: { userId, state: 'pending' } }),
-      ),
+      linkRequestsPending: await this.linkRequestsPending(userId),
     };
+  }
+
+  /** D-226: my phone-match link requests still waiting for a landlord (any tenant; a count only, no party data). */
+  private linkRequestsPending(userId: string): Promise<number> {
+    return this.db.platform((tx) => tx.partyLinkRequest.count({ where: { userId, state: 'pending' } }));
   }
 
   /**
@@ -328,7 +331,8 @@ export class MeService {
   }
 
   async technician(): Promise<TechnicianMeDto> {
-    const { dto } = await this.user(this.userId());
+    const userId = this.userId();
+    const { dto } = await this.user(userId);
     const actor = RequestContext.actor();
     const scopes = actor && 'scopes' in actor ? [...actor.scopes] : [];
     return {
@@ -337,6 +341,7 @@ export class MeService {
         .filter((s) => s.startsWith('work_order:'))
         .map((s) => s.slice('work_order:'.length)),
       scopes,
+      linkRequestsPending: await this.linkRequestsPending(userId),
     };
   }
 
