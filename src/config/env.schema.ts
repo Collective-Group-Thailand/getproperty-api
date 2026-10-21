@@ -120,6 +120,18 @@ export class EnvironmentVariables {
   @Matches(/^[a-z_][a-z0-9_]*$/, { message: 'DATABASE_APP_ROLE must be a plain role name' })
   DATABASE_APP_ROLE?: string;
 
+  /**
+   * PostgreSQL pool size of this process (blueprint T-5): default api 10, worker 10, ingest 5; at most api 15,
+   * worker 10, ingest 5 (the Collective platform's pool limits — `src/config/process-role.ts`). A `connection_limit`
+   * query parameter in DATABASE_URL has no effect with the pg driver adapter: use this.
+   */
+  @IsOptional()
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1)
+  @Max(15)
+  DATABASE_POOL_MAX?: number;
+
   @IsOptional()
   @IsString()
   @Matches(/^rediss?:\/\//, { message: 'REDIS_URL must be a redis:// or rediss:// URL' })
@@ -564,7 +576,11 @@ export class EnvironmentVariables {
 
   // --- Devices (D-130) ----------------------------------------------------------------------------------
 
-  /** Platform device CA (PEM certificate and PKCS#8 private key, or base64 of the PEM) that signs gateway CSRs. Required in production. */
+  /**
+   * Platform device CA (PEM certificate and PKCS#8 private key, or base64 of the PEM) that signs gateway CSRs. Required
+   * in production. Source: the platform-owned Secrets Manager secret `collective/<env>/platform/device-ca` (keys
+   * `DEVICE_CA_CERT`, `DEVICE_CA_KEY`, `DEVICE_CA_CHAIN`), rendered by the box into the env file (D-235, T-6).
+   */
   @IsOptional()
   @IsString()
   DEVICE_CA_CERT?: string;
@@ -572,6 +588,14 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   DEVICE_CA_KEY?: string;
+
+  /**
+   * The chain gateways receive as `caChainPem` (bootstrap, renewal) — the issuing CA first, then its issuers (PEM
+   * bundle or base64 of it); must contain DEVICE_CA_CERT. Unset: the issuing CA alone (T-6).
+   */
+  @IsOptional()
+  @IsString()
+  DEVICE_CA_CHAIN?: string;
 
   /** Gateway certificate lifetime (device protocol §1: rotate every 12 months). */
   @Transform(toNumber)
@@ -632,6 +656,41 @@ export class EnvironmentVariables {
   @IsString()
   @Matches(/^[a-z0-9-]+$/, { message: 'DEVICE_MTLS_HEADER must be a lower-case header name' })
   DEVICE_MTLS_HEADER = 'x-client-cert';
+
+  // --- EMQX HTTP authn / authz (D-235, T-7; collective-infra platform/docker-compose.yml) -------------------------
+
+  /**
+   * Shared secret EMQX sends in `x-emqx-auth-token` on `POST /internal/emqx/authn|authz` (collective-infra renders
+   * `platform/emqx` `getproperty_auth_token` into both sides). **Empty = every request is refused** (the broker then
+   * lets no gateway in — fail closed).
+   */
+  @IsOptional()
+  @IsString()
+  EMQX_AUTH_TOKEN?: string;
+
+  /** Who may call `/internal/emqx/*` (by `req.ip`, comma-separated IPs/CIDRs). Empty = loopback + private ranges. */
+  @IsOptional()
+  @IsString()
+  @Validate(IsCidrList)
+  EMQX_HTTP_ALLOWED_CIDRS?: string;
+
+  /**
+   * getproperty's service users on EMQX's internal listener (comma-separated): authz allows them below `gp/v1/`
+   * (shared subscriptions included). Empty = MQTT_USERNAME.
+   */
+  @IsOptional()
+  @IsString()
+  EMQX_SERVICE_USERNAMES?: string;
+
+  /**
+   * Requests per minute EMQX may send to `/internal/emqx/*` (one client: the broker). 300 gateways × 6 topics with a
+   * 1-minute authz cache, plus a fleet reconnect burst, stay well below the default.
+   */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(60)
+  @Max(600_000)
+  EMQX_HTTP_RATE_LIMIT = 6000;
 
   // --- AI gateway (D-161) ----------------------------------------------------------------------------------
 

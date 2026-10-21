@@ -3,6 +3,7 @@ import './instrument';
 import { ProcessMetrics, processServiceName, startOpsServer } from '@common/observability/metrics';
 import { processChecks } from '@common/observability/process-checks';
 import { AppConfig } from '@config/app-config';
+import { setProcessRole } from '@config/process-role';
 import { loadSecretsIntoEnv } from '@config/secrets.loader';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
@@ -10,6 +11,7 @@ import { Logger } from 'nestjs-pino';
 import { WorkerModule } from './worker.module';
 
 async function bootstrap(): Promise<void> {
+  setProcessRole('worker');
   await loadSecretsIntoEnv();
   const app = await NestFactory.createApplicationContext(WorkerModule, {
     bufferLogs: true,

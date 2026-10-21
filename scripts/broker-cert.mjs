@@ -3,10 +3,15 @@
 // receive at bootstrap is also the trust anchor of the broker's server certificate, so a public Let's Encrypt
 // certificate would not verify on a gateway). D-230, docs/deployment.md §5.
 //
-// Reads DEVICE_CA_CERT and DEVICE_CA_KEY from the environment (PEM with \n escapes, or base64 of the PEM — as the
-// API reads them). Writes <out>/server.pem (leaf + CA), <out>/server.key (PKCS#8, 0600) and <out>/ca.pem. The private
-// key never leaves the machine that runs this; store the three files in Secrets Manager
-// `collective/<env>/getproperty/mqtt-tls` (JSON {"server_pem", "server_key", "ca_pem"}) for the platform box.
+// Reads DEVICE_CA_CERT, DEVICE_CA_KEY and the optional DEVICE_CA_CHAIN from the environment (PEM with \n escapes, or
+// base64 of the PEM — as the API reads them). Writes <out>/server.pem (leaf + chain), <out>/server.key (PKCS#8, 0600),
+// <out>/ca.pem (the chain) and <out>/device-ca-secret.json (0600): the platform-owned Secrets Manager secret
+// `collective/<env>/platform/device-ca` (D-235, blueprint T-6) exactly as collective-infra reads it — flat JSON of PEM
+// strings `ca_chain_pem`, `issuing_cert_pem`, `issuing_key_pem` (collective-infra's getproperty hook renders these
+// three into the API env as DEVICE_CA_CHAIN / DEVICE_CA_CERT / DEVICE_CA_KEY, base64) and `broker_cert_pem` (leaf +
+// issuing CA), `broker_key_pem` (EMQX's 8883 / WSS listener only; never in a product env). The private keys never
+// leave the machine that runs this: `aws secretsmanager put-secret-value --secret-id collective/<env>/platform/device-ca
+// --secret-string file://<out>/device-ca-secret.json`, then delete the folder.
 import 'reflect-metadata';
 
 import { createHash, randomBytes, webcrypto } from 'node:crypto';
@@ -29,6 +34,13 @@ function pemFromEnv(name) {
   return `${decoded}\n`;
 }
 
+/** Every certificate of a PEM bundle (x509.X509Certificates reads PKCS#7, not concatenated PEM). */
+function pemCertificates(pem) {
+  return (pem.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g) ?? []).map(
+    (block) => new x509.X509Certificate(block),
+  );
+}
+
 const { values } = parseArgs({
   options: {
     host: { type: 'string' },
@@ -41,10 +53,16 @@ if (!values.host || !/^[a-z0-9.-]+$/i.test(values.host)) {
   process.exit(64);
 }
 
-const caCert = new x509.X509Certificate(pemFromEnv('DEVICE_CA_CERT'));
+const caCertPem = pemFromEnv('DEVICE_CA_CERT');
+const caKeyPem = pemFromEnv('DEVICE_CA_KEY');
+const caCert = new x509.X509Certificate(caCertPem);
+// the chain gateways trust (issuing CA first, then its issuers); the issuing CA alone when unset
+const chainPem = process.env.DEVICE_CA_CHAIN ? pemFromEnv('DEVICE_CA_CHAIN') : caCertPem;
+if (!pemCertificates(chainPem).some((c) => c.equal(caCert)))
+  throw new Error('DEVICE_CA_CHAIN does not contain DEVICE_CA_CERT');
 const caKey = await webcrypto.subtle.importKey(
   'pkcs8',
-  x509.PemConverter.decodeFirst(pemFromEnv('DEVICE_CA_KEY')),
+  x509.PemConverter.decodeFirst(caKeyPem),
   { name: 'ECDSA', namedCurve: 'P-256' },
   false,
   ['sign'],
@@ -80,12 +98,28 @@ if (!(await cert.verify({ publicKey: caCert.publicKey, date: new Date() })))
 const pkcs8 = await webcrypto.subtle.exportKey('pkcs8', keys.privateKey);
 const out = resolve(values.out);
 mkdirSync(out, { recursive: true });
-writeFileSync(join(out, 'server.pem'), `${cert.toString('pem')}\n${caCert.toString('pem')}\n`);
-writeFileSync(join(out, 'server.key'), `${x509.PemConverter.encode(pkcs8, 'PRIVATE KEY')}\n`, {
-  mode: 0o600,
-});
+const serverPem = `${cert.toString('pem')}\n${caCert.toString('pem')}\n`;
+const serverKey = `${x509.PemConverter.encode(pkcs8, 'PRIVATE KEY')}\n`;
+writeFileSync(join(out, 'server.pem'), serverPem);
+writeFileSync(join(out, 'server.key'), serverKey, { mode: 0o600 });
 chmodSync(join(out, 'server.key'), 0o600);
-writeFileSync(join(out, 'ca.pem'), `${caCert.toString('pem')}\n`);
+writeFileSync(join(out, 'ca.pem'), chainPem);
+writeFileSync(
+  join(out, 'device-ca-secret.json'),
+  `${JSON.stringify(
+    {
+      ca_chain_pem: chainPem,
+      issuing_cert_pem: caCertPem,
+      issuing_key_pem: caKeyPem,
+      broker_cert_pem: serverPem,
+      broker_key_pem: serverKey,
+    },
+    null,
+    2,
+  )}\n`,
+  { mode: 0o600 },
+);
+chmodSync(join(out, 'device-ca-secret.json'), 0o600);
 const fingerprint = createHash('sha256').update(Buffer.from(cert.rawData)).digest('hex');
 console.log(
   `broker certificate for ${values.host} (sha256 ${fingerprint}, until ${cert.notAfter.toISOString()}) → ${out}`,
