@@ -25,7 +25,9 @@ never sees a client certificate there (O-012).
    subscribes only to `config`, `cmd` — the former `gp/v1/<id>/+` also matched `config` / `cmd`.
 4. **WSS fallback (O-012 → D-239)**: per gateway, off by default, switched by the platform admin with a reason
    (audited, outbox event): such a gateway may connect over `wss://<MQTT_HOST>/mqtt` (Caddy → EMQX ws 8083) with the
-   device JWT **alone**.
+   device JWT **alone**. The gateway learns the URL from the bootstrap answer and — since D-249 (edge CR-015) — from
+   every `POST /v1/device/token` answer (`mqtt { url, wsUrl? }`), so the switch reaches a provisioned gateway at its
+   next token refresh without a site visit.
 5. **Device CA** in the platform secret `collective/<env>/platform/device-ca` (`ca_chain_pem`, `issuing_cert_pem`,
    `issuing_key_pem`, `broker_cert_pem`, `broker_key_pem`), rendered into the API env as `DEVICE_CA_*` (D-245).
 

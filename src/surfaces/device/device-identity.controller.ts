@@ -12,11 +12,11 @@ import { type Request } from 'express';
 import { AUTH_RATE_LIMIT, iso } from '../shared/mappers';
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
-  DeviceAccessTokenDto,
   DeviceCertificateDto,
   DeviceCertificateRenewDto,
   DeviceLogPresignDto,
   DeviceLogUploadDto,
+  DeviceTokenDto,
 } from './device.dto';
 
 const PEM_EXAMPLE = '-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----';
@@ -35,21 +35,22 @@ export class DeviceIdentityController {
     id: 'device.token.create',
     summary: 'Mint a device JWT from the mTLS client certificate',
     description:
-      'Authenticated by the gateway’s client certificate alone (mTLS, no bearer): a certificate issued by the platform device CA, not revoked, within its validity, of a gateway that is not retired → a short-lived JWT (`aud=device`, `DEVICE_ACCESS_TOKEN_TTL_SECONDS`) in the gateway’s current session family. The agent refreshes one minute before `expiresAt` and never stores the token (CR-002, D-130, D-165).',
-    implements: ['D-130', 'D-165'],
+      'Authenticated by the gateway’s client certificate alone (mTLS, no bearer): a certificate issued by the platform device CA, not revoked, within its validity, of a gateway that is not retired → a short-lived JWT (`aud=device`, `DEVICE_ACCESS_TOKEN_TTL_SECONDS`) in the gateway’s current session family. The agent refreshes one minute before `expiresAt` and never stores the token (CR-002, D-130, D-165). The answer also carries the gateway’s **current** MQTT endpoints (`mqtt { url, wsUrl? }`, edge CR-015, D-249): `wsUrl` is present only while the platform admin has this gateway’s WebSocket fallback on (D-239) and the platform publishes one — so switching the fallback on or off reaches an already-provisioned gateway at its next refresh, without a new provisioning code or a site visit. Additive within device protocol 1.2.',
+    implements: ['D-130', 'D-165', 'D-239', 'D-249'],
   })
   @ApiSuccess(200, {
-    description: 'Token',
-    type: DeviceAccessTokenDto,
+    description: 'Token and current MQTT endpoints',
+    type: DeviceTokenDto,
     example: {
       accessToken: 'eyJhbGciOiJFZERTQSJ9.eyJhdWQiOiJkZXZpY2UifQ.c2lnbmF0dXJl',
       expiresAt: '2026-11-01T01:15:00+07:00',
+      mqtt: { url: 'mqtts://mqtt.getproperty.invalid:8883' },
     },
   })
   @ApiStandardErrors('device.certificate_invalid', 'http.bad_request')
-  async token(@Req() req: Request): Promise<DeviceAccessTokenDto> {
+  async token(@Req() req: Request): Promise<DeviceTokenDto> {
     const t = await this.identity.token(req);
-    return { accessToken: t.accessToken, expiresAt: iso(t.expiresAt) };
+    return { accessToken: t.accessToken, expiresAt: iso(t.expiresAt), mqtt: t.mqtt };
   }
 
   @Post('certificate/renew')

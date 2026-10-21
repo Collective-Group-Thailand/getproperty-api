@@ -339,8 +339,8 @@ export class AdminFleetController {
     id: 'admin.devices.setMqttTransport',
     summary: 'Switch a gateway’s MQTT WebSocket fallback',
     description:
-      'For a building whose network blocks outbound 8883 (D-239, O-012 resolved): `wsFallback: true` lets the gateway connect over EMQX ws 8083 behind Caddy authenticated by its device JWT **alone** — no client certificate on that path, so a stolen JWT (≤ 1 h, issued only over mTLS to a non-retired gateway) is enough to connect for its lifetime. Off by default; the bootstrap answer carries `mqtt.wsUrl` only for such a gateway. Only gateways, never retired ones; audited with the reason; the next WebSocket connect is decided by the new value.',
-    implements: ['D-235', 'D-239'],
+      'For a building whose network blocks outbound 8883 (D-239, O-012 resolved): `wsFallback: true` lets the gateway connect over EMQX ws 8083 behind Caddy authenticated by its device JWT **alone** — no client certificate on that path, so a stolen JWT (≤ 1 h, issued only over mTLS to a non-retired gateway) is enough to connect for its lifetime. Off by default; the bootstrap answer and every `POST /v1/device/token` answer carry `mqtt.wsUrl` only for such a gateway, so a provisioned gateway picks the change up at its next token refresh (≤ 1 h, edge CR-015, D-249) — no new provisioning code. Only gateways, never retired ones; audited with the reason; the next WebSocket connect is decided by the new value.',
+    implements: ['D-235', 'D-239', 'D-249'],
   })
   @ApiJsonBody(DeviceMqttTransportDto, {
     wsFallback: true,

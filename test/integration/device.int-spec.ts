@@ -35,6 +35,7 @@ describe('device bootstrap (B1.3 acceptance, real PostgreSQL)', () => {
     t = await createIntApp(db, {
       OTP_MAX_PER_HOUR: '20',
       MQTT_PUBLIC_WS_URL: 'wss://mqtt-ws.test.invalid/mqtt',
+      DEVICE_MTLS_SOURCE: 'pem_header',
     });
     const admin = await adminToken(t);
     const device = await t.http
@@ -115,6 +116,18 @@ describe('device bootstrap (B1.3 acceptance, real PostgreSQL)', () => {
     // the device token is a device-audience token: refused on every other surface
     const wrong = await t.http.get('/v1/owner/me').set(bearer(res.body.accessToken)).expect(403);
     expect(wrong.body.code).toBe('auth.wrong_audience');
+    // edge CR-015 (D-249): the mTLS token refresh carries the current MQTT endpoints — no wsUrl while the
+    // gateway's fallback is off, even though the platform publishes one
+    const refreshed = await t.http
+      .post('/v1/device/token')
+      .set('x-client-cert', encodeURIComponent(res.body.certificatePem))
+      .send({})
+      .expect(200);
+    expect(refreshed.body).toEqual({
+      accessToken: expect.any(String),
+      expiresAt: expect.stringMatching(/\+07:00$/),
+      mqtt: { url: res.body.mqtt.url },
+    });
     // device refresh rotates like any other session
     await t.http.post('/v1/auth/refresh').send({ refreshToken: res.body.refreshToken }).expect(200);
   });

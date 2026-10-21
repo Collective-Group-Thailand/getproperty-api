@@ -62,6 +62,9 @@ describe('device-protocol.json generation', () => {
     ]);
     expect(schema['x-acl'].publish.some((t) => t.endsWith('/+'))).toBe(false);
     expect(Object.keys(schema['x-mqtt-auth'].transports)).toEqual(['mtls', 'ws']);
+    // edge CR-015 (D-249): both endpoints are re-read from every POST /v1/device/token answer
+    const transports = schema['x-mqtt-auth'].transports as Record<string, { url: string }>;
+    for (const t of ['mtls', 'ws']) expect(transports[t]!.url).toContain('POST /v1/device/token');
   });
 
   it('validates the documented payload examples with a JSON Schema validator (edge-side behaviour)', () => {
