@@ -25832,6 +25832,27 @@
         ],
         "type": "object"
       },
+      "ResidentPaymentCheckingDto": {
+        "properties": {
+          "count": {
+            "description": "How many of my payments for this invoice are held for the office.",
+            "example": 1,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "since": {
+            "description": "When the oldest of them was received.",
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "count",
+          "since"
+        ],
+        "type": "object"
+      },
       "ResidentPaymentDto": {
         "properties": {
           "account": {
@@ -25852,6 +25873,17 @@
           "allowSlip": {
             "example": true,
             "type": "boolean"
+          },
+          "checking": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResidentPaymentCheckingDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A QR / bank-settlement payment of mine for this invoice that looks like a transfer already booked is held for the office to check (D-220, D-228): the pay sheet says “a transfer is being checked by the office”. The bill (`due`, the invoice status) stays what decides; null when nothing of mine is held."
           },
           "due": {
             "description": "Due now (this invoice and earlier unpaid ones, oldest paid first). Unit: THB, decimal string (D-046).",
@@ -25887,7 +25919,8 @@
           "qr",
           "account",
           "allowSlip",
-          "allowPartial"
+          "allowPartial",
+          "checking"
         ],
         "type": "object"
       },
@@ -31389,6 +31422,11 @@
       },
       "TechnicianMeDto": {
         "properties": {
+          "linkRequestsPending": {
+            "description": "Parties matched by my SMS-verified phone that wait for their landlord’s confirmation before their work orders reach me (D-226, LIFF #29): with no work orders and a count above 0 show “waiting for the office to confirm you”, not “no work assigned yet”.",
+            "example": 0,
+            "type": "integer"
+          },
           "scopes": {
             "example": [],
             "items": {
@@ -31411,7 +31449,8 @@
         "required": [
           "user",
           "workOrderIds",
-          "scopes"
+          "scopes",
+          "linkRequestsPending"
         ],
         "type": "object"
       },
@@ -158383,7 +158422,7 @@
     },
     "/v1/resident/invoices/{invoiceId}/payment": {
       "get": {
-        "description": "What is due now (this invoice and earlier unpaid ones, oldest paid first, D-193), the Thai QR for it (Tag 30, created when missing, expired or for another amount — the money goes to the landlord’s own account, D-042), the account for a plain transfer (in full with its bank code while something is due — the reveal is audited, D-209), and whether slips and partial payments are accepted.\n\nImplements: D-042, D-043, D-154, D-209.",
+        "description": "What is due now (this invoice and earlier unpaid ones, oldest paid first, D-193), the Thai QR for it (Tag 30, created when missing, expired or for another amount — the money goes to the landlord’s own account, D-042), the account for a plain transfer (in full with its bank code while something is due — the reveal is audited, D-209), and whether slips and partial payments are accepted. `checking` tells me a transfer of mine for this invoice is held for the office (D-220, D-228) — never its amount, reason or the payment it may repeat.\n\nImplements: D-042, D-043, D-154, D-209, D-228.",
         "operationId": "resident.invoices.payment",
         "parameters": [
           {
@@ -158412,6 +158451,7 @@
                   },
                   "allowPartial": false,
                   "allowSlip": true,
+                  "checking": null,
                   "due": "5344.00",
                   "invoiceId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "number": "INV-2026-00042",
@@ -187377,7 +187417,7 @@
     },
     "/v1/technician/me": {
       "get": {
-        "description": "The technician and the work orders their token covers (`work_order:<uuid>`, B5.1); details in `GET /v1/technician/work-orders`.\n\nImplements: D-072, D-154.",
+        "description": "The technician and the work orders their token covers (`work_order:<uuid>`, B5.1); details in `GET /v1/technician/work-orders`. `linkRequestsPending` counts the SMS-matched parties still waiting for the office to confirm me (D-226).\n\nImplements: D-072, D-154, D-226.",
         "operationId": "technician.me.get",
         "parameters": [
           {
@@ -187389,6 +187429,7 @@
             "content": {
               "application/json": {
                 "example": {
+                  "linkRequestsPending": 0,
                   "scopes": [],
                   "user": {
                     "displayName": "Somchai Test",

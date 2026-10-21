@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { bangkokDate } from '@common/time/bangkok';
+import { RealtimeHub } from '@core/realtime/realtime.hub';
 import { TenantTx } from '@database/tenant-tx';
 import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 import {
@@ -851,8 +852,22 @@ describe('B4.4 payments, slips, settlement, receipts (real PostgreSQL)', () => {
     expect((await invoice(inv.id)).status).toBe('paid');
     const before = await credit();
     const receiptsBefore = (await q<{ n: number }>('SELECT count(*)::int AS n FROM ops.receipt'))[0]!.n;
-    // the same transfer arrives later through the bank callback (lost webhook / settlement file)
-    await qrCallback(inv.ref, amount, 'KB-DUP-0002');
+    // the same transfer arrives later through the bank callback (lost webhook / settlement file); the resident's own
+    // realtime channel hears it (LIFF #30, D-228) — type and ids only
+    const residentUserId = (await t.http.get('/v1/resident/me').set(R()).expect(200)).body.user.id as string;
+    const heard: string[] = [];
+    const sub = t.app
+      .get(RealtimeHub)
+      .stream([`user:${residentUserId}`])
+      .subscribe((m: { type?: string }) => {
+        if (m.type && m.type !== 'ready' && m.type !== 'heartbeat') heard.push(m.type);
+      });
+    try {
+      await qrCallback(inv.ref, amount, 'KB-DUP-0002');
+    } finally {
+      sub.unsubscribe();
+    }
+    expect(heard).toContain('payment.held');
     const held = (await t.http.get('/v1/owner/payments?status=pending').set(O()).expect(200)).body.data as {
       id: string;
       providerRef: string;
@@ -877,6 +892,21 @@ describe('B4.4 payments, slips, settlement, receipts (real PostgreSQL)', () => {
         )
       ).length,
     ).toBe(1);
+    // LIFF #30 (D-228): the resident's pay sheet says a transfer is being checked — a count and a time only
+    const checking = (await t.http.get(`/v1/resident/invoices/${inv.id}/payment`).set(R()).expect(200)).body;
+    expect(checking.checking).toEqual({ count: 1, since: expect.any(String) });
+    expect(JSON.stringify(checking)).not.toContain(slipPayment);
+    expect(JSON.stringify(checking)).not.toContain('qr_already_paid');
+    expect(JSON.stringify(checking)).not.toContain('KB-DUP-0002');
+    // a login linked to nobody of this invoice gets 404, not the hold (tenancy, contract §8)
+    const strangerLogin = await t.http
+      .post('/v1/auth/resident/line')
+      .send({ idToken: fakeLineIdToken({ sub: 'U-f8-stranger', name: 'คนอื่น' }) })
+      .expect(200);
+    await t.http
+      .get(`/v1/resident/invoices/${inv.id}/payment`)
+      .set(bearer(strangerLogin.body.accessToken as string))
+      .expect(404);
     // the owner dismisses it: never booked
     const dismissed = await t.http
       .post(`/v1/owner/payments/${h.id}/actions/dismiss`)
@@ -892,6 +922,9 @@ describe('B4.4 payments, slips, settlement, receipts (real PostgreSQL)', () => {
     await t.http.post(`/v1/owner/payments/${h.id}/actions/confirm`).set(O()).set(idem()).expect(409);
     await settle();
     expect(await credit()).toBe(before);
+    expect(
+      (await t.http.get(`/v1/resident/invoices/${inv.id}/payment`).set(R()).expect(200)).body.checking,
+    ).toBeNull();
     await ledgersAgree();
   });
 

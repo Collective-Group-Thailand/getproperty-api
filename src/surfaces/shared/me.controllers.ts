@@ -329,8 +329,8 @@ export class TechnicianMeController {
     id: 'technician.me.get',
     summary: 'Who I am in the technician app',
     description:
-      'The technician and the work orders their token covers (`work_order:<uuid>`, B5.1); details in `GET /v1/technician/work-orders`.',
-    implements: ['D-072', 'D-154'],
+      'The technician and the work orders their token covers (`work_order:<uuid>`, B5.1); details in `GET /v1/technician/work-orders`. `linkRequestsPending` counts the SMS-matched parties still waiting for the office to confirm me (D-226).',
+    implements: ['D-072', 'D-154', 'D-226'],
   })
   @ApiSuccess(200, {
     description: 'The signed-in technician',
@@ -346,6 +346,7 @@ export class TechnicianMeController {
       },
       workOrderIds: [],
       scopes: [],
+      linkRequestsPending: 0,
     } satisfies TechnicianMeDto,
   })
   @ApiStandardErrors('http.not_found')

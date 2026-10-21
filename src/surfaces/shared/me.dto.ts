@@ -397,6 +397,14 @@ export class TechnicianMeDto {
 
   @ApiProperty({ type: [String], example: [] })
   scopes!: string[];
+
+  @ApiProperty({
+    type: 'integer',
+    example: 0,
+    description:
+      'Parties matched by my SMS-verified phone that wait for their landlord’s confirmation before their work orders reach me (D-226, LIFF #29): with no work orders and a count above 0 show “waiting for the office to confirm you”, not “no work assigned yet”.',
+  })
+  linkRequestsPending!: number;
 }
 
 export class AdminMeDto {

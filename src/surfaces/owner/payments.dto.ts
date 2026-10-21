@@ -673,6 +673,24 @@ export class ResidentAccountDto {
   bankCode!: string;
 }
 
+/** LIFF #30 (D-228): my transfers for an invoice the office is checking — a count and a time, nothing of the duplicate. */
+export class ResidentPaymentCheckingDto {
+  @ApiProperty({
+    type: 'integer',
+    minimum: 1,
+    example: 1,
+    description: 'How many of my payments for this invoice are held for the office.',
+  })
+  count!: number;
+
+  @ApiProperty({
+    format: 'date-time',
+    example: FAKE.dateTime,
+    description: 'When the oldest of them was received.',
+  })
+  since!: string;
+}
+
 export class ResidentPaymentDto {
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   invoiceId!: string;
@@ -705,6 +723,14 @@ export class ResidentPaymentDto {
 
   @ApiProperty({ example: false })
   allowPartial!: boolean;
+
+  @ApiProperty({
+    type: ResidentPaymentCheckingDto,
+    nullable: true,
+    description:
+      'A QR / bank-settlement payment of mine for this invoice that looks like a transfer already booked is held for the office to check (D-220, D-228): the pay sheet says “a transfer is being checked by the office”. The bill (`due`, the invoice status) stays what decides; null when nothing of mine is held.',
+  })
+  checking!: ResidentPaymentCheckingDto | null;
 }
 
 export class ResidentSlipDto {
