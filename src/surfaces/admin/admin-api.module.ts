@@ -14,6 +14,7 @@ import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import { AdminFilesController, AdminIntegrationEventsController } from './admin-backlog.controller';
 import { ADMIN_BUSINESS_CONTROLLERS } from './admin-business.controller';
+import { AdminProviderCredentialsController } from './admin-credentials.controller';
 import {
   AdminBuildingsController,
   AdminDevicesController,
@@ -60,6 +61,7 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
     AdminFleetController,
     AdminOtaController,
     AdminIngestController,
+    AdminProviderCredentialsController,
     notificationsController(SURFACES.admin),
     pushSubscriptionsController(SURFACES.admin),
     realtimeController(SURFACES.admin),

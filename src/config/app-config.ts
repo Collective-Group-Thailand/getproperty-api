@@ -37,8 +37,7 @@ export class AppConfig {
   /** `fake`, `real` (in-process Chromium, ADR-0012) or `queue` (shared `pdf-render`, D-236). */
   get pdfRendererMode(): 'fake' | 'real' | 'queue' {
     return (
-      this.env.PDF_RENDERER_MODE ??
-      (this.env.INTEGRATIONS_MODE === IntegrationsMode.Fake ? 'fake' : 'real')
+      this.env.PDF_RENDERER_MODE ?? (this.env.INTEGRATIONS_MODE === IntegrationsMode.Fake ? 'fake' : 'real')
     );
   }
 

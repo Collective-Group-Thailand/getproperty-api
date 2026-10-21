@@ -6,6 +6,7 @@ import { uuidv7 } from '@common/ids/uuidv7';
 import { AppConfig } from '@config/app-config';
 import { AuditService } from '@core/audit/audit.service';
 import { CLOCK, type Clock } from '@core/clock/clock';
+import { ProviderCredentialsService } from '@core/credentials/provider-credentials.service';
 import { DomainEvents } from '@core/events/domain-events';
 import { FeatureFlagsService } from '@core/feature-flags/feature-flags.service';
 import { TenantDataKeys } from '@core/tenancy/data-keys.service';
@@ -19,7 +20,6 @@ import {
   type Prisma,
 } from '@generated/prisma/client';
 import { LOCK_VENDORS, type LockRef, type LockVendorRegistry } from '@integrations/locks/lock-vendor.port';
-import { SECRETS_PROVIDER, type SecretsProvider } from '@integrations/secrets/secrets.port';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { adapterVendor, generatePin, LIVE_STATUSES } from './access-rules';
@@ -71,7 +71,7 @@ export class AccessCredentialsService extends TenantScopedRepository {
     private readonly flags: FeatureFlagsService,
     private readonly config: AppConfig,
     @Inject(LOCK_VENDORS) private readonly vendors: LockVendorRegistry,
-    @Inject(SECRETS_PROVIDER) private readonly secrets: SecretsProvider,
+    private readonly credentialStore: ProviderCredentialsService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
     super();
@@ -248,15 +248,12 @@ export class AccessCredentialsService extends TenantScopedRepository {
       !(await this.flags.isEnabled(`locks.vendor.${vendor}`, lock.tenantId))
     )
       return { error: `locks.vendor.${vendor} is not enabled for this tenant` };
-    let credentials: Record<string, string> = {};
-    try {
-      credentials = await this.secrets.getJsonSecret(
-        `${this.config.get('LOCKS_SECRETS_PREFIX')}/${vendor}/${lock.tenantId}`,
-      );
-    } catch (error) {
-      if (this.vendors.mode === 'real') return { error: `no ${vendor} credentials for the tenant` };
-      void error;
-    }
+    const stored = await this.credentialStore.get(
+      { tenantId: lock.tenantId, kind: 'lock', provider: vendor },
+      'locks.sync',
+    );
+    if (!stored && this.vendors.mode === 'real') return { error: `no ${vendor} credentials for the tenant` };
+    const credentials: Record<string, string> = stored ?? {};
     return { ref: { vendor, vendorLockId: lock.vendorLockId, credentials } };
   }
 

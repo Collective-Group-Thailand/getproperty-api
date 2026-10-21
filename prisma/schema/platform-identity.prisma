@@ -413,3 +413,38 @@ model TenantBankAccountHistory {
   @@map("tenant_bank_account_history")
   @@schema("platform")
 }
+
+enum ProviderCredentialKind {
+  payment
+  lock
+  etax
+
+  @@map("provider_credential_kind")
+  @@schema("platform")
+}
+
+/// D-240 (O-013): per-merchant provider credentials sealed with the tenant data key (platform key when tenant_id is null).
+model ProviderCredential {
+  id             String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String?                @map("tenant_id") @db.Uuid
+  kind           ProviderCredentialKind
+  provider       String
+  accountRefHash Bytes?                 @map("account_ref_hash")
+  accountRefHint String?                @map("account_ref_hint")
+  secretEnc      Bytes                  @map("secret_enc")
+  keyNames       String[]               @default([]) @map("key_names")
+  fingerprint    String
+  source         String                 @default("admin")
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?                @map("created_by") @db.Uuid
+  revokedAt      DateTime?              @map("revoked_at") @db.Timestamptz(6)
+  revokedBy      String?                @map("revoked_by") @db.Uuid
+  revokeReason   String?                @map("revoke_reason")
+
+  tenant Tenant? @relation("ProviderCredentialTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "provider_credential_tenant_id_fkey")
+
+  @@unique([tenantId, kind, provider, accountRefHash], map: "provider_credential_live_key", where: raw("(revoked_at IS NULL)"))
+  @@index([tenantId], map: "provider_credential_tenant_id_idx")
+  @@map("provider_credential")
+  @@schema("platform")
+}

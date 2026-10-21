@@ -14,7 +14,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (85)
+## Permissions (86)
 | Permission | Surfaces | owner | manager | staff | accountant | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View the tenant profile and company data |
@@ -93,6 +93,7 @@
 | `admin.audit.read` | admin |  |  |  |  | ✓ |  |  |  | Read the platform audit log |
 | `admin.dsr.manage` | admin |  |  |  |  | ✓ |  |  |  | Handle data subject requests (D-025) |
 | `admin.device.manage` | admin |  |  |  |  | ✓ |  | ✓ |  | Device fleet, provisioning codes, OTA rings (D-033, D-131) |
+| `admin.provider_credential.manage` | admin |  |  |  |  | ✓ |  |  |  | Set, replace and revoke per-merchant provider credentials (payments, locks, e-Tax); values write-only (D-240) |
 | `admin.subscription.manage` | admin |  |  |  |  | ✓ |  |  | ✓ | Price plans, subscriptions, pilot agreements (D-156, D-083) |
 | `admin.platform_invoice.issue` | admin |  |  |  |  | ✓ |  |  | ✓ | Issue platform invoices and receipts |
 | `admin.platform_credit_note.approve` | admin |  |  |  |  | ✓ |  |  | ✓ | Approve platform credit notes (maker-checker, D-091) |

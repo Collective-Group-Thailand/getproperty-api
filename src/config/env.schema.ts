@@ -538,7 +538,17 @@ export class EnvironmentVariables {
   @IsUrl({ require_tld: false })
   PAYMENTS_OPN_BASE_URL = 'https://api.omise.co';
 
-  /** Prefix of the per-merchant secret ids (`<prefix>/<provider>/<merchantRef>`): API keys, webhook secrets. */
+  /**
+   * D-240 (O-013): provider credentials live in `platform.provider_credential`. `true` = while migrating, a credential
+   * without a row is still read from its former Secrets Manager path (the `*_SECRETS_PREFIX` below); default off.
+   */
+  @Transform(toBoolean)
+  @IsBoolean()
+  PROVIDER_CREDENTIALS_LEGACY_SECRETS = false;
+
+  /**
+   * Legacy (D-240: migration only) prefix of the per-merchant secret ids (`<prefix>/<provider>/<merchantRef>`).
+   */
   @IsString()
   PAYMENTS_SECRETS_PREFIX = 'getproperty/payments';
 
