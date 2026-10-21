@@ -728,6 +728,65 @@ export class EnvironmentVariables {
   @Max(600_000)
   EMQX_HTTP_RATE_LIMIT = 6000;
 
+  // --- Cross-product integration events (D-238, blueprint T-16) ---------------------------------------------
+
+  /** D-238 / T-16: how outbound integration events reach getbuild (the Build modules of getpop): `none` (default — they wait), `webhook`, `sns`. */
+  @IsIn(['none', 'webhook', 'sns'])
+  INTEGRATION_GETBUILD_TRANSPORT: 'none' | 'webhook' | 'sns' = 'none';
+
+  /** Its receiver over the docker network, e.g. `http://<product>-api:3000/webhooks/integration/getproperty`. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^https?:\/\/\S+$/, { message: 'INTEGRATION_GETBUILD_WEBHOOK_URL must be an http(s) URL' })
+  INTEGRATION_GETBUILD_WEBHOOK_URL?: string;
+
+  /** HMAC keys (≥ 32 characters, comma-separated) getproperty signs its events to getbuild (the Build modules of getpop) with; the first is current. */
+  @IsOptional()
+  @IsString()
+  INTEGRATION_GETBUILD_SIGNING_KEYS?: string;
+
+  /** HMAC keys accepted on `POST /webhooks/integration/getbuild` (events from getbuild (the Build modules of getpop)); several during a rotation. */
+  @IsOptional()
+  @IsString()
+  INTEGRATION_GETBUILD_VERIFY_KEYS?: string;
+
+  /** `sns` transport (a partner on another box, stub until it exists): the topic. */
+  @IsOptional()
+  @IsString()
+  INTEGRATION_GETBUILD_SNS_TOPIC_ARN?: string;
+
+  /** D-238 / T-16: how outbound integration events reach getpack: `none` (default — they wait), `webhook`, `sns`. */
+  @IsIn(['none', 'webhook', 'sns'])
+  INTEGRATION_GETPACK_TRANSPORT: 'none' | 'webhook' | 'sns' = 'none';
+
+  /** Its receiver over the docker network, e.g. `http://<product>-api:3000/webhooks/integration/getproperty`. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^https?:\/\/\S+$/, { message: 'INTEGRATION_GETPACK_WEBHOOK_URL must be an http(s) URL' })
+  INTEGRATION_GETPACK_WEBHOOK_URL?: string;
+
+  /** HMAC keys (≥ 32 characters, comma-separated) getproperty signs its events to getpack with; the first is current. */
+  @IsOptional()
+  @IsString()
+  INTEGRATION_GETPACK_SIGNING_KEYS?: string;
+
+  /** HMAC keys accepted on `POST /webhooks/integration/getpack` (events from getpack); several during a rotation. */
+  @IsOptional()
+  @IsString()
+  INTEGRATION_GETPACK_VERIFY_KEYS?: string;
+
+  /** `sns` transport (a partner on another box, stub until it exists): the topic. */
+  @IsOptional()
+  @IsString()
+  INTEGRATION_GETPACK_SNS_TOPIC_ARN?: string;
+
+  /** Per-request timeout of the webhook transport. */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1_000)
+  @Max(60_000)
+  INTEGRATION_WEBHOOK_TIMEOUT_MS = 10_000;
+
   // --- AI gateway (D-161) ----------------------------------------------------------------------------------
 
   /** Collective AI gateway base URL (vision OCR of meter photos and utility invoices); empty = OCR unavailable. */

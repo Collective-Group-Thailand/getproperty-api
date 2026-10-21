@@ -34,6 +34,18 @@ export function validateEnv(raw: Record<string, unknown>): EnvironmentVariables 
   if (env.PDF_RENDERER_MODE === 'queue' && !env.PDF_RENDER_REDIS_URL && !env.REDIS_URL)
     problems.push('PDF_RENDER_REDIS_URL: required (or REDIS_URL) when PDF_RENDERER_MODE=queue');
 
+  for (const p of ['GETBUILD', 'GETPACK'] as const) {
+    if (env[`INTEGRATION_${p}_TRANSPORT`] === 'webhook') {
+      if (!env[`INTEGRATION_${p}_WEBHOOK_URL`])
+        problems.push(`INTEGRATION_${p}_WEBHOOK_URL: required when INTEGRATION_${p}_TRANSPORT=webhook`);
+      const keys = (env[`INTEGRATION_${p}_SIGNING_KEYS`] ?? '').split(',').filter((k) => k.trim());
+      if (keys.length === 0 || keys.some((k) => k.trim().length < 32))
+        problems.push(
+          `INTEGRATION_${p}_SIGNING_KEYS: one or more keys of ≥ 32 characters required for the webhook transport`,
+        );
+    }
+  }
+
   if (env.NODE_ENV === NodeEnv.Production) {
     if (env.PDF_RENDERER_MODE === 'fake')
       problems.push('PDF_RENDERER_MODE: must be "real" or "queue" when NODE_ENV=production');

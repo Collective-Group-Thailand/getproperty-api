@@ -118,6 +118,8 @@ export const API_TAGS: Record<string, string> = {
     'My pilot KPIs, operating insights from the analytics rollups and anonymised benchmarks (B6.3, D-083, D-214).',
   'admin.files':
     'Platform files of the admin zone: the published notice behind a utility tariff version, contracts, evidence (D-214).',
+  'webhooks.integration':
+    'Integration events from other Collective products (getbuild / getpop, getpack) over the box network, HMAC-signed (D-238).',
   'admin.providerCredentials':
     'Per-merchant provider credentials (payments, locks, e-Tax) sealed with the tenant data key; values write-only, decrypts audited (D-240).',
   'admin.integrationEvents':

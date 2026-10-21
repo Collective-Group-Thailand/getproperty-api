@@ -12521,6 +12521,38 @@
         ],
         "type": "object"
       },
+      "IntegrationReceiptDto": {
+        "properties": {
+          "id": {
+            "example": "0199f1c2-7a00-7000-8000-0000000000aa",
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IntegrationReceiptStatus"
+              }
+            ],
+            "description": "`applied` (stored and applied), `rejected` (stored; the contract or the consumer refused it — do not resend), `duplicate` (this idempotency key was received before).",
+            "example": "applied"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "type": "object"
+      },
+      "IntegrationReceiptStatus": {
+        "description": "`applied` (stored and applied), `rejected` (stored; the contract or the consumer refused it — do not resend), `duplicate` (this idempotency key was received before).",
+        "enum": [
+          "applied",
+          "rejected",
+          "duplicate"
+        ],
+        "type": "string"
+      },
       "IntegrationStatus": {
         "enum": [
           "received",
@@ -192939,6 +192971,248 @@
         "x-surface": "technician"
       }
     },
+    "/webhooks/integration/{platform}": {
+      "post": {
+        "description": "Cross-product events (D-238, D-153): HMAC-signed over the raw body (401 `webhook.signature_invalid`), stored once per idempotency key, validated against the `@collective/asset-core` contract and applied by its consumer — `warranty.defect.closed` today (B5.1). Answers 200 once stored, including refused and duplicate events. Senders call it over the box’s docker network; only correctly signed requests are accepted wherever it is reached from.\n\nImplements: D-238, D-153.",
+        "operationId": "webhooks.integration.receive",
+        "parameters": [
+          {
+            "description": "The sending product.",
+            "in": "path",
+            "name": "platform",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/IntegrationSystem"
+            }
+          },
+          {
+            "description": "`v1=<hex HMAC-SHA256(key, \"<timestamp>.<raw body>\")>`, several during a key rotation.",
+            "in": "header",
+            "name": "X-Collective-Signature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unix seconds of the signature (± 300 s).",
+            "in": "header",
+            "name": "X-Collective-Timestamp",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The sending product (= `platform`).",
+            "in": "header",
+            "name": "X-Collective-Source",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The envelope’s idempotency key.",
+            "in": "header",
+            "name": "X-Collective-Event-Id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "closed": {
+                  "summary": "A warranty defect closed by getbuild",
+                  "value": {
+                    "eventId": "0199f1c2-7a00-7000-8000-000000000004",
+                    "idempotencyKey": "getbuild:defect:D-0042:closed",
+                    "occurredAt": "2026-11-04T09:00:00+07:00",
+                    "payload": {},
+                    "sourcePlatform": "getbuild",
+                    "tenantId": null,
+                    "type": "warranty.defect.closed",
+                    "version": 1
+                  }
+                }
+              },
+              "schema": {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            }
+          },
+          "description": "An integration event envelope of `@collective/asset-core/contracts`.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "0199f1c2-7a00-7000-8000-0000000000aa",
+                  "status": "applied"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationReceiptDto"
+                }
+              }
+            },
+            "description": "Stored",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.malformed_json": {
+                    "$ref": "#/components/examples/problem.http.malformed_json"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.malformed_json`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "webhook.signature_invalid": {
+                    "$ref": "#/components/examples/problem.webhook.signature_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `webhook.signature_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "webhook.malformed": {
+                    "$ref": "#/components/examples/problem.webhook.malformed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `webhook.malformed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Integration event from another Collective product",
+        "tags": [
+          "webhooks.integration"
+        ],
+        "x-surface": "webhooks"
+      }
+    },
     "/webhooks/payments/{provider}": {
       "post": {
         "description": "KBank / SCB / Opn (O-001) POST a signed payment confirmation for a merchant. The API finds the merchant, verifies the signature with its secret (401 `webhook.signature_invalid` otherwise), stores the callback once per provider event id and answers 200 at once; the worker confirms each paid reference whose QR was issued for that same merchant account, idempotently on the provider transaction reference (D-042).\n\nImplements: D-042, ADR-0008.",
@@ -194120,6 +194394,10 @@
       "name": "technician.workOrders"
     },
     {
+      "description": "Integration events from other Collective products (getbuild / getpop, getpack) over the box network, HMAC-signed (D-238).",
+      "name": "webhooks.integration"
+    },
+    {
       "description": "Signed payment confirmations from KBank, SCB and Opn (O-001) for each landlord’s own merchant account (D-042, ADR-0008).",
       "name": "webhooks.payments"
     },
@@ -194129,6 +194407,9 @@
     }
   ],
   "webhooks": {
+    "integration.receive": {
+      "$ref": "#/paths/~1webhooks~1integration~1%7Bplatform%7D"
+    },
     "payments.callback": {
       "$ref": "#/paths/~1webhooks~1payments~1%7Bprovider%7D"
     },
