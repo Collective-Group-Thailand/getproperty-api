@@ -334,6 +334,16 @@ export const SETTINGS: readonly SettingDef[] = [
   },
   // --- devices, telemetry, readings (B3) --------------------------------------------------------------
   {
+    key: 'mqtt.authn.require_device_jwt',
+    valueType: 'bool',
+    scopeAllowed: ['platform'],
+    description:
+      'D-235 / D-239 (device protocol 1.2): a gateway connecting to EMQX on 8883 must send a valid device JWT of its own as the MQTT password besides its client certificate (a retired gateway cannot reconnect with a still-valid certificate); off = the certificate alone is accepted while older agents run. The WebSocket fallback always requires the JWT.',
+    editableBy: ADMIN,
+    value: true,
+    reason: 'seed: founder decision 2026-10-22 (on by default in production, D-239)',
+  },
+  {
     key: 'devices.gateway_defaults',
     valueType: 'json',
     scopeAllowed: ['platform', 'tenant'],

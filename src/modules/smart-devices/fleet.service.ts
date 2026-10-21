@@ -371,6 +371,46 @@ export class DeviceFleetService extends TenantScopedRepository {
     });
   }
 
+  /**
+   * D-239 (O-012 resolved): the gateway may connect over EMQX ws 8083 behind Caddy with its device JWT alone — for a
+   * building whose network blocks 8883. Off by default; only a gateway, never a retired one; audited with the reason;
+   * the EMQX authn endpoint reads the flag on every WebSocket connect, so switching it off refuses the next one (an
+   * open session ends at the latest when its JWT expires and the agent reconnects).
+   */
+  setMqttTransport(id: string, wsFallback: boolean, reason: string) {
+    return this.db.platform(async (tx) => {
+      const device = this.found(await tx.device.findUnique({ where: { id } }));
+      if (device.kind !== 'gateway') throw new DomainException('device.not_gateway');
+      if (device.status === 'retired') throw new DomainException('device.invalid_state');
+      if (device.mqttWsFallback === wsFallback)
+        return tx.device.findUniqueOrThrow({ where: { id }, include: DEVICE_INCLUDE });
+      const updated = await tx.device.update({
+        where: { id },
+        data: { mqttWsFallback: wsFallback, version: { increment: 1 } },
+        include: DEVICE_INCLUDE,
+      });
+      await this.audit.record(tx, {
+        action: 'device.mqtt_transport_changed',
+        tenantId: device.tenantId,
+        buildingId: device.buildingId,
+        subjectType: 'smart.device',
+        subjectId: id,
+        before: { mqttWsFallback: device.mqttWsFallback },
+        after: { mqttWsFallback: wsFallback },
+        metadata: { reason },
+      });
+      await this.events.record(tx, {
+        type: 'device.mqtt_transport_changed',
+        aggregateType: 'device',
+        aggregateId: id,
+        tenantId: device.tenantId,
+        buildingId: device.buildingId,
+        payload: { deviceId: id, mqttWsFallback: wsFallback },
+      });
+      return updated;
+    });
+  }
+
   /** Revokes the gateway's certificates, broker ACL and sessions: it must bootstrap again with a new code. */
   async revokeCertificates(id: string, reason: string) {
     const families: string[] = [];

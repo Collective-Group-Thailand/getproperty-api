@@ -128,6 +128,7 @@ const DEVICE_EXAMPLE: FleetDeviceDto = {
   firmwareVersion: '0.3.0',
   arch: 'arm64',
   otaRing: 'all' as FleetDeviceDto['otaRing'],
+  mqttWsFallback: false,
   lastSeenAt: FAKE.dateTime,
   configAppliedVersion: 2,
   meters: 2,

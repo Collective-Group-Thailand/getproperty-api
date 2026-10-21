@@ -30,6 +30,7 @@ import {
   DeviceImportDto,
   DeviceImportResultDto,
   type DeviceKindName,
+  DeviceMqttTransportDto,
   DeviceReasonDto,
   DeviceRingDto,
   type DeviceStatusName,
@@ -68,11 +69,12 @@ const DEVICE_EXAMPLE = {
   firmwareVersion: null,
   arch: 'arm64',
   otaRing: 'canary',
+  mqttWsFallback: false,
   lastSeenAt: null,
   configAppliedVersion: null,
   meters: 0,
   health: null,
-  nextActions: ['assign', 'set-ring', 'revoke-certificates', 'retire'],
+  nextActions: ['assign', 'set-ring', 'set-mqtt-transport', 'revoke-certificates', 'retire'],
   version: 2,
 };
 
@@ -327,6 +329,40 @@ export class AdminFleetController {
     @Body() body: DeviceRingDto,
   ): Promise<FleetDeviceDto> {
     return fleetDeviceDto(await this.fleet.setRing(id, body.otaRing), 'admin');
+  }
+
+  @Post(':deviceId/actions/set-mqtt-transport')
+  @HttpCode(200)
+  @Idempotent()
+  @Can('admin.device.manage')
+  @ApiEndpoint({
+    id: 'admin.devices.setMqttTransport',
+    summary: 'Switch a gateway’s MQTT WebSocket fallback',
+    description:
+      'For a building whose network blocks outbound 8883 (D-239, O-012 resolved): `wsFallback: true` lets the gateway connect over EMQX ws 8083 behind Caddy authenticated by its device JWT **alone** — no client certificate on that path, so a stolen JWT (≤ 1 h, issued only over mTLS to a non-retired gateway) is enough to connect for its lifetime. Off by default; the bootstrap answer carries `mqtt.wsUrl` only for such a gateway. Only gateways, never retired ones; audited with the reason; the next WebSocket connect is decided by the new value.',
+    implements: ['D-235', 'D-239'],
+  })
+  @ApiJsonBody(DeviceMqttTransportDto, {
+    wsFallback: true,
+    reason: 'building firewall blocks outbound 8883 (ticket INC-2026-021)',
+  })
+  @ApiSuccess(200, {
+    description: 'Updated',
+    type: FleetDeviceDto,
+    example: { ...DEVICE_EXAMPLE, mqttWsFallback: true },
+  })
+  @ApiStandardErrors(
+    'device.not_gateway',
+    'device.invalid_state',
+    'http.not_found',
+    'validation.failed',
+    'http.bad_request',
+  )
+  async setMqttTransport(
+    @Param('deviceId', ParseUUIDPipe) id: string,
+    @Body() body: DeviceMqttTransportDto,
+  ): Promise<FleetDeviceDto> {
+    return fleetDeviceDto(await this.fleet.setMqttTransport(id, body.wsFallback, body.reason), 'admin');
   }
 
   @Post(':deviceId/actions/revoke-certificates')

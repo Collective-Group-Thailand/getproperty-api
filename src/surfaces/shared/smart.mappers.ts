@@ -64,6 +64,7 @@ export function deviceNextActions(d: DeviceRow, audience: 'operator' | 'admin'):
   if (audience === 'admin') {
     if (d.status !== 'retired' && !d.assetItemId) out.push('assign');
     if (d.kind === 'gateway') out.push('set-ring');
+    if (d.kind === 'gateway' && d.status !== 'retired') out.push('set-mqtt-transport');
     if (d.kind === 'gateway' && d.status !== 'retired') out.push('revoke-certificates');
     if (d.status !== 'retired' && d.channelsAsGateway.length === 0 && !d.assetItemId) out.push('retire');
   }
@@ -88,6 +89,7 @@ export function fleetDeviceDto(d: DeviceRow, audience: 'operator' | 'admin' = 'o
     firmwareVersion: d.firmwareVersion,
     arch: d.arch,
     otaRing: d.otaRing as OtaRingName,
+    mqttWsFallback: d.mqttWsFallback,
     lastSeenAt: isoOrNull(d.lastSeenAt),
     configAppliedVersion: d.configAppliedVersion,
     meters: d.channelsAsGateway.length,

@@ -27,6 +27,7 @@ import { DeviceBootstrapService } from './devices/device-bootstrap.service';
 import { DeviceCaService } from './devices/device-ca.service';
 import { DeviceIdentityService } from './devices/device-identity.service';
 import { DeviceRegistryService } from './devices/device-registry.service';
+import { EmqxAuthService } from './devices/emqx-auth.service';
 import { DocumentsService } from './documents/documents.service';
 import { DocumentNumbering } from './documents/numbering.service';
 import { DomainEvents } from './events/domain-events';
@@ -123,6 +124,7 @@ const SERVICES = [
   DeviceRegistryService,
   DeviceBootstrapService,
   DeviceIdentityService,
+  EmqxAuthService,
   DocumentsService,
   NotificationService,
   NotificationRoutesService,

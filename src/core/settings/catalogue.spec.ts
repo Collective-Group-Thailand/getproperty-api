@@ -19,6 +19,7 @@ describe('setting catalogue (ADR-0004, D-144)', () => {
     expect(v['late_fee.enabled']).toBe(false); // D-045 ⚖
     expect(v['reminders.schedule']).toEqual([1, 3, 7]); // D-045
     expect(v['subscription.trial_days']).toBe(30); // D-082
+    expect(v['mqtt.authn.require_device_jwt']).toBe(true); // D-235 / D-239
   });
 
   it('the tariff-cap severity is a platform/tenant setting edited by the platform admin only (D-021a)', () => {
