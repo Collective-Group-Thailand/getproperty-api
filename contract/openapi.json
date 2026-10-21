@@ -156524,9 +156524,12 @@
         "x-surface": "resident"
       },
       "post": {
-        "description": "For a unit I occupy, in whole slots inside the opening hours and the weekly quota of my unit (422 `facility.quota_exceeded`); confirmed at once or waiting for approval; a slot someone already holds is 409 `facility.slot_taken`.\n\nImplements: D-073.",
+        "description": "For a unit I occupy, in whole slots inside the opening hours and the weekly quota of my unit (422 `facility.quota_exceeded`); confirmed at once or waiting for approval; a slot someone already holds is 409 `facility.slot_taken`. Send an `Idempotency-Key`: a retry with the same key and body answers the booking made instead of 409 for my own slot (D-229).\n\nImplements: D-073, D-229.",
         "operationId": "resident.community.book",
         "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
+          },
           {
             "$ref": "#/components/parameters/AcceptLanguage"
           }
@@ -156575,6 +156578,9 @@
             },
             "description": "Booked",
             "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"
               },
@@ -156595,6 +156601,9 @@
                 "examples": {
                   "http.bad_request": {
                     "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
                   }
                 },
                 "schema": {
@@ -156602,7 +156611,7 @@
                 }
               }
             },
-            "description": "Problem: `http.bad_request`",
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -156681,6 +156690,9 @@
                   },
                   "facility.unavailable": {
                     "$ref": "#/components/examples/problem.facility.unavailable"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
                   }
                 },
                 "schema": {
@@ -156688,7 +156700,7 @@
                 }
               }
             },
-            "description": "Problem: `facility.slot_taken`, `facility.unavailable`",
+            "description": "Problem: `facility.slot_taken`, `facility.unavailable`, `idempotency.in_progress`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -156702,6 +156714,9 @@
                   "facility.quota_exceeded": {
                     "$ref": "#/components/examples/problem.facility.quota_exceeded"
                   },
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
                   }
@@ -156711,7 +156726,7 @@
                 }
               }
             },
-            "description": "Problem: `facility.quota_exceeded`, `validation.failed`",
+            "description": "Problem: `facility.quota_exceeded`, `idempotency.key_reused`, `validation.failed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -159721,7 +159736,7 @@
     },
     "/v1/resident/leases/{leaseId}/notice": {
       "post": {
-        "description": "The lessee ends the lease with written notice of at least 30 days (ข้อ 4 (11), `compliance.notice_period`); shorter periods are refused here — talk to the office (D-020).\n\nImplements: D-020, D-063.",
+        "description": "The lessee ends the lease with written notice of at least 30 days (ข้อ 4 (11), `compliance.notice_period`); shorter periods are refused here — talk to the office (D-020). The notice is legally significant and irreversible: `Idempotency-Key` is required, and a retry with the same key and body answers the recorded notice (`Idempotent-Replayed: true`) instead of 409 (D-229).\n\nImplements: D-020, D-063, D-229.",
         "operationId": "resident.leases.giveNotice",
         "parameters": [
           {
@@ -159731,6 +159746,9 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
           },
           {
             "$ref": "#/components/parameters/AcceptLanguage"
@@ -159811,6 +159829,9 @@
             },
             "description": "Notice recorded",
             "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"
               },
@@ -159831,6 +159852,12 @@
                 "examples": {
                   "http.bad_request": {
                     "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
                   }
                 },
                 "schema": {
@@ -159838,7 +159865,7 @@
                 }
               }
             },
-            "description": "Problem: `http.bad_request`",
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -159915,6 +159942,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
                   "lease.invalid_state": {
                     "$ref": "#/components/examples/problem.lease.invalid_state"
                   }
@@ -159924,7 +159954,7 @@
                 }
               }
             },
-            "description": "Problem: `lease.invalid_state`",
+            "description": "Problem: `idempotency.in_progress`, `lease.invalid_state`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -159938,6 +159968,9 @@
                   "compliance.notice_period": {
                     "$ref": "#/components/examples/problem.compliance.notice_period"
                   },
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
                   }
@@ -159947,7 +159980,7 @@
                 }
               }
             },
-            "description": "Problem: `compliance.notice_period`, `validation.failed`",
+            "description": "Problem: `compliance.notice_period`, `idempotency.key_reused`, `validation.failed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -189402,7 +189435,7 @@
     },
     "/v1/technician/work-orders/{workOrderId}/actions/complete": {
       "post": {
-        "description": "With at least one after photo uploaded (`POST …/photos`, role `after`; 422 `work_order.photo_required`) and an optional note.\n\nImplements: D-072.",
+        "description": "With at least one after photo uploaded (`POST …/photos`, role `after`; 422 `work_order.photo_required`) and an optional note. Irreversible: send an `Idempotency-Key` so a retry after a lost answer replays it instead of 409 (D-229).\n\nImplements: D-072, D-229.",
         "operationId": "technician.workOrders.complete",
         "parameters": [
           {
@@ -189412,6 +189445,9 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
           },
           {
             "$ref": "#/components/parameters/AcceptLanguage"
@@ -189511,6 +189547,9 @@
             },
             "description": "Done",
             "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"
               },
@@ -189531,6 +189570,9 @@
                 "examples": {
                   "http.bad_request": {
                     "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
                   }
                 },
                 "schema": {
@@ -189538,7 +189580,7 @@
                 }
               }
             },
-            "description": "Problem: `http.bad_request`",
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -189612,6 +189654,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
                   "work_order.invalid_state": {
                     "$ref": "#/components/examples/problem.work_order.invalid_state"
                   }
@@ -189621,7 +189666,7 @@
                 }
               }
             },
-            "description": "Problem: `work_order.invalid_state`",
+            "description": "Problem: `idempotency.in_progress`, `work_order.invalid_state`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -189652,6 +189697,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
                   },
@@ -189664,7 +189712,7 @@
                 }
               }
             },
-            "description": "Problem: `validation.failed`, `work_order.photo_required`",
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`, `work_order.photo_required`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -190347,7 +190395,7 @@
     },
     "/v1/technician/work-orders/{workOrderId}/cost-lines": {
       "post": {
-        "description": "THB decimal strings; the owner verifies them with the work order.\n\nImplements: D-072, D-046.",
+        "description": "THB decimal strings; the owner verifies them with the work order. Send an `Idempotency-Key`: a retry with the same key and body replays the answer instead of adding the line twice (D-229).\n\nImplements: D-072, D-046, D-229.",
         "operationId": "technician.workOrders.addCost",
         "parameters": [
           {
@@ -190357,6 +190405,9 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
           },
           {
             "$ref": "#/components/parameters/AcceptLanguage"
@@ -190463,6 +190514,9 @@
             },
             "description": "Added",
             "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimitLimit"
               },
@@ -190483,6 +190537,9 @@
                 "examples": {
                   "http.bad_request": {
                     "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
                   }
                 },
                 "schema": {
@@ -190490,7 +190547,7 @@
                 }
               }
             },
-            "description": "Problem: `http.bad_request`",
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -190564,6 +190621,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
                   "work_order.invalid_state": {
                     "$ref": "#/components/examples/problem.work_order.invalid_state"
                   }
@@ -190573,7 +190633,7 @@
                 }
               }
             },
-            "description": "Problem: `work_order.invalid_state`",
+            "description": "Problem: `idempotency.in_progress`, `work_order.invalid_state`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -190604,6 +190664,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
                   }
@@ -190613,7 +190676,7 @@
                 }
               }
             },
-            "description": "Problem: `validation.failed`",
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"

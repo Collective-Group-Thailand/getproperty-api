@@ -942,12 +942,13 @@ export class ResidentLeasesController {
 
   @Post(':leaseId/notice')
   @HttpCode(200)
+  @Idempotent()
   @ApiEndpoint({
     id: 'resident.leases.giveNotice',
     summary: 'Give my 30-day notice',
     description:
-      'The lessee ends the lease with written notice of at least 30 days (ข้อ 4 (11), `compliance.notice_period`); shorter periods are refused here — talk to the office (D-020).',
-    implements: ['D-020', 'D-063'],
+      'The lessee ends the lease with written notice of at least 30 days (ข้อ 4 (11), `compliance.notice_period`); shorter periods are refused here — talk to the office (D-020). The notice is legally significant and irreversible: `Idempotency-Key` is required, and a retry with the same key and body answers the recorded notice (`Idempotent-Replayed: true`) instead of 409 (D-229).',
+    implements: ['D-020', 'D-063', 'D-229'],
   })
   @ApiCompliance('compliance.notice_period')
   @ApiJsonBody(ResidentNoticeDto, { effectiveDate: '2026-12-31', reason: 'ย้ายที่ทำงาน' })

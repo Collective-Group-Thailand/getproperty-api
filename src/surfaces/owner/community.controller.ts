@@ -1,6 +1,7 @@
 import { CurrentTenant, TenantScoped } from '@common/auth/auth.decorators';
 import { Can } from '@common/auth/can.decorator';
 import { type TenantContext } from '@common/context/tenant-context';
+import { Idempotent } from '@common/idempotency/idempotent.decorator';
 import { ApiEndpoint, ApiJsonBody, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { FAKE } from '@common/openapi/examples';
 import { ApiPaginated } from '@common/pagination/api-paginated.decorator';
@@ -1105,12 +1106,13 @@ export class ResidentCommunityController {
   }
 
   @Post('facility-bookings')
+  @Idempotent({ optional: true })
   @ApiEndpoint({
     id: 'resident.community.book',
     summary: 'Book a facility',
     description:
-      'For a unit I occupy, in whole slots inside the opening hours and the weekly quota of my unit (422 `facility.quota_exceeded`); confirmed at once or waiting for approval; a slot someone already holds is 409 `facility.slot_taken`.',
-    implements: ['D-073'],
+      'For a unit I occupy, in whole slots inside the opening hours and the weekly quota of my unit (422 `facility.quota_exceeded`); confirmed at once or waiting for approval; a slot someone already holds is 409 `facility.slot_taken`. Send an `Idempotency-Key`: a retry with the same key and body answers the booking made instead of 409 for my own slot (D-229).',
+    implements: ['D-073', 'D-229'],
   })
   @ApiJsonBody(BookingCreateDto, {
     facilityId: FAKE.uuid,

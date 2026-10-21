@@ -295,12 +295,25 @@ describe('B5.1 service requests & work orders (real PostgreSQL)', () => {
       'waiting_parts',
     );
     await t.http.post(`/v1/technician/work-orders/${ids.wo}/actions/resume`).set(TECH).expect(200);
+    const costKey = idem();
     const costed = await t.http
       .post(`/v1/technician/work-orders/${ids.wo}/cost-lines`)
       .set(TECH)
+      .set(costKey)
       .send({ kind: 'part', description: 'ก๊อกน้ำ', quantity: '2', unitPrice: '175.25' })
       .expect(201);
     expect(costed.body.costTotal).toBe('350.50');
+    // D-229: a retry with the same key does not add the line twice
+    const costRetry = await t.http
+      .post(`/v1/technician/work-orders/${ids.wo}/cost-lines`)
+      .set(TECH)
+      .set(costKey)
+      .send({ kind: 'part', description: 'ก๊อกน้ำ', quantity: '2', unitPrice: '175.25' })
+      .expect(201);
+    expect(costRetry.headers['idempotent-replayed']).toBe('true');
+    expect(
+      (await t.http.get(`/v1/technician/work-orders/${ids.wo}`).set(TECH).expect(200)).body.costTotal,
+    ).toBe('350.50');
     // no after photo yet
     const refused = await t.http
       .post(`/v1/technician/work-orders/${ids.wo}/actions/complete`)
@@ -316,12 +329,22 @@ describe('B5.1 service requests & work orders (real PostgreSQL)', () => {
         .expect(201);
       await put(p.body.fileId as string, JPEG);
     }
+    const doneKey = idem();
     const done = await t.http
       .post(`/v1/technician/work-orders/${ids.wo}/actions/complete`)
       .set(TECH)
+      .set(doneKey)
       .send({ note: 'เปลี่ยนก๊อกใหม่แล้ว' })
       .expect(200);
     expect(done.body).toMatchObject({ status: 'done', completionNote: 'เปลี่ยนก๊อกใหม่แล้ว' });
+    // D-229: the retry after a lost answer replays "done" instead of 409
+    const doneRetry = await t.http
+      .post(`/v1/technician/work-orders/${ids.wo}/actions/complete`)
+      .set(TECH)
+      .set(doneKey)
+      .send({ note: 'เปลี่ยนก๊อกใหม่แล้ว' })
+      .expect(200);
+    expect(doneRetry.headers['idempotent-replayed']).toBe('true');
     expect(done.body.afterPhotoIds).toHaveLength(1);
     expect(done.body.beforePhotoIds).toHaveLength(1);
 
