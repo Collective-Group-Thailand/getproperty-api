@@ -1,6 +1,6 @@
 # ADR-0010 — `collective-asset-core` as a separate package
 
-**Status:** Accepted (2026-10-17, schema lock)
+**Status:** Accepted (2026-10-17, schema lock) — **Amended 2026-10-21** (D-238: integration transport = outbox → HTTP webhook / SNS-SQS)
 **Decision ids:** D-152, D-153, D-155, D-160 · `docs/platform-blueprint.md` §"Platform core & collective-asset-core", §"Integration contracts with getbuild & getpack" · related: ADR-0002, ADR-0009
 
 ## Context
@@ -16,7 +16,7 @@ The asset core (tenant → property → building → floor → unit, party, owne
 - **Install and run order:** `getproperty-api` (and later `getbuild-api`) depends on a pinned version. `pnpm db:migrate` runs `assetCoreMigrate` **first**, then the app's own Prisma migrations (`platform`, `ops`, `smart`, `bridge`, `juristic`). App migrations may reference core tables (FKs into `core`) and may not alter them; core migrations never reference app schemas.
 - **Compatibility:** within a major version only additive changes (new tables, nullable columns, new enum values, new event types/fields); renames and drops need a new major and a coordinated upgrade of both products. Event consumers ignore unknown fields.
 - **Version 0.1.0** contains exactly the tables listed in schema-design v2 §7.1 (tenancy, identity, asset hierarchy, party relations, asset items, meter assignment, documents, grants). It is written and published before getproperty-api B1.2 step 2 lands; until the registry is set up, B1.2 may install it from a Git tag (`github:collective-group/collective-asset-core#v0.1.0`).
-- **Integration transport** (blueprint): events over ~~Pub/Sub~~ *(GCP-specific; D-230 moved hosting to Collective's AWS platform — the bus is chosen when the first integration is built: REST callback + the `bridge` tables alone, or SQS through the platform's per-product queues)* + REST callback, each side persisting every event in its own `bridge.integration_event` table for replay; idempotency key per event; PII in payloads encrypted with the Collective shared integration key (a KMS / Secrets Manager key on the platform, D-230); consumer ack within 24 h or the platform admin sees it.
+- **Integration transport** (blueprint): events over ~~Pub/Sub~~ ~~*(the bus is chosen when the first integration is built)*~~ — **amended 2026-10-21 (D-238, collective-infra locked decision 4)**: the outbox → **HTTP webhook** between products on the same box (HMAC-signed), **SNS/SQS** only between separate boxes; no Pub/Sub, no Kafka — + REST callback, each side persisting every event in its own `bridge.integration_event` table for replay; idempotency key per event; PII in payloads encrypted with the Collective shared integration key (a KMS / Secrets Manager key on the platform, D-230); consumer ack within 24 h or the platform admin sees it.
 
 ## Alternatives considered
 - **Folder inside getproperty-api, extract later:** cheapest today, but the first getbuild integration would force an extraction under time pressure, and getbuild would copy the folder meanwhile (two drifting copies of the core).
