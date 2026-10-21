@@ -8,7 +8,7 @@ import { assetCoreMigrate } from '@collective/asset-core';
 import { Client } from 'pg';
 
 import { runSeed } from '../../prisma/seed/run';
-import { applyPrismaMigrations } from '../support/prisma-migrations';
+import { applyPrismaMigrations } from '../../src/database/migrations/app-migrations';
 
 const TEMPLATE_DB = 'gp_int_template';
 
