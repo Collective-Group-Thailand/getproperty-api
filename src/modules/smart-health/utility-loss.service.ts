@@ -454,7 +454,13 @@ export class UtilityLossService extends TenantScopedRepository {
         });
         const nightFlow =
           utility === 'water'
-            ? await this.nightFlow(tx, buildingId, start, end, rules)
+            ? await this.nightFlow(
+                tx,
+                [...new Set(positions.filter((p) => p.purpose !== 'main').flatMap((p) => p.assetItemIds))],
+                start,
+                end,
+                rules,
+              )
             : new Map<string, number>();
 
         const inputs: PositionInput[] = positions
@@ -598,19 +604,22 @@ export class UtilityLossService extends TenantScopedRepository {
     }
   }
 
-  /** Nights (Bangkok) per water meter with a 15-minute usage above the threshold inside the night window. */
+  /**
+   * Nights (Bangkok) per water meter with a 15-minute usage above the threshold inside the night window — from the
+   * tenant-checking 15-minute series over raw points (T-14, ADR-0014; the caller's tenant transaction).
+   */
   private async nightFlow(
     tx: Tx,
-    buildingId: string,
+    assetItemIds: string[],
     start: Date,
     end: Date,
     rules: SuspectRules,
   ): Promise<Map<string, number>> {
+    if (!assetItemIds.length) return new Map();
     const rows = await tx.$queryRaw<{ asset_item_id: string; nights: number }[]>`
       SELECT asset_item_id::text, count(DISTINCT date_trunc('day', bucket AT TIME ZONE 'Asia/Bangkok'))::int AS nights
-        FROM smart.telemetry_15m
-       WHERE building_id = ${buildingId}::uuid AND unit = 'm3' AND bucket >= ${start} AND bucket < ${end}
-         AND usage >= ${rules.nightFlowM3Per15m}::numeric
+        FROM smart.telemetry_15m_series(${assetItemIds}::uuid[], ${start}, ${end})
+       WHERE unit = 'm3' AND usage >= ${rules.nightFlowM3Per15m}::numeric
          AND (bucket AT TIME ZONE 'Asia/Bangkok')::time >= ${rules.nightFrom}::time
          AND (bucket AT TIME ZONE 'Asia/Bangkok')::time < ${rules.nightTo}::time
        GROUP BY asset_item_id`;

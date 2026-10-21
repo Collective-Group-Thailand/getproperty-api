@@ -20,8 +20,9 @@ export function durationMs(iso: string): number {
 }
 
 /**
- * Telemetry housekeeping on the worker (D-162): the rollup job folds new points (by `received_at` cursor) into
- * `smart.telemetry_15m`, then `_1h` and `_1d` (Asia/Bangkok days) — registers, points, average power / flow — and
+ * Telemetry housekeeping on the worker (D-162, D-234): the rollup job folds new points (by `received_at` cursor) into
+ * `smart.telemetry_1h` and `_1d` (Asia/Bangkok days) — 15-minute series are computed from raw points on read (T-14,
+ * ADR-0014, so they live exactly as long as raw points: `telemetry.retention.raw`, O-014) — registers, points, average power / flow — and
  * recomputes `usage` (difference of the last register with the previous bucket, rollover-aware with the meter's
  * assignment `rollover_at`); partitions are created three months ahead and dropped after `telemetry.retention.raw`
  * (health samples after `.health`); dedup marks are purged after `.seqMarks`, rollups after `.rollups`. The gateway
@@ -69,33 +70,10 @@ export class TelemetryMaintenanceService {
               86_400_000 -
               7 * 3_600_000,
           );
-          buckets += await tx.$executeRaw`
-            INSERT INTO smart.telemetry_15m AS r (asset_item_id, bucket, tenant_id, building_id, unit, first_time, last_time,
-                   first_register, last_register, min_register, max_register, points, avg_power_w, avg_flow_lpm, updated_at)
-            SELECT asset_item_id, b, (array_agg(tenant_id))[1], (array_agg(building_id))[1], (array_agg(unit))[1],
-                   min(time), max(time),
-                   (array_agg(register ORDER BY time ASC, seq ASC))[1], (array_agg(register ORDER BY time DESC, seq DESC))[1],
-                   min(register), max(register), count(*)::int,
-                   avg((extra ->> 'powerW')::numeric), avg((extra ->> 'flowLpm')::numeric), ${now}
-              FROM (SELECT p.*, to_timestamp(floor(extract(epoch FROM p.time) / 900) * 900) AS b FROM smart.telemetry_point p
-                     WHERE p.asset_item_id = ${t.asset_item_id}::uuid AND p.time >= ${from} AND p.time < ${to}) x
-             GROUP BY asset_item_id, b
-            ON CONFLICT (asset_item_id, bucket) DO UPDATE SET first_time = EXCLUDED.first_time, last_time = EXCLUDED.last_time,
-                   first_register = EXCLUDED.first_register, last_register = EXCLUDED.last_register,
-                   min_register = EXCLUDED.min_register, max_register = EXCLUDED.max_register, points = EXCLUDED.points,
-                   avg_power_w = EXCLUDED.avg_power_w, avg_flow_lpm = EXCLUDED.avg_flow_lpm, updated_at = EXCLUDED.updated_at`;
-          await this.fold(
-            tx,
-            'smart.telemetry_1h',
-            'smart.telemetry_15m',
-            t.asset_item_id,
-            from,
-            to,
-            3600,
-            now,
-          );
+          // T-14 (ADR-0014): no stored 15-minute rows — the hourly rollup folds the raw points directly
+          buckets += await this.foldHour(tx, t.asset_item_id, from, to, now);
           await this.foldDay(tx, t.asset_item_id, from, to, now);
-          for (const table of ['smart.telemetry_15m', 'smart.telemetry_1h', 'smart.telemetry_1d'])
+          for (const table of ['smart.telemetry_1h', 'smart.telemetry_1d'])
             await this.usage(tx, table, t.asset_item_id, from, to);
         }
         await tx.rollupCursor.upsert({
@@ -109,36 +87,29 @@ export class TelemetryMaintenanceService {
     );
   }
 
-  private fold(
+  /** Hourly buckets from the raw points (platform-only table, gp_platform). */
+  private foldHour(
     tx: Parameters<Parameters<TenantTx['platform']>[0]>[0],
-    target: 'smart.telemetry_1h',
-    source: 'smart.telemetry_15m',
     assetItemId: string,
     from: Date,
     to: Date,
-    seconds: number,
     now: Date,
   ) {
-    return tx.$executeRawUnsafe(
-      `INSERT INTO ${target} AS r (asset_item_id, bucket, tenant_id, building_id, unit, first_time, last_time, first_register,
-              last_register, min_register, max_register, points, avg_power_w, avg_flow_lpm, updated_at)
-       SELECT asset_item_id, to_timestamp(floor(extract(epoch FROM bucket) / ${seconds}) * ${seconds}) AS b,
-              (array_agg(tenant_id))[1], (array_agg(building_id))[1], (array_agg(unit))[1], min(first_time), max(last_time),
-              (array_agg(first_register ORDER BY first_time ASC))[1], (array_agg(last_register ORDER BY last_time DESC))[1],
-              min(min_register), max(max_register), sum(points)::int,
-              sum(avg_power_w * points) / nullif(sum(points) FILTER (WHERE avg_power_w IS NOT NULL), 0),
-              sum(avg_flow_lpm * points) / nullif(sum(points) FILTER (WHERE avg_flow_lpm IS NOT NULL), 0), $4
-         FROM ${source} WHERE asset_item_id = $1::uuid AND bucket >= $2 AND bucket < $3
-        GROUP BY asset_item_id, b
-       ON CONFLICT (asset_item_id, bucket) DO UPDATE SET first_time = EXCLUDED.first_time, last_time = EXCLUDED.last_time,
-              first_register = EXCLUDED.first_register, last_register = EXCLUDED.last_register, min_register = EXCLUDED.min_register,
-              max_register = EXCLUDED.max_register, points = EXCLUDED.points, avg_power_w = EXCLUDED.avg_power_w,
-              avg_flow_lpm = EXCLUDED.avg_flow_lpm, updated_at = EXCLUDED.updated_at`,
-      assetItemId,
-      from,
-      to,
-      now,
-    );
+    return tx.$executeRaw`
+      INSERT INTO smart.telemetry_1h AS r (asset_item_id, bucket, tenant_id, building_id, unit, first_time, last_time,
+             first_register, last_register, min_register, max_register, points, avg_power_w, avg_flow_lpm, updated_at)
+      SELECT asset_item_id, b, (array_agg(tenant_id))[1], (array_agg(building_id))[1], (array_agg(unit))[1],
+             min(time), max(time),
+             (array_agg(register ORDER BY time ASC, seq ASC))[1], (array_agg(register ORDER BY time DESC, seq DESC))[1],
+             min(register), max(register), count(*)::int,
+             avg((extra ->> 'powerW')::numeric), avg((extra ->> 'flowLpm')::numeric), ${now}
+        FROM (SELECT p.*, to_timestamp(floor(extract(epoch FROM p.time) / 3600) * 3600) AS b FROM smart.telemetry_point p
+               WHERE p.asset_item_id = ${assetItemId}::uuid AND p.time >= ${from} AND p.time < ${to}) x
+       GROUP BY asset_item_id, b
+      ON CONFLICT (asset_item_id, bucket) DO UPDATE SET first_time = EXCLUDED.first_time, last_time = EXCLUDED.last_time,
+             first_register = EXCLUDED.first_register, last_register = EXCLUDED.last_register,
+             min_register = EXCLUDED.min_register, max_register = EXCLUDED.max_register, points = EXCLUDED.points,
+             avg_power_w = EXCLUDED.avg_power_w, avg_flow_lpm = EXCLUDED.avg_flow_lpm, updated_at = EXCLUDED.updated_at`;
   }
 
   /** Daily buckets start at 00:00 Asia/Bangkok. */
@@ -219,7 +190,6 @@ export class TelemetryMaintenanceService {
         where: { receivedAt: { lt: new Date(now.getTime() - durationMs(retention.seqMarks)) } },
       });
       const rollupBefore = new Date(now.getTime() - durationMs(retention.rollups));
-      await tx.telemetry15m.deleteMany({ where: { bucket: { lt: rollupBefore } } });
       await tx.telemetry1h.deleteMany({ where: { bucket: { lt: rollupBefore } } });
       await tx.telemetry1d.deleteMany({ where: { bucket: { lt: rollupBefore } } });
       const dropped = [...(raw[0]?.d ?? []), ...(health[0]?.d ?? [])];

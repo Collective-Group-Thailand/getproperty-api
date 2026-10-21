@@ -11,11 +11,15 @@ import Decimal from 'decimal.js';
 
 export type Bucket = '15m' | '1h' | '1d';
 
-const TABLE: Record<Bucket, 'telemetry15m' | 'telemetry1h' | 'telemetry1d'> = {
-  '15m': 'telemetry15m',
-  '1h': 'telemetry1h',
-  '1d': 'telemetry1d',
-};
+interface FifteenMinuteRow {
+  asset_item_id: string;
+  bucket: Date;
+  usage: Decimal.Value | null;
+  last_register: Decimal.Value;
+  points: number;
+  avg_power_w: Decimal.Value | null;
+  avg_flow_lpm: Decimal.Value | null;
+}
 const STEP_MS: Record<Bucket, number> = { '15m': 900_000, '1h': 3_600_000, '1d': 86_400_000 };
 /** At most this many buckets per request (31 days of 15 min, 400 days of hours, ~5 years of days). */
 export const MAX_BUCKETS = 3000;
@@ -44,7 +48,8 @@ export function seriesWindow(from: Date, to: Date, bucket: Bucket): void {
 }
 
 /**
- * Usage series from the rollups only (D-162: the API never reads raw telemetry; D-030: never billing data): an
+ * Usage series (D-030: never billing data): hourly / daily from the rollups under RLS, 15-minute through the
+ * tenant-checking function over raw points (T-14, ADR-0014 — the only API read of raw telemetry, amends D-184): an
  * owner's meter (`GET /v1/owner/meters/{assetItemId}/series`) and a resident's daily usage per utility across the
  * meters of the leased unit, swaps included (`GET /v1/resident/leases/{id}/usage`, D-063).
  */
@@ -76,7 +81,28 @@ export class SeriesService extends TenantScopedRepository {
     from: Date,
     to: Date,
     bucket: Bucket,
+    platform = false,
   ): Promise<(SeriesPoint & { assetItemId: string })[]> {
+    if (bucket === '15m') {
+      // T-14 (ADR-0014): computed from raw points — under the caller's tenant check, or (platform reads that proved
+      // access themselves, e.g. a resident's lease) without it
+      const found = platform
+        ? await tx.$queryRaw<FifteenMinuteRow[]>`
+            SELECT asset_item_id::text, bucket, usage, last_register, points, avg_power_w, avg_flow_lpm
+              FROM smart.telemetry_15m_rows(${assetItemIds}::uuid[], ${from}, ${to})`
+        : await tx.$queryRaw<FifteenMinuteRow[]>`
+            SELECT asset_item_id::text, bucket, usage, last_register, points, avg_power_w, avg_flow_lpm
+              FROM smart.telemetry_15m_series(${assetItemIds}::uuid[], ${from}, ${to})`;
+      return found.map((r) => ({
+        assetItemId: r.asset_item_id,
+        bucket: r.bucket,
+        usage: r.usage === null ? null : new Decimal(r.usage.toString()),
+        lastRegister: new Decimal(r.last_register.toString()),
+        points: r.points,
+        avgPowerW: r.avg_power_w === null ? null : new Decimal(r.avg_power_w.toString()),
+        avgFlowLpm: r.avg_flow_lpm === null ? null : new Decimal(r.avg_flow_lpm.toString()),
+      }));
+    }
     const where = { assetItemId: { in: assetItemIds }, bucket: { gte: from, lt: to } };
     const select = {
       assetItemId: true,
@@ -88,11 +114,9 @@ export class SeriesService extends TenantScopedRepository {
       avgFlowLpm: true,
     } as const;
     const found =
-      TABLE[bucket] === 'telemetry15m'
-        ? await tx.telemetry15m.findMany({ where, select, orderBy: { bucket: 'asc' } })
-        : TABLE[bucket] === 'telemetry1h'
-          ? await tx.telemetry1h.findMany({ where, select, orderBy: { bucket: 'asc' } })
-          : await tx.telemetry1d.findMany({ where, select, orderBy: { bucket: 'asc' } });
+      bucket === '1h'
+        ? await tx.telemetry1h.findMany({ where, select, orderBy: { bucket: 'asc' } })
+        : await tx.telemetry1d.findMany({ where, select, orderBy: { bucket: 'asc' } });
     return found.map((r) => ({
       assetItemId: r.assetItemId,
       bucket: r.bucket,
@@ -168,7 +192,7 @@ export class SeriesService extends TenantScopedRepository {
       for (const utility of ['electric', 'water'] as const) {
         const ids = assignments.filter((x) => x.utility === utility).map((x) => x.assetItemId);
         if (!ids.length) continue;
-        const rows = await this.rows(tx, ids, windowStart, end, bucket);
+        const rows = await this.rows(tx, ids, windowStart, end, bucket, true);
         const sums = new Map<number, Decimal>();
         for (const r of rows)
           sums.set(r.bucket.getTime(), (sums.get(r.bucket.getTime()) ?? new Decimal(0)).plus(r.usage ?? 0));

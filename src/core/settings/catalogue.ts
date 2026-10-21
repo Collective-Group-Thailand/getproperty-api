@@ -407,7 +407,7 @@ export const SETTINGS: readonly SettingDef[] = [
     valueType: 'json',
     scopeAllowed: ['platform'],
     description:
-      'D-162 / D-147: raw telemetry 24 months, gateway health samples 6 months, rollups 5 years, dedup marks 90 days — retention by partition drop / purge.',
+      'D-162 / D-147 / D-241 (O-014): raw telemetry 24 months (15-minute series are computed from raw points, so they live exactly as long — T-14), gateway health samples 6 months, hourly / daily rollups 5 years, dedup marks 90 days — retention by partition drop / purge (TimescaleDB retention policies on hypertables, D-234).',
     editableBy: ADMIN,
     value: { raw: 'P24M', health: 'P6M', rollups: 'P5Y', seqMarks: 'P90D', deviceEvents: 'P24M' },
     reason: 'seed: D-162',

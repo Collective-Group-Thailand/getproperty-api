@@ -50,6 +50,7 @@ enum DeviceEventType {
   battery_low
   gateway_online
   gateway_offline
+  meter_status_changed
 
   @@map("device_event_type")
   @@schema("smart")
@@ -77,7 +78,7 @@ enum IngestFailure {
   @@schema("smart")
 }
 
-/// Every accepted interval reading (insight only, D-030); monthly range partitions (D-162).
+/// Every accepted interval reading (insight only, D-030); monthly range partitions (D-162); platform-only, 15-minute series via smart.telemetry_15m_series() (T-14).
 model TelemetryPoint {
   time            DateTime       @db.Timestamptz(6)
   receivedAt      DateTime       @default(now()) @map("received_at") @db.Timestamptz(6)
@@ -101,7 +102,7 @@ model TelemetryPoint {
   @@schema("smart")
 }
 
-/// Gateway heartbeats and LWTs (D-034); monthly range partitions (D-162).
+/// Gateway heartbeats and LWTs (D-034); monthly range partitions (D-162); no meters[] (T-13: device_health_latest + meter_status_changed events).
 model DeviceHealthSample {
   time             DateTime  @db.Timestamptz(6)
   gatewayDeviceId  String    @map("gateway_device_id") @db.Uuid
@@ -116,37 +117,11 @@ model DeviceHealthSample {
   memPct           Int?      @map("mem_pct") @db.SmallInt
   link             LinkType?
   rssi             Int?      @db.SmallInt
-  meters           Json?
   isLwt            Boolean   @default(false) @map("is_lwt")
 
   @@id([gatewayDeviceId, time], map: "device_health_sample_pkey")
   @@index([tenantId, buildingId, time(sort: Desc)], map: "device_health_sample_tenant_id_building_id_time_idx")
   @@map("device_health_sample")
-  @@schema("smart")
-}
-
-/// 15-minute rollup per meter asset item (D-162).
-model Telemetry15m {
-  assetItemId   String    @map("asset_item_id") @db.Uuid
-  bucket        DateTime  @db.Timestamptz(6)
-  tenantId      String    @map("tenant_id") @db.Uuid
-  buildingId    String    @map("building_id") @db.Uuid
-  unit          MeterUnit
-  firstTime     DateTime  @map("first_time") @db.Timestamptz(6)
-  lastTime      DateTime  @map("last_time") @db.Timestamptz(6)
-  firstRegister Decimal   @map("first_register") @db.Decimal(12, 3)
-  lastRegister  Decimal   @map("last_register") @db.Decimal(12, 3)
-  minRegister   Decimal   @map("min_register") @db.Decimal(12, 3)
-  maxRegister   Decimal   @map("max_register") @db.Decimal(12, 3)
-  points        Int
-  usage         Decimal?  @db.Decimal(12, 3)
-  avgPowerW     Decimal?  @map("avg_power_w") @db.Decimal(12, 2)
-  avgFlowLpm    Decimal?  @map("avg_flow_lpm") @db.Decimal(12, 3)
-  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  @@id([assetItemId, bucket], map: "telemetry_15m_pkey")
-  @@index([tenantId, buildingId, bucket], map: "telemetry_15m_tenant_id_building_id_bucket_idx")
-  @@map("telemetry_15m")
   @@schema("smart")
 }
 
