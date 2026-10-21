@@ -1,0 +1,72 @@
+# Deploy to the Collective platform (D-230, docs/deployment.md) through collective-infra's reusable workflows
+# (examples/product-deploy.yml): main → build arm64 :sha-… + :uat → deploy UAT · tag vX.Y.Z → build :prod → deploy
+# production (GitHub Environment `production` approval). The box pulls api/worker/ingest/migrate at IMAGE_TAG, runs
+# the one-shot migrate (asset-core core schema → prisma/migrations → optional TimescaleDB), starts the containers,
+# health-checks them through Caddy and rolls back on failure. getproperty-web / getproperty-liff deploy their own
+# images with `component: web|liff` (docs/deployment.md §7).
+# Needs collective-infra at a tag with the getproperty/r1-platform changes (extra checkout, components) — `@v1`
+# below until that tag is cut; and repo/env variables per collective-infra README §3.4.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  packages: read
+
+jobs:
+  build-uat:
+    if: github.ref == 'refs/heads/main'
+    uses: collective-group/collective-infra/.github/workflows/reusable-build-push.yml@v1
+    with:
+      image: getproperty/api
+      environment: uat
+      moving_tag: uat
+      # @collective/asset-core is built from source inside the image (Dockerfile) until it is on GitHub Packages
+      extra_repository: collective-group/collective-asset-core
+      extra_ref: v0.3.0
+      extra_path: .asset-core
+      build_contexts: |
+        asset-core-src=.asset-core
+      build_args: |
+        GIT_COMMIT=${{ github.sha }}
+    secrets:
+      extra_repository_token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
+
+  deploy-uat:
+    needs: build-uat
+    uses: collective-group/collective-infra/.github/workflows/reusable-deploy.yml@v1
+    with:
+      product: getproperty
+      environment: uat
+      image_tag: ${{ needs.build-uat.outputs.image_tag }}
+
+  build-prod:
+    if: startsWith(github.ref, 'refs/tags/v')
+    uses: collective-group/collective-infra/.github/workflows/reusable-build-push.yml@v1
+    with:
+      image: getproperty/api
+      environment: production
+      moving_tag: prod
+      extra_repository: collective-group/collective-asset-core
+      extra_ref: v0.3.0
+      extra_path: .asset-core
+      build_contexts: |
+        asset-core-src=.asset-core
+      build_args: |
+        GIT_COMMIT=${{ github.sha }}
+    secrets:
+      extra_repository_token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
+
+  deploy-prod:
+    needs: build-prod
+    uses: collective-group/collective-infra/.github/workflows/reusable-deploy.yml@v1
+    with:
+      product: getproperty
+      environment: production
+      image_tag: ${{ needs.build-prod.outputs.image_tag }}
