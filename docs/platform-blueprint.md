@@ -1,6 +1,6 @@
 # getproperty Platform Blueprint — Collective Group
 
-Oct 16, 2026 · @Superball
+Oct 16, 2026 · @Superball · infrastructure alignment Oct 21, 2026 (see *Changelog* at the end)
 
 ## Executive summary
 
@@ -16,7 +16,7 @@ Oct 16, 2026 · @Superball
 - 12 modules ใน 4 กลุ่ม: A ฐานปฏิบัติการอาคาร (เช่า/ผู้อยู่อาศัย, บิล/บัญชี, smart meter, แจ้งซ่อม), B นิติบุคคล (AGM & e-Voting, AI Juristic Assistant, Asset & Sinking Fund & Inspection), C อาคารอัจฉริยะและ portfolio (access control, energy, PM back-office), D จุดเชื่อม (post-sale portal, landlord tier)
 - Phase 1 (ตอนนี้–ก.พ. 2027) ส่งมอบกลุ่ม A ให้อพาร์ตเม้นต์รายแรก บน schema กลางที่ออกแบบไว้ในเอกสารนี้; Phase 2 เปิดคอนโดและ PM company; Phase 3 landlord และ access control; Phase 4 energy และ AI เต็มรูปแบบ
 - รายได้: ต่อยูนิต 15–40 บาท/เดือนสำหรับอพาร์ตเม้นต์/คอนโด (ขั้นบันได), landlord freemium → 99–299 บาท/เดือน, hardware IoT ขาย/เช่า, PM company สัญญารายปี
-- Stack เดียวกับ getpack/getbuild: Next.js + NestJS + PostgreSQL (+ TimescaleDB, pgvector), MQTT edge, LINE LIFF เป็นหน้าบ้านของผู้อยู่อาศัยและช่าง
+- Stack เดียวกับ getpack/getbuild: Next.js + NestJS + PostgreSQL (+ TimescaleDB, pgvector), MQTT edge, LINE LIFF เป็นหน้าบ้านของผู้อยู่อาศัยและช่าง — รันบน **Collective shared platform** (AWS `ap-southeast-7`, EC2 + docker compose ต่อ environment; รายละเอียดใน `collective-infra/PLAN.md` และส่วน *Infrastructure & operations* ด้านล่าง)
 
 ## Module map
 
@@ -87,7 +87,7 @@ getproperty เป็นเจ้าของ `collective-asset-core` — packag
 | Document store | รูป สัญญา PDF; signed URL; retention |
 | Notification | LINE Flex (บิล, แจ้งเตือน, สถานะซ่อม), email, SMS fallback |
 | Workflow engine | state machine สำหรับ work order, ทวงหนี้, AGM, inspection (ย้ายเป็น shared กับ getbuild) |
-| IoT ingestion (`getproperty-edge`) | MQTT → device registry → TimescaleDB; ใช้กับมิเตอร์ ประตู พลังงาน และกล้องหน้างานของ getbuild |
+| IoT ingestion (`getproperty-edge` + ingest ของ `getproperty-api`) | gateway → MQTT (EMQX กลางของ platform) → device registry → TimescaleDB (PostgreSQL กลางบน box); ใช้กับมิเตอร์ ประตู พลังงาน และกล้องหน้างานของ getbuild |
 | AI gateway | model router, prompt versioning, metering ต่อ tenant (ใช้ร่วม getbuild) |
 | Audit log | immutable 10 ปี |
 | Reporting | export PDF/Excel, dashboard per tenant และ portfolio (PM company) |
@@ -333,7 +333,7 @@ getproperty เป็นเจ้าของ `collective-asset-core` — packag
 
 ## Integration contracts with getbuild & getpack
 
-ทุกการสื่อสารข้าม platform เป็น event ผ่าน ~~Pub/Sub~~ (GCP; D-230 → เลือก bus ตอนสร้าง integration แรก: REST callback หรือ SQS) + REST callback ที่นิยามใน `collective-asset-core` (`packages/contracts`) ทั้งสองฝั่ง deserialize ด้วย schema เดียวกัน (zod) และบันทึกลง `integration_event` เพื่อ replay ได้
+ทุกการสื่อสารข้าม platform เป็น event จาก **outbox → HTTP webhook** (product ที่อยู่บน box เดียวกัน — getpack และ getbuild ซึ่งตอนนี้เป็น Build modules ของ getpop) หรือ **SNS/SQS** (เมื่ออยู่คนละ box) ตาม locked decision ข้อ 4 ของ collective-infra (D-238; ไม่มี Pub/Sub ไม่มี Kafka) + REST callback ที่นิยามใน `collective-asset-core` (`packages/contracts`) ทั้งสองฝั่ง deserialize ด้วย schema เดียวกัน (zod) และบันทึกลง `integration_event` เพื่อ replay ได้ — การออกแบบ `integration_event` / `idempotency_key` ด้านล่างไม่เปลี่ยน; webhook ลงนาม HMAC ด้วย key ใน secret ของแต่ละ product
 
 | Event | ทิศทาง | Payload หลัก | Trigger / ผลที่ getproperty |
 | --- | --- | --- | --- |
@@ -356,9 +356,9 @@ getproperty เป็นเจ้าของ `collective-asset-core` — packag
 | --- | --- | --- |
 | Clients | `getproperty-web` (Next.js: customer web + admin back-office), `getproperty-liff` (ผู้เช่า/ลูกบ้าน/ช่าง/landlord), Public API (getbuild, getpack, ระบบบัญชีลูกค้า) | LIFF แยก repo เพื่อ bundle เบา |
 | API | `getproperty-api` NestJS: `core/*` (asset core, identity, billing engine, workflow, documents, notification), `modules/ops-*` (A), `modules/juristic-*` (B), `modules/smart-*` (C), `modules/bridge-*` (D), `ai/gateway`, `integrations/*` | Nest module boundary ชัดเพื่อแยกเป็น service ภายหลัง |
-| Workers | BullMQ: billing run, notification, reading-to-bill, dunning timers; Python (`getproperty-ai-workers`): OCR มิเตอร์, STT, forecast, RAG indexing | ใช้ AI gateway ร่วม getbuild |
-| IoT edge | `getproperty-edge`: EMQX (MQTT), device registry, protocol adapters (LoRaWAN NS, Modbus/TCP gateway, vendor cloud API สำหรับประตู/กล้อง), TimescaleDB writer | ทำงานได้บน on-prem mini PC ต่ออาคารเมื่อเน็ตล่ม (store & forward) |
-| Data | PostgreSQL 18 + TimescaleDB (self-managed `timescaledb-ha` บน Collective platform, D-230; ~~Cloud SQL~~) + pgvector (B2); Object storage (S3, ~~GCS~~) สำหรับรูป/สัญญา; Redis (Valkey) | ฐานเดียว แยก schema `core / ops / juristic / smart / bridge` |
+| Workers | BullMQ (บน Valkey ของ platform): billing run, notification, reading-to-bill, dunning timers, telemetry rollups; PDF ผ่าน queue `pdf-render` กลาง (D-236); Python (`getproperty-ai-workers`, **Phase 2**, รันบน EC2 "worker box" ของ platform ตั้งแต่ ~มี.ค. 2027): OCR มิเตอร์, STT, forecast, RAG indexing — Phase 1 OCR = vision-model API adapter ใน NestJS เท่านั้น (D-237) | ใช้ AI gateway ร่วม getbuild; inference ผ่าน external API (Claude / Gemini / Typhoon OCR) |
+| IoT edge | `getproperty-edge`: gateway agent บน on-prem mini PC / industrial gateway ต่ออาคาร (Docker Compose หรือ systemd), protocol adapters (LoRaWAN NS, Modbus/TCP gateway, vendor cloud API สำหรับประตู/กล้อง), store & forward 30 วัน → MQTT over mTLS ไปที่ **EMQX กลางของ platform**; device registry และ TimescaleDB writer อยู่ใน ingest ของ `getproperty-api` | ทำงานได้เมื่อเน็ตล่ม (store & forward); ไม่ใช่ cloud infrastructure |
+| Data | PostgreSQL 18 กลางบน box (`timescale/timescaledb-ha:pg18`: TimescaleDB + pgvector + pgBackRest) — database `getproperty` + role ของตัวเอง (D-233, D-234); pgvector (B2); S3 bucket ของ product สำหรับรูป/สัญญา/OTA; Valkey 8 (BullMQ/cache, logical DB ของ product) | ฐานเดียว แยก schema `core / ops / juristic / smart / bridge`; ไม่มี query ข้าม database |
 | External | LINE Messaging/Login/LIFF, PromptPay (Bill Payment API ธนาคาร) + card gateway, e-Tax provider, LLM providers (Claude/Gemini), vendor APIs ของอุปกรณ์, Zoom/Meet (B1) | adapter pattern ทุกตัว |
 | Shared packages | `collective-shared` (UI, auth, LINE, notification, billing types), `collective-asset-core` (schema + migrations + contracts — owned โดย repo นี้) | publish เป็น private npm package, version ตาม semver |
 
@@ -370,15 +370,159 @@ getproperty เป็นเจ้าของ `collective-asset-core` — packag
 | `getproperty-api` | มีแล้ว | จัดโครง `core/` + `modules/ops-*` ตาม data model guideline |
 | `getproperty-edge` | มีแล้ว | ขยาย device type: meter → door/camera/energy |
 | `getproperty-liff` | ใหม่ | เริ่ม Phase 1 ด้วยหน้าบิล/จ่าย/แจ้งซ่อม |
-| `getproperty-ai-workers` | ใหม่ (Phase 2) |  |
+| `getproperty-ai-workers` | ใหม่ (Phase 2) | Python; deploy บน EC2 worker box ของ platform (compose + SSM) ตั้งแต่ ~มี.ค. 2027 (D-237) |
 | `collective-shared` | แยกจาก getpack | ทำครั้งเดียวใช้สามโปรเจกต์ |
 | `collective-asset-core` | ใหม่ owned ที่นี่ | migrations อยู่ที่นี่ getbuild ติดตั้งเป็น dependency |
 
-**Multi-tenancy & security**: `tenant_id` ทุกตาราง + RLS; `operator_tenant_id`/`owner_tenant_id` บน building + `asset_access_grant` สำหรับสิทธิ์ข้าม tenant; PII เข้ารหัสระดับคอลัมน์; signed URL อายุสั้น; audit log append-only 10 ปี; อุปกรณ์ IoT ใช้ per-device certificate (mTLS) และ topic ACL ต่อ tenant
+**Multi-tenancy & security**: `tenant_id` ทุกตาราง + RLS; `operator_tenant_id`/`owner_tenant_id` บน building + `asset_access_grant` สำหรับสิทธิ์ข้าม tenant; PII เข้ารหัสระดับคอลัมน์; signed URL อายุสั้น; audit log append-only 10 ปี; อุปกรณ์ IoT ใช้ per-device certificate (mTLS) + device JWT และ topic authorization ต่อ gateway ที่ getproperty-api ตัดสินผ่าน EMQX HTTP authz (D-235)
 
-**Deployment** *(D-230 แทน D-160)*: Docker บน Collective shared AWS platform เหมือน getpack (collective-infra: EC2 ต่อ env + docker compose — Caddy, PostgreSQL 18 + TimescaleDB, Valkey, EMQX, Grafana Alloy; S3, SES, Secrets Manager, ECR) ~~GCP (Cloud Run, GKE Autopilot, Cloud SQL, GCS, Memorystore)~~; edge box ต่ออาคารเป็น optional (Docker Compose บน mini PC); CI เรียก reusable workflows ของ collective-infra; environment uat / prod
+**Deployment, observability, backup**: ย้ายไปที่ส่วน *Infrastructure & operations (Collective platform)* ด้านล่าง — สรุปสั้น: getproperty รันบน shared Collective box (AWS `ap-southeast-7`, EC2 Graviton + docker compose ต่อ environment); edge box ต่ออาคารเป็น optional (Docker Compose บน mini PC, ไม่ใช่ cloud infrastructure); CI เรียก reusable workflows ของ collective-infra; environment `uat` / `prod`; device health dashboard (ออนไลน์/ค่าล่าสุด/แบตเตอรี่), AI cost ต่อ tenant และ billing run audit อยู่ใน product ตามเดิม
 
-**Observability**: OpenTelemetry → Cloud Trace/Logging, Sentry, device health dashboard (ออนไลน์/ค่าล่าสุด/แบตเตอรี่), AI cost ต่อ tenant, billing run audit; backup รายวัน + PITR 7 วัน
+## Infrastructure & operations (Collective platform)
+
+ทุกเรื่อง infrastructure, deployment และ operations ของ getproperty อยู่ใต้ **locked infrastructure decisions ของ Collective (2026-10-21)** ซึ่ง source of truth คือ repo `collective-infra` (`PLAN.md`, `README.md`, `platform/*`) — ส่วนนี้สรุปเท่าที่ getproperty ต้องรู้ แล้วบอกว่า getproperty ต้องการอะไรเพิ่มจาก platform (decision rows D-233–D-238 ใน `docs/decisions.md`; รายละเอียดการ deploy ใน `docs/deployment.md`)
+
+### Locked decisions as they apply to getproperty (do not re-open)
+
+| # | Decision (collective-infra, 2026-10-21) | getproperty |
+| --- | --- | --- |
+| 1 | AWS only, `ap-southeast-7` (Thailand); no GCP, Firebase or Singapore | ทุก environment ของ getproperty อยู่ใน `ap-southeast-7` |
+| 2 | EC2 only, forever: one Graviton (arm64) box per environment running docker compose; scale = resize, then add boxes (worker box, DB box, GPU box); never RDS, ElastiCache, ECS/Fargate, EKS/Kubernetes, Cloud Run, Lambda for app logic, ArgoCD | compose project `getproperty` บน box ร่วมกับ getpack / getpop; trigger ที่ต้องแยก box อยู่ใน asks ด้านล่าง |
+| 3 | Shared platform per box (compose project `platform`): Caddy, PostgreSQL 18 `timescale/timescaledb-ha:pg18` (TimescaleDB + pgvector + pgBackRest), Valkey 8, EMQX 5.8 (MQTT, mTLS per device), Grafana Alloy | ใช้ทั้งหมด; EMQX เป็น broker กลางของ platform (ไม่ใช่ broker ของ getproperty) |
+| 4 | One database + one role per product; one S3 assets bucket, one Secrets Manager secret, one SES identity, one ECR repo per image, per product and per environment; no cross-database queries; cross-product = outbox → HTTP webhook (same box) or SNS/SQS (separate boxes); no Pub/Sub, no Kafka | database `getproperty`; bucket `collective-<env>-getproperty-assets`; secret `collective/<env>/getproperty/app`; ECR `getproperty/{api,web,liff}`; integration = outbox → webhook (D-238) |
+| 5 | Environments `uat` (`t4g.large`, 08:00–20:00 Mon–Fri Asia/Bangkok) and `prod` (`t4g.xlarge` 24×7); no `dev` cloud environment (dev = local docker compose) | `pnpm dev` / `docker compose up -d` ในเครื่อง; UAT ปิดกลางคืน (งาน BullMQ ทุกตัว idempotent จึง catch up ตอนเปิด) |
+| 6 | pgBackRest full (Sun) + diff (daily) + WAL archive (`archive_timeout` 300 s → RPO ≤ 5 min) to S3; daily EBS snapshot (DLM) with cross-region copy; monthly restore drill; RTO target 30 min; no managed failover (HA = streaming replica on a DB box if ever needed) | mapping ของ RPO/RTO/retention/PDPA อยู่ในตาราง *Data safety* ด้านล่าง |
+| 7 | No SSH; SSM Session Manager / Run Command only; no long-lived IAM keys | instance role สำหรับ S3/SES/Secrets; gateways ไม่มี AWS credential ใด ๆ |
+| 8 | GitHub Actions + OIDC → ECR (arm64) → SSM `platform/bin/deploy-product.sh <product> <tag>` (pull, migrate, up, healthcheck, auto-rollback); `main` → UAT; tag `v*.*.*` / manual promote → prod with approval; reusable workflows; no Terraform in product repos | api / web / liff deploy ด้วย `component`; migrate = service `migrate` ของ product compose (T-3) |
+| 9 | OpenTelemetry + Prometheus `/metrics` + pino JSON logs → Alloy → Grafana Cloud Free; Sentry; CloudWatch only for host alarms and EC2 auto-recovery | ทุก process ของ getproperty ทำแล้ว (`docs/deployment.md` §2) |
+| 10 | Secrets Manager `collective/<env>/<product>/app` (flat JSON), rendered at deploy time into the container env | ปัจจุบันใช้หลาย secret → T-4, T-6, O-013 |
+| 11 | Image contract (arm64; API `/health` :3000 + `/metrics`; web `/api/healthz` :3000; worker health :3001; `npx prisma migrate deploy`; OTLP; S3 via instance role; DB pool ≤ 15 api / ≤ 10 worker) | ตาราง *Image contract* ด้านล่าง |
+| 12 | One Chromium per box (getpack worker); others use the shared `pdf-render` BullMQ queue (HTML in → S3 key out) or an ADR + 1.5 GB | getproperty ใช้ `pdf-render` (D-236, T-1) |
+| 13 | AI: external API inference only; Python workers on a separate EC2 worker box (from ~Mar 2027); self-hosted models only on a GPU box for batch jobs, not before 2028 and only with an ADR | `getproperty-ai-workers` = Phase 2 บน worker box; Phase 1 OCR = vision-model API adapter (D-237) |
+| 14 | Memory budget on the 16 GB prod box: platform ≈ 6 GB, getpack 3.2 GB, getproperty ≈ 1.8 GB, getpop ≈ 1.5 GB (hard limits in compose) | budget line ด้านล่าง; ใช้เกินต้องบอก trigger ที่จะย้าย box |
+
+Mapping ของ managed services เดิมใน blueprint: Cloud Run / GKE Autopilot → containers ใน compose บน EC2 box; Cloud SQL → PostgreSQL กลางบน box (database `getproperty`); GCS → S3 bucket ของ product; Memorystore / Redis → Valkey 8 (logical DB ของ product, `noeviction`); Pub/Sub → outbox → HTTP webhook หรือ SNS/SQS; GKE (EMQX) / Cloud IoT → EMQX กลางของ platform; Cloud Trace / Logging → OpenTelemetry + pino → Alloy → Grafana Cloud; Secret Manager → AWS Secrets Manager; "Terraform/CI" → reusable workflows ของ collective-infra (product repo ไม่มี Terraform)
+
+### getproperty on the box — memory budget and image contract
+
+**Memory budget line (prod, hard limits in `platform/products/getproperty/docker-compose.yml`)**: getproperty ≈ **1.8 GB** = `api` 512 MB · `worker` 512 MB (ไม่มี Chromium; PDF ผ่าน `pdf-render`) · `ingest` 192 MB · `web` 384 MB · `liff` 192 MB = **1,792 MB**. `migrate` (512 MB) เป็น one-shot ก่อน `up` จึงไม่นับใน steady state. สิ่งที่ branch `getproperty/r1-platform` ขอไว้วันนี้คือ ≈ **3.75 GB** (web 384 · liff 256 · api 640 · worker 1 G เพราะ Chromium · ingest 256 · ClamAV 1,280 · migrate 512) — ส่วนต่างปิดด้วย T-1 (Chromium → `pdf-render`), T-2 (ClamAV → shared platform service) และ T-11 (ลด limit + load test ใหม่). ถ้า T-1 ยังไม่เสร็จก่อน pilot go-live: worker 1.5 GB ตาม item 12 (getproperty รวม ≈ 2.8 GB) ต้องมี ADR และ trigger = เมื่อ `pdf-render` ใช้ได้ (O-015). Trigger ที่ getproperty ต้องย้ายออกจาก shared box: telemetry ตาม asks ด้านล่าง (O-014)
+
+**Image contract (item 11)**
+
+| Contract | getproperty วันนี้ | Status |
+| --- | --- | --- |
+| arm64 image | `getproperty/api` (คำสั่ง `main`, `worker`, `ingest`, `migrate`), `getproperty/web`, `getproperty/liff` — build ด้วย `reusable-build-push.yml` | ✓ |
+| API `/health` :3000 + `/metrics` | `node dist/src/main.js`; `/metrics` ตอบเฉพาะ docker network | ✓ |
+| web `/api/healthz` :3000 | web ✓, liff ✓ (ทั้งคู่มี `/api/metrics`) | ✓ |
+| worker health :3001 | `worker.js` `/health` + `/metrics` :3001 | ✓ |
+| (ingest — ไม่อยู่ใน contract) | `ingest.js` :3002 | gap → T-10 |
+| migrations = `npx prisma migrate deploy` | `node dist/src/migrate.js` (asset-core `core` ก่อน, แล้ว `prisma/migrations` บันทึกใน `_prisma_migrations` แบบเดียวกับ Prisma, แล้ว TimescaleDB step, แล้ว reference seed); image ไม่มี Prisma CLI | gap → T-3 |
+| OTLP to `$OTEL_EXPORTER_OTLP_ENDPOINT` | ทุก process | ✓ |
+| S3 via instance role (no keys) | ✓ (`AWS_SECRETS_ID` ว่าง); แต่ provider credentials ต่อ merchant อ่านจาก Secrets Manager ตอน run time | ✓ / O-013 |
+| `DATABASE_URL`, pool ≤ 15 (api) / ≤ 10 (worker) | pg adapter `max: 10` ต่อ process (api, worker, ingest) → getproperty ใช้ ≤ 30 connections + EMQX authz pool ในปัจจุบัน; `?connection_limit=10` ใน URL ไม่มีผลกับ pg adapter | ✓ (+ T-5) |
+
+### Data safety — requirements mapped onto the platform (no downgrade)
+
+| Requirement ของ getproperty | เดิม | กลไกบน platform | ผล |
+| --- | --- | --- | --- |
+| RPO | backup รายวัน + PITR 7 วัน (blueprint เดิม) | pgBackRest WAL archive (`archive_timeout` 300 s) → S3 + full (Sun) / diff (daily) | **RPO ≤ 5 นาที**; PITR window 35 วัน (≥ 7 วันเดิม) |
+| ค่ามิเตอร์ใน ≤ 5 นาทีที่อาจหาย | — | บิลมาจาก cumulative register เท่านั้น (D-030): reading ถัดไปคืนยอดสะสมครบ; ขณะ broker/API ล่ม gateway เก็บ store-and-forward 30 วัน | ไม่กระทบบิล |
+| RTO | 4 ชม. (RUNBOOK §9 เดิม) | pgBackRest restore (หรือ EBS snapshot) + EC2 auto-recovery; **restore drill รายเดือน** พร้อม smoke test ของ getproperty และจับเวลา | **target 30 นาที** (platform); 4 ชม. คงเป็นเพดานที่ยอมรับได้ |
+| HA | — | ไม่มี managed failover; streaming replica บน DB box ถ้าจำเป็นในอนาคต | ยอมรับตาม locked decision 6 |
+| Audit log immutable 10 ปี | `platform.audit_log` append-only | อยู่ใน PostgreSQL ตามเดิม; backup (35 วัน) เป็นสำเนากู้คืน ไม่ใช่ที่เก็บ 10 ปี | ไม่เปลี่ยน |
+| Retention เอกสาร / ข้อมูล | `platform.retention_policy` ต่อ class | app retention job ลบตาม class; S3 versioning (noncurrent 30 วัน) | ไม่เปลี่ยน |
+| Retention telemetry | raw 24 เดือน, health 6 เดือน, rollups 5 ปี, dedup 90 วัน | TimescaleDB retention policy (hypertable, prod) / partition drop (baseline) — D-234 | ไม่เปลี่ยน |
+| PDPA: ลบ/ทำให้ไม่ระบุตัวตน (DSR) | anonymise + crypto-shred tenant key | DB anonymise + destroy tenant DEK; สำเนาใน pgBackRest (≤ 35 วัน) และ EBS snapshot (7 วัน + cross-region copy) หมดอายุเอง; หลัง restore ใด ๆ ต้อง re-apply DSR ที่ทำหลังจุด restore (RUNBOOK §9) | ลบครบทุกสำเนาภายใน ≤ 35 วัน |
+| PDPA: ที่ตั้งข้อมูล | ประเทศไทย | primary ใน `ap-southeast-7`; DLM cross-region copy ออกนอกประเทศ (EBS encrypted) | region ปลายทาง + ฐาน ม.28 → O-016 |
+| Access | — | ไม่มี SSH; SSM เท่านั้น; ไม่มี long-lived key | ไม่เปลี่ยน |
+
+### IoT on the shared broker — the contract the platform needs from getproperty-api
+
+EMQX เป็น broker กลางของ platform; getproperty-api เป็นผู้ออกและต่ออายุ certificate ของ gateway (D-130, D-165, edge CR-003) และเป็นผู้ตัดสิน authn/authz ของ gateway ผ่าน HTTP (D-235):
+
+- **Ports**: **8883** public, MQTT 5 over TLS 1.2+ with mutual TLS (`verify_peer`, `fail_if_no_peer_cert`) against the device CA chain; **1883** internal only (docker network: getproperty api / worker / ingest with a password user); **8083** ws behind Caddy only (browser MQTT of the platform host — getproperty R1 does not use it; the gateways' WSS fallback stays O-012). Gateways need exactly two egress destinations: `DEVICE_HOST:443` (HTTPS, Caddy `client_auth`) and `MQTT_HOST:8883`.
+- **Device CA**: Secrets Manager **`collective/<env>/platform/device-ca`** (platform-owned): CA chain for EMQX's 8883 listener and Caddy's `DEVICE_HOST`; the issuing certificate + key that getproperty-api uses to sign gateway CSRs (`POST /v1/device/bootstrap`, `/v1/device/certificate/renew`); the broker server certificate for `MQTT_HOST` issued from the same CA (gateways trust only the `caChainPem` of their bootstrap). Renewal: broker certificate 397 days, gateway certificates 12 months (agent renews at 11 months).
+- **HTTP authentication** (EMQX `authentication` = HTTP, on the device listener): `POST http://getproperty-api:3000/internal/emqx/authn` (docker network only, never routed by Caddy, shared header secret) with `${clientid}`, `${username}`, `${password}`, `${cert_common_name}`, `${cert_subject}`, `${peerhost}` → `{"result":"allow","is_superuser":false}` only when the certificate CN is `gw-<gatewayId>` of a provisioned, non-retired gateway, `username` = CN (= `clientid`), and `password` is a valid **device JWT** of that gateway (`aud=device`, `sub=<gatewayId>`, unexpired, ≤ 1 h — `DEVICE_ACCESS_TOKEN_TTL_SECONDS`; issued by `POST /v1/device/token` over mTLS only to a non-retired gateway, so a retired gateway cannot reconnect with a still-valid certificate even though EMQX does not pass the certificate fingerprint); `deny` for any other `gw-*`; `ignore` for usernames that are not `gw-*` (other products' clients fall through to their own authenticator).
+- **HTTP authorization**: `POST http://getproperty-api:3000/internal/emqx/authz` with `${username}`, `${clientid}`, `${topic}`, `${action}`, `${qos}`, `${retain}` → for `gw-<id>`: **publish** `gp/v1/<id>/telemetry`, `gp/v1/<id>/health` (also the LWT), `gp/v1/<id>/events`, `gp/v1/<id>/cmd/ack` (QoS ≤ 1, retain false); **subscribe** `gp/v1/<id>/config` (retained) and `gp/v1/<id>/cmd`; everything else under `gp/v1/#` = `deny`; for the internal service user (`MQTT_USERNAME`, 1883): `gp/v1/+/#` and `$share/ingest/gp/v1/+/#`; `ignore` for other users/topics; platform `no_match = deny`, `deny_action = disconnect`; authz cache TTL ≤ 1 min (a retired gateway loses its topics within a minute and its session at once through the API's kick).
+- **Namespace**: `gp/v1/#` is reserved for getproperty on the shared broker.
+
+**Topics in `docs/contract/device-protocol.md` vs. the contract vs. branch `getproperty/r1-platform`**
+
+| | device-protocol.md (D-130, protocol 1.1) | Contract above | Branch today | Difference → task |
+| --- | --- | --- | --- | --- |
+| Topics | `telemetry`, `health` (+LWT), `events`, `config` (retained, cloud → gw), `cmd`, `cmd/ack` under `gp/v1/<gatewayId>/` | same set | same set | none |
+| Authentication | client certificate only ("broker credentials are the certificate") | CN `gw-<gatewayId>` **+ device JWT as password** via HTTP authn | `enable_authn = false`, `peer_cert_as_username = cn` | protocol 1.2 (additive: JWT as MQTT password) → T-8; HTTP authn endpoint → T-7 |
+| Authorization source | `smart.mqtt_acl` read by EMQX | HTTP authz endpoint in getproperty-api | EMQX PostgreSQL source on `smart.mqtt_acl` (login `getproperty_mqtt`, role `gp_mqtt`) + file ACL for `getproperty-api` | replace PostgreSQL source → T-7 |
+| Publish scope | `gp/v1/<id>/+` and `…/cmd/ack` (`+` also matches `config` / `cmd`) | 4 explicit topics | as protocol | tighten → T-9 |
+| Device CA | `caChainPem` at bootstrap | `collective/<env>/platform/device-ca` | `collective/<env>/getproperty/mqtt-tls` + `DEVICE_CA_CERT` / `DEVICE_CA_KEY` in the app secret | move → T-6 |
+| Listener ownership | — | shared broker; getproperty zone `devices` on 8883 | the platform's only 8883 listener rewritten for getproperty | document as shared listener + namespace → T-7 |
+| WSS 443 fallback | offered "when the platform enables it" | 8083 ws behind Caddy (no client certificate) | disabled; bootstrap omits `wsUrl` (D-231) | O-012 |
+
+### Infrastructure asks from collective-infra (quantified)
+
+**Assumptions** (state, do not hide): 15-min polling (D-131) = 96 readings/meter/day; ≤ 300 meters per RS485 bus = per gateway (device protocol §4, the pilot building = one full bus, D-207 load target 300 meters / 300 units); health every 60 s per gateway = 1,440 samples/day; IoT promotion 1 billing reading per meter per 60 min (`readings.iot_promotion_minutes`); KPI targets from *Roadmap & release plan*: IoT devices 1 building → 500 (end Phase 2) → 10,000 (end Phase 4), buildings 1 → 20 → 300, units 80–300 → 3,000 → 60,000. Bytes are estimates from the real DDL (`prisma/migrations/0016`, `0017`, `0036`), ±30%: `smart.telemetry_point` ≈ 400 B/row incl. its 4 indexes (heap ≈ 230 B with a 3-field `extra`); `smart.telemetry_15m` ≈ 280 B/row (one row per raw point at 15-min polling), `_1h` ≈ 70 B and `_1d` ≈ 3 B per raw point; `smart.meter_reading` ≈ 500 B/row; `smart.ingest_seq_mark` ≈ 270 B/row (90 days); `smart.device_health_sample` ≈ 150 B + ≈ 60 B per meter in the stored `meters[]` array. **Compression ratio 10:1** for TimescaleDB native compression of `smart.telemetry_point` after 30 days (segment by `asset_item_id`, order by `time DESC`: the five uuids become one value per segment, `time`/`seq` delta-encoded; vendor-typical is 10–20:1 — 10:1 is the conservative planning value, UNVERIFIED until measured on UAT). Phase dates: Phase 1 now–Feb 2027 (blueprint); the roadmap graphic is not in the text, so for dates below Phase 2 = Mar–Aug 2027, Phase 3 = Sep–Dec 2027, Phase 4 = Jan–Apr 2028 (assumption).
+
+| KPI | Pilot (Phase 1, ≤ Feb 2027) | End Phase 2 (≈ Aug 2027) | End Phase 4 (≈ Apr 2028) | Bus ceiling (information only) |
+| --- | --- | --- | --- | --- |
+| Buildings / meters / gateways | 1 / 300 / 1 | 20 / ≈ 480 / 20 (500 devices) | 300 / ≈ 9,700 / 300 (10,000 devices) | 500 / 150,000 / 500 (every building a full bus) |
+| Telemetry rows/day (`telemetry_point`) | 28,800 | 46,080 | 931,200 | 14,400,000 |
+| Health samples/day | 1,440 | 28,800 | 432,000 | 720,000 |
+| Billing readings/day (`meter_reading`) | 7,200 | 11,520 | 232,800 | 3,600,000 |
+| Raw telemetry GB/year, uncompressed | 4.2 | 6.7 | 136 | 2,102 |
+| Raw telemetry GB/year, compressed after 30 days | 0.7 | 1.2 | 24 | 366 |
+| All IoT tables on disk after 1 year — as built today | 14.7 GB | 24.2 GB | 485 GB | 7.3 TB |
+| — after T-12, T-13, T-14 | 4.1 GB | 7.2 GB | 142 GB | 2.0 TB |
+| — after 2 years (as built / after tasks) | 23.9 / 6.9 GB | 39.0 / 11.7 GB | 784 / 232 GB | — |
+| WAL/day → backups bucket (≈ 2× written bytes) | ≈ 0.1 GB | ≈ 0.2 GB | ≈ 2.5 GB | — |
+| MQTT msgs/s, average (health + telemetry batches ≤ 200 readings) | 0.02 | 0.36 | 5.3 | 9.4 |
+| MQTT msgs/s, burst (fleet reconnect + 1 h store-and-forward replay within ~60 s) | ≈ 1 | ≈ 5 | ≈ 50 | — |
+| MQTT connections (gateways + 3 internal) | 4 | 23 | 303 | 503 |
+| Largest MQTT message | 200 readings ≈ 50 KB | same | same | same |
+| API requests/min, average / bill-day peak | ≈ 20 / 100 | ≈ 100 / 400 | ≈ 1,000 / 3,000 | — |
+| S3 growth (≈ 1 MB per unit-month: PDFs, slips, photos) | ≈ 0.3 GB/month | ≈ 3 GB/month | ≈ 60 GB/month | — |
+
+How the asks follow from it (phase/date when each is needed):
+
+| # | Ask | Quantity | Needed by |
+| --- | --- | --- | --- |
+| A-1 | Database `getproperty` + roles in the shared PostgreSQL; extensions `timescaledb`, `pgcrypto`, `citext`, `btree_gist`, `pg_trgm` (+ `vector` for B2); TimescaleDB background workers on (retention + compression policies) | ≤ 35 connections (api 10, worker 10, ingest 10, migrate, + Python workers 5 from Phase 2) | first UAT deploy (Phase 1) |
+| A-2 | Data volume `/data` growth **120 → 250 GB** on prod | getproperty IoT ≈ 7–24 GB/year at the end of Phase 2, ≈ 100 GB/year at ~2,000 devices (as built) | **2027-09-01** (start of Phase 3 under the date assumption) or when `/data` > 70 %, whichever first |
+| A-3 | Trigger for a separate **DB box** (or getproperty's own box) — locked decision 2 | 10,000 devices ≈ 142 GB in year 1 and ≈ 232 GB in year 2 even after T-12–T-14 > getproperty's share of 250 GB | decide at gate 3 (≈ Dec 2027) — O-014 |
+| A-4 | EMQX on the shared broker: 8883 mTLS public with the device CA, 1883 internal, 8083 ws behind Caddy; HTTP authn + authz to getproperty-api (contract above); namespace `gp/v1/#`; max packet ≥ 256 KB; sustain 10 msgs/s, burst 50 msgs/s; ≥ 500 connections; connect-rate burst 300/min; retained messages ≤ 1 per gateway | see table | authn/authz endpoints: before pilot go-live (T-7); capacity: Phase 4 |
+| A-5 | Secret `collective/<env>/platform/device-ca` (+ read for getproperty's api, rendered into its env) | 1 secret | before pilot go-live (T-6) |
+| A-6 | S3: the product bucket with prefixes `t/<tenantId>/<kind>/<yyyy-mm>/<id>` (tenant files), `p/<kind>/<yyyy>/<mm>/<id>` (platform documents), `releases/edge/<version>/<file>` (OTA — instance role read-only, `…-release-publisher` policy for the release engineer, D-231); versioning + noncurrent 30 days; CORS for presigned PUT from the owner / staff / admin / LIFF hosts. No extra bucket in R1 | S3 growth row above; OTA ≈ 50 MB per version × arch | Pilot (already on the branch) |
+| A-7 | Caddy hosts: `OWNER_HOST`, `STAFF_HOST`, `ADMIN_HOST`, `LIFF_HOST`, `API_HOST`, `DEVICE_HOST` (`client_auth verify_if_given` with the device CA, forwards only the certificate SHA-256, OTA route `read_timeout 10m`), `MQTT_HOST` (DNS for 8883 + health) | 7 hosts per env | Pilot |
+| A-8 | Shared `pdf-render` BullMQ queue (getpack worker) usable by getproperty: Thai fonts, A4 and 80 mm thermal paper, title/footer, output to getproperty's bucket key or bytes back | pilot ≈ 600 PDFs/month (300 invoices + 300 receipts), Phase 4 ≈ 120,000/month, peak at cut-off ≈ 300 in 60 s | before pilot go-live (T-1, O-015) |
+| A-9 | ClamAV as a **shared platform service** (counts in the platform ≈ 6 GB) instead of getproperty's 1.25 GB container | ≈ 1 scan per upload (slips, photos, ID documents): pilot ≈ 1,000/month | before pilot go-live (T-2) |
+| A-10 | Valkey: logical DB for getproperty, `noeviction`, persistence on (BullMQ repeatables) | ≤ 128 MB pilot, ≤ 256 MB Phase 4 | Pilot |
+| A-11 | Cron / scheduled jobs: **none on the host** — every recurring job is a BullMQ repeatable in the `worker` container (`outbox-relay` 1 s, `billing-cycles` 15 min, `telemetry-rollup` 1 min, `telemetry-partitions` 1 d, `gateway-health` / `meter-health` / `config-drift` / `device-commands` 1–5 min, `receivables` 1 h, `platform-subscriptions` 1 h, `payment-settlement` 1 d, `etax-submissions` 1 min, `etax-monthly` 1 h, `tm30-sweep` 1 h, `analytics-rollup` 1 h, `analytics-benchmarks` 1 d, `retention`, `support-grants-expire`, `lease-lifecycle`, `notifications-release`, `workflow-timer-sweep`, `compliance-score`; RUNBOOK §5). Platform asks: the monthly restore drill runs getproperty's smoke tests (T-15) | — | Pilot |
+| A-12 | Worker box (locked decision 13) for `getproperty-ai-workers` (meter-photo OCR at scale, STT for B1 AGM, B3 forecasting, B2 RAG indexing): Python containers, compose + SSM like the main box, reach the main box's PostgreSQL / Valkey over the private subnet | ≈ 1.5 GB RAM, ≤ 1 vCPU average, PostgreSQL pool ≤ 5, no GPU | Phase 2 (from ~Mar 2027; RAG/STT with group B in Phase 3) |
+| A-13 | pgvector for B2 (in the shared PostgreSQL) | ≈ 15–35 MB per condo building (≈ 2,000 chunks × 1,536-dim + HNSW) → ≤ 4 GB at 120 condos | Phase 3 |
+| A-14 | GPU box | none — STT / OCR / LLM via external APIs; any self-hosted model needs an ADR and is not before 2028 | — |
+| A-15 | SES identity for the product domain | pilot < 1,000 emails/month (OTP is SMS) | Pilot |
+| A-16 | Cross-product events: webhooks between products on the same box (internal docker network, HMAC); SNS/SQS only when a partner product runs on another box | getbuild/getpop and getpack integrations ≈ tens of events/day per building | Phase 2 (D1 handover) |
+
+### Gap tasks (owner repo)
+
+| # | Gap | Task | Owner | When |
+| --- | --- | --- | --- | --- |
+| T-1 | Worker runs its own Chromium (item 12) | `PDF_RENDERER_MODE=queue` adapter on the shared `pdf-render` queue (D-236); then remove Chromium from the api image and `shm_size` from the worker; if the queue is not ready for go-live: ADR-0012 + worker 1.5 GB until it is | getproperty-api + collective-infra/getpack-api (queue contract) | before pilot go-live |
+| T-2 | ClamAV 1.25 GB in getproperty's compose, over budget | shared platform `clamav` service on the `collective` network; getproperty keeps `CLAMAV_HOST` | collective-infra | before pilot go-live |
+| T-3 | Contract says `npx prisma migrate deploy`; getproperty must run `node dist/src/migrate.js` (asset-core `core` first, no Prisma CLI in the image) | ADR in getproperty-api justifying the command (equivalent records in `_prisma_migrations`); collective-infra README wording: "the product compose's `migrate` service" (what `deploy-product.sh` already runs); asset-core release with `GRANT CREATE ON SCHEMA core TO gp_platform` for non-superuser runners | getproperty-api (ADR) · collective-infra (wording) · collective-asset-core | before pilot go-live |
+| T-4 | Several secrets (`app`, `web`, `liff`, `mqtt-tls`) vs "one secret per product per env" | one `collective/<env>/getproperty/app`: component keys prefixed `WEB__…` / `LIFF__…`, split by `fetch-secrets.sh` into the front ends' env files so a front end still never receives the API's secrets; `mqtt-tls` → T-6; `getproperty_mqtt_password` in `platform/postgres` retired by T-7 | collective-infra (branch) + getproperty-api `docs/deployment.md` | before pilot go-live |
+| T-5 | Pool sizes not configurable; URL carries an ignored `connection_limit` | env `DATABASE_POOL_MAX` (api ≤ 15, worker ≤ 10, ingest 5); drop `?connection_limit` from the documented URL | getproperty-api | Phase 1 |
+| T-6 | Device CA in the product secret | read the CA chain / issuing key / broker certificate from `collective/<env>/platform/device-ca`; `pnpm device:broker-cert` writes there; EMQX and Caddy read it from there | collective-infra + getproperty-api | before pilot go-live |
+| T-7 | EMQX authorises gateways from PostgreSQL (`smart.mqtt_acl`, `gp_mqtt`) | `POST /internal/emqx/authn` + `/internal/emqx/authz` in getproperty-api (internal only, header secret, `smart.mqtt_acl` stays the API's source of truth); EMQX HTTP authn/authz config; remove the PostgreSQL source, `getproperty_mqtt` login and the file ACL entry | getproperty-api + collective-infra | before pilot go-live |
+| T-8 | Device JWT not sent on MQTT | device protocol 1.2 (additive): agent fetches a token before every (re)connect and sends it as the MQTT password; platform setting `mqtt.authn.require_device_jwt` off until the fleet runs 1.2, then on | getproperty-api (contract) + getproperty-edge | before pilot go-live |
+| T-9 | Publish ACL `gp/v1/<id>/+` also covers `config` / `cmd` | authz endpoint allows only the 4 publish topics; device-protocol §1 updated | getproperty-api | with T-7 |
+| T-10 | Ingest health on :3002 is outside the contract | ingest listens on :3001 in its own container (`INGEST_HEALTH_PORT=3001`, compose only) or the contract lists `ingest` :3002 | collective-infra (branch compose) + getproperty-api docs | before pilot go-live |
+| T-11 | Branch compose limits ≈ 3.75 GB | limits of the budget line (1,792 MB) after T-1/T-2; re-run the 300-meter / 300-unit load test under them | collective-infra (branch) + getproperty-api | before pilot go-live |
+| T-12 | Compression after 30 days is blocked: `smart.telemetry_point` carries row-level security, which TimescaleDB compression does not support together (as noted in `prisma/optional/timescale/001_telemetry_hypertables.sql`; UNVERIFIED on a live TimescaleDB) | optional migration step 2: `smart.telemetry_point` becomes platform-only (no RLS; `gp_app` gets no grant — the API never reads raw points, D-184; ingest and the rollup worker run as `gp_platform`), compression `segmentby asset_item_id`, `orderby time DESC`, policy 30 days; `TIMESCALEDB_MIGRATION=on` in prod (UNVERIFIED until UAT) | getproperty-api | before 500 devices (Phase 2) |
+| T-13 | Health samples store the full `meters[]` every 60 s (≈ 18 KB per sample at 300 meters ≈ 26 MB/day per gateway) | keep `meters[]` only in `smart.device_health_latest` / meter status, store per-meter changes as events; sample row ≈ 150 B | getproperty-api | Phase 2 |
+| T-14 | At 15-min polling `telemetry_15m` holds one row per raw point for 5 years (≈ 120 GB/year at 10,000 devices) | rollups as compressed hypertables with a tenant-safe read path (ADR: the API reads rollups under RLS; continuous aggregates cannot carry RLS), or shorter 15m retention — O-014 | getproperty-api | Phase 3 |
+| T-15 | Restore drill does not exercise getproperty | product hook for `restore-drill.sh` (owner login, cycle preview, RTO measured against 30 min); re-apply DSR erasures after a restore | collective-infra + getproperty-api RUNBOOK | before pilot go-live |
+| T-16 | Cross-product transport not built | outbox → HTTP webhook subscriber + `/webhooks/integration/<platform>` receiver with HMAC; SNS/SQS adapter only when a partner is on another box | getproperty-api + collective-asset-core (contracts) | Phase 2 (D1) |
+| T-17 | collective-infra `PLAN.md` / README still say EMQX "TLS 8883 via Caddy-issued cert", "Migration = `npx prisma migrate deploy`" and getproperty "web 512 · api 512 · worker 768" | update with the device-CA listener, the migrate service and getproperty's five-container budget line | collective-infra | with the branch merge |
 
 ## Pricing & packaging
 
@@ -468,4 +612,27 @@ getproperty เป็นเจ้าของ `collective-asset-core` — packag
 
 **เอกสารที่ควรทำต่อจากนี้**: (1) spec `collective-asset-core` ฉบับเต็ม (DDL + Prisma schema + event contracts) ใช้ร่วม getbuild, (2) UX flow spec + Claude Design mockups ของ A1–A4 สำหรับ web และ LIFF, (3) hardware spec และ BOM ของ smart meter kit สำหรับลูกค้ารายแรก
 
-**Reuse จาก getpack**: auth + OTP, file service, LINE Flex notification, invoice/receipt/e-Tax, admin layout, Terraform/CI, UI kit — และ order flow ของ getpack ใช้ขาย hardware IoT ได้ทันที
+**Reuse จาก getpack**: auth + OTP, file service, LINE Flex notification, invoice/receipt/e-Tax, admin layout, CI (reusable workflows ของ collective-infra — product repo ไม่มี Terraform), UI kit, queue `pdf-render` — และ order flow ของ getpack ใช้ขาย hardware IoT ได้ทันที
+
+## Changelog — infrastructure alignment 2026-10-21
+
+Infrastructure alignment only (founder instruction 2026-10-21, `collective-infra/docs/BLUEPRINT-ALIGNMENT-PROMPT.md` A + B2): product scope, modules, phases, pricing and business content are unchanged. Copy for circulation: `getproperty-platform-blueprint-2026-10-21.md`.
+
+**Sections changed**
+
+- *Executive summary* — the stack bullet names the Collective shared platform (AWS `ap-southeast-7`, EC2 + docker compose) and points to `collective-infra/PLAN.md`.
+- *Platform core → Shared services* — IoT ingestion runs through the platform's EMQX into the shared PostgreSQL/TimescaleDB.
+- *Integration contracts* — transport is outbox → HTTP webhook (same box) or SNS/SQS (separate boxes); Pub/Sub removed; `integration_event` / `idempotency_key` / additive-schema rules unchanged (D-238).
+- *Technical architecture* — Workers (BullMQ on Valkey, PDFs through `pdf-render`, Python AI workers in Phase 2 on the worker box), IoT edge (on-prem gateway agent unchanged; broker = platform EMQX; GKE/Cloud IoT wording removed), Data (shared PostgreSQL `timescaledb-ha`, S3, Valkey), Repos (`getproperty-ai-workers` on the worker box), multi-tenancy line (device JWT + HTTP authz); the Deployment and Observability paragraphs (Cloud Trace/Logging, "backup รายวัน + PITR 7 วัน") replaced by a pointer.
+- *Infrastructure & operations (Collective platform)* — **new**: the 14 locked decisions as they apply, the managed-service mapping, the memory budget line (≈ 1.8 GB: api 512 · worker 512 · ingest 192 · web 384 · liff 192 MB), the image-contract confirmation, the data-safety mapping (RPO ≤ 5 min, PITR 35 days, RTO target 30 min, retention, PDPA), the EMQX authn/authz contract with the topic comparison, **Infrastructure asks from collective-infra** (A-1–A-16, quantified) and the gap tasks T-1–T-17.
+- *Next steps → Reuse จาก getpack* — "Terraform/CI" → collective-infra reusable workflows; `pdf-render` added.
+
+**Decisions** (`docs/decisions.md`): D-233 locked infrastructure decisions (explicitly supersedes D-160 — already superseded by D-230 — and amends D-230 / D-207); D-234 telemetry on TimescaleDB with compression after 30 days (supersedes D-162, amends D-184); D-235 EMQX shared-broker contract (amends D-130, D-165, D-230 (3)); D-236 PDF rendering through `pdf-render`; D-237 Python AI workers in Phase 2 on the worker box, Phase 1 OCR through the vision-model API adapter; D-238 cross-platform events = outbox → HTTP webhook / SNS-SQS. ADR-0001 and ADR-0010 amended 2026-10-21.
+
+**Open questions for the founder (max 5)**
+
+1. **O-013** — Per-merchant provider credentials (payments, locks, e-Tax) live today as Secrets Manager entries under `collective/<env>/getproperty/{payments,locks,etax}/…`, read at run time. Allow that as the one exception to "one secret per product per env", or move them into PostgreSQL encrypted with the tenant data key? *Recommendation: database envelope encryption (keeps the locked rule).*
+2. **O-014** — At the Phase 4 KPI (10,000 devices) getproperty's IoT data is ≈ 142 GB in year 1 and ≈ 232 GB in year 2 even after compression — more than its share of a 250 GB volume. Confirm the trigger for a DB box (proposal: getproperty database > 100 GB or `/data` > 70 %) and whether the 15-minute rollups keep 5 years (or 24 months, like raw points).
+3. **O-015** — Will getpack's `pdf-render` queue (Thai fonts, A4 + 80 mm thermal, output into getproperty's bucket) exist before the pilot goes live? If not, accept getproperty's own Chromium on the pilot with worker 1.5 GB under an ADR until it does.
+4. **O-016** — Which region receives the DLM cross-region snapshot copy, and is the PDPA s.28 cross-border basis (encrypted snapshot, processor DPA wording) documented for the building owners' data?
+5. **O-012** (updated) — WSS fallback on 443 for buildings that block 8883: accept gateways on EMQX ws 8083 behind Caddy with device-JWT-only authentication (no client certificate on that path; the JWT lives ≤ 1 h and is issued only to a non-retired gateway), or keep 8883-only?
