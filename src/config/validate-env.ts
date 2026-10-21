@@ -31,7 +31,12 @@ export function validateEnv(raw: Record<string, unknown>): EnvironmentVariables 
   if ((env.MQTT_MODE ?? env.DATA_STORES_MODE) === DataStoresMode.Real && !env.MQTT_URL)
     problems.push('MQTT_URL: required when the broker is real (DATA_STORES_MODE / MQTT_MODE)');
 
+  if (env.PDF_RENDERER_MODE === 'queue' && !env.PDF_RENDER_REDIS_URL && !env.REDIS_URL)
+    problems.push('PDF_RENDER_REDIS_URL: required (or REDIS_URL) when PDF_RENDERER_MODE=queue');
+
   if (env.NODE_ENV === NodeEnv.Production) {
+    if (env.PDF_RENDERER_MODE === 'fake')
+      problems.push('PDF_RENDERER_MODE: must be "real" or "queue" when NODE_ENV=production');
     if (env.INTEGRATIONS_MODE === IntegrationsMode.Fake)
       problems.push('INTEGRATIONS_MODE: must be "real" when NODE_ENV=production');
     if (env.DATA_STORES_MODE === DataStoresMode.Fake)

@@ -95,10 +95,15 @@ export class EnvironmentVariables {
   @IsEnum(IntegrationsMode)
   OBJECT_STORAGE_MODE?: IntegrationsMode;
 
-  /** Per-provider override for the PDF renderer (Puppeteer); defaults to `INTEGRATIONS_MODE` when unset. */
+  /**
+   * PDF renderer (D-236, D-242, ADR-0012): `fake` (deterministic, no browser), `real` (this process's own Chromium —
+   * local development, and production only until getpack's `pdf-render` consumer is deployed: worker 1.5 GB), `queue`
+   * (the platform's shared `pdf-render` BullMQ queue — docs/pdf-render-queue.md). Defaults to `INTEGRATIONS_MODE`
+   * (`fake` / `real`). collective-infra sets it from `GETPROPERTY_PDF_RENDERER_MODE`.
+   */
   @IsOptional()
-  @IsEnum(IntegrationsMode)
-  PDF_RENDERER_MODE?: IntegrationsMode;
+  @IsIn(['fake', 'real', 'queue'])
+  PDF_RENDERER_MODE?: 'fake' | 'real' | 'queue';
 
   @IsEnum(DataStoresMode)
   DATA_STORES_MODE: DataStoresMode = DataStoresMode.Fake;
@@ -500,6 +505,27 @@ export class EnvironmentVariables {
   @Min(1_000)
   @Max(120_000)
   PDF_RENDER_TIMEOUT_MS = 30_000;
+
+  /**
+   * `PDF_RENDERER_MODE=queue`: the Valkey of the shared `pdf-render` queue (the platform's shared-queue logical DB —
+   * docs/pdf-render-queue.md); empty = REDIS_URL.
+   */
+  @IsOptional()
+  @IsString()
+  @Matches(/^rediss?:\/\//, { message: 'PDF_RENDER_REDIS_URL must be a redis:// or rediss:// URL' })
+  PDF_RENDER_REDIS_URL?: string;
+
+  /** BullMQ key prefix of the shared queue (the same for every producer and the consumer). */
+  @IsString()
+  @Matches(/^[a-z][a-z0-9_-]{0,31}$/, { message: 'PDF_RENDER_QUEUE_PREFIX must be a plain token' })
+  PDF_RENDER_QUEUE_PREFIX = 'collective';
+
+  /** How long a producer waits for a queued render (queueing + retries) before the subscriber retries later. */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(5_000)
+  @Max(600_000)
+  PDF_RENDER_QUEUE_TIMEOUT_MS = 120_000;
 
   // --- Payments (B4.4, D-042; real adapters behind the payments.provider.* flags — O-001) -------------------
 

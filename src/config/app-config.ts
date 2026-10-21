@@ -31,7 +31,15 @@ export class AppConfig {
 
   /** The PDF renderer is the deterministic fake (no browser): `PDF_RENDERER_MODE`, else `INTEGRATIONS_MODE`. */
   get useFakePdfRenderer(): boolean {
-    return (this.env.PDF_RENDERER_MODE ?? this.env.INTEGRATIONS_MODE) === IntegrationsMode.Fake;
+    return this.pdfRendererMode === 'fake';
+  }
+
+  /** `fake`, `real` (in-process Chromium, ADR-0012) or `queue` (shared `pdf-render`, D-236). */
+  get pdfRendererMode(): 'fake' | 'real' | 'queue' {
+    return (
+      this.env.PDF_RENDERER_MODE ??
+      (this.env.INTEGRATIONS_MODE === IntegrationsMode.Fake ? 'fake' : 'real')
+    );
   }
 
   /** PostgreSQL, Redis and MQTT are in-memory fakes (no connection is ever opened). */
