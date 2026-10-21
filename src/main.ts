@@ -1,6 +1,7 @@
 import './instrument';
 
 import { trustProxy } from '@common/http/trust-proxy';
+import { metricsHandler, ProcessMetrics } from '@common/observability/metrics';
 import { AppConfig } from '@config/app-config';
 import { loadSecretsIntoEnv } from '@config/secrets.loader';
 import { NestFactory } from '@nestjs/core';
@@ -22,6 +23,10 @@ async function bootstrap(): Promise<void> {
   const config = app.get(AppConfig);
   // Client IP behind load balancers and our BFFs (rate limiting, docs allow-list, e-sign evidence) — D-229.
   app.set('trust proxy', trustProxy(config.get('TRUST_PROXY'), config.get('TRUSTED_PROXY_CIDRS')));
+  // Prometheus (D-230): request histogram for every route, `GET /metrics` for the platform's scraper only.
+  const metrics = new ProcessMetrics(config.get('OTEL_SERVICE_NAME'));
+  app.use(metrics.httpMiddleware());
+  app.use('/metrics', metricsHandler(metrics, config.get('METRICS_ALLOWED_CIDRS')));
   configureApp(app);
   setupDocs(app);
 
