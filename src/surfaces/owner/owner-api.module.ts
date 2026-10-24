@@ -79,6 +79,7 @@ import {
   OwnerReadingReviewsController,
   OwnerUtilityInvoicesController,
 } from './smart.controller';
+import { OwnerStorageController } from './storage.controller';
 import { OwnerSubscriptionController } from './subscription.controller';
 import {
   OwnerInvitationsController,
@@ -90,6 +91,7 @@ import {
 @Module({
   controllers: [
     OwnerSubscriptionController,
+    OwnerStorageController,
     OwnerInsightsController,
     OwnerEtaxController,
     OwnerTm30Controller,

@@ -129,6 +129,8 @@ export const API_TAGS: Record<string, string> = {
   'owner.tm30':
     'TM30 notifications of foreign occupants: 24-hour deadline, the Immigration Bureau upload file per building, submissions (B6.2, D-052, D-216).',
   'resident.surveys': 'The periodic 1-question satisfaction survey in the LIFF (B6.3, D-083).',
+  'owner.storage':
+    "The owner's storage: files and records counted against the free allowance of the tenant type, the level and the daily snapshots (D-276).",
   'owner.subscription':
     'My plan (D-082, D-156): subscription, usage counted, invoices from getproperty with Thai QR, platform hardware, upgrade to Smart.',
   'admin.tenants':

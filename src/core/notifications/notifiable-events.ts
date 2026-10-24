@@ -1,3 +1,4 @@
+import { formatBytes } from '@collective/documents';
 import { type Tx } from '@database/prisma.service';
 import { type NotificationAudience, type NotificationChannel } from '@generated/prisma/client';
 
@@ -143,6 +144,21 @@ export function registerNotifiable(eventType: string, resolver: NotifiableResolv
 }
 
 export const NOTIFIABLE_EVENTS: Record<string, NotifiableResolver> = {
+  /** D-276: the owner is told once per crossing (80 % / 100 % of the storage allowance). */
+  'storage.threshold_crossed': async (tx, e) =>
+    e.tenantId
+      ? {
+          recipients: await operators(tx, e.tenantId, ['owner'], 'owner'),
+          data: {
+            tenant: { name: await tenantName(tx, e.tenantId) },
+            storage: {
+              usedPercent: e.payload.usedPercent,
+              used: formatBytes(BigInt(e.payload.usedBytes as string)),
+              allowance: formatBytes(BigInt(e.payload.allowanceBytes as string)),
+            },
+          },
+        }
+      : null,
   /** B3.4 (D-034): meter health and gateway offline reach the operators of the building's tenant. */
   'meter.stale': meterHealth,
   'meter.silent': meterHealth,
