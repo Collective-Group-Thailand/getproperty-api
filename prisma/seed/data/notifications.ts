@@ -42,6 +42,18 @@ const flexVersions = (): TemplateSeed['versions'] =>
 /** Operator events of B1.3 (`src/core/notifications/notifiable-events.ts`): th/en text per channel. */
 const OPERATOR_EVENTS: { key: string; description: string; th: [string, string]; en: [string, string] }[] = [
   {
+    key: 'storage.threshold_crossed',
+    description: 'Owner: storage usage reached a notice threshold of the allowance (D-276: 80 % / 100 %)',
+    th: [
+      'พื้นที่จัดเก็บใช้ไปแล้ว {{storage.usedPercent}}%',
+      'บัญชี {{tenant.name}} ใช้พื้นที่จัดเก็บไปแล้ว {{storage.used}} จาก {{storage.allowance}} ({{storage.usedPercent}}%) ข้อมูลทั้งหมดยังอยู่ครบและเอกสารที่กฎหมายกำหนดยังออกได้ตามปกติ ดูรายละเอียดหรือเพิ่มพื้นที่ได้ในหน้าตั้งค่า',
+    ],
+    en: [
+      'Storage {{storage.usedPercent}}% used',
+      '{{tenant.name}} has used {{storage.used}} of its {{storage.allowance}} storage ({{storage.usedPercent}}%). All your data stays, and documents the law requires are always produced. See details or add space in Settings.',
+    ],
+  },
+  {
     key: 'tenant.bank_account.changed',
     description: 'Owner: receiving bank account changed (D-091)',
     th: [

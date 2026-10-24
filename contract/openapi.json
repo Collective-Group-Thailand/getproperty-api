@@ -19672,6 +19672,105 @@
         ],
         "type": "string"
       },
+      "OwnerStorageDto": {
+        "properties": {
+          "allowanceBytes": {
+            "description": "Free allowance + packs (bytes).",
+            "example": "5368709120",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "asOf": {
+            "example": "2026-10-25T09:00:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "fileBytes": {
+            "description": "Bytes of the stored files (decimal string).",
+            "example": "650000000",
+            "type": "string"
+          },
+          "freeGb": {
+            "description": "Free allowance in GB (setting).",
+            "example": "5",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/StorageDayDto"
+            },
+            "type": "array"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StorageLevel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "example": "ok"
+          },
+          "metered": {
+            "description": "False while the platform has not set a free allowance for this tenant type: usage is shown, nothing is held.",
+            "example": false,
+            "type": "boolean"
+          },
+          "pricePerGbMonth": {
+            "description": "THB per GB-month above the allowance (setting); null = overage not sold.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "records": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Stored records per counted type.",
+            "example": {
+              "invoice": 1203,
+              "meter_reading": 8800,
+              "receipt": 1150
+            },
+            "type": "object"
+          },
+          "usedBytes": {
+            "description": "Counted bytes: files + records × counted size (decimal string).",
+            "example": "734003200",
+            "type": "string"
+          },
+          "usedPercent": {
+            "description": "Used / allowance, whole percent (floor).",
+            "example": 13,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "asOf",
+          "metered",
+          "usedBytes",
+          "fileBytes",
+          "records",
+          "allowanceBytes",
+          "usedPercent",
+          "level",
+          "freeGb",
+          "pricePerGbMonth",
+          "history"
+        ],
+        "type": "object"
+      },
       "OwnerSubscriptionDto": {
         "properties": {
           "estimate": {
@@ -30760,6 +30859,34 @@
           "data"
         ],
         "type": "object"
+      },
+      "StorageDayDto": {
+        "properties": {
+          "countedBytes": {
+            "description": "Counted bytes that day (decimal string).",
+            "example": "734003200",
+            "type": "string"
+          },
+          "day": {
+            "example": "2026-10-24",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "day",
+          "countedBytes"
+        ],
+        "type": "object"
+      },
+      "StorageLevel": {
+        "enum": [
+          "ok",
+          "warning",
+          "full",
+          "over"
+        ],
+        "type": "string"
       },
       "SubjectDto": {
         "properties": {
@@ -139208,6 +139335,196 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/storage": {
+      "get": {
+        "description": "What the tenant stores (files + records at their counted size), the allowance and its level (ok / warning / full / over), the price per GB-month above it and the last 30 daily snapshots (D-276). `metered: false` while the platform has not set a free allowance for the tenant type.\n\nImplements: D-276.",
+        "operationId": "owner.storage.get",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "allowanceBytes": "5368709120",
+                  "asOf": "2026-10-25T09:00:00+07:00",
+                  "fileBytes": "650000000",
+                  "freeGb": "5",
+                  "history": [
+                    {
+                      "countedBytes": "731906048",
+                      "day": "2026-10-24"
+                    }
+                  ],
+                  "level": "ok",
+                  "metered": true,
+                  "pricePerGbMonth": null,
+                  "records": {
+                    "invoice": 1203,
+                    "lease": 40,
+                    "meter_reading": 8800,
+                    "payment": 1150,
+                    "receipt": 1150,
+                    "service_request": 35
+                  },
+                  "usedBytes": "734003200",
+                  "usedPercent": 13
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerStorageDto"
+                }
+              }
+            },
+            "description": "My storage",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "My storage",
+        "tags": [
+          "owner.storage"
+        ],
+        "x-required-permissions": [
+          "tenant.subscription.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/subscription": {
       "get": {
         "description": "The subscription (plan, add-ons, state, trial end, pilot discount, read-only flag), what is counted today (units not inactive, rented meter points, buildings, OCR photos) and the estimate of a month at today’s usage (D-082, D-156, D-161). `subscription: null` before the platform subscribed the tenant.\n\nImplements: D-082, D-156, D-161.",
@@ -194215,6 +194532,10 @@
     {
       "description": "Effective-dated tenant and property settings (ADR-0004, D-144).",
       "name": "owner.settings"
+    },
+    {
+      "description": "The owner's storage: files and records counted against the free allowance of the tenant type, the level and the daily snapshots (D-276).",
+      "name": "owner.storage"
     },
     {
       "description": "My plan (D-082, D-156): subscription, usage counted, invoices from getproperty with Thai QR, platform hardware, upgrade to Smart.",

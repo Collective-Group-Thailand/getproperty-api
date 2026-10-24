@@ -18,6 +18,7 @@ import sharp from 'sharp';
 import { AuditService } from '../audit/audit.service';
 import { CLOCK, type Clock } from '../clock/clock';
 import { DomainEvents } from '../events/domain-events';
+import { StorageMeteringService } from '../storage/storage-metering.service';
 import {
   AUDITED_DOWNLOADS,
   DOCUMENT_POLICY,
@@ -96,6 +97,7 @@ export class DocumentsService extends TenantScopedRepository {
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
     @Inject(VIRUS_SCAN) private readonly scanner: VirusScanPort,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly storageMetering: StorageMeteringService,
   ) {
     super();
   }
@@ -160,6 +162,9 @@ export class DocumentsService extends TenantScopedRepository {
       const buildingId = await this.scopeBuilding(tx, ctx, input.scopeType, input.scopeId);
       if (buildingId && ctx.buildingIds && !ctx.buildingIds.includes(buildingId))
         throw new DomainException('http.not_found');
+      // D-276: only an optional upload over the allowance (overage not sold) is held — never legal/operational files
+      const admission = await this.storageMetering.admitUpload(tx, ctx.tenantId, input.kind, input.sizeBytes);
+      if (!admission.accepted) throw new DomainException('storage.allowance_exceeded');
       return tx.document.create({
         data: {
           id,

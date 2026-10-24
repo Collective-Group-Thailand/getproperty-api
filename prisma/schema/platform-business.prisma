@@ -73,6 +73,7 @@ enum PlatformLineKind {
   inspection
   discount
   adjustment
+  storage
 
   @@map("platform_line_kind")
   @@schema("platform")
@@ -700,5 +701,43 @@ model KpiSnapshot {
 
   @@unique([tenantId, window, asOf], map: "kpi_snapshot_tenant_id_window_as_of_key")
   @@map("kpi_snapshot")
+  @@schema("platform")
+}
+
+/// Daily storage snapshot per tenant (D-276): files at their size + records at the counted size of their type.
+model StorageUsageDaily {
+  id             String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  day            DateTime @db.Date
+  fileBytes      BigInt   @map("file_bytes")
+  recordCounts   Json     @default("{}") @map("record_counts")
+  countedBytes   BigInt   @map("counted_bytes")
+  allowanceBytes BigInt?  @map("allowance_bytes")
+  policyVersion  String   @map("policy_version")
+  computedAt     DateTime @default(now()) @map("computed_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation("StorageUsageDailyTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "storage_usage_daily_tenant_id_fkey")
+
+  @@unique([tenantId, day], map: "storage_usage_daily_tenant_id_day_key")
+  @@map("storage_usage_daily")
+  @@schema("platform")
+}
+
+/// Storage notices sent (D-276: 80 % / 100 %), one open row per threshold (partial unique index in SQL).
+model StorageNotice {
+  id             String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  thresholdPct   Int       @map("threshold_pct")
+  crossedOn      DateTime  @map("crossed_on") @db.Date
+  usedBytes      BigInt    @map("used_bytes")
+  allowanceBytes BigInt    @map("allowance_bytes")
+  sentAt         DateTime  @default(now()) @map("sent_at") @db.Timestamptz(6)
+  clearedAt      DateTime? @map("cleared_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation("StorageNoticeTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "storage_notice_tenant_id_fkey")
+
+  @@unique([tenantId, thresholdPct], map: "storage_notice_open_key", where: raw("(cleared_at IS NULL)"))
+  @@index([tenantId, thresholdPct], map: "storage_notice_tenant_id_threshold_pct_idx")
+  @@map("storage_notice")
   @@schema("platform")
 }
