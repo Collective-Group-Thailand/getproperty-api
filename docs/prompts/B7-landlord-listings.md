@@ -4,11 +4,13 @@
 
 ---
 
-You are a senior backend engineer on **`getproperty-api`**. Decisions **D-250 – D-263** (all *Proposed*, founder 2026-10-24) rule here, together with D-020–D-025 (statutory values), D-050 (VAT documents), D-062 (e-signature), D-151–D-153 (vocabulary, tenancy, asset core), D-216 (TM30), D-232 (branding). Open items **O-017 – O-019**: the founder chose (2026-10-24) to **ship with Claude's recommended defaults switched on** and let counsel revise the wording later — keep every legal value a setting and every legal text a versioned template so that revision is data, not code.
+You are a senior backend engineer on **`getproperty-api`**. Decisions **D-250 – D-274** (all *Accepted*, founder 2026-10-24) rule here, together with D-020–D-025 (statutory values), D-050 (VAT documents), D-062 (e-signature), D-151–D-153 (vocabulary, tenancy, asset core), D-216 (TM30), D-232 (branding). Open items **O-017 – O-019**: the founder chose (2026-10-24) to **ship with Claude's recommended defaults switched on** and let counsel revise the wording later — keep every legal value a setting and every legal text a versioned template so that revision is data, not code.
 
 **Product principle (founder, 2026-10-24): comfort and sincerity for both sides.** Easy, honest, no tricks: no hidden information, no dark patterns, every fee shown before it is paid, every step doable from a phone in LINE. Comfort is the moat — when owners and residents find it easier to stay on getproperty than to close the deal privately, the ecosystem holds without lock-in tactics.
 
 **Who this is for.** People who own a house or a condo unit and rent it out themselves. Today they find tenants on listing sites or through agents (≈ one month's rent per lease), write their own lease, chase rent in chat and check slips by hand. getproperty gives them, free (D-250): a listing that brings enquiries into LINE, a proper lease, automatic rent collection, and every document they need (D-253). Competitive context (Oct 2026): Rentdi (free listing, 4 % of rent collected), Renterday / เช่าเฮงเฮง (free for 1–3 rooms), listing portals without management. We win on: one flow from listing to move-out, bank/gateway-confirmed payments, bilingual leases + TM30 for foreign residents, owner verification, and the annual income summary.
+
+**Port before you write:** integrations and generic modules that getpack already has (Firebase/LINE identity, OTP, 2C2P, Slip2Go, loyalty, CMS) are ported per `docs/reuse-from-getpack.md`, not rewritten.
 
 **Schema changes go to `docs/schema-design.md` first (a PR to that file), then migrations.** `core.*` changes (enum values such as `building_type.house`, `document_kind.listing_photo`, `document_kind.inspection_report`, `unit_ownership` source `self_declared`) are made in `collective-asset-core` and released before the app migration (D-153).
 
@@ -105,5 +107,11 @@ You are a senior backend engineer on **`getproperty-api`**. Decisions **D-250 �
 1. Partner adapters (all **off** by default, each a platform setting with its partner credentials in provider credentials, D-240): deposit-replacement policy (D-257: quote, bind, policy document on the lease), rent advance (D-258: consented data export to the bank, status webhooks), rental-cycle services (D-259: deep links with referral codes, no booking logic in getproperty).
 2. Juristic bridge (D-270): `tenant.type = juristic` workspace (free), invitation from a condo owner, linked units only; common-fee bills to the owner; parcel and access-card notices to the linked resident.
 3. Acceptance: with a fake partner each flow round-trips; with the setting off no partner call is made and no UI action is offered; juristic sees only linked units.
+
+## Deliverable 7.13 — Guides CMS ported from getpack (D-271)
+1. Port getpack's CMS (`src/modules/catalog/cms`, store content endpoints) per `docs/reuse-from-getpack.md`: guides with slug, locale, category, title, summary, answer, sections (blocks), FAQ, sources, reviewed date, audience, `general` flag — the shape of getproperty-web `src/features/owner/marketing/guides/types.ts`.
+2. Admin CRUD with draft/published and a reviewed-by; `GET /v1/public/guides`, `GET /v1/public/guides/{slug}?locale=`.
+3. Seed from the web's content files (`content.th.ts`, `content.en.ts`); then the web reads the API and the files are deleted.
+4. Acceptance: publish/unpublish reflected on the public read; seed round-trips the five guides unchanged.
 
 After each deliverable: `docs/PROGRESS.md`, `docs/schema-design.md`, contract regenerated (`pnpm contract:build && pnpm contract:lint`), commit.
