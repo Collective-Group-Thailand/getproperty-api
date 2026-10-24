@@ -22,7 +22,7 @@
 | B5.1–5.4 | `Then read docs/schema-design.md and docs/prompts/B5-operations.md. Do Deliverable 5.N only. Plan first.` | R2 |
 | B6.2, 6.3 | `Then read docs/prompts/B6-platform-launch.md. Do Deliverable 6.N only. Plan first.` | R2 |
 | B7.0 | `Then read docs/prompts/B7-landlord-listings.md. Do Deliverable 7.0 only. Plan first.` | now (D-250 Accepted) |
-| B7.1–7.8 | `Then read docs/schema-design.md and docs/prompts/B7-landlord-listings.md. Do Deliverable 7.N only. Plan first.` | R3 (D-250, D-254 Accepted; D-251–D-253 Proposed) |
+| B7.1–7.12 | `Then read docs/schema-design.md and docs/prompts/B7-landlord-listings.md. Do Deliverable 7.N only. Plan first.` | R3 (D-250–D-274 Accepted; 7.9–7.12 blue ocean, after 7.1–7.8) |
 
 ขนานได้: B3 และ B4.1 หลัง B2.1 · B4.2 ต้องรอ B3.3 · B6.1 หลัง B2.1 · B1.2 (ข-2) ต้องรอ `collective-asset-core` v0.1.0 · `getproperty-edge` E1 เริ่มได้ทันทีที่ B1.1 publish `contract/device-protocol.json` · `getproperty-liff` เริ่มได้เมื่อ B1.3 publish `/v1/resident/*`
 
