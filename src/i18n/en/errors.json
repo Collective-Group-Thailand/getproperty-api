@@ -775,6 +775,10 @@
     "confirmation_mismatch": {
       "title": "Confirmation does not match",
       "detail": "Type the tenant slug exactly to confirm."
+    },
+    "disabled": {
+      "title": "Subscriptions are switched off",
+      "detail": "getproperty is free for operators (D-250); subscriptions are not used. Turn on platform.subscriptions.enabled to use them again."
     }
   },
   "price_plan": {
@@ -945,6 +949,12 @@
     "not_due": {
       "title": "Survey already answered",
       "detail": "You answered the satisfaction survey recently; it will be offered again later."
+    }
+  },
+  "storage": {
+    "allowance_exceeded": {
+      "title": "Storage allowance reached",
+      "detail": "This optional file would put the account over its storage allowance. Remove files you no longer need or ask getproperty about more space; documents the law requires are always stored."
     }
   }
 }

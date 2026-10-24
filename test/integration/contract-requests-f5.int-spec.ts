@@ -2,10 +2,9 @@ import 'reflect-metadata';
 
 import { createHash, randomUUID } from 'node:crypto';
 
+import { type FakeObjectStorage, OBJECT_STORAGE } from '@collective/integrations/storage';
 import { utilityCharge } from '@core/utility-tariffs/tariff-math';
 import { type UtilityTariffStructure } from '@core/utility-tariffs/tariff-structure';
-import { type FakeObjectStorage } from '@integrations/s3/fake-object-storage';
-import { OBJECT_STORAGE } from '@integrations/s3/object-storage.port';
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';

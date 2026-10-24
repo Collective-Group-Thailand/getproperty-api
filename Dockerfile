@@ -42,9 +42,24 @@ COPY --from=asset-core-build /collective-asset-core/dist ./dist
 COPY --from=asset-core-build /collective-asset-core/migrations ./migrations
 COPY --from=asset-core-build /collective-asset-core/prisma ./prisma
 
+# --- @collective/integrations + @collective/documents (D-275, D-278): linked from the sibling checkout
+#     (`link:../../collective-shared/packages/*`, i.e. /collective-shared from /app) until they are on GitHub Packages.
+#     Built here with the monorepo's own install, which also provides the adapters' optional peers (AWS SDK,
+#     web-push…) next to the package code — Node resolves them from the package's real path, not from /app.
+#       docker build --build-context asset-core-src=../collective-asset-core \
+#                    --build-context collective-shared-src=../../collective-shared .
+#     UNVERIFIED: written without a Docker daemon (Cowork sandbox, 2026-10-25).
+FROM base AS collective-shared
+WORKDIR /collective-shared
+COPY --from=collective-shared-src package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY --from=collective-shared-src packages ./packages
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts \
+  && pnpm build
+
 # --- build: full install, generate the Prisma client, compile -------------------------------------------
 FROM base AS build
 COPY --from=asset-core /collective-asset-core /collective-asset-core
+COPY --from=collective-shared /collective-shared /collective-shared
 COPY package.json pnpm-lock.yaml ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
@@ -53,6 +68,7 @@ RUN pnpm prisma:generate && pnpm build
 # --- prod-deps: runtime dependencies only --------------------------------------------------------------
 FROM base AS prod-deps
 COPY --from=asset-core /collective-asset-core /collective-asset-core
+COPY --from=collective-shared /collective-shared /collective-shared
 COPY package.json pnpm-lock.yaml ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prod --ignore-scripts
 
@@ -69,6 +85,7 @@ ENV NODE_ENV=production PROCESS=main GIT_COMMIT=${GIT_COMMIT} TZ=Asia/Bangkok \
     PDF_RENDERER_MODE=real PDF_CHROMIUM_EXECUTABLE=/usr/bin/chromium
 WORKDIR /app
 COPY --from=asset-core --chown=node:node /collective-asset-core /collective-asset-core
+COPY --from=collective-shared --chown=node:node /collective-shared /collective-shared
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/package.json ./package.json

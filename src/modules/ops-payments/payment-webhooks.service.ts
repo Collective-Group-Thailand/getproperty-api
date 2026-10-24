@@ -1,3 +1,9 @@
+import {
+  type ParsedWebhook,
+  type ProviderPayment,
+  QR_PROVIDERS,
+  type QrProvider,
+} from '@collective/integrations/payments/qr';
 import { systemActor } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { DomainException } from '@common/errors/domain.exception';
@@ -6,12 +12,6 @@ import { type DomainEventEnvelope, DomainEvents } from '@core/events/domain-even
 import { type EventSubscriber, EventSubscriberRegistry } from '@core/events/subscribers';
 import { type Tx } from '@database/prisma.service';
 import { TenantTx } from '@database/tenant-tx';
-import {
-  type ParsedWebhook,
-  type ProviderPayment,
-  QR_PROVIDERS,
-  type QrProvider,
-} from '@integrations/payments/payment-provider.port';
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 
 import { type MerchantAccount, MerchantResolver } from './merchants';

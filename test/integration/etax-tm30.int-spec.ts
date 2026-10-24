@@ -1,9 +1,7 @@
 import 'reflect-metadata';
 
-import { ETAX_PROVIDERS } from '@integrations/etax/etax-provider.port';
-import { type FakeEtaxProviders } from '@integrations/etax/fake-etax-provider';
-import { type FakeObjectStorage } from '@integrations/s3/fake-object-storage';
-import { OBJECT_STORAGE } from '@integrations/s3/object-storage.port';
+import { ETAX_PROVIDERS, type FakeEtaxProviders } from '@collective/integrations/etax';
+import { type FakeObjectStorage, OBJECT_STORAGE } from '@collective/integrations/storage';
 import { EtaxService } from '@modules/ops-etax/etax.service';
 import { readXlsx } from '@modules/ops-receivables/exports/sheets';
 import { Tm30Service } from '@modules/ops-tm30/tm30.service';

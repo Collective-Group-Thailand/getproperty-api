@@ -1,7 +1,3 @@
-import { AppConfig } from '@config/app-config';
-import { CLOCK, type Clock } from '@core/clock/clock';
-import { ProviderCredentialsService } from '@core/credentials/provider-credentials.service';
-import { SettingsService } from '@core/settings/settings.service';
 import {
   type Merchant,
   PAYMENT_PROVIDERS,
@@ -9,7 +5,11 @@ import {
   QR_PROVIDERS,
   type QrPaymentAdapter,
   type QrProvider,
-} from '@integrations/payments/payment-provider.port';
+} from '@collective/integrations/payments/qr';
+import { AppConfig } from '@config/app-config';
+import { CLOCK, type Clock } from '@core/clock/clock';
+import { ProviderCredentialsService } from '@core/credentials/provider-credentials.service';
+import { SettingsService } from '@core/settings/settings.service';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 /** `platform.payments.merchant` (D-042 model applied to Collective's own receivables, D-204; ⚖ O-008). */

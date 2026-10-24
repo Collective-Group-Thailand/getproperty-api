@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import { webcrypto } from 'node:crypto';
 
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
+import { fakeLineIdToken } from '@collective/integrations/line';
 import * as x509 from '@peculiar/x509';
 
 import { DEV } from '../../prisma/seed/run';

@@ -1,3 +1,4 @@
+import { type FakeLineMessaging, LINE_MESSAGING } from '@collective/integrations/line';
 import { type DomainEventEnvelope, DomainEvents } from '@core/events/domain-events';
 import { EventConsumer } from '@core/events/event-consumer.service';
 import { type EventSubscriber, EventSubscriberRegistry } from '@core/events/subscribers';
@@ -7,8 +8,6 @@ import { type FakeQueue } from '@core/queue/fake-queue';
 import { QUEUE, QUEUE_NAMES } from '@core/queue/queue.port';
 import { type Tx } from '@database/prisma.service';
 import { TenantTx } from '@database/tenant-tx';
-import { type FakeLineMessaging } from '@integrations/line/fake-line-messaging';
-import { LINE_MESSAGING } from '@integrations/line/line-messaging.port';
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';

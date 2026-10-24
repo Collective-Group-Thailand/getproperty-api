@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 
+import { fakeWebhookSecret, signFakeWebhook } from '@collective/integrations/payments/qr';
 import { addCalendarDays, bangkokDate } from '@common/time/bangkok';
-import { fakeWebhookSecret, signFakeWebhook } from '@integrations/payments/fake-payment-providers';
 import { SubscriptionsService } from '@modules/platform-subscriptions/subscriptions.service';
 import Decimal from 'decimal.js';
 
@@ -89,6 +89,14 @@ describe('B6.1 platform business (real PostgreSQL)', () => {
        SELECT $1, r.id FROM platform.role r WHERE r.key = 'finance'`,
       [DEV.users.support],
     );
+    // D-250 switched subscriptions off by default; this suite exercises the B6.1 lifecycle, so it turns them on
+    // (test setup only: the append-only trigger of setting_version is bypassed with replication role, as in billing).
+    await q('SET session_replication_role = replica');
+    await q(
+      `UPDATE platform.setting_version sv SET value = 'true'::jsonb
+         FROM platform.setting s WHERE s.id = sv.setting_id AND s.key = 'platform.subscriptions.enabled'`,
+    );
+    await q('SET session_replication_role = origin');
     start = firstOfNextMonth(bangkokDate(t.clock.now()));
     start = `${start.slice(0, 8)}10`; // the 10th of next month
     await travel(start);

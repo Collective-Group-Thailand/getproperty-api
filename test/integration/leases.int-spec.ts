@@ -1,5 +1,5 @@
+import { fakeLineIdToken } from '@collective/integrations/line';
 import { bangkokDate } from '@common/time/bangkok';
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 import { FakePdfRenderer } from '@integrations/pdf/fake-pdf-renderer';
 import { LeasesService } from '@modules/ops-leases/leases.service';
 

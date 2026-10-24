@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 
+import { fakeLineIdToken } from '@collective/integrations/line';
 import { bangkokDate } from '@common/time/bangkok';
 import { DomainEvents } from '@core/events/domain-events';
 import { TenantTx } from '@database/tenant-tx';
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';

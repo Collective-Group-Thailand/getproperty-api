@@ -2,9 +2,9 @@ import 'reflect-metadata';
 
 import { randomUUID } from 'node:crypto';
 
+import { fakeLineIdToken } from '@collective/integrations/line';
 import { DomainEvents } from '@core/events/domain-events';
 import { TenantTx } from '@database/tenant-tx';
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 import { type FakeLockVendors } from '@integrations/locks/fake-lock-vendors';
 import { LOCK_VENDORS } from '@integrations/locks/lock-vendor.port';
 import { AccessCredentialsService } from '@modules/smart-access/access-credentials.service';

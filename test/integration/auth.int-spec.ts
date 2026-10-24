@@ -1,5 +1,5 @@
+import { fakeLineIdToken } from '@collective/integrations/line';
 import { base32Decode, totpAt } from '@core/identity/crypto/totp';
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';

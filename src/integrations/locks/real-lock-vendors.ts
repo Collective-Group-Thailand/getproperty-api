@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomUUID } from 'node:crypto';
 
-import { ProviderError, providerFetch } from '../http/provider-http';
+import { ProviderError, providerFetch } from '@collective/integrations/http';
+
 import {
   type CreatedCredential,
   type CredentialInput,

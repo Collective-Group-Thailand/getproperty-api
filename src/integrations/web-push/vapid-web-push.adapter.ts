@@ -1,6 +1,6 @@
+import { ProviderError } from '@collective/integrations/http';
 import webpush from 'web-push';
 
-import { ProviderError } from '../http/provider-http';
 import { type WebPushPort, type WebPushTarget } from './web-push.port';
 
 /**

@@ -403,6 +403,7 @@ export class AdminSubscriptionsController {
     'http.bad_request',
     'http.not_found',
     'subscription.exists',
+    'subscription.disabled',
     'subscription.plan_mismatch',
     'price_plan.not_found',
     'price_plan.not_sold',

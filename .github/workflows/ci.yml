@@ -155,7 +155,9 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          build-contexts: asset-core-src=../collective-asset-core
+          build-contexts: |
+            asset-core-src=../collective-asset-core
+            collective-shared-src=../../collective-shared
           load: true
           tags: getproperty-api:ci
           build-args: GIT_COMMIT=${{ github.sha }}
