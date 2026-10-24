@@ -80,4 +80,30 @@ You are a senior backend engineer on **`getproperty-api`**. Decisions **D-250 �
 4. Apartments keep D-210 unchanged (in-house technician queue, SLA, rating).
 5. Acceptance: e2e landlord request → owner notified → decision recorded → receipt attached → tenant share billed on the next invoice → expense in the annual summary.
 
+## Deliverable 7.9 — Listings that tell the truth: utility cost, comparables, share kit, owner profile (D-265, D-268, D-269, D-272, D-274)
+1. Listing read models gain `utility { electricityRate, waterRate, fixedCharges[], averageBill3m | null, basedOnBills }` (D-265) computed server-side from the unit's tariff and its last confirmed invoices; owner toggle `showUtilityHistory`; setting `listing.utility_history.min_bills`.
+2. `GET /v1/owner/listings/{id}/comparables` → `{ band { p25, p50, p75 } | null, medianDaysToLet | null, sampleSize }` (D-269); setting `listing.comparables.min`; nothing below the threshold.
+3. Share kit (D-268): `POST /v1/owner/listings/{id}/share-kit` → captions th/en, a 1080×1080 card (rendered server-side: photo, rent, area, QR of the short link) as a document, short links per channel with UTM; enquiries record `channel`.
+4. `GET /v1/public/listings/areas` → `{ data: { slug, name, kind: district|station, province, count, band | null }[] }` and `?area=` on the listings query (D-272); setting `listing.area.index_min`.
+5. Public owner profile (D-274): `GET /v1/public/owners/{slug}` → display name, verification level, member since, median reply minutes, listing summaries; owner setting `publicProfile` (default on when verified).
+6. Acceptance: utility block appears only with ≥ 3 confirmed bills and the toggle on; comparables hidden below the threshold; share kit card renders th/en; area counts match published listings; profile hidden when switched off.
+
+## Deliverable 7.10 — Condition reports and verified people (D-266, D-267)
+1. `lease.condition_report` (move_in | move_out) with rooms → items → photos (documents) and notes; created by owner/staff or resident; `confirm` by each side (LINE via LIFF, console); immutable after both confirm (amendments as new rows).
+2. Deposit settlement (D-136 flow): each deduction line must reference a move-out item; the resident sees the side-by-side comparison and may add a note before `final`.
+3. Verification (D-267): `identity_verification` through a provider adapter (e-KYC; fake adapter in dev), levels `identity`, `ownership` (evidence documents reviewed in admin, O-018 retention); residents optional; badges on listings, enquiries, the owner profile.
+4. Booking/move-in payments for listings only through the gateway to the owner's sub-merchant (D-250); the API refuses to put a bank account number in enquiry messages (pattern check, warn the sender).
+5. Acceptance: e2e move-in report confirmed by both sides → move-out report → deduction without an item refused → resident note → final; e-KYC fake approve/reject; ownership review in admin; bank number in chat flagged.
+
+## Deliverable 7.11 — Rent record, no empty months, referral credit (D-256, D-261, D-273)
+1. Rent record (D-256): per resident, months paid on time / late / outstanding from confirmed payments; resident-owned share grants (to a listing enquiry or a PDF letter with a verification code), revocable; nothing shared without a grant.
+2. No empty months (D-261): reminders to owner and resident N days before lease end (setting), renewal offer from the lease, one-click re-list (copies the last listing), enquiries accepted with `availableFrom` before the unit is vacant, vacancy view per portfolio.
+3. Referral credit (D-273): invite codes, credit when the invited owner's first gateway payment settles, credits applied to the monthly fee invoice; settings for amount and cap.
+4. Acceptance: record counts match payments; share grant/revoke; renewal reminder fires; re-list keeps photos; credit appears on the next fee invoice and never exceeds the cap.
+
+## Deliverable 7.12 — Partner integrations behind settings (D-257, D-258, D-259, D-270)
+1. Partner adapters (all **off** by default, each a platform setting with its partner credentials in provider credentials, D-240): deposit-replacement policy (D-257: quote, bind, policy document on the lease), rent advance (D-258: consented data export to the bank, status webhooks), rental-cycle services (D-259: deep links with referral codes, no booking logic in getproperty).
+2. Juristic bridge (D-270): `tenant.type = juristic` workspace (free), invitation from a condo owner, linked units only; common-fee bills to the owner; parcel and access-card notices to the linked resident.
+3. Acceptance: with a fake partner each flow round-trips; with the setting off no partner call is made and no UI action is offered; juristic sees only linked units.
+
 After each deliverable: `docs/PROGRESS.md`, `docs/schema-design.md`, contract regenerated (`pnpm contract:build && pnpm contract:lint`), commit.
