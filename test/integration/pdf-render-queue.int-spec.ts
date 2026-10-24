@@ -2,6 +2,7 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createServer } from 'node:net';
 
+import { FakeObjectStorage } from '@collective/integrations/storage';
 import { FakePdfRenderer } from '@integrations/pdf/fake-pdf-renderer';
 import { consumePdfRenderJob } from '@integrations/pdf/pdf-render-consumer';
 import { PDF_RENDER_QUEUE, type PdfRenderJobV1 } from '@integrations/pdf/pdf-render-contract';
@@ -10,7 +11,6 @@ import {
   PdfRenderError,
   QueuePdfRenderer,
 } from '@integrations/pdf/queue-pdf-renderer';
-import { FakeObjectStorage } from '@integrations/s3/fake-object-storage';
 import { Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 

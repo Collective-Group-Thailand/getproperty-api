@@ -1,4 +1,5 @@
-import { FakeObjectStorage } from '../s3/fake-object-storage';
+import { FakeObjectStorage } from '@collective/integrations/storage';
+
 import { FakePdfRenderer } from './fake-pdf-renderer';
 import { consumePdfRenderJob, InProcessPdfRenderTransport } from './pdf-render-consumer';
 import { PDF_RENDER_INLINE_HTML_MAX_BYTES, type PdfRenderJobV1, pdfRenderKey } from './pdf-render-contract';

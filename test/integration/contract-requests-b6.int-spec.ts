@@ -2,11 +2,11 @@ import 'reflect-metadata';
 
 import { randomUUID } from 'node:crypto';
 
+import { fakeLineIdToken } from '@collective/integrations/line';
 import { addCalendarDays, bangkokDate } from '@common/time/bangkok';
 import { NotificationService } from '@core/notifications/notification.service';
 import { AccessService } from '@core/tenancy/access.service';
 import { PrismaService } from '@database/prisma.service';
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';

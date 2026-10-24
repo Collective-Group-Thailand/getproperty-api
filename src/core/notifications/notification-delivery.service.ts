@@ -1,7 +1,7 @@
+import { LINE_MESSAGING, type LineMessagingPort } from '@collective/integrations/line';
 import { TenantTx } from '@database/tenant-tx';
 import { type Notification } from '@generated/prisma/client';
 import { EMAIL, type EmailPort } from '@integrations/email/email.port';
-import { LINE_MESSAGING, type LineMessagingPort } from '@integrations/line/line-messaging.port';
 import { SMS, type SmsPort } from '@integrations/sms/sms.port';
 import { WEB_PUSH, type WebPushPort } from '@integrations/web-push/web-push.port';
 import { Inject, Injectable, Logger } from '@nestjs/common';

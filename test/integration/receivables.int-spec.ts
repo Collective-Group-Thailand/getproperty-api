@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 
+import { fakeLineIdToken } from '@collective/integrations/line';
 import { addCalendarDays, bangkokDate, startOfBangkokDay } from '@common/time/bangkok';
 import { DocumentsService } from '@core/documents/documents.service';
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 import { readXlsx } from '@modules/ops-receivables/exports/sheets';
 import { ReceivablesService } from '@modules/ops-receivables/receivables.service';
 
@@ -483,6 +483,11 @@ describe('B4.5 receivables, dunning, penalties, dashboard, exports (real Postgre
         [ids.inv1],
       )
     )[0]!.m;
+    const receiptMonth = (
+      await q<{ m: string }>(
+        `SELECT to_char(min(issued_at) AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM') AS m FROM ops.receipt WHERE voided_at IS NULL`,
+      )
+    )[0]!.m;
     const request = async (kind: string, params: Record<string, unknown>) =>
       (await t.http.post('/v1/owner/exports').set(O()).set(idem()).send({ kind, params }).expect(202)).body
         .id as string;
@@ -491,6 +496,8 @@ describe('B4.5 receivables, dunning, penalties, dashboard, exports (real Postgre
       payments: await request('payments_xlsx', { period }),
       arrears: await request('arrears_xlsx', {}),
       flow: await request('flowaccount_csv', { period: issuedMonth }),
+      // receipts carry their own date: late in a month the first one falls in the next month (date-independent test)
+      flowReceipts: await request('flowaccount_csv', { period: receiptMonth }),
       peak: await request('peak_csv', { period: issuedMonth }),
       vat: await request('vat_pp30', { period: issuedMonth }),
       income: await request('income_expense', { period: issuedMonth }),
@@ -539,7 +546,7 @@ describe('B4.5 receivables, dunning, penalties, dashboard, exports (real Postgre
     const flow = (await bytes(jobs.flow)).toString('utf8');
     expect(flow.startsWith('﻿ประเภทเอกสาร')).toBe(true);
     for (const n of numbers) expect(flow).toContain(n);
-    expect(flow).toMatch(/ใบเสร็จรับเงิน,RCP-\d{4}-\d{5}/);
+    expect((await bytes(jobs.flowReceipts)).toString('utf8')).toMatch(/ใบเสร็จรับเงิน,RCP-\d{4}-\d{5}/);
     const peak = (await bytes(jobs.peak)).toString('utf8');
     expect(peak.split('\r\n')[0]).toContain('เลขที่เอกสาร');
 

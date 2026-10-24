@@ -2,10 +2,13 @@ import 'reflect-metadata';
 
 import { randomUUID } from 'node:crypto';
 
+import { fakeLineIdToken } from '@collective/integrations/line';
+import {
+  type FakePaymentProviders,
+  fakeWebhookSecret,
+  PAYMENT_PROVIDERS,
+} from '@collective/integrations/payments/qr';
 import { RealtimeHub } from '@core/realtime/realtime.hub';
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
-import { type FakePaymentProviders, fakeWebhookSecret } from '@integrations/payments/fake-payment-providers';
-import { PAYMENT_PROVIDERS } from '@integrations/payments/payment-provider.port';
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';

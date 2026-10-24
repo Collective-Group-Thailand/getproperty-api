@@ -1,3 +1,4 @@
+import { LINE_LOGIN, type LineLoginPort } from '@collective/integrations/line';
 import { RequestContext } from '@common/context/request-context';
 import { FieldEncryption } from '@common/crypto/field-encryption';
 import { LookupHasher } from '@common/crypto/lookup-hasher';
@@ -7,7 +8,6 @@ import { type Tx } from '@database/prisma.service';
 import { REDIS, type RedisClient } from '@database/redis.module';
 import { TenantTx } from '@database/tenant-tx';
 import { type UserAccount } from '@generated/prisma/client';
-import { LINE_LOGIN, type LineLoginPort } from '@integrations/line/line-login.port';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { AuditService } from '../audit/audit.service';

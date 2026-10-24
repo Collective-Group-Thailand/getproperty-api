@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 
+import { fakeLineIdToken } from '@collective/integrations/line';
 import { ComplianceScoreService } from '@core/compliance/compliance-score.service';
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 import { BillingCyclesService } from '@modules/ops-billing/billing-cycles.service';
 import type request from 'supertest';
 

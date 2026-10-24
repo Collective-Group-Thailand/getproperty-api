@@ -1,7 +1,8 @@
 import { connect } from 'node:net';
 import { type Readable } from 'node:stream';
 
-import { ProviderError } from '../http/provider-http';
+import { ProviderError } from '@collective/integrations/http';
+
 import { type ScanResult, type VirusScanPort } from './virus-scan.port';
 
 /**

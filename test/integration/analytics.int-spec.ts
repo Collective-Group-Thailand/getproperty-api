@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
+import { fakeLineIdToken } from '@collective/integrations/line';
 import { AnalyticsService } from '@modules/platform-analytics/analytics.service';
 
 import { DEV } from '../../prisma/seed/run';
