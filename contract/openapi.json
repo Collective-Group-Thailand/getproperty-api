@@ -1853,6 +1853,17 @@
           "type": "https://errors.getproperty.co/subscription.confirmation_mismatch"
         }
       },
+      "problem.subscription.disabled": {
+        "summary": "subscription.disabled",
+        "value": {
+          "code": "subscription.disabled",
+          "detail": "getproperty ใช้ฟรีสำหรับผู้ประกอบการ (D-250) จึงไม่ใช้การสมัครใช้งานแบบรายเดือน เปิดการตั้งค่า platform.subscriptions.enabled หากต้องการใช้อีกครั้ง",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ปิดระบบสมัครใช้งานแล้ว",
+          "type": "https://errors.getproperty.co/subscription.disabled"
+        }
+      },
       "problem.subscription.exists": {
         "summary": "subscription.exists",
         "value": {
@@ -35903,7 +35914,7 @@
       "name": "Collective Group (Thailand) — getproperty",
       "url": "https://getproperty.co"
     },
-    "description": "getproperty — บิลทำเอง เก็บเงินเอง ถูกกฎหมาย, operated by Collective Group (Thailand) (D-001).\nRules: `docs/contract/api-conventions.md` (shared with getproperty-web and getproperty-edge); MQTT payloads: `docs/contract/device-protocol.md` / `contract/device-protocol.json` (D-130).\n\n- **Surfaces:** `/v1/auth`, `/v1/owner` (operator), `/v1/staff` (operator, Staff role), `/v1/resident` (resident), `/v1/technician` (technician, R2), `/v1/admin` (platform), `/v1/device` (device), `/webhooks`, `/v1/public` (anonymous marketing reads). A token is accepted only on its own audience's prefix.\n- **Tenancy:** a *tenant* is the SaaS customer organisation (D-151). Every owner/staff request runs in one tenant (`tenant:<uuid>` scope or `X-Tenant-Id`); a cross-tenant id is a 404 (contract §8, D-152).\n- **Money:** decimal strings with exactly 2 decimals (`\"1234.50\"`) plus `currency: \"THB\"` on the object; never JSON numbers. Clients never compute prices (D-046).\n- **Meter quantities:** `register` and `units` are decimal strings with up to 3 decimals (`\"12345.678\"`), `unit` is `kwh | m3`; tariff `pricePerUnit` has up to 4 decimals.\n- **Dates:** ISO 8601 with offset, rendered in `Asia/Bangkok` (`2026-11-01T00:00:00+07:00`); date-only fields `YYYY-MM-DD`.\n- **IDs:** uuid only; business keys (`invoiceNumber`, `unitNo`, `deviceSerial`) are separate fields.\n- **Errors:** RFC 9457 `application/problem+json` with a stable `code`; `title`/`detail` localised by `Accept-Language` (`th` default, `en`). `compliance.*` refusals carry `legalRef` (D-020).\n- **Lists:** `?page&perPage(≤100)&sort&order&q` → `{ data, meta: { page, perPage, total } }`; feeds use `?cursor&limit` → `{ data, meta: { nextCursor } }`; series take `from`, `to`, `bucket` (`15m | 1h | 1d`).\n- **Idempotency:** irreversible POSTs require `Idempotency-Key` (uuid); replays within 24 h return the original response.\n- **Concurrency:** editable resources return `ETag`; updates send `If-Match` (412 `concurrency.stale`).\n- **Files:** presign → PUT to the returned URL → reference the `fileId`; downloads are short-lived signed URLs.",
+    "description": "getproperty — ให้เช่าง่าย อยู่สบาย, operated by Collective Group (Thailand) (D-001).\nRules: `docs/contract/api-conventions.md` (shared with getproperty-web and getproperty-edge); MQTT payloads: `docs/contract/device-protocol.md` / `contract/device-protocol.json` (D-130).\n\n- **Surfaces:** `/v1/auth`, `/v1/owner` (operator), `/v1/staff` (operator, Staff role), `/v1/resident` (resident), `/v1/technician` (technician, R2), `/v1/admin` (platform), `/v1/device` (device), `/webhooks`, `/v1/public` (anonymous marketing reads). A token is accepted only on its own audience's prefix.\n- **Tenancy:** a *tenant* is the SaaS customer organisation (D-151). Every owner/staff request runs in one tenant (`tenant:<uuid>` scope or `X-Tenant-Id`); a cross-tenant id is a 404 (contract §8, D-152).\n- **Money:** decimal strings with exactly 2 decimals (`\"1234.50\"`) plus `currency: \"THB\"` on the object; never JSON numbers. Clients never compute prices (D-046).\n- **Meter quantities:** `register` and `units` are decimal strings with up to 3 decimals (`\"12345.678\"`), `unit` is `kwh | m3`; tariff `pricePerUnit` has up to 4 decimals.\n- **Dates:** ISO 8601 with offset, rendered in `Asia/Bangkok` (`2026-11-01T00:00:00+07:00`); date-only fields `YYYY-MM-DD`.\n- **IDs:** uuid only; business keys (`invoiceNumber`, `unitNo`, `deviceSerial`) are separate fields.\n- **Errors:** RFC 9457 `application/problem+json` with a stable `code`; `title`/`detail` localised by `Accept-Language` (`th` default, `en`). `compliance.*` refusals carry `legalRef` (D-020).\n- **Lists:** `?page&perPage(≤100)&sort&order&q` → `{ data, meta: { page, perPage, total } }`; feeds use `?cursor&limit` → `{ data, meta: { nextCursor } }`; series take `from`, `to`, `bucket` (`15m | 1h | 1d`).\n- **Idempotency:** irreversible POSTs require `Idempotency-Key` (uuid); replays within 24 h return the original response.\n- **Concurrency:** editable resources return `ETag`; updates send `If-Match` (412 `concurrency.stale`).\n- **Files:** presign → PUT to the returned URL → reference the `fileId`; downloads are short-lived signed URLs.",
     "title": "getproperty API",
     "version": "0.1.0"
   },
@@ -55934,6 +55945,9 @@
                   "idempotency.in_progress": {
                     "$ref": "#/components/examples/problem.idempotency.in_progress"
                   },
+                  "subscription.disabled": {
+                    "$ref": "#/components/examples/problem.subscription.disabled"
+                  },
                   "subscription.exists": {
                     "$ref": "#/components/examples/problem.subscription.exists"
                   }
@@ -55943,7 +55957,7 @@
                 }
               }
             },
-            "description": "Problem: `idempotency.in_progress`, `subscription.exists`",
+            "description": "Problem: `idempotency.in_progress`, `subscription.disabled`, `subscription.exists`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"

@@ -55,7 +55,7 @@ const AUDIENCE_DESCRIPTIONS: Record<Audience, string> = {
   device: 'Device JWT with `aud=device` minted at mTLS bootstrap — `/v1/device/*` (one gateway).',
 };
 
-const INFO_DESCRIPTION = `getproperty — บิลทำเอง เก็บเงินเอง ถูกกฎหมาย, operated by Collective Group (Thailand) (D-001).
+const INFO_DESCRIPTION = `getproperty — ให้เช่าง่าย อยู่สบาย, operated by Collective Group (Thailand) (D-001).
 Rules: \`docs/contract/api-conventions.md\` (shared with getproperty-web and getproperty-edge); MQTT payloads: \`docs/contract/device-protocol.md\` / \`contract/device-protocol.json\` (D-130).
 
 - **Surfaces:** \`/v1/auth\`, \`/v1/owner\` (operator), \`/v1/staff\` (operator, Staff role), \`/v1/resident\` (resident), \`/v1/technician\` (technician, R2), \`/v1/admin\` (platform), \`/v1/device\` (device), \`/webhooks\`, \`/v1/public\` (anonymous marketing reads). A token is accepted only on its own audience's prefix.

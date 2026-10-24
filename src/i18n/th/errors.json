@@ -775,6 +775,10 @@
     "confirmation_mismatch": {
       "title": "ยืนยันไม่ตรง",
       "detail": "กรุณาพิมพ์รหัสลูกค้า (slug) ให้ตรงเพื่อยืนยัน"
+    },
+    "disabled": {
+      "title": "ปิดระบบสมัครใช้งานแล้ว",
+      "detail": "getproperty ใช้ฟรีสำหรับผู้ประกอบการ (D-250) จึงไม่ใช้การสมัครใช้งานแบบรายเดือน เปิดการตั้งค่า platform.subscriptions.enabled หากต้องการใช้อีกครั้ง"
     }
   },
   "price_plan": {
