@@ -1,3 +1,11 @@
+import {
+  ETAX_PROVIDERS,
+  type EtaxAccount,
+  type EtaxDocumentInput,
+  EtaxProviderError,
+  type EtaxProviderKey,
+  type EtaxProviderRegistry,
+} from '@collective/integrations/etax';
 import { systemActor, userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
@@ -19,14 +27,6 @@ import {
   type EtaxSubmission,
   type Prisma,
 } from '@generated/prisma/client';
-import {
-  ETAX_PROVIDERS,
-  type EtaxAccount,
-  type EtaxDocumentInput,
-  EtaxProviderError,
-  type EtaxProviderKey,
-  type EtaxProviderRegistry,
-} from '@integrations/etax/etax-provider.port';
 import { formatAddress } from '@modules/ops-documents/document-views';
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import Decimal from 'decimal.js';

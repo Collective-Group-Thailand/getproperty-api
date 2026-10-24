@@ -1,46 +1,57 @@
+import { setIntegrationsLogger } from '@collective/integrations';
+import {
+  AI_GATEWAY,
+  type AiGatewayPort,
+  FakeAiGateway,
+  HttpAiGatewayAdapter,
+  UnconfiguredAiGateway,
+} from '@collective/integrations/ai';
+import { ETAX_PROVIDERS, FakeEtaxProviders, RealEtaxProviders } from '@collective/integrations/etax';
+import {
+  FakeLineLogin,
+  FakeLineMessaging,
+  LINE_LOGIN,
+  LINE_MESSAGING,
+  LineLoginAdapter,
+  type LineLoginPort,
+  LineMessagingAdapter,
+  type LineMessagingPort,
+} from '@collective/integrations/line';
+import { FakeOcr, OCR, type OcrPort, VisionOcrAdapter } from '@collective/integrations/ocr';
+import {
+  EasySlipVerifier,
+  FakePaymentProviders,
+  FakeSlipVerifier,
+  PAYMENT_PROVIDERS,
+  RealPaymentProviders,
+  SLIP_VERIFIER,
+} from '@collective/integrations/payments/qr';
+import { AwsSecretsProvider, FakeSecretsProvider, SECRETS_PROVIDER } from '@collective/integrations/secrets';
+import {
+  FakeObjectStorage,
+  OBJECT_STORAGE,
+  type ObjectStorage,
+  S3ObjectStorage,
+} from '@collective/integrations/storage';
 import { FieldEncryption } from '@common/crypto/field-encryption';
 import { AppConfig } from '@config/app-config';
-import { Global, Inject, Injectable, Module, type OnApplicationShutdown } from '@nestjs/common';
+import { Global, Inject, Injectable, Logger, Module, type OnApplicationShutdown } from '@nestjs/common';
 
-import { AI_GATEWAY, type AiGatewayPort } from './ai/ai-gateway.port';
-import { FakeAiGateway } from './ai/fake-ai-gateway';
-import { HttpAiGatewayAdapter, UnconfiguredAiGateway } from './ai/http-ai-gateway.adapter';
 import { EMAIL, type EmailPort } from './email/email.port';
 import { FakeEmail } from './email/fake-email';
 import { SesEmailAdapter } from './email/ses-email.adapter';
-import { ETAX_PROVIDERS } from './etax/etax-provider.port';
-import { FakeEtaxProviders } from './etax/fake-etax-provider';
-import { RealEtaxProviders } from './etax/inet-etax.adapter';
 import { KEY_WRAP } from './kms/key-wrap.port';
 import { LocalKeyWrap } from './kms/local-key-wrap';
-import { FakeLineLogin } from './line/fake-line-login';
-import { FakeLineMessaging } from './line/fake-line-messaging';
-import { LineLoginAdapter } from './line/line-login.adapter';
-import { LINE_LOGIN, type LineLoginPort } from './line/line-login.port';
-import { LineMessagingAdapter } from './line/line-messaging.adapter';
-import { LINE_MESSAGING, type LineMessagingPort } from './line/line-messaging.port';
 import { FakeLockVendors } from './locks/fake-lock-vendors';
 import { LOCK_VENDORS } from './locks/lock-vendor.port';
 import { RealLockVendors } from './locks/real-lock-vendors';
 import { FakeMqttClient } from './mqtt/fake-mqtt-client';
 import { EmqxMqttClient } from './mqtt/mqtt-client';
 import { MQTT_CLIENT, type MqttClientPort } from './mqtt/mqtt-client.port';
-import { FakeOcr } from './ocr/fake-ocr';
-import { OCR, type OcrPort } from './ocr/ocr.port';
-import { VisionOcrAdapter } from './ocr/vision-ocr.adapter';
-import { FakePaymentProviders, FakeSlipVerifier } from './payments/fake-payment-providers';
-import { PAYMENT_PROVIDERS, SLIP_VERIFIER } from './payments/payment-provider.port';
-import { EasySlipVerifier, RealPaymentProviders } from './payments/real-payment-providers';
 import { FakePdfRenderer } from './pdf/fake-pdf-renderer';
 import { PDF_RENDERER, type PdfRendererPort } from './pdf/pdf-renderer.port';
 import { PuppeteerPdfRenderer } from './pdf/puppeteer-pdf-renderer';
 import { BullmqPdfRenderTransport, QueuePdfRenderer } from './pdf/queue-pdf-renderer';
-import { FakeObjectStorage } from './s3/fake-object-storage';
-import { OBJECT_STORAGE, type ObjectStorage } from './s3/object-storage.port';
-import { S3ObjectStorage } from './s3/s3-object-storage';
-import { AwsSecretsProvider } from './secrets/aws-secrets.provider';
-import { FakeSecretsProvider } from './secrets/fake-secrets.provider';
-import { SECRETS_PROVIDER } from './secrets/secrets.port';
 import { FakeSms } from './sms/fake-sms';
 import { SMS, type SmsPort } from './sms/sms.port';
 import { ThaiBulkSmsAdapter } from './sms/thaibulksms.adapter';
@@ -74,6 +85,9 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
 }
 
 /**
+ * Provider ports and adapters come from `@collective/integrations` (D-275, D-278) except the product-specific ones
+ * (kms, locks, mqtt, integration webhooks, the PDF renderers, web push and virus scan — see D-278); SMS and e-mail keep
+ * getproperty's port shape over the shared senders.
  * Binds each provider port to its real adapter or its in-memory fake (`INTEGRATIONS_MODE`; object storage may be
  * overridden by `OBJECT_STORAGE_MODE`; the MQTT broker follows `MQTT_MODE`/`DATA_STORES_MODE` because it is
  * infrastructure). Real adapters fail fast at start-up when their configuration is missing. B1.3 adds SMS OTP,
@@ -226,10 +240,10 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
         config.useFakes
           ? new FakeSms()
           : new ThaiBulkSmsAdapter({
-              baseUrl: required(config, 'SMS_API_URL'),
               apiKey: required(config, 'SMS_API_KEY'),
               apiSecret: required(config, 'SMS_API_SECRET'),
               sender: config.get('SMS_SENDER'),
+              creditType: config.get('SMS_CREDIT_TYPE'),
             }),
     },
     {
@@ -313,4 +327,9 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
     FieldEncryption,
   ],
 })
-export class IntegrationsModule {}
+export class IntegrationsModule {
+  constructor() {
+    // The shared adapters (@collective/integrations, D-275) log through Nest's logger (pino in main/worker/ingest).
+    setIntegrationsLogger(new Logger('Integrations'));
+  }
+}

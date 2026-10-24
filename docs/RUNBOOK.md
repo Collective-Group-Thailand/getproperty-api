@@ -252,3 +252,24 @@ count as reuse for at most the window.
   is planned for 2027-09-01 (A-2).
 - Volumes: raw points 24 months (compressed after 30 days on TimescaleDB), 15-minute series computed from them,
   hourly / daily rollups 5 years, health samples 6 months (no per-meter array), dedup marks 90 days.
+
+
+## Switching off subscriptions (D-250, B7.0)
+
+getproperty is free for operators. `platform.subscriptions.enabled` (platform setting, seeded `false`) gates the D-204
+lifecycle: while it is false the hourly `platform-subscriptions` job does nothing and `POST /v1/admin/subscriptions`
+answers `409 subscription.disabled`. HaaS assets, field work and platform invoices are untouched.
+
+Once per environment that already has subscriptions (UAT), close them without deleting anything and give suspended
+tenants their write access back:
+
+```sql
+BEGIN;
+UPDATE platform.subscription
+   SET state = 'cancelled', cancelled_at = now(), cancel_reason = 'pricing_model_changed (D-250)'
+ WHERE state IN ('trial', 'active', 'past_due', 'suspended');
+UPDATE core.tenant SET status = 'active' WHERE status = 'read_only';
+COMMIT;
+```
+
+Then restart the API (the access cache reloads) — or wait for its TTL.

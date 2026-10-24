@@ -476,6 +476,7 @@ export class EnvironmentVariables {
 
   // --- SMS OTP provider (ThaiBulkSMS-class) -------------------------------------------------------------
 
+  /** Ignored since D-278: the shared ThaiBulkSMS sender (@collective/integrations/sms) calls api-v2.thaibulksms.com. */
   @IsOptional()
   @IsUrl({ require_tld: false, require_protocol: true })
   SMS_API_URL?: string;
@@ -492,6 +493,11 @@ export class EnvironmentVariables {
   @IsString()
   @Matches(/^[A-Za-z0-9 .-]{1,11}$/, { message: 'SMS_SENDER: up to 11 letters/digits' })
   SMS_SENDER = 'getproperty';
+
+  /** ThaiBulkSMS credit type (`force`): an approved sender belongs to one type; empty = the provider chooses. */
+  @IsOptional()
+  @IsIn(['standard', 'corporate'])
+  SMS_CREDIT_TYPE?: 'standard' | 'corporate';
 
   // --- PDF rendering (Puppeteer, contracts and statements; master plan §3) ---------------------------------
 

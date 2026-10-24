@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 
+import { fakeLineIdToken } from '@collective/integrations/line';
 import { unzip } from '@common/zip/zip';
 import { DocumentsService } from '@core/documents/documents.service';
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 import { FakePdfRenderer } from '@integrations/pdf/fake-pdf-renderer';
 
 import { DEV } from '../../prisma/seed/run';

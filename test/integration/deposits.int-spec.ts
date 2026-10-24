@@ -1,9 +1,8 @@
 import { createHash } from 'node:crypto';
 
+import { fakeLineIdToken } from '@collective/integrations/line';
+import { type FakeObjectStorage, OBJECT_STORAGE } from '@collective/integrations/storage';
 import { bangkokDate } from '@common/time/bangkok';
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
-import { type FakeObjectStorage } from '@integrations/s3/fake-object-storage';
-import { OBJECT_STORAGE } from '@integrations/s3/object-storage.port';
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';

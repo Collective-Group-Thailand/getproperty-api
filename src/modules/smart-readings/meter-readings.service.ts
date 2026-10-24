@@ -1,3 +1,4 @@
+import { OCR, type OcrPort } from '@collective/integrations/ocr';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { systemTenantContext, type TenantContext } from '@common/context/tenant-context';
@@ -21,7 +22,6 @@ import {
   type ReadingSource,
   type ReviewReason,
 } from '@generated/prisma/client';
-import { OCR, type OcrPort } from '@integrations/ocr/ocr.port';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import Decimal from 'decimal.js';
 

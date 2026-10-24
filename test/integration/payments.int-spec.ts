@@ -1,17 +1,18 @@
 import 'reflect-metadata';
 
-import { bangkokDate } from '@common/time/bangkok';
-import { RealtimeHub } from '@core/realtime/realtime.hub';
-import { TenantTx } from '@database/tenant-tx';
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
+import { fakeLineIdToken } from '@collective/integrations/line';
 import {
   type FakePaymentProviders,
   type FakeSlipVerifier,
   fakeWebhookSecret,
+  parseThaiQr,
+  PAYMENT_PROVIDERS,
   signFakeWebhook,
-} from '@integrations/payments/fake-payment-providers';
-import { PAYMENT_PROVIDERS, SLIP_VERIFIER } from '@integrations/payments/payment-provider.port';
-import { parseThaiQr } from '@integrations/payments/thai-qr';
+  SLIP_VERIFIER,
+} from '@collective/integrations/payments/qr';
+import { bangkokDate } from '@common/time/bangkok';
+import { RealtimeHub } from '@core/realtime/realtime.hub';
+import { TenantTx } from '@database/tenant-tx';
 import { FakePdfRenderer } from '@integrations/pdf/fake-pdf-renderer';
 import { PDF_RENDERER } from '@integrations/pdf/pdf-renderer.port';
 import { MerchantResolver } from '@modules/ops-payments/merchants';

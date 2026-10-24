@@ -56,6 +56,7 @@ import { FakeQueue } from './queue/fake-queue';
 import { QUEUE, type QueuePort } from './queue/queue.port';
 import { RealtimeHub } from './realtime/realtime.hub';
 import { SettingsService } from './settings/settings.service';
+import { StorageMeteringService } from './storage/storage-metering.service';
 import { SUBSCRIBERS } from './subscribers/subscribers';
 import { AccessService } from './tenancy/access.service';
 import { BankAccountService } from './tenancy/bank-account.service';
@@ -128,6 +129,7 @@ const SERVICES = [
   EmqxAuthService,
   ProviderCredentialsService,
   DocumentsService,
+  StorageMeteringService,
   NotificationService,
   NotificationRoutesService,
   NotificationTemplatesService,

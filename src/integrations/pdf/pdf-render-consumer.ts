@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { type Readable } from 'node:stream';
 
-import { type ObjectStorage } from '../s3/object-storage.port';
+import { type ObjectStorage } from '@collective/integrations/storage';
+
 import { type PdfRenderJobV1, type PdfRenderResultV1 } from './pdf-render-contract';
 import { type PdfRendererPort } from './pdf-renderer.port';
 import { type PdfRenderTransport } from './queue-pdf-renderer';

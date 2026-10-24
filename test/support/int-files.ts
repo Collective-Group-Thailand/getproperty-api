@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { type FakeObjectStorage } from '@integrations/s3/fake-object-storage';
-import { OBJECT_STORAGE } from '@integrations/s3/object-storage.port';
+import { type FakeObjectStorage, OBJECT_STORAGE } from '@collective/integrations/storage';
 
 import { type IntApp } from './int-app';
 import { bearer } from './int-auth';

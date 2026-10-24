@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
 import { type Readable } from 'node:stream';
 
+import { type ObjectStorage } from '@collective/integrations/storage';
 import { Logger } from '@nestjs/common';
 import { Queue, QueueEvents } from 'bullmq';
 import { Redis } from 'ioredis';
 
-import { type ObjectStorage } from '../s3/object-storage.port';
 import {
   isPdfRenderResult,
   PDF_RENDER_INLINE_HTML_MAX_BYTES,

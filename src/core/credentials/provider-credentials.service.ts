@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto';
 
+import { SECRETS_PROVIDER, type SecretsProvider } from '@collective/integrations/secrets';
 import { systemActor, userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { FieldEncryption } from '@common/crypto/field-encryption';
@@ -10,7 +11,6 @@ import { AppConfig } from '@config/app-config';
 import { type Tx } from '@database/prisma.service';
 import { TenantTx } from '@database/tenant-tx';
 import { type ProviderCredential, type ProviderCredentialKind } from '@generated/prisma/client';
-import { SECRETS_PROVIDER, type SecretsProvider } from '@integrations/secrets/secrets.port';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { AuditService } from '../audit/audit.service';

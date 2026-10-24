@@ -1,7 +1,7 @@
+import { OBJECT_STORAGE, type ObjectStorage } from '@collective/integrations/storage';
 import { systemActor } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { TenantTx } from '@database/tenant-tx';
-import { OBJECT_STORAGE, type ObjectStorage } from '@integrations/s3/object-storage.port';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { AuditService } from '../audit/audit.service';

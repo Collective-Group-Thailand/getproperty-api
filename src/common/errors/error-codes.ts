@@ -174,6 +174,8 @@ export const ERROR_CODES = {
   'settlement.duplicate': HttpStatus.CONFLICT,
   'settlement.unreadable': HttpStatus.UNPROCESSABLE_ENTITY,
   'subscription.exists': HttpStatus.CONFLICT,
+  'subscription.disabled': HttpStatus.CONFLICT,
+  'storage.allowance_exceeded': HttpStatus.CONFLICT,
   'subscription.not_found': HttpStatus.NOT_FOUND,
   'subscription.invalid_state': HttpStatus.CONFLICT,
   'subscription.plan_mismatch': HttpStatus.UNPROCESSABLE_ENTITY,

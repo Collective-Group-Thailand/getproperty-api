@@ -1,4 +1,4 @@
-import { type EtaxDocumentTypeCode, type EtaxLine } from '@integrations/etax/etax-provider.port';
+import { type EtaxDocumentTypeCode, type EtaxLine } from '@collective/integrations/etax';
 import Decimal from 'decimal.js';
 
 /** Attempts before a failing submission stops retrying (then the owner is told, D-215). */

@@ -6,6 +6,14 @@
  * ⚖ = value waits for legal confirmation (O-002); "Proposed" = business value not yet confirmed (D-156, D-161).
  */
 import { DEFAULT_PLATFORM_BRAND, platformBrandProblems } from '../brand/brand-setting';
+import {
+  DEFAULT_RECORD_BYTES,
+  NOT_SET_PER_TYPE,
+  noticeProblems,
+  packsProblems,
+  perTenantTypeProblems,
+  recordBytesProblems,
+} from '../storage/storage-settings';
 
 export type SettingValueType =
   'string' | 'int' | 'decimal' | 'bool' | 'json' | 'duration' | 'money' | 'date' | 'time';
@@ -479,7 +487,73 @@ export const SETTINGS: readonly SettingDef[] = [
     value: 7,
     reason: 'seed: D-145 (B1.3 assumption)',
   },
+  // --- storage metering (D-276; amounts pending the founder) ------------------------------------------------
+  {
+    key: 'storage.free_gb',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-276: free storage allowance in GB per tenant type ({"apartment": "5", …}; a tenant override for a custom deal). null = metering not active for that type: usage is snapshotted, nothing is held and no notice is sent. Amounts pending the founder.',
+    editableBy: ADMIN,
+    value: NOT_SET_PER_TYPE,
+    reason: 'seed: D-276 (amounts pending)',
+    check: perTenantTypeProblems,
+  },
+  {
+    key: 'storage.price_per_gb_month',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-276: price in THB per GB-month above the allowance, per tenant type; null = overage not sold (only optional uploads are then held — legal and operational files are always stored). Billed on the monthly platform invoice next to the payment fee (D-250). Amounts pending the founder.',
+    editableBy: ADMIN,
+    value: NOT_SET_PER_TYPE,
+    reason: 'seed: D-276 (amounts pending)',
+    check: perTenantTypeProblems,
+  },
+  {
+    key: 'storage.packs',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-276: add-on storage packs a tenant can buy ([{"key": "plus-20", "gb": "20", "monthlyPrice": "49.00"}]); empty until the founder sets them.',
+    editableBy: ADMIN,
+    value: [],
+    reason: 'seed: D-276 (no packs yet)',
+    check: packsProblems,
+  },
+  {
+    key: 'storage.record_bytes',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-276: counted size in bytes of one stored record per record type (invoice, receipt, payment, lease, meter_reading, service_request; `_default` for any other), so the storage bill is predictable and auditable without measuring the database. Founder pre-approved recommendation.',
+    editableBy: ADMIN,
+    value: DEFAULT_RECORD_BYTES,
+    reason: 'seed: D-276 (recommended sizes)',
+    check: recordBytesProblems,
+  },
+  {
+    key: 'storage.notice_at_percent',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-276: usage of the allowance (percent) at which the owner is told in LINE and in the console — each once per crossing.',
+    editableBy: ADMIN,
+    value: [80, 100],
+    reason: 'seed: D-276',
+    check: noticeProblems,
+  },
   // --- platform business (Proposed until the pilot) ------------------------------------------------------
+  {
+    key: 'platform.subscriptions.enabled',
+    valueType: 'bool',
+    scopeAllowed: ['platform'],
+    description:
+      'D-250 (founder 2026-10-24): getproperty is free for operators — the D-204 subscriptions (trial, unit counting, subscription invoices, suspension) run only while this is true. Off: the hourly job does nothing and no subscription can be created; HaaS and platform fee invoices are unaffected.',
+    editableBy: ['admin.subscription.manage'],
+    value: false,
+    reason: 'seed: D-250',
+  },
   {
     key: 'subscription.trial_days',
     valueType: 'int',

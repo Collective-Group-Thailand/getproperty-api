@@ -1,7 +1,7 @@
+import { OBJECT_STORAGE, type ObjectStorage } from '@collective/integrations/storage';
 import { DatabaseService } from '@database/database.service';
 import { REDIS, type RedisClient } from '@database/redis.module';
 import { MQTT_CLIENT, type MqttClientPort } from '@integrations/mqtt/mqtt-client.port';
-import { OBJECT_STORAGE, type ObjectStorage } from '@integrations/s3/object-storage.port';
 import { Inject, Injectable } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 

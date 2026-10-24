@@ -7,6 +7,7 @@ import { NotificationDelivery } from '@core/notifications/notification-delivery.
 import { RetentionService } from '@core/privacy/retention.service';
 import { FakeQueue } from '@core/queue/fake-queue';
 import { QUEUE, QUEUE_NAMES, type QueueJob, type QueuePort } from '@core/queue/queue.port';
+import { StorageMeteringService } from '@core/storage/storage-metering.service';
 import { SupportGrantService } from '@core/tenancy/support-grant.service';
 import { WorkflowTimers } from '@core/workflow/workflow-timers.service';
 import { BULLMQ_REDIS, type RedisClient } from '@database/redis.module';
@@ -73,6 +74,8 @@ export const MAINTENANCE_JOBS = {
   'loss-recompute': 3_600_000,
   // D-238 / T-16: outbox → partner products (webhook on the same box)
   'integration-delivery': 30_000,
+  // D-276: daily storage snapshot per tenant (idempotent per Bangkok day) and its notices
+  'storage-metering': 3_600_000,
 } as const;
 type MaintenanceJob = keyof typeof MAINTENANCE_JOBS;
 
@@ -117,6 +120,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly analytics: AnalyticsService,
     private readonly loss: UtilityLossService,
     private readonly integrations: IntegrationDeliveryService,
+    private readonly storageMetering: StorageMeteringService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -231,6 +235,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'integration-delivery':
         await this.integrations.sweep();
+        break;
+      case 'storage-metering':
+        await this.storageMetering.sweep();
         break;
       default:
         this.logger.warn(`unknown maintenance job ${job.name}`);

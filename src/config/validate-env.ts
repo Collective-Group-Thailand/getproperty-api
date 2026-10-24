@@ -74,7 +74,6 @@ export function validateEnv(raw: Record<string, unknown>): EnvironmentVariables 
       'DEVICE_CA_KEY',
       'LINE_LOGIN_CHANNEL_IDS',
       'LINE_MESSAGING_ACCESS_TOKEN',
-      'SMS_API_URL',
       'SMS_API_KEY',
       'WEB_PUSH_VAPID_PUBLIC_KEY',
       'WEB_PUSH_VAPID_PRIVATE_KEY',

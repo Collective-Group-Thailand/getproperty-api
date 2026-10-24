@@ -1,7 +1,7 @@
 {
   "name": "getproperty-api",
   "version": "0.1.0",
-  "description": "getproperty — บิลทำเอง เก็บเงินเอง ถูกกฎหมาย · backend (NestJS)",
+  "description": "getproperty — ให้เช่าง่าย อยู่สบาย · backend (NestJS)",
   "private": true,
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.18.1",
@@ -52,6 +52,8 @@
     "@aws-sdk/client-sesv2": "3.1152.0",
     "@aws-sdk/s3-request-presigner": "^3.1152.0",
     "@collective/asset-core": "link:../collective-asset-core",
+    "@collective/documents": "link:../../collective-shared/packages/documents",
+    "@collective/integrations": "link:../../collective-shared/packages/integrations",
     "@fontsource/sarabun": "5.2.8",
     "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.1.3",
