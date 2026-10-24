@@ -2,11 +2,10 @@ import 'reflect-metadata';
 
 import { createHash, randomUUID } from 'node:crypto';
 
+import { fakeLineIdToken } from '@collective/integrations/line';
+import { type FakeObjectStorage, OBJECT_STORAGE } from '@collective/integrations/storage';
 import { DomainEvents } from '@core/events/domain-events';
 import { TenantTx } from '@database/tenant-tx';
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
-import { type FakeObjectStorage } from '@integrations/s3/fake-object-storage';
-import { OBJECT_STORAGE } from '@integrations/s3/object-storage.port';
 import { IntegrationEventsService } from '@modules/bridge-integrations/integration-events.service';
 import { MaintenancePlansService } from '@modules/ops-service/maintenance-plans.service';
 

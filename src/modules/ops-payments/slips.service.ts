@@ -1,3 +1,4 @@
+import { SLIP_VERIFIER, type SlipVerifierPort } from '@collective/integrations/payments/qr';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
@@ -11,7 +12,6 @@ import { SettingsService } from '@core/settings/settings.service';
 import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
 import { type Prisma, type SlipStatus } from '@generated/prisma/client';
-import { SLIP_VERIFIER, type SlipVerifierPort } from '@integrations/payments/payment-provider.port';
 import { ResidentInvoicesService } from '@modules/ops-billing/resident-invoices.service';
 import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
 import Decimal from 'decimal.js';

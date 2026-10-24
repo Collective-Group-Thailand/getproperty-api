@@ -3,14 +3,20 @@ import 'reflect-metadata';
 import { createHmac } from 'node:crypto';
 
 import {
+  buildThaiQrBillPayment,
+  crc16,
   FakePaymentProviders,
   FakeSlipVerifier,
   fakeWebhookSecret,
+  KbankQrAdapter,
+  type Merchant,
+  OpnQrAdapter,
+  parseSettlementCsv,
+  parseThaiQr,
+  qrReference,
+  ScbQrAdapter,
   signFakeWebhook,
-} from '@integrations/payments/fake-payment-providers';
-import { type Merchant, parseSettlementCsv } from '@integrations/payments/payment-provider.port';
-import { KbankQrAdapter, OpnQrAdapter, ScbQrAdapter } from '@integrations/payments/real-payment-providers';
-import { buildThaiQrBillPayment, crc16, parseThaiQr, qrReference } from '@integrations/payments/thai-qr';
+} from '@collective/integrations/payments/qr';
 
 const merchant = (over: Partial<Merchant> = {}): Merchant => ({
   provider: 'kbank',

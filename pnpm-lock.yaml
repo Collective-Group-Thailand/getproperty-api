@@ -23,6 +23,12 @@ importers:
       '@collective/asset-core':
         specifier: link:../collective-asset-core
         version: link:../collective-asset-core
+      '@collective/documents':
+        specifier: link:../../collective-shared/packages/documents
+        version: link:../../collective-shared/packages/documents
+      '@collective/integrations':
+        specifier: link:../../collective-shared/packages/integrations
+        version: link:../../collective-shared/packages/integrations
       '@fontsource/sarabun':
         specifier: 5.2.8
         version: 5.2.8

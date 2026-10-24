@@ -1,6 +1,7 @@
 import { createPublicKey, verify } from 'node:crypto';
 import { type Readable } from 'node:stream';
 
+import { OBJECT_STORAGE, type ObjectStorage } from '@collective/integrations/storage';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { DomainException } from '@common/errors/domain.exception';
@@ -11,7 +12,6 @@ import { DomainEvents } from '@core/events/domain-events';
 import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
 import { type OtaRing, type Prisma, type RolloutStatus } from '@generated/prisma/client';
-import { OBJECT_STORAGE, type ObjectStorage } from '@integrations/s3/object-storage.port';
 import { sortKeys } from '@modules/ingest/protocol/device-protocol-schema';
 import { Inject, Injectable } from '@nestjs/common';
 

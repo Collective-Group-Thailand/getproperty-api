@@ -1,4 +1,4 @@
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
+import { fakeLineIdToken } from '@collective/integrations/line';
 
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';

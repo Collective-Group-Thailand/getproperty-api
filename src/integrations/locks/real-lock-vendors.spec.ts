@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac } from 'node:crypto';
 
-import { resetProviderBreakers } from '../http/provider-http';
+import { resetProviderBreakers } from '@collective/integrations/http';
+
 import { type LockRef } from './lock-vendor.port';
 import { TtlockAdapter, TuyaAdapter } from './real-lock-vendors';
 

@@ -1,6 +1,8 @@
-import { AwsSecretsProvider } from '@integrations/secrets/aws-secrets.provider';
-import { FakeSecretsProvider } from '@integrations/secrets/fake-secrets.provider';
-import { type SecretsProvider } from '@integrations/secrets/secrets.port';
+import {
+  AwsSecretsProvider,
+  FakeSecretsProvider,
+  type SecretsProvider,
+} from '@collective/integrations/secrets';
 
 import { IntegrationsMode } from './env.schema';
 

@@ -1,10 +1,3 @@
-import { LookupHasher } from '@common/crypto/lookup-hasher';
-import { ProviderCredentialsService } from '@core/credentials/provider-credentials.service';
-import { FeatureFlagsService } from '@core/feature-flags/feature-flags.service';
-import { merchantRefHash } from '@core/tenancy/bank-account.service';
-import { TenantDataKeys } from '@core/tenancy/data-keys.service';
-import { type Tx } from '@database/prisma.service';
-import { type TenantBankAccount } from '@generated/prisma/client';
 import {
   type Merchant,
   PAYMENT_PROVIDERS,
@@ -12,7 +5,14 @@ import {
   QR_PROVIDERS,
   type QrPaymentAdapter,
   type QrProvider,
-} from '@integrations/payments/payment-provider.port';
+} from '@collective/integrations/payments/qr';
+import { LookupHasher } from '@common/crypto/lookup-hasher';
+import { ProviderCredentialsService } from '@core/credentials/provider-credentials.service';
+import { FeatureFlagsService } from '@core/feature-flags/feature-flags.service';
+import { merchantRefHash } from '@core/tenancy/bank-account.service';
+import { TenantDataKeys } from '@core/tenancy/data-keys.service';
+import { type Tx } from '@database/prisma.service';
+import { type TenantBankAccount } from '@generated/prisma/client';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 export interface MerchantAccount {

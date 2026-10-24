@@ -2,10 +2,10 @@ import 'reflect-metadata';
 
 import { createHash, generateKeyPairSync, randomBytes, sign, webcrypto } from 'node:crypto';
 
+import { fakeLineIdToken } from '@collective/integrations/line';
+import { OBJECT_STORAGE, type ObjectStorage } from '@collective/integrations/storage';
 import { AppConfig } from '@config/app-config';
-import { fakeLineIdToken } from '@integrations/line/fake-line-login';
 import { MQTT_CLIENT, type MqttClientPort } from '@integrations/mqtt/mqtt-client.port';
-import { OBJECT_STORAGE, type ObjectStorage } from '@integrations/s3/object-storage.port';
 import { IngestService } from '@modules/ingest/ingest.service';
 import { IngestSubscriber } from '@modules/ingest/ingest.subscriber';
 import { GatewayConfigService } from '@modules/smart-devices/gateway-config.service';

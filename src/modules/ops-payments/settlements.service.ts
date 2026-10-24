@@ -1,3 +1,4 @@
+import { type ProviderPayment } from '@collective/integrations/payments/qr';
 import { systemActor, userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { systemTenantContext, type TenantContext } from '@common/context/tenant-context';
@@ -9,7 +10,6 @@ import { DocumentsService } from '@core/documents/documents.service';
 import { DomainEvents } from '@core/events/domain-events';
 import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
-import { type ProviderPayment } from '@integrations/payments/payment-provider.port';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { type MerchantAccount, MerchantResolver } from './merchants';

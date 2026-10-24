@@ -1,3 +1,4 @@
+import { OCR, type OcrPort, type UtilityInvoiceFields } from '@collective/integrations/ocr';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { systemTenantContext, type TenantContext } from '@common/context/tenant-context';
@@ -19,7 +20,6 @@ import {
   type UtilityInvoice,
   type UtilityProvider,
 } from '@generated/prisma/client';
-import { OCR, type OcrPort, type UtilityInvoiceFields } from '@integrations/ocr/ocr.port';
 import { operatedBuilding, visibleBuilding } from '@modules/ops-units/building-access';
 import { type CutoffSetting, periodBounds, periodOf } from '@modules/smart-readings/cutoff';
 import { Inject, Injectable, Logger } from '@nestjs/common';

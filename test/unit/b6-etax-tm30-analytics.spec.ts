@@ -3,8 +3,7 @@ import 'reflect-metadata';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { type EtaxDocumentInput } from '@integrations/etax/etax-provider.port';
-import { inetTextContent } from '@integrations/etax/inet-etax.adapter';
+import { type EtaxDocumentInput, inetTextContent } from '@collective/integrations/etax';
 import {
   backoffMinutes,
   ETAX_MAX_ATTEMPTS,

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 
+import { OBJECT_STORAGE, type ObjectStorage } from '@collective/integrations/storage';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
@@ -10,7 +11,6 @@ import { AppConfig } from '@config/app-config';
 import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
 import { type Document, type DocumentKind, type DocumentScope } from '@generated/prisma/client';
-import { OBJECT_STORAGE, type ObjectStorage } from '@integrations/s3/object-storage.port';
 import { VIRUS_SCAN, type VirusScanPort } from '@integrations/virus-scan/virus-scan.port';
 import { Inject, Injectable } from '@nestjs/common';
 import sharp from 'sharp';
