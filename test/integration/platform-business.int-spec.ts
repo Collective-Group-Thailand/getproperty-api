@@ -89,6 +89,11 @@ describe('B6.1 platform business (real PostgreSQL)', () => {
        SELECT $1, r.id FROM platform.role r WHERE r.key = 'finance'`,
       [DEV.users.support],
     );
+    // D-250 switched subscriptions off by default; this suite exercises the B6.1 lifecycle, so it turns them on.
+    await q(
+      `UPDATE platform.setting_version sv SET value = 'true'::jsonb
+         FROM platform.setting s WHERE s.id = sv.setting_id AND s.key = 'platform.subscriptions.enabled'`,
+    );
     start = firstOfNextMonth(bangkokDate(t.clock.now()));
     start = `${start.slice(0, 8)}10`; // the 10th of next month
     await travel(start);

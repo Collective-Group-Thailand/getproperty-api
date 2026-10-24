@@ -1,6 +1,6 @@
 # CLAUDE.md — getproperty-api
 
-**getproperty — บิลทำเอง เก็บเงินเอง ถูกกฎหมาย** · operated by **Collective Group (Thailand)**
+**getproperty — ให้เช่าง่าย อยู่สบาย** · operated by **Collective Group (Thailand)**
 NestJS backend of getproperty, Collective Group's **Building Operations platform** (D-150): one neutral core for four tenant types — `apartment` (the first customer, Phase 1), `condo_juristic`, `pm_company`, `landlord`. Phase 1 delivers group A to the first apartment: meter readings arrive automatically → invoices computed at the tenant's rate plan with the สคบ. 2568 utility-tariff warning → sent through LINE → paid by Thai QR and confirmed by the bank → receipt issued, with the owner touching nothing.
 Sibling repos: `getproperty-web` (owner console, staff PWA, platform admin), `getproperty-liff` (LINE Mini App for residents, technicians, landlords — D-154), `getproperty-edge` (gateway agent), and the package **`collective-asset-core`** (owns the `core` schema, its migrations and the integration event contracts — D-153, ADR-0010).
 

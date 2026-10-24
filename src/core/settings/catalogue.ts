@@ -481,6 +481,16 @@ export const SETTINGS: readonly SettingDef[] = [
   },
   // --- platform business (Proposed until the pilot) ------------------------------------------------------
   {
+    key: 'platform.subscriptions.enabled',
+    valueType: 'bool',
+    scopeAllowed: ['platform'],
+    description:
+      'D-250 (founder 2026-10-24): getproperty is free for operators — the D-204 subscriptions (trial, unit counting, subscription invoices, suspension) run only while this is true. Off: the hourly job does nothing and no subscription can be created; HaaS and platform fee invoices are unaffected.',
+    editableBy: ['admin.subscription.manage'],
+    value: false,
+    reason: 'seed: D-250',
+  },
+  {
     key: 'subscription.trial_days',
     valueType: 'int',
     scopeAllowed: ['platform'],

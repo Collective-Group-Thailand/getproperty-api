@@ -775,6 +775,10 @@
     "confirmation_mismatch": {
       "title": "Confirmation does not match",
       "detail": "Type the tenant slug exactly to confirm."
+    },
+    "disabled": {
+      "title": "Subscriptions are switched off",
+      "detail": "getproperty is free for operators (D-250); subscriptions are not used. Turn on platform.subscriptions.enabled to use them again."
     }
   },
   "price_plan": {

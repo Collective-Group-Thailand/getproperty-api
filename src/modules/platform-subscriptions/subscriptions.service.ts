@@ -119,6 +119,7 @@ export class SubscriptionsService {
     billingPeriod?: BillingPeriod;
   }): Promise<SubscriptionRow> {
     const now = this.clock.now();
+    if (!(await this.enabled(now))) throw new DomainException('subscription.disabled');
     const today = bangkokDate(now);
     const trialDays = await this.settings.valueAt<number>('subscription.trial_days', now);
     return this.db.platform(async (tx) => {
@@ -497,6 +498,11 @@ export class SubscriptionsService {
     );
   }
 
+  /** D-250: subscriptions (trial, unit counting, invoices, suspension) run only while the platform setting is on. */
+  async enabled(now: Date = this.clock.now()): Promise<boolean> {
+    return (await this.settings.valueAt<boolean>('platform.subscriptions.enabled', now)) === true;
+  }
+
   // ------------------------------------------------------------------------------------------- lifecycle
 
   /**
@@ -505,6 +511,8 @@ export class SubscriptionsService {
    */
   async sweep(): Promise<{ invoices: number; transitions: number }> {
     const now = this.clock.now();
+    // D-250: free for operators — the lifecycle runs only while subscriptions are switched on.
+    if (!(await this.enabled(now))) return { invoices: 0, transitions: 0 };
     const ids = await this.db.platform((tx) =>
       tx.subscription.findMany({
         where: { state: { in: [...OPEN_SUBSCRIPTION_STATES] } },
