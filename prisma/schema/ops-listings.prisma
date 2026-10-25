@@ -1,0 +1,225 @@
+// B7.2 listings, owner verification, moderation (D-252); migration 0042, schema-design §7.5 rows 107–111.
+
+/// A rental listing of a unit (D-252) with a snapshot of the unit's searchable facts.
+model Listing {
+  id               String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String              @map("tenant_id") @db.Uuid
+  unitId           String              @map("unit_id") @db.Uuid
+  buildingId       String              @map("building_id") @db.Uuid
+  state            ListingState        @default(draft)
+  slug             String              @unique(map: "listing_slug_key")
+  titleTh          String              @map("title_th")
+  titleEn          String?             @map("title_en")
+  descriptionTh    String              @default("") @map("description_th")
+  descriptionEn    String?             @map("description_en")
+  rent             Decimal             @db.Decimal(14, 2)
+  depositMonths    Int                 @default(2) @map("deposit_months") @db.SmallInt
+  advanceMonths    Int                 @default(1) @map("advance_months") @db.SmallInt
+  minTermMonths    Int                 @default(12) @map("min_term_months") @db.SmallInt
+  availableFrom    DateTime?           @map("available_from") @db.Date
+  furnishing       Furnishing?
+  petsAllowed      Boolean             @default(false) @map("pets_allowed")
+  smokingAllowed   Boolean             @default(false) @map("smoking_allowed")
+  facilities       String[]            @default([])
+  showUnitNo       Boolean             @default(false) @map("show_unit_no")
+  transitName      String?             @map("transit_name")
+  transitLine      String?             @map("transit_line")
+  transitDistanceM Int?                @map("transit_distance_m")
+  unitKind         PortfolioUnitKind?  @map("unit_kind")
+  sizeSqm          Decimal?            @map("size_sqm") @db.Decimal(8, 2)
+  bedrooms         Int?                @db.SmallInt
+  bathrooms        Int?                @db.SmallInt
+  floorLabel       String?             @map("floor_label")
+  province         String?
+  district         String?
+  addressText      String?             @map("address_text")
+  lat              Decimal?            @db.Decimal(9, 6)
+  lng              Decimal?            @db.Decimal(9, 6)
+  reviewReasons    String[]            @default([]) @map("review_reasons")
+  rejectedReason   String?             @map("rejected_reason")
+  reviewedBy       String?             @map("reviewed_by") @db.Uuid
+  reviewedAt       DateTime?           @map("reviewed_at") @db.Timestamptz(6)
+  hiddenAt         DateTime?           @map("hidden_at") @db.Timestamptz(6)
+  hiddenReason     String?             @map("hidden_reason")
+  reportCount      Int                 @default(0) @map("report_count")
+  publishedAt      DateTime?           @map("published_at") @db.Timestamptz(6)
+  pausedAt         DateTime?           @map("paused_at") @db.Timestamptz(6)
+  closedAt         DateTime?           @map("closed_at") @db.Timestamptz(6)
+  closedReason     ListingCloseReason? @map("closed_reason")
+  version          Int                 @default(1)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?             @map("created_by") @db.Uuid
+  updatedAt        DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy        String?             @map("updated_by") @db.Uuid
+
+  tenant       Tenant               @relation("ListingTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_tenant_id_fkey")
+  unit         Unit                 @relation("ListingUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_unit_id_fkey")
+  building     Building             @relation("ListingBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_building_id_fkey")
+  photos       ListingPhoto[]
+  availability ListingAvailability?
+  reports      ListingReport[]
+
+  @@unique([unitId, tenantId], map: "listing_unit_id_live_key", where: raw("(state = ANY (ARRAY['pending_review'::ops.listing_state, 'published'::ops.listing_state, 'paused'::ops.listing_state]))"))
+  @@index([tenantId, state], map: "listing_tenant_id_state_idx")
+  @@index([province, district, rent], map: "listing_public_search_idx", where: raw("((state = 'published'::ops.listing_state) AND (hidden_at IS NULL))"))
+  @@index([publishedAt(sort: Desc)], map: "listing_public_published_at_idx", where: raw("((state = 'published'::ops.listing_state) AND (hidden_at IS NULL))"))
+  @@index([buildingId], map: "listing_building_id_idx")
+  @@map("listing")
+  @@schema("ops")
+}
+
+/// Photos of a listing in order; the first is the cover (D-252).
+model ListingPhoto {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  listingId  String   @map("listing_id") @db.Uuid
+  documentId String   @map("document_id") @db.Uuid
+  sortOrder  Int      @map("sort_order") @db.SmallInt
+  caption    String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?  @map("created_by") @db.Uuid
+
+  tenant   Tenant   @relation("ListingPhotoTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_photo_tenant_id_fkey")
+  listing  Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "listing_photo_listing_id_fkey")
+  document Document @relation("ListingPhotoDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_photo_document_id_fkey")
+
+  @@unique([listingId, documentId], map: "listing_photo_listing_id_document_id_key")
+  @@index([listingId, sortOrder], map: "listing_photo_listing_id_sort_order_idx")
+  @@index([documentId], map: "listing_photo_document_id_idx")
+  @@index([tenantId], map: "listing_photo_tenant_id_idx")
+  @@map("listing_photo")
+  @@schema("ops")
+}
+
+/// When the owner can show the unit (viewings, B7.3).
+model ListingAvailability {
+  listingId   String   @id @map("listing_id") @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  weekly      Json     @default("[]")
+  exceptions  Json     @default("[]")
+  slotMinutes Int      @default(30) @map("slot_minutes") @db.SmallInt
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy   String?  @map("updated_by") @db.Uuid
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "listing_availability_listing_id_fkey")
+  tenant  Tenant  @relation("ListingAvailabilityTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_availability_tenant_id_fkey")
+
+  @@index([tenantId], map: "listing_availability_tenant_id_idx")
+  @@map("listing_availability")
+  @@schema("ops")
+}
+
+/// Owner verification of a unit by platform Support (D-252).
+model ListingVerification {
+  id                  String                     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String                     @map("tenant_id") @db.Uuid
+  unitId              String                     @map("unit_id") @db.Uuid
+  state               ListingVerificationState   @default(pending)
+  evidenceKind        OwnershipEvidence          @map("evidence_kind")
+  evidenceDocumentIds String[]                   @map("evidence_document_ids") @db.Uuid
+  note                String?
+  submittedBy         String?                    @map("submitted_by") @db.Uuid
+  submittedAt         DateTime                   @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  reviewedBy          String?                    @map("reviewed_by") @db.Uuid
+  checkedBy           String?                    @map("checked_by") @db.Uuid
+  decidedAt           DateTime?                  @map("decided_at") @db.Timestamptz(6)
+  decisionNote        String?                    @map("decision_note")
+  evidencePurgeAfter  DateTime?                  @map("evidence_purge_after") @db.Timestamptz(6)
+  evidencePurgedAt    DateTime?                  @map("evidence_purged_at") @db.Timestamptz(6)
+  version             Int                        @default(1)
+  createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime                   @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation("ListingVerificationTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_verification_tenant_id_fkey")
+  unit   Unit   @relation("ListingVerificationUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_verification_unit_id_fkey")
+
+  @@unique([unitId, tenantId], map: "listing_verification_unit_id_open_key", where: raw("(state = 'pending'::platform.listing_verification_state)"))
+  @@index([tenantId, unitId], map: "listing_verification_tenant_id_unit_id_idx")
+  @@index([state, submittedAt], map: "listing_verification_state_submitted_at_idx")
+  @@map("listing_verification")
+  @@schema("platform")
+}
+
+/// A viewer's report of a listing (D-252); platform-only.
+model ListingReport {
+  id             String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  listingId      String              @map("listing_id") @db.Uuid
+  tenantId       String              @map("tenant_id") @db.Uuid
+  reason         ListingReportReason
+  details        String?
+  reporterUserId String?             @map("reporter_user_id") @db.Uuid
+  reporterHash   Bytes               @map("reporter_hash")
+  state          ListingReportState  @default(open)
+  decidedBy      String?             @map("decided_by") @db.Uuid
+  decidedAt      DateTime?           @map("decided_at") @db.Timestamptz(6)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "listing_report_listing_id_fkey")
+  tenant  Tenant  @relation("ListingReportTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_report_tenant_id_fkey")
+
+  @@unique([listingId, reporterHash], map: "listing_report_listing_id_reporter_hash_open_key", where: raw("(state = 'open'::platform.listing_report_state)"))
+  @@index([state, createdAt], map: "listing_report_state_created_at_idx")
+  @@index([tenantId], map: "listing_report_tenant_id_idx")
+  @@map("listing_report")
+  @@schema("platform")
+}
+
+enum ListingState {
+  draft
+  pending_review
+  published
+  paused
+  closed
+  rejected
+
+  @@map("listing_state")
+  @@schema("ops")
+}
+
+enum ListingCloseReason {
+  leased
+  withdrawn
+  hidden
+
+  @@map("listing_close_reason")
+  @@schema("ops")
+}
+
+enum ListingVerificationState {
+  pending
+  approved
+  rejected
+
+  @@map("listing_verification_state")
+  @@schema("platform")
+}
+
+enum OwnershipEvidence {
+  title_deed
+  condo_title
+  sale_contract
+
+  @@map("ownership_evidence")
+  @@schema("platform")
+}
+
+enum ListingReportReason {
+  scam
+  wrong_info
+  not_available
+  duplicate
+  offensive
+  other
+
+  @@map("listing_report_reason")
+  @@schema("platform")
+}
+
+enum ListingReportState {
+  open
+  upheld
+  dismissed
+
+  @@map("listing_report_state")
+  @@schema("platform")
+}

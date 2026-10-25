@@ -72,6 +72,8 @@ export enum DocumentKindName {
   TariffSource = 'tariff_source',
   Other = 'other',
   Signature = 'signature',
+  ListingPhoto = 'listing_photo',
+  InspectionReport = 'inspection_report',
 }
 
 /** Owner console menu keys (`src/core/rbac/menu.ts` OWNER_MENU; a unit test keeps them in step). */

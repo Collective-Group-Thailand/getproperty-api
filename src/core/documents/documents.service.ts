@@ -23,8 +23,10 @@ import {
   AUDITED_DOWNLOADS,
   DOCUMENT_POLICY,
   isImage,
+  LISTING_PHOTO_WIDTHS,
   MULTIPART_THRESHOLD,
   PART_SIZE,
+  renditionKey,
 } from './document-policy';
 
 export const UPLOAD_URL_TTL_SECONDS = 900;
@@ -589,9 +591,29 @@ export class DocumentsService extends TenantScopedRepository {
     let thumbnailKey: string | null = null;
     let width: number | null = null;
     let height: number | null = null;
+    let stripped: { body: Buffer; sha256: Uint8Array<ArrayBuffer> } | null = null;
+    if (scanStatus === 'clean' && doc.kind === 'listing_photo') {
+      // D-252: a public photo must not carry the owner's location — the original is replaced by a JPEG without
+      // metadata (sharp drops EXIF/XMP/ICC unless asked to keep them), and three WebP renditions are stored.
+      try {
+        const clean = await sharp(body).rotate().jpeg({ quality: 88, mozjpeg: true }).toBuffer();
+        await this.storage.put(doc.storageKey, clean, 'image/jpeg');
+        for (const w of LISTING_PHOTO_WIDTHS) {
+          const rendition = await sharp(clean)
+            .resize({ width: w, withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toBuffer();
+          await this.storage.put(renditionKey(doc.storageKey, w), rendition, 'image/webp');
+        }
+        stripped = { body: clean, sha256: new Uint8Array(createHash('sha256').update(clean).digest()) };
+      } catch {
+        scanStatus = 'failed';
+        reason = 'listing photo could not be processed';
+      }
+    }
     if (scanStatus === 'clean' && isImage(doc.mimeType)) {
       try {
-        const meta = await sharp(body).metadata();
+        const meta = await sharp(stripped?.body ?? body).metadata();
         width = meta.width ?? null;
         height = meta.height ?? null;
         const thumb = await sharp(body)
@@ -614,6 +636,9 @@ export class DocumentsService extends TenantScopedRepository {
         thumbnailKey,
         width,
         height,
+        ...(stripped
+          ? { mimeType: 'image/jpeg', sizeBytes: BigInt(stripped.body.length), sha256: stripped.sha256 }
+          : {}),
       },
     });
     await this.events.record(tx, {

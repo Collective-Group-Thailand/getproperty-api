@@ -982,5 +982,39 @@
       "title": "Cannot claim",
       "detail": "The owner must be a condo juristic tenant and the operator a condo juristic or PM company tenant."
     }
+  },
+  "listing": {
+    "duplicate_unit": {
+      "title": "Unit already listed",
+      "detail": "This unit already has a listing that is live or waiting for review. Edit that one instead."
+    },
+    "invalid_state": {
+      "title": "Not possible now",
+      "detail": "The listing is not in a state that allows this action."
+    },
+    "incomplete": {
+      "title": "Listing incomplete",
+      "detail": "Add what is missing before you submit the listing."
+    },
+    "photo_invalid": {
+      "title": "Photo not usable",
+      "detail": "Use a clean, uploaded listing photo of this tenant."
+    },
+    "report_duplicate": {
+      "title": "Already reported",
+      "detail": "You have already reported this listing. Our team is looking at it."
+    },
+    "verification_pending": {
+      "title": "Verification in progress",
+      "detail": "This unit already has a verification waiting for review."
+    },
+    "verification_invalid_state": {
+      "title": "Already decided",
+      "detail": "This verification has already been decided."
+    },
+    "checker_same_user": {
+      "title": "Second reviewer needed",
+      "detail": "Another platform user must confirm this approval."
+    }
   }
 }

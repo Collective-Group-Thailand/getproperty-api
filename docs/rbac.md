@@ -14,7 +14,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (86)
+## Permissions (90)
 | Permission | Surfaces | owner | manager | staff | accountant | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View the tenant profile and company data |
@@ -35,6 +35,8 @@
 | `property.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Create/edit properties, buildings and floors |
 | `unit.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View units |
 | `unit.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Create/edit units, unit profiles |
+| `listing.read` | owner | ✓ | ✓ |  |  |  |  |  |  | See the tenant's rental listings and verifications (D-252) |
+| `listing.manage` | owner | ✓ | ✓ |  |  |  |  |  |  | Create, edit, publish, pause and close rental listings; ask for owner verification (D-252) |
 | `party.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View parties (lessees, owners, co-occupants) |
 | `party.manage` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  | Create/edit parties |
 | `party.pii.decrypt` | owner | ✓ | ✓ |  |  |  |  |  |  | Reveal ID/passport numbers and emergency-contact phones (audited, D-148, D-172) |
@@ -102,4 +104,6 @@
 | `admin.outbox.manage` | admin |  |  |  |  | ✓ |  |  |  | List dead letters of the outbox and its subscribers, replay them (B1.3) |
 | `admin.notification_template.manage` | admin |  |  |  |  | ✓ |  |  |  | Edit, preview, test-send and publish notification templates (B1.3) |
 | `admin.feature_flag.manage` | admin |  |  |  |  | ✓ |  |  |  | Change feature flag defaults and per-tenant overrides |
+| `admin.listing.moderate` | admin |  |  |  |  | ✓ | ✓ |  |  | Review queue of listings: approve, reject, hide, restore; decide reports (D-252) |
+| `admin.listing.verify` | admin |  |  |  |  | ✓ | ✓ |  |  | Decide owner verifications from ownership evidence (D-252) |
 | `admin.building.manage` | admin |  |  |  |  | ✓ |  |  |  | Change the operator of a building between tenants (schema-design §4.6) |

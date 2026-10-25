@@ -32,6 +32,7 @@ export enum UploadKindName {
   AsBuilt = 'as_built',
   Certificate = 'certificate',
   Warranty = 'warranty',
+  ListingPhoto = 'listing_photo',
   Other = 'other',
 }
 
