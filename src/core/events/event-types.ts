@@ -103,6 +103,8 @@ export const DOMAIN_EVENT_TYPES = {
   'lease.ended': 'Move-out completed; occupancy closed, unit vacant.',
   'lease.terminated': 'The lease was terminated with a reason and evidence.',
   'lease.cancelled': 'A draft or unsigned lease was cancelled.',
+  'lease.stamp_duty_paid':
+    'The stamp duty of a lease was paid through e-Stamp or recorded by the owner (B7.5, O-019).',
   'lease.invitation_created': 'A resident was invited to a lease (LINE QR / SMS / link, D-061).',
   'lease.invitation_accepted': 'A resident accepted a lease invitation and linked their login (D-061).',
   // B2.4 deposits and inspections

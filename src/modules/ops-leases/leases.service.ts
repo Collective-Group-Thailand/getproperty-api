@@ -10,6 +10,7 @@ import { AuditService } from '@core/audit/audit.service';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { ComplianceAcknowledgementService } from '@core/compliance/compliance-acknowledgement.service';
 import { ComplianceGate, type GateResult, type RuleCheck } from '@core/compliance/compliance-gate.service';
+import { LESSEE_NOTICE_DAYS, LESSOR_DISTURBANCE_DAYS, LESSOR_REMEDY_DAYS } from '@core/compliance/evaluators';
 import { DocumentsService } from '@core/documents/documents.service';
 import { DocumentNumbering } from '@core/documents/numbering.service';
 import { DomainEvents } from '@core/events/domain-events';
@@ -33,7 +34,9 @@ import { operates } from '@modules/ops-units/building-access';
 import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
-import { type ContractData, ContractRenderer } from './contract-renderer';
+import { type ContractData, type ContractLanguage, ContractRenderer } from './contract-renderer';
+import { bahtTextEn, englishDate } from './english-text';
+import { landlordTemplateKey, landlordTemplateKind } from './landlord-templates';
 import {
   type AddendumInput,
   checkLeaseTerms,
@@ -42,6 +45,13 @@ import {
   type LessorReason,
 } from './lease-compliance';
 import { endDateFor, monthsBetween } from './lease-dates';
+import {
+  rentOverTerm,
+  STAMP_DUTY_PAYER_EN,
+  STAMP_DUTY_PAYER_TH,
+  stampDutyFor,
+  type StampDutyPayer,
+} from './stamp-duty';
 import { bahtText, formatThb, thaiDate } from './thai-text';
 
 const by = () => userIdOf(RequestContext.actor());
@@ -74,6 +84,10 @@ export interface LeaseDraftInput {
   rentIncreases?: { effectiveFrom: string; rent: string }[];
   terms?: Record<string, unknown>;
   acknowledgementIds?: string[];
+  /** B7.5 (D-253): the contract language — landlord templates exist in th and en; others only th. */
+  language?: ContractLanguage;
+  /** B7.5 (O-019): who pays the stamp duty (default the lessor). */
+  stampDutyPayer?: StampDutyPayer;
 }
 
 export const LEASE_INCLUDE = {
@@ -109,6 +123,18 @@ const PROVIDER_TH: Record<string, string> = {
   pwa: 'การประปาส่วนภูมิภาค',
 };
 const RECURRENCE_TH: Record<string, string> = { monthly: 'ต่อเดือน', once: 'ครั้งเดียว' };
+const ID_LABEL_EN: Record<string, string> = {
+  thai_national_id: 'Thai ID card no.',
+  passport: 'passport no.',
+  other: 'identity document no.',
+};
+const PROVIDER_EN: Record<string, string> = {
+  mea: 'the Metropolitan Electricity Authority',
+  pea: 'the Provincial Electricity Authority',
+  mwa: 'the Metropolitan Waterworks Authority',
+  pwa: 'the Provincial Waterworks Authority',
+};
+const RECURRENCE_EN: Record<string, string> = { monthly: 'per month', once: 'once' };
 
 const addressText = (a: unknown): string => {
   const v = (a ?? {}) as Record<string, string | undefined>;
@@ -514,7 +540,7 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
     const id = uuidv7(this.clock.now().getTime());
     const prepared = await this.db.tenant(ctx, (tx) => this.prepareDraft(tx, ctx, input));
     const { unit } = prepared;
-    const template = await this.standardTemplate();
+    const template = await this.templateFor(ctx.tenantId, unit, input.language ?? 'th');
     const gate = await this.checkTerms(
       ctx,
       id,
@@ -571,6 +597,7 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
           keysCount: input.keysCount ?? 0,
           parkingSlots: input.parkingSlots ?? 0,
           terms: (input.terms ?? {}) as Prisma.InputJsonValue,
+          stampDutyPayer: input.stampDutyPayer ?? 'lessor',
           addendum: (input.addendum ?? []) as unknown as Prisma.InputJsonValue,
           rentIncreaseRecorded: input.rentIncreases?.length
             ? (input.rentIncreases as unknown as Prisma.InputJsonValue)
@@ -712,10 +739,17 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
       },
       acks,
     );
+    const template = patch.language
+      ? await this.db.tenant(ctx, async (tx) =>
+          this.templateFor(ctx.tenantId, await this.leasableUnit(tx, ctx, current.unitId), patch.language!),
+        )
+      : null;
     return this.db.tenant(ctx, async (tx) => {
       const updated = await tx.lease.updateMany({
         where: { id, version, status: 'draft' },
         data: {
+          ...(template ? { templateVersionId: template.id } : {}),
+          ...(patch.stampDutyPayer ? { stampDutyPayer: patch.stampDutyPayer } : {}),
           startDate: new Date(startDate),
           endDate: new Date(endDate),
           months,
@@ -832,13 +866,55 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
     });
   }
 
-  templates(ctx: TenantContext) {
-    return this.db.tenant(ctx, (tx) =>
+  /**
+   * The template a new lease is written on (B7.5, D-253): a landlord's lease uses the published landlord template of
+   * the unit's kind (condo unit / house / room) in the chosen language; every other tenant uses the สคบ. 2568 standard
+   * (Thai only). A language without a published version is a 422 on `language`.
+   */
+  async templateFor(
+    tenantId: string,
+    unit: { type: string; unitDetailUnit?: { kind: string | null } | null },
+    language: ContractLanguage,
+  ) {
+    const tenant = await this.db.platform((tx) =>
+      tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { type: true } }),
+    );
+    if (tenant.type !== 'landlord') {
+      if (language !== 'th')
+        throw new DomainException('validation.failed', {
+          errors: [{ path: 'language', code: 'unavailable', message: 'the standard lease is in Thai only' }],
+        });
+      return this.standardTemplate();
+    }
+    const key = landlordTemplateKey(landlordTemplateKind(unit.unitDetailUnit?.kind, unit.type));
+    const version = await this.db.platform((tx) =>
+      tx.leaseTemplateVersion.findFirst({
+        where: { tenantId: null, state: 'published', language, template: { tenantId: null, key } },
+        orderBy: { version: 'desc' },
+      }),
+    );
+    if (!version)
+      throw new DomainException('validation.failed', {
+        errors: [
+          { path: 'language', code: 'unavailable', message: `no published ${key} template in ${language}` },
+        ],
+      });
+    return version;
+  }
+
+  /** The templates this tenant can write on: platform templates of its kind (landlord or standard) and its own. */
+  async templates(ctx: TenantContext) {
+    const tenant = await this.db.platform((tx) =>
+      tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { type: true } }),
+    );
+    const landlord = tenant.type === 'landlord';
+    const all = await this.db.tenant(ctx, (tx) =>
       tx.leaseTemplate.findMany({
         include: { versions: { orderBy: [{ version: 'desc' }] } },
         orderBy: [{ key: 'asc' }],
       }),
     );
+    return all.filter((t) => t.tenantId !== null || t.key.startsWith('landlord_') === landlord);
   }
 
   /** The data a contract renders from; decrypting the lessee's ID number is audited (`pii.decrypted`). */
@@ -855,8 +931,10 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
        * without `party.pii.decrypt` (Staff, Accountant). Stored contracts are always rendered in full.
        */
       revealIdNumber?: boolean;
+      /** B7.5: the stamp duty fixed at send-for-signature (default: the lease's, else computed now). */
+      stampDutyAmount?: string;
     },
-  ): Promise<{ data: ContractData; body: string }> {
+  ): Promise<{ data: ContractData; body: string; language: ContractLanguage }> {
     const now = this.clock.now();
     const [tenant, party, unit, version, equipment, accounts] = await Promise.all([
       tx.tenant.findUniqueOrThrow({ where: { id: lease.tenantId } }),
@@ -908,10 +986,11 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
         },
       });
     }
-    const [depositCap, leadDays, refundDays] = await Promise.all([
+    const [depositCap, leadDays, refundDays, stampDutyAmount] = await Promise.all([
       this.settings.valueAt<string>('deposit.max_months_short', now, { tenantId: lease.tenantId }),
       this.settings.valueAt<number>('invoice.min_lead_days', now, { tenantId: lease.tenantId }),
       this.settings.valueAt<number>('deposit.refund_days', now, { tenantId: lease.tenantId }),
+      options.stampDutyAmount ?? this.stampDutyAmount(lease),
     ]);
     const electric = accounts.find((a) => a.utility === 'electric')?.provider;
     const water = accounts.find((a) => a.utility === 'water')?.provider;
@@ -920,6 +999,8 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
         effectiveFrom: thaiDate(r.effectiveFrom),
         amount: formatThb(r.rent),
         text: bahtText(r.rent),
+        effectiveFromEn: englishDate(r.effectiveFrom),
+        textEn: bahtTextEn(r.rent),
       }),
     );
     const data: ContractData = {
@@ -976,6 +1057,7 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
         description: l.description,
         amount: formatThb(l.amount.toString()),
         recurrence: RECURRENCE_TH[l.recurrence]!,
+        recurrenceEn: RECURRENCE_EN[l.recurrence]!,
       })),
       deposit: {
         amount: formatThb(lease.depositAmount.toString()),
@@ -988,17 +1070,59 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
       depositCapMonths: String(depositCap),
       invoiceLeadDays: Number(leadDays),
       refundDays: Number(refundDays),
-      noticeDays: 30,
-      remedyDays: 30,
-      disturbanceDays: 7,
+      noticeDays: LESSEE_NOTICE_DAYS,
+      remedyDays: LESSOR_REMEDY_DAYS,
+      disturbanceDays: LESSOR_DISTURBANCE_DAYS,
       addendum: ((lease.addendum ?? []) as unknown as AddendumInput[]).map((a) => ({
         title: a.title,
         text: a.text,
       })),
       signatures: options.signatures ?? { lessor: null, lessee: null },
       template: { key: version.template.key, version: version.version, legalRef: version.legalRef },
+      en: {
+        madeOn: englishDate(options.madeOn ?? bangkokDate(now)),
+        startDate: englishDate(lease.startDate.toISOString().slice(0, 10)),
+        endDate: englishDate(lease.endDate.toISOString().slice(0, 10)),
+        rentText: bahtTextEn(lease.rent.toString()),
+        depositText: bahtTextEn(lease.depositAmount.toString()),
+        advanceText: bahtTextEn(lease.advanceRentAmount.toString()),
+        idDocumentLabel: ID_LABEL_EN[party.idDocumentType ?? 'other']!,
+        electricProvider: electric ? PROVIDER_EN[electric]! : 'the electricity authority',
+        waterProvider: water ? PROVIDER_EN[water]! : 'the waterworks authority',
+      },
+      stampDuty: {
+        amount: formatThb(stampDutyAmount),
+        text: bahtText(stampDutyAmount),
+        textEn: bahtTextEn(stampDutyAmount),
+        payer: lease.stampDutyPayer,
+        payerTh: STAMP_DUTY_PAYER_TH[lease.stampDutyPayer],
+        payerEn: STAMP_DUTY_PAYER_EN[lease.stampDutyPayer],
+      },
     };
-    return { data, body: version.bodyHtml };
+    return { data, body: version.bodyHtml, language: version.language === 'en' ? 'en' : 'th' };
+  }
+
+  /**
+   * Stamp duty of a lease (B7.5, O-019): the amount fixed at send-for-signature, else computed now from the rent over
+   * the term and `lease.stamp_duty.baht_per_thousand`.
+   */
+  async stampDutyAmount(
+    lease: Pick<
+      Lease,
+      'tenantId' | 'rent' | 'startDate' | 'months' | 'rentIncreaseRecorded' | 'stampDutyAmount'
+    >,
+  ): Promise<string> {
+    if (lease.stampDutyAmount) return lease.stampDutyAmount.toFixed(2);
+    const rate = await this.settings.valueAt<string>('lease.stamp_duty.baht_per_thousand', this.clock.now(), {
+      tenantId: lease.tenantId,
+    });
+    const total = rentOverTerm(
+      lease.rent.toFixed(2),
+      lease.startDate.toISOString().slice(0, 10),
+      lease.months,
+      (lease.rentIncreaseRecorded ?? []) as { effectiveFrom: string; rent: string }[],
+    );
+    return stampDutyFor(total, rate);
   }
 
   /** Draft PDF for review (not stored, marked ร่าง). */
@@ -1007,12 +1131,12 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
       ctx,
       async (tx) => {
         const lease = await this.load(tx, id);
-        const { data, body } = await this.contractData(tx, lease, {
+        const { data, body, language } = await this.contractData(tx, lease, {
           draft: lease.status === 'draft',
           number: lease.number,
           revealIdNumber: RequestContext.permissions().has(PII_DECRYPT),
         });
-        return (await this.renderer.render(body, data)).pdf;
+        return (await this.renderer.render(body, data, language)).pdf;
       },
       { timeout: 60_000 },
     );
@@ -1062,8 +1186,13 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
         this.assertStatus(lease, ['draft']);
         const now = this.clock.now();
         const number = await this.numbering.next(tx, lease.tenantId, 'contract', now);
-        const { data, body } = await this.contractData(tx, lease, { draft: false, number });
-        const rendered = await this.renderer.render(body, data);
+        const stampDutyAmount = await this.stampDutyAmount(lease);
+        const { data, body, language } = await this.contractData(tx, lease, {
+          draft: false,
+          number,
+          stampDutyAmount,
+        });
+        const rendered = await this.renderer.render(body, data, language);
         const doc = await this.documents.storeGenerated(tx, {
           tenantId: lease.tenantId,
           kind: 'contract',
@@ -1080,6 +1209,7 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
             status: 'pending_signature',
             number,
             sentForSignatureAt: now,
+            stampDutyAmount,
             contractDocumentId: doc.id,
             contractSha256: new Uint8Array(rendered.sha256),
             complianceSnapshot: { ...gate, acknowledgementIds: acks, contentSha256: rendered.contentSha256 },
@@ -1181,25 +1311,27 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
               )
             : null;
           const madeOn = bangkokDate(lease.sentForSignatureAt ?? now);
-          const { data, body } = await this.contractData(tx, lease, {
+          const { data, body, language } = await this.contractData(tx, lease, {
             draft: false,
             number: lease.number,
             madeOn,
             signatures: {
               lessor: {
                 signedAt: thaiDate(bangkokDate(now)),
+                signedAtEn: englishDate(bangkokDate(now)),
                 imageDataUrl: `data:image/png;base64,${input.signaturePng.toString('base64')}`,
               },
               lessee:
                 lesseeSig && lesseeImage
                   ? {
                       signedAt: thaiDate(bangkokDate(lesseeSig.signedAt)),
+                      signedAtEn: englishDate(bangkokDate(lesseeSig.signedAt)),
                       imageDataUrl: `data:image/png;base64,${lesseeImage.toString('base64')}`,
                     }
                   : null,
             },
           });
-          const rendered = await this.renderer.render(body, data);
+          const rendered = await this.renderer.render(body, data, language);
           const signedDoc = await this.documents.storeGenerated(tx, {
             tenantId: lease.tenantId,
             kind: 'contract',
@@ -1755,6 +1887,8 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
         addendum: (old.addendum ?? []) as unknown as AddendumInput[],
         terms: { ...(old.terms as Record<string, unknown>), depositCarriedOverFrom: old.id },
         acknowledgementIds: input.acknowledgementIds,
+        language: old.templateVersion.language === 'en' ? 'en' : 'th',
+        stampDutyPayer: old.stampDutyPayer,
       },
       old.id,
     );

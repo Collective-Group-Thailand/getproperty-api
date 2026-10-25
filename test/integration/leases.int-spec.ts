@@ -124,6 +124,15 @@ describe('B2.3 leases, e-signature, notices (real PostgreSQL)', () => {
         expect(res.body.legalRef).toContain('ข้อ 5');
       }
     });
+
+    it('keeps the สคบ. 2568 standard contract in Thai only (B7.5)', async () => {
+      const res = await t.http
+        .post('/v1/owner/leases')
+        .set(bearer(owner))
+        .send({ unitId: ids.unitA102, lesseePartyId: ids.party, startDate: today, language: 'en' })
+        .expect(422);
+      expect(res.body.errors[0]).toMatchObject({ path: 'language', code: 'unavailable' });
+    });
   });
 
   describe('draft → signature → active → notice → ended', () => {

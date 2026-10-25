@@ -74,6 +74,9 @@ export enum DocumentKindName {
   Signature = 'signature',
   ListingPhoto = 'listing_photo',
   InspectionReport = 'inspection_report',
+  PdfNotice = 'pdf_notice',
+  PdfCertificate = 'pdf_certificate',
+  PdfSummary = 'pdf_summary',
 }
 
 /** Owner console menu keys (`src/core/rbac/menu.ts` OWNER_MENU; a unit test keeps them in step). */

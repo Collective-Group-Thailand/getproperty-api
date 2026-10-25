@@ -15,6 +15,7 @@ import {
   Min,
 } from 'class-validator';
 
+import { LanguageName } from '../shared/common.dto';
 import { MoneyOutput } from '../shared/fields';
 
 export enum ListingLeadStateName {
@@ -507,6 +508,16 @@ export class LeadLeaseDraftCreateDto {
   @IsOptional()
   @IsUUID('all', { each: true })
   acknowledgementIds?: string[];
+
+  @ApiPropertyOptional({
+    enum: LanguageName,
+    enumName: 'Language',
+    default: LanguageName.Th,
+    description: 'Contract language of the landlord template (B7.5).',
+  })
+  @IsOptional()
+  @IsEnum(LanguageName)
+  language?: LanguageName;
 }
 
 export class ViewingCompleteDto {
