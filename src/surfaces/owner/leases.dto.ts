@@ -7,6 +7,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBase64,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsIn,
@@ -355,6 +356,16 @@ export class LeaseCreateDto {
   @IsOptional()
   @IsEnum(StampDutyPayerName)
   stampDutyPayer?: StampDutyPayerName;
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    example: false,
+    description:
+      'B7.5 (D-253): the contract carries the Thai and the English text in one signed PDF (Thai prevails); only for templates published in both languages (landlord templates). Default false.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  bilingual?: boolean;
 }
 
 export class LeaseUpdateDto {
@@ -463,6 +474,16 @@ export class LeaseUpdateDto {
   @IsOptional()
   @IsEnum(StampDutyPayerName)
   stampDutyPayer?: StampDutyPayerName;
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    example: false,
+    description:
+      'B7.5 (D-253): the contract carries the Thai and the English text in one signed PDF (Thai prevails); only for templates published in both languages (landlord templates). Default false.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  bilingual?: boolean;
 }
 
 export class LeaseListQuery extends PageQuery {
@@ -859,6 +880,9 @@ export class LeaseDto {
 
   @ApiProperty({ enum: StampDutyPayerName, enumName: 'StampDutyPayer', example: StampDutyPayerName.Lessor })
   stampDutyPayer!: StampDutyPayerName;
+
+  @ApiProperty({ example: false, description: 'Thai and English texts in one signed PDF (B7.5).' })
+  bilingual!: boolean;
 
   @ApiProperty({ type: [String], example: ['record-notice', 'begin-move-out', 'terminate', 'renew'] })
   nextActions!: string[];

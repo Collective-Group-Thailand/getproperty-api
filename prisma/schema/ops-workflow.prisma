@@ -25,6 +25,8 @@ enum DocumentType {
   platform_receipt
   platform_credit_note
   notice
+  rent_certificate
+  income_summary
 
   @@map("document_type")
   @@schema("ops")

@@ -755,6 +755,16 @@ export const SETTINGS: readonly SettingDef[] = [
     value: 7,
     reason: 'seed: B7.5',
   },
+  {
+    key: 'tax.income_40_5.flat_deduction_percent',
+    valueType: 'decimal',
+    scopeAllowed: ['platform'],
+    description:
+      'D-253 ⚖ O-017: flat-rate expense deduction for rent of buildings under section 40(5) of the Revenue Code (Royal Decree No. 11: 30 %), shown as an estimate in the annual rental income summary.',
+    editableBy: ADMIN_COMPLIANCE,
+    value: '30',
+    reason: 'seed: B7.5 (Royal Decree No. 11, pending tax counsel)',
+  },
   // --- platform business (Proposed until the pilot) ------------------------------------------------------
   {
     key: 'platform.subscriptions.enabled',

@@ -1996,6 +1996,28 @@
           "type": "https://errors.getproperty.co/refund.exceeds_credit"
         }
       },
+      "problem.rent_certificate.invalid_state": {
+        "summary": "rent_certificate.invalid_state",
+        "value": {
+          "code": "rent_certificate.invalid_state",
+          "detail": "คำขอหนังสือรับรองนี้ออกหนังสือหรือปฏิเสธไปแล้ว",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "คำขอนี้ดำเนินการไปแล้ว",
+          "type": "https://errors.getproperty.co/rent_certificate.invalid_state"
+        }
+      },
+      "problem.rent_certificate.request_open": {
+        "summary": "rent_certificate.request_open",
+        "value": {
+          "code": "rent_certificate.request_open",
+          "detail": "คุณขอหนังสือรับรองการชำระค่าเช่าไว้แล้ว รอเจ้าของออกหนังสือก่อนจึงขอใหม่ได้",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "มีคำขออยู่แล้ว",
+          "type": "https://errors.getproperty.co/rent_certificate.request_open"
+        }
+      },
       "problem.service.unavailable": {
         "summary": "service.unavailable",
         "value": {
@@ -12587,6 +12609,133 @@
         ],
         "type": "object"
       },
+      "IncomeSummaryCreateDto": {
+        "properties": {
+          "language": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Language"
+              }
+            ],
+            "description": "Default th."
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "year": {
+            "example": 2026,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "unitId"
+        ],
+        "type": "object"
+      },
+      "IncomeSummaryGeneratedDto": {
+        "properties": {
+          "documentId": {
+            "description": "The PDF; open it through `GET /v1/owner/files/{fileId}`.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "number": {
+            "example": "ISM-2026-00001",
+            "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/IncomeYearDto"
+          }
+        },
+        "required": [
+          "documentId",
+          "number",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "IncomeTotalsDto": {
+        "properties": {
+          "charges": {
+            "description": "Utilities and service charges received (not in gross). Unit: THB, decimal string (D-046).",
+            "example": "2350.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "deduction": {
+            "description": "Flat-rate deduction (estimate). Unit: THB, decimal string (D-046).",
+            "example": "9000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "gross": {
+            "description": "Gross 40(5). Unit: THB, decimal string (D-046).",
+            "example": "30000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "net": {
+            "description": "Gross minus the deduction (estimate). Unit: THB, decimal string (D-046).",
+            "example": "21000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "rent": {
+            "description": "Rent received. Unit: THB, decimal string (D-046).",
+            "example": "30000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "retained": {
+            "description": "Deposits retained. Unit: THB, decimal string (D-046).",
+            "example": "0.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rent",
+          "charges",
+          "retained",
+          "gross",
+          "deduction",
+          "net"
+        ],
+        "type": "object"
+      },
+      "IncomeYearDto": {
+        "properties": {
+          "deductionPercent": {
+            "description": "`tax.income_40_5.flat_deduction_percent`.",
+            "example": "30",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/IncomeTotalsDto"
+          },
+          "units": {
+            "items": {
+              "$ref": "#/components/schemas/UnitIncomeDto"
+            },
+            "type": "array"
+          },
+          "year": {
+            "example": 2026,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "deductionPercent",
+          "units",
+          "totals"
+        ],
+        "type": "object"
+      },
       "IngestChannel": {
         "enum": [
           "mqtt",
@@ -15854,6 +16003,11 @@
             "pattern": "^\\d{1,12}(\\.\\d{1,2})?$",
             "type": "string"
           },
+          "bilingual": {
+            "description": "B7.5 (D-253): the contract carries the Thai and the English text in one signed PDF (Thai prevails); only for templates published in both languages (landlord templates). Default false.",
+            "example": false,
+            "type": "boolean"
+          },
           "billingDay": {
             "description": "Rent due day; null = property cut-off.",
             "example": 5,
@@ -16007,6 +16161,11 @@
             "example": "4500.00",
             "pattern": "^-?\\d{1,12}\\.\\d{2}$",
             "type": "string"
+          },
+          "bilingual": {
+            "description": "Thai and English texts in one signed PDF (B7.5).",
+            "example": false,
+            "type": "boolean"
           },
           "billingDay": {
             "example": 5,
@@ -16280,6 +16439,7 @@
           "compliance",
           "template",
           "stampDutyPayer",
+          "bilingual",
           "nextActions",
           "createdAt",
           "version"
@@ -17400,6 +17560,11 @@
             "example": "4500.00",
             "pattern": "^\\d{1,12}(\\.\\d{1,2})?$",
             "type": "string"
+          },
+          "bilingual": {
+            "description": "B7.5 (D-253): the contract carries the Thai and the English text in one signed PDF (Thai prevails); only for templates published in both languages (landlord templates). Default false.",
+            "example": false,
+            "type": "boolean"
           },
           "billingDay": {
             "example": 5,
@@ -28636,6 +28801,221 @@
         },
         "type": "object"
       },
+      "RentCertificateCreateDto": {
+        "properties": {
+          "language": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Language"
+              }
+            ],
+            "description": "Default th."
+          },
+          "note": {
+            "example": "ใช้ยื่นต่อวีซ่าเดือนหน้า",
+            "maxLength": 500,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "periodFrom": {
+            "description": "Default: 12 months before the end of the period (not before the lease starts).",
+            "example": "2025-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "periodTo": {
+            "description": "Default: today (or the end of the lease). Never after today; at most 24 months.",
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "purpose": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RentCertificatePurpose"
+              }
+            ],
+            "example": "visa"
+          }
+        },
+        "required": [
+          "purpose"
+        ],
+        "type": "object"
+      },
+      "RentCertificateDeclineDto": {
+        "properties": {
+          "reason": {
+            "example": "ยังไม่มีรายการชำระในช่วงที่ขอ",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "RentCertificateDto": {
+        "properties": {
+          "decidedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "declineReason": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "documentId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "language": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Language"
+              }
+            ],
+            "example": "th"
+          },
+          "leaseId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "leaseNumber": {
+            "description": "Owner lists only.",
+            "example": "CTR-2026-00001",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "number": {
+            "example": "RPC-2026-00001",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "periodFrom": {
+            "example": "2025-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "periodTo": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "purpose": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RentCertificatePurpose"
+              }
+            ],
+            "example": "visa"
+          },
+          "requestedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "requestedByResident": {
+            "description": "Asked for by the resident (false: issued directly by the owner).",
+            "example": true,
+            "type": "boolean"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RentCertificateState"
+              }
+            ],
+            "example": "requested"
+          },
+          "totalPaid": {
+            "description": "Payments listed in the certificate. Unit: THB, decimal string (D-046).",
+            "example": "180000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unitNo": {
+            "description": "Owner lists only.",
+            "example": "A-201",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "leaseId",
+          "unitNo",
+          "leaseNumber",
+          "purpose",
+          "periodFrom",
+          "periodTo",
+          "language",
+          "note",
+          "state",
+          "requestedByResident",
+          "number",
+          "totalPaid",
+          "declineReason",
+          "documentId",
+          "requestedAt",
+          "decidedAt"
+        ],
+        "type": "object"
+      },
+      "RentCertificatePurpose": {
+        "enum": [
+          "visa",
+          "bank",
+          "employer",
+          "other"
+        ],
+        "type": "string"
+      },
+      "RentCertificateState": {
+        "enum": [
+          "requested",
+          "issued",
+          "declined"
+        ],
+        "type": "string"
+      },
       "RentIncreaseDto": {
         "properties": {
           "effectiveFrom": {
@@ -37810,6 +38190,96 @@
         },
         "required": [
           "fileId"
+        ],
+        "type": "object"
+      },
+      "UnitIncomeDto": {
+        "properties": {
+          "chargeMonths": {
+            "description": "Utilities and service charges received per Bangkok month (not 40(5) income, D-282).",
+            "example": [
+              "1200.00",
+              "1150.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "charges": {
+            "description": "Utilities and service charges received (shown apart). Unit: THB, decimal string (D-046).",
+            "example": "2350.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "gross": {
+            "description": "Assessable income, section 40(5). Unit: THB, decimal string (D-046).",
+            "example": "30000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "months": {
+            "description": "Rent received per Bangkok month, January first (decimal strings).",
+            "example": [
+              "15000.00",
+              "15000.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00",
+              "0.00"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "rent": {
+            "description": "Rent received (rent and furniture lines, pro rata of each invoice paid; advance rent). Unit: THB, decimal string (D-046).",
+            "example": "30000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "retained": {
+            "description": "Deposit deductions kept at settlement. Unit: THB, decimal string (D-046).",
+            "example": "0.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "unitNo": {
+            "example": "12/345",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unitId",
+          "unitNo",
+          "months",
+          "chargeMonths",
+          "rent",
+          "charges",
+          "retained",
+          "gross"
         ],
         "type": "object"
       },
@@ -105757,6 +106227,571 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/income-summaries": {
+      "get": {
+        "description": "Per unit and Bangkok calendar year: rent received month by month (receipts issued through the platform, not voided; rent and furniture lines pro rata of each invoice paid, advance rent included; deposits excluded) and, apart, the utilities and service charges received (D-282); deposit deductions kept; the assessable income of section 40(5) and the flat-rate deduction `tax.income_40_5.flat_deduction_percent` as an estimate (B7.5, D-253). A summary for PND 90 / 94, not a filing.\n\nImplements: D-253.",
+        "operationId": "owner.incomeSummaries.year",
+        "parameters": [
+          {
+            "description": "Bangkok calendar (tax) year.",
+            "in": "query",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "example": 2026,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unitId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "deductionPercent": "30",
+                  "totals": {
+                    "charges": "2350.00",
+                    "deduction": "9000.00",
+                    "gross": "30000.00",
+                    "net": "21000.00",
+                    "rent": "30000.00",
+                    "retained": "0.00"
+                  },
+                  "units": [
+                    {
+                      "chargeMonths": [
+                        "1200.00",
+                        "1150.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00"
+                      ],
+                      "charges": "2350.00",
+                      "gross": "30000.00",
+                      "months": [
+                        "15000.00",
+                        "15000.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00",
+                        "0.00"
+                      ],
+                      "rent": "30000.00",
+                      "retained": "0.00",
+                      "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "unitNo": "12/345"
+                    }
+                  ],
+                  "year": 2026
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/IncomeYearDto"
+                }
+              }
+            },
+            "description": "The year",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Rental income of a year",
+        "tags": [
+          "owner.documents"
+        ],
+        "x-required-permissions": [
+          "document.read"
+        ],
+        "x-surface": "owner"
+      },
+      "post": {
+        "description": "A numbered PDF (ISM series) of one unit and year in the owner’s name, stored with the unit (`pdf_summary`, listed in `GET /v1/owner/documents`) (B7.5, D-253).\n\nImplements: D-253.",
+        "operationId": "owner.incomeSummaries.generate",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "year": 2026
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/IncomeSummaryCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "number": "ISM-2026-00001",
+                  "summary": {
+                    "deductionPercent": "30",
+                    "totals": {
+                      "charges": "2350.00",
+                      "deduction": "9000.00",
+                      "gross": "30000.00",
+                      "net": "21000.00",
+                      "rent": "30000.00",
+                      "retained": "0.00"
+                    },
+                    "units": [
+                      {
+                        "chargeMonths": [
+                          "1200.00",
+                          "1150.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00"
+                        ],
+                        "charges": "2350.00",
+                        "gross": "30000.00",
+                        "months": [
+                          "15000.00",
+                          "15000.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00",
+                          "0.00"
+                        ],
+                        "rent": "30000.00",
+                        "retained": "0.00",
+                        "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                        "unitNo": "12/345"
+                      }
+                    ],
+                    "year": 2026
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/IncomeSummaryGeneratedDto"
+                }
+              }
+            },
+            "description": "Made",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Make the PDF summary of a unit",
+        "tags": [
+          "owner.documents"
+        ],
+        "x-required-permissions": [
+          "document.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/insights": {
       "get": {
         "description": "From the analytics rollups (B6.3, D-217): the seven D-083 KPIs over the last 90 days, the month series of time to bill, correction rate, on-time payment, auto-reconciled and QR payments, reminder effectiveness, loss %, meter uptime, resident CSAT (repair ratings + the LIFF survey), compliance score, above-cap lines acknowledged and requests via LINE (null = nothing measured that month), and anonymised benchmarks (k ≥ 5 tenants per bucket) when an Owner of my tenant opted in.\n\nImplements: D-083, D-217, D-021, D-045.",
@@ -115595,6 +116630,7 @@
                         }
                       ],
                       "advanceRentAmount": "4500.00",
+                      "bilingual": false,
                       "billingDay": 5,
                       "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                       "buildingName": "อาคาร A",
@@ -115934,6 +116970,7 @@
                     }
                   ],
                   "advanceRentAmount": "4500.00",
+                  "bilingual": false,
                   "billingDay": 5,
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
@@ -116597,6 +117634,7 @@
                     }
                   ],
                   "advanceRentAmount": "4500.00",
+                  "bilingual": false,
                   "billingDay": 5,
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
@@ -116934,6 +117972,7 @@
                     }
                   ],
                   "advanceRentAmount": "4500.00",
+                  "bilingual": false,
                   "billingDay": 5,
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
@@ -117350,6 +118389,7 @@
                     }
                   ],
                   "advanceRentAmount": "4500.00",
+                  "bilingual": false,
                   "billingDay": 5,
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
@@ -117708,6 +118748,7 @@
                     }
                   ],
                   "advanceRentAmount": "4500.00",
+                  "bilingual": false,
                   "billingDay": 5,
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
@@ -118069,6 +119110,7 @@
                     }
                   ],
                   "advanceRentAmount": "4500.00",
+                  "bilingual": false,
                   "billingDay": 5,
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
@@ -118445,6 +119487,7 @@
                     }
                   ],
                   "advanceRentAmount": "4500.00",
+                  "bilingual": false,
                   "billingDay": 5,
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
@@ -118832,6 +119875,7 @@
                     }
                   ],
                   "advanceRentAmount": "4500.00",
+                  "bilingual": false,
                   "billingDay": 5,
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
@@ -119204,6 +120248,7 @@
                     }
                   ],
                   "advanceRentAmount": "4500.00",
+                  "bilingual": false,
                   "billingDay": 5,
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
@@ -119580,6 +120625,7 @@
                     }
                   ],
                   "advanceRentAmount": "4500.00",
+                  "bilingual": false,
                   "billingDay": 5,
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
@@ -119985,6 +121031,7 @@
                     }
                   ],
                   "advanceRentAmount": "4500.00",
+                  "bilingual": false,
                   "billingDay": 5,
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
@@ -122042,6 +123089,294 @@
         ],
         "x-compliance-rules": [
           "compliance.termination_notice"
+        ],
+        "x-required-permissions": [
+          "lease.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/leases/{leaseId}/rent-certificates": {
+      "post": {
+        "description": "Without a resident request (asked in person or by phone); same document as an issued request (B7.5, D-253).\n\nImplements: D-253.",
+        "operationId": "owner.leases.issueRentCertificate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leaseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "purpose": "bank"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/RentCertificateCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "decidedAt": "2026-11-01T00:15:00+07:00",
+                  "declineReason": null,
+                  "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "language": "th",
+                  "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "leaseNumber": "CTR-2026-00001",
+                  "note": null,
+                  "number": "RPC-2026-00001",
+                  "periodFrom": "2025-11-01",
+                  "periodTo": "2026-11-01",
+                  "purpose": "visa",
+                  "requestedAt": "2026-11-01T00:15:00+07:00",
+                  "requestedByResident": false,
+                  "state": "issued",
+                  "totalPaid": "180000.00",
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RentCertificateDto"
+                }
+              }
+            },
+            "description": "Issued",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "lease.invalid_state": {
+                    "$ref": "#/components/examples/problem.lease.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `lease.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Issue a rent certificate directly",
+        "tags": [
+          "owner.leases"
         ],
         "x-required-permissions": [
           "lease.manage"
@@ -149716,6 +151051,968 @@
         ],
         "x-required-permissions": [
           "payment.record"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/rent-certificates": {
+      "get": {
+        "description": "Requests from residents and certificates issued, newest first; `state=requested` is what waits for the owner (B7.5, D-253).\n\nImplements: D-253.",
+        "operationId": "owner.rentCertificates.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RentCertificateState"
+            }
+          },
+          {
+            "in": "query",
+            "name": "leaseId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "decidedAt": null,
+                    "declineReason": null,
+                    "documentId": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "language": "th",
+                    "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "leaseNumber": "CTR-2026-00001",
+                    "note": null,
+                    "number": null,
+                    "periodFrom": "2025-11-01",
+                    "periodTo": "2026-11-01",
+                    "purpose": "visa",
+                    "requestedAt": "2026-11-01T00:15:00+07:00",
+                    "requestedByResident": true,
+                    "state": "requested",
+                    "totalPaid": null,
+                    "unitNo": "A-201"
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RentCertificateDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Certificates",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Rent payment certificates",
+        "tags": [
+          "owner.leases"
+        ],
+        "x-required-permissions": [
+          "lease.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/rent-certificates/{certificateId}/actions/decline": {
+      "post": {
+        "description": "With a reason the resident reads in LINE (B7.5, D-253).\n\nImplements: D-253.",
+        "operationId": "owner.rentCertificates.decline",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "certificateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "reason": "ยังไม่มีรายการชำระในช่วงที่ขอ"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/RentCertificateDeclineDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "decidedAt": "2026-11-01T00:15:00+07:00",
+                  "declineReason": "ยังไม่มีรายการชำระในช่วงที่ขอ",
+                  "documentId": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "language": "th",
+                  "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "leaseNumber": "CTR-2026-00001",
+                  "note": null,
+                  "number": null,
+                  "periodFrom": "2025-11-01",
+                  "periodTo": "2026-11-01",
+                  "purpose": "visa",
+                  "requestedAt": "2026-11-01T00:15:00+07:00",
+                  "requestedByResident": true,
+                  "state": "declined",
+                  "totalPaid": null,
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RentCertificateDto"
+                }
+              }
+            },
+            "description": "Declined",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "rent_certificate.invalid_state": {
+                    "$ref": "#/components/examples/problem.rent_certificate.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `rent_certificate.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Decline a certificate request",
+        "tags": [
+          "owner.leases"
+        ],
+        "x-required-permissions": [
+          "lease.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/rent-certificates/{certificateId}/actions/issue": {
+      "post": {
+        "description": "A numbered PDF (RPC series) in the landlord's name listing the receipts of the period asked for and whether anything is overdue; the resident gets it in LINE (B7.5, D-253).\n\nImplements: D-253.",
+        "operationId": "owner.rentCertificates.issue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "certificateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "decidedAt": "2026-11-01T00:15:00+07:00",
+                  "declineReason": null,
+                  "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "language": "th",
+                  "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "leaseNumber": "CTR-2026-00001",
+                  "note": null,
+                  "number": "RPC-2026-00001",
+                  "periodFrom": "2025-11-01",
+                  "periodTo": "2026-11-01",
+                  "purpose": "visa",
+                  "requestedAt": "2026-11-01T00:15:00+07:00",
+                  "requestedByResident": true,
+                  "state": "issued",
+                  "totalPaid": "180000.00",
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RentCertificateDto"
+                }
+              }
+            },
+            "description": "Issued",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "rent_certificate.invalid_state": {
+                    "$ref": "#/components/examples/problem.rent_certificate.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `rent_certificate.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Issue a requested certificate",
+        "tags": [
+          "owner.leases"
+        ],
+        "x-required-permissions": [
+          "lease.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/rent-certificates/{certificateId}/document": {
+      "get": {
+        "description": "A 5-minute signed URL of the certificate PDF (B7.5, D-253).\n\nImplements: D-253.",
+        "operationId": "owner.rentCertificates.document",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "certificateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "expiresAt": "2026-11-01T00:20:00+07:00",
+                  "number": "RPC-2026-00001",
+                  "url": "https://storage.example.com/certificate.pdf?X-Amz-Signature=abc"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDownloadDto"
+                }
+              }
+            },
+            "description": "Download",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Open a certificate",
+        "tags": [
+          "owner.leases"
+        ],
+        "x-required-permissions": [
+          "lease.read"
         ],
         "x-surface": "owner"
       }
@@ -182434,6 +184731,666 @@
           }
         ],
         "summary": "Open a letter from my landlord",
+        "tags": [
+          "resident.leases"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/leases/{leaseId}/rent-certificates": {
+      "get": {
+        "description": "Requests and certificates of my lease, newest first (B7.5, D-253).\n\nImplements: D-253.",
+        "operationId": "resident.leases.rentCertificates",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leaseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "decidedAt": "2026-11-01T00:15:00+07:00",
+                    "declineReason": null,
+                    "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "language": "th",
+                    "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "leaseNumber": null,
+                    "note": null,
+                    "number": "RPC-2026-00001",
+                    "periodFrom": "2025-11-01",
+                    "periodTo": "2026-11-01",
+                    "purpose": "visa",
+                    "requestedAt": "2026-11-01T00:15:00+07:00",
+                    "requestedByResident": true,
+                    "state": "issued",
+                    "totalPaid": "180000.00",
+                    "unitNo": null
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RentCertificateDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Certificates",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "My rent certificates",
+        "tags": [
+          "resident.leases"
+        ],
+        "x-surface": "resident"
+      },
+      "post": {
+        "description": "For a visa, a bank or an employer: the period (default the last 12 months, at most 24) and the language; one open request at a time (`rent_certificate.request_open`). The landlord is told and issues or declines it; I get the answer in LINE (B7.5, D-253).\n\nImplements: D-253.",
+        "operationId": "resident.leases.requestRentCertificate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leaseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "language": "en",
+                    "purpose": "visa"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/RentCertificateCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "decidedAt": null,
+                  "declineReason": null,
+                  "documentId": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "language": "th",
+                  "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "leaseNumber": null,
+                  "note": null,
+                  "number": null,
+                  "periodFrom": "2025-11-01",
+                  "periodTo": "2026-11-01",
+                  "purpose": "visa",
+                  "requestedAt": "2026-11-01T00:15:00+07:00",
+                  "requestedByResident": true,
+                  "state": "requested",
+                  "totalPaid": null,
+                  "unitNo": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RentCertificateDto"
+                }
+              }
+            },
+            "description": "Requested",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "lease.invalid_state": {
+                    "$ref": "#/components/examples/problem.lease.invalid_state"
+                  },
+                  "rent_certificate.request_open": {
+                    "$ref": "#/components/examples/problem.rent_certificate.request_open"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `lease.invalid_state`, `rent_certificate.request_open`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Ask for a rent certificate",
+        "tags": [
+          "resident.leases"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/leases/{leaseId}/rent-certificates/{certificateId}/document": {
+      "get": {
+        "description": "A 5-minute signed URL of the certificate PDF (B7.5, D-253).\n\nImplements: D-253.",
+        "operationId": "resident.leases.rentCertificateDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leaseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "certificateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "expiresAt": "2026-11-01T00:20:00+07:00",
+                  "number": "RPC-2026-00001",
+                  "url": "https://storage.example.com/certificate.pdf?X-Amz-Signature=abc"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDownloadDto"
+                }
+              }
+            },
+            "description": "Download",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Open my rent certificate",
         "tags": [
           "resident.leases"
         ],

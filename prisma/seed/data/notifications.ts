@@ -329,6 +329,18 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     ],
   },
   {
+    key: 'lease.rent_certificate_requested',
+    description: 'Owner: a resident asked for a rent payment certificate (B7.5, D-253)',
+    th: [
+      'คำขอหนังสือรับรองค่าเช่า ห้อง {{certificate.unitNo}}',
+      '{{lessee.name}} ขอหนังสือรับรองการชำระค่าเช่า (ใช้สำหรับ{{certificate.purposeTh}}) ออกหนังสือหรือปฏิเสธได้ในหน้าหนังสือรับรอง',
+    ],
+    en: [
+      'Rent certificate requested for {{certificate.unitNo}}',
+      '{{lessee.name}} asked for a rent payment certificate ({{certificate.purposeEn}}). Issue or decline it on the certificates page.',
+    ],
+  },
+  {
     key: 'listing.lead_received',
     description: 'Owner: a prospect asked about a listing (B7.3, D-252)',
     th: [
@@ -492,6 +504,8 @@ export const NOTIFICATION_ROUTES: {
     'building_rule.published',
     'etax.signed',
     'lease.notice_issued',
+    'lease.rent_certificate_issued',
+    'lease.rent_certificate_declined',
   ].map((eventType) => ({
     eventType,
     audience: 'resident',
@@ -583,6 +597,42 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         language: 'en',
         subject: null,
         body: '{{tenant.name}} proposes your deposit settlement: {{settlement.deductionsTotal}} THB deducted, {{settlement.proposedRefund}} THB refunded by {{settlement.deadlineOn}} — tap to see the items and evidence, then accept or dispute.',
+      },
+    ],
+  },
+  {
+    key: 'lease.rent_certificate_issued',
+    channel: 'line',
+    audience: 'resident',
+    description: 'The rent payment certificate I asked for is ready (B7.5, D-253)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}} ออกหนังสือรับรองการชำระค่าเช่าเลขที่ {{certificate.number}} ให้แล้ว แตะเพื่อเปิด\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'Your rent payment certificate {{certificate.number}} from {{tenant.name}} is ready. Tap to open it.\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'lease.rent_certificate_declined',
+    channel: 'line',
+    audience: 'resident',
+    description: 'The landlord declined my rent certificate request, with the reason (B7.5, D-253)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}} ยังออกหนังสือรับรองการชำระค่าเช่าให้ไม่ได้: {{certificate.reason}}\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}} could not issue your rent payment certificate: {{certificate.reason}}\n{{link}}',
       },
     ],
   },

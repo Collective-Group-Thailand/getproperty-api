@@ -1064,5 +1064,15 @@
       "title": "Lease already drafted",
       "detail": "A lease was already drafted from this enquiry. Open it from Leases."
     }
+  },
+  "rent_certificate": {
+    "request_open": {
+      "title": "Request already open",
+      "detail": "You already asked for a rent payment certificate; ask again once your landlord has answered."
+    },
+    "invalid_state": {
+      "title": "Already answered",
+      "detail": "This certificate request was already issued or declined."
+    }
   }
 }

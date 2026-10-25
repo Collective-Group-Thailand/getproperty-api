@@ -68,6 +68,10 @@ import {
 import { OwnerPaymentsController } from './payments.controller';
 import { OwnerPortfolioController } from './portfolio.controller';
 import { OwnerDashboardController, OwnerReceivablesController } from './receivables.controller';
+import {
+  OwnerIncomeSummariesController,
+  OwnerRentCertificatesController,
+} from './rent-certificates.controller';
 import { OwnerSearchController } from './search.controller';
 import {
   OwnerMaintenancePlansController,
@@ -137,6 +141,8 @@ import {
     OwnerUnitDocumentsController,
     OwnerLeaseStampDutyController,
     OwnerLeaseNoticesController,
+    OwnerRentCertificatesController,
+    OwnerIncomeSummariesController,
     OwnerUnitProfilesController,
     OwnerUtilityAccountsController,
     OwnerMetersController,

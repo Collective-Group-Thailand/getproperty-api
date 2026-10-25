@@ -88,6 +88,8 @@ export interface LeaseDraftInput {
   language?: ContractLanguage;
   /** B7.5 (O-019): who pays the stamp duty (default the lessor). */
   stampDutyPayer?: StampDutyPayer;
+  /** B7.5 (D-253): Thai and English texts in one signed PDF (templates published in both languages only). */
+  bilingual?: boolean;
 }
 
 export const LEASE_INCLUDE = {
@@ -100,7 +102,7 @@ export const LEASE_INCLUDE = {
   lines: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
   signatures: { orderBy: { signedAt: 'asc' } },
   templateVersion: {
-    select: { id: true, version: true, language: true, template: { select: { key: true } } },
+    select: { id: true, version: true, language: true, template: { select: { id: true, key: true } } },
   },
 } as const satisfies Prisma.LeaseInclude;
 export type LeaseRow = Prisma.LeaseGetPayload<{ include: typeof LEASE_INCLUDE }>;
@@ -541,6 +543,7 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
     const prepared = await this.db.tenant(ctx, (tx) => this.prepareDraft(tx, ctx, input));
     const { unit } = prepared;
     const template = await this.templateFor(ctx.tenantId, unit, input.language ?? 'th');
+    if (input.bilingual) await this.assertBilingual(template.templateId);
     const gate = await this.checkTerms(
       ctx,
       id,
@@ -598,6 +601,7 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
           parkingSlots: input.parkingSlots ?? 0,
           terms: (input.terms ?? {}) as Prisma.InputJsonValue,
           stampDutyPayer: input.stampDutyPayer ?? 'lessor',
+          bilingual: input.bilingual ?? false,
           addendum: (input.addendum ?? []) as unknown as Prisma.InputJsonValue,
           rentIncreaseRecorded: input.rentIncreases?.length
             ? (input.rentIncreases as unknown as Prisma.InputJsonValue)
@@ -744,12 +748,15 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
           this.templateFor(ctx.tenantId, await this.leasableUnit(tx, ctx, current.unitId), patch.language!),
         )
       : null;
+    if (patch.bilingual)
+      await this.assertBilingual(template?.templateId ?? current.templateVersion.template.id);
     return this.db.tenant(ctx, async (tx) => {
       const updated = await tx.lease.updateMany({
         where: { id, version, status: 'draft' },
         data: {
           ...(template ? { templateVersionId: template.id } : {}),
           ...(patch.stampDutyPayer ? { stampDutyPayer: patch.stampDutyPayer } : {}),
+          ...(patch.bilingual !== undefined ? { bilingual: patch.bilingual } : {}),
           startDate: new Date(startDate),
           endDate: new Date(endDate),
           months,
@@ -1099,7 +1106,58 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
         payerEn: STAMP_DUTY_PAYER_EN[lease.stampDutyPayer],
       },
     };
+    if (lease.bilingual) {
+      // Thai first (it prevails), then the English text of the same template, in one document and one hash
+      const [th, en] = await Promise.all([
+        this.publishedVersion(version.templateId, 'th', version),
+        this.publishedVersion(version.templateId, 'en', version),
+      ]);
+      if (th && en)
+        return {
+          data,
+          body: `${th.bodyHtml}\n<div class="page-break"></div>\n${en.bodyHtml}`,
+          language: 'th',
+        };
+    }
     return { data, body: version.bodyHtml, language: version.language === 'en' ? 'en' : 'th' };
+  }
+
+  /** The template version in a language: the lease's own when it matches, else the latest published one. */
+  private async publishedVersion(
+    templateId: string,
+    language: ContractLanguage,
+    own: { language: string; bodyHtml: string },
+  ): Promise<{ bodyHtml: string } | null> {
+    if (own.language === language) return own;
+    return this.db.platform((tx) =>
+      tx.leaseTemplateVersion.findFirst({
+        where: { templateId, language, state: 'published' },
+        orderBy: { version: 'desc' },
+        select: { bodyHtml: true },
+      }),
+    );
+  }
+
+  /** A bilingual lease needs its template published in Thai and English (the landlord templates, B7.5). */
+  private async assertBilingual(templateId: string): Promise<void> {
+    const languages = await this.db.platform((tx) =>
+      tx.leaseTemplateVersion.findMany({
+        where: { templateId, state: 'published' },
+        select: { language: true },
+        distinct: ['language'],
+      }),
+    );
+    const set = new Set(languages.map((l) => l.language));
+    if (!set.has('th') || !set.has('en'))
+      throw new DomainException('validation.failed', {
+        errors: [
+          {
+            path: 'bilingual',
+            code: 'unavailable',
+            message: 'this contract template is not published in Thai and English',
+          },
+        ],
+      });
   }
 
   /**
@@ -1889,6 +1947,7 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
         acknowledgementIds: input.acknowledgementIds,
         language: old.templateVersion.language === 'en' ? 'en' : 'th',
         stampDutyPayer: old.stampDutyPayer,
+        bilingual: old.bilingual,
       },
       old.id,
     );
