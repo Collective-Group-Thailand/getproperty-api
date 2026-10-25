@@ -149,6 +149,16 @@ export const PERMISSIONS: readonly PermissionDef[] = [
   { key: 'unit.read', description: 'View units', surfaces: ['owner', 'staff'] },
   { key: 'unit.manage', description: 'Create/edit units, unit profiles', surfaces: ['owner'] },
   {
+    key: 'listing.read',
+    description: "See the tenant's rental listings and verifications (D-252)",
+    surfaces: ['owner'],
+  },
+  {
+    key: 'listing.manage',
+    description: 'Create, edit, publish, pause and close rental listings; ask for owner verification (D-252)',
+    surfaces: ['owner'],
+  },
+  {
     key: 'party.read',
     description: 'View parties (lessees, owners, co-occupants)',
     surfaces: ['owner', 'staff'],
@@ -406,6 +416,16 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     surfaces: ['admin'],
   },
   {
+    key: 'admin.listing.moderate',
+    description: 'Review queue of listings: approve, reject, hide, restore; decide reports (D-252)',
+    surfaces: ['admin'],
+  },
+  {
+    key: 'admin.listing.verify',
+    description: 'Decide owner verifications from ownership evidence (D-252)',
+    surfaces: ['admin'],
+  },
+  {
     key: 'admin.building.manage',
     description: 'Change the operator of a building between tenants (schema-design §4.6)',
     surfaces: ['admin'],
@@ -475,7 +495,13 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'report.read',
   ],
   platform_admin: PERMISSIONS.filter((p) => p.key.startsWith('admin.')).map((p) => p.key),
-  support: ['admin.tenant.read', 'admin.support_grant.request', 'admin.integration_event.read'],
+  support: [
+    'admin.tenant.read',
+    'admin.support_grant.request',
+    'admin.integration_event.read',
+    'admin.listing.moderate',
+    'admin.listing.verify',
+  ],
   field_engineer: ['admin.tenant.read', 'admin.device.manage'],
   finance: [
     'admin.tenant.read',

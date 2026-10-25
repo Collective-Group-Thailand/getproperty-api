@@ -30,6 +30,9 @@ import { EtaxService } from './ops-etax/etax.service';
 import { ContractRenderer } from './ops-leases/contract-renderer';
 import { LeasesService } from './ops-leases/leases.service';
 import { ResidentLeasesService } from './ops-leases/resident-leases.service';
+import { ListingModerationService } from './ops-listings/listing-moderation.service';
+import { ListingsService } from './ops-listings/listings.service';
+import { PublicListingsService } from './ops-listings/public-listings.service';
 import { PartiesService } from './ops-parties/parties.service';
 import { PartyNotifications } from './ops-parties/party-notifications';
 import { ResidentDocumentsService } from './ops-parties/resident-documents.service';
@@ -73,6 +76,9 @@ const SERVICES = [
   StructureService,
   UnitsService,
   PortfolioService,
+  ListingsService,
+  ListingModerationService,
+  PublicListingsService,
   UnitProfilesService,
   UtilityAccountsService,
   MetersService,

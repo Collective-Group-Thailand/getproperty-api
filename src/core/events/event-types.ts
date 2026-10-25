@@ -33,6 +33,17 @@ export const DOMAIN_EVENT_TYPES = {
   'workflow.sla_breached': 'A workflow instance breached its SLA (emitted once).',
   'workflow.step_due': 'A host-scheduled step of a workflow instance is due (e.g. a dunning reminder, B4.5).',
   'workflow.sla_reminder': 'A reminder before a workflow SLA due time (e.g. T-3 / T-1 of a deposit refund).',
+  'listing.published':
+    'A listing became public (directly for a verified owner, or approved from review) (D-252).',
+  'listing.review_requested': 'A submitted listing went to the moderation queue with its reasons (D-252).',
+  'listing.paused': 'The owner paused a published listing (D-252).',
+  'listing.closed':
+    'A listing was closed — leased, withdrawn by the owner, or hidden for good by moderation (D-252).',
+  'listing.rejected': 'Moderation rejected a listing with a reason; the owner is told (D-252).',
+  'listing.hidden': 'A listing was hidden pending review (report threshold or moderator) (D-252).',
+  'listing.restored': 'A hidden listing was made public again by a moderator (D-252).',
+  'listing.reported': 'A viewer reported a listing (no reporter in the payload) (D-252).',
+  'listing.verification_decided': 'Owner verification of a unit was approved or rejected (D-252).',
   'storage.threshold_crossed':
     'A tenant reached a storage notice threshold of its allowance (D-276: 80 % / 100 %, once per crossing).',
   'document.uploaded': 'A file finished uploading; scan and thumbnail follow.',

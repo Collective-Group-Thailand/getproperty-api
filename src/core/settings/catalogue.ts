@@ -544,6 +544,108 @@ export const SETTINGS: readonly SettingDef[] = [
     reason: 'seed: D-276',
     check: noticeProblems,
   },
+  // --- listings (D-252, B7.2) — rules of the review queue are data, not code ------------------------------
+  {
+    key: 'listing.photos.min',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description: 'D-252: photos a listing needs before it can be submitted (founder: at least 5).',
+    editableBy: ['admin.listing.moderate'],
+    value: 5,
+    reason: 'seed: D-252',
+  },
+  {
+    key: 'listing.photos.max',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description: 'D-252: most photos one listing may carry (founder: at most 30).',
+    editableBy: ['admin.listing.moderate'],
+    value: 30,
+    reason: 'seed: D-252',
+  },
+  {
+    key: 'listing.review.first_listing',
+    valueType: 'bool',
+    scopeAllowed: ['platform'],
+    description:
+      'D-252: the first listing of an owner whose unit is not verified goes to the review queue instead of straight to published.',
+    editableBy: ['admin.listing.moderate'],
+    value: true,
+    reason: 'seed: D-252',
+  },
+  {
+    key: 'listing.review.price_outlier_percent',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-252: a rent more than this percent below or above the median of published listings of the same kind in the district goes to review (only when listing.review.comparables_min listings exist). 0 = off.',
+    editableBy: ['admin.listing.moderate'],
+    value: 50,
+    reason: 'seed: D-252',
+  },
+  {
+    key: 'listing.review.comparables_min',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-252: published listings of the same kind in a district needed before the price-outlier rule applies.',
+    editableBy: ['admin.listing.moderate'],
+    value: 5,
+    reason: 'seed: D-252',
+  },
+  {
+    key: 'listing.review.flagged_words',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-252: words and phrases (any case) that send a listing to review — scam patterns such as paying before a viewing or moving the chat off the platform. A JSON array of strings.',
+    editableBy: ['admin.listing.moderate'],
+    value: [
+      'โอนก่อนดูห้อง',
+      'โอนมัดจำก่อนดู',
+      'จองก่อนดูห้อง',
+      'ไม่ต้องดูห้อง',
+      'ทักไลน์ส่วนตัว',
+      'western union',
+      'pay before viewing',
+      'deposit before viewing',
+    ],
+    reason: 'seed: D-252',
+    check: (value) =>
+      Array.isArray(value) && value.every((word) => typeof word === 'string' && word.trim().length > 0)
+        ? []
+        : ['an array of non-empty strings'],
+  },
+  {
+    key: 'listing.report.hide_after',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-252: open reports from different viewers after which a published listing is hidden until a moderator decides.',
+    editableBy: ['admin.listing.moderate'],
+    value: 3,
+    reason: 'seed: D-252',
+  },
+  {
+    key: 'listing.verification.maker_checker',
+    valueType: 'bool',
+    scopeAllowed: ['platform'],
+    description:
+      "D-252: an owner verification needs a second platform user to confirm the first reviewer's approval.",
+    editableBy: ['admin.listing.verify'],
+    value: false,
+    reason: 'seed: D-252',
+  },
+  {
+    key: 'listing.verification.evidence_retention_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-252 / O-018: days after the decision when the ownership evidence (title deed, contract) is deleted; the decision itself stays. Conservative default until counsel answers O-018.',
+    editableBy: ['admin.listing.verify'],
+    value: 90,
+    reason: 'seed: O-018 (conservative default)',
+  },
   // --- platform business (Proposed until the pilot) ------------------------------------------------------
   {
     key: 'platform.subscriptions.enabled',

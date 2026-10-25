@@ -50,6 +50,7 @@ import {
 } from './governance.controller';
 import { OwnerInsightsController } from './insights.controller';
 import { OwnerLeasesController, OwnerLeaseTemplatesController } from './leases.controller';
+import { OwnerListingsController } from './listings.controller';
 import {
   OwnerBankAccountsController,
   OwnerComplianceAcknowledgementsController,
@@ -128,6 +129,7 @@ import {
     OwnerUnitBoardController,
     OwnerUnitsController,
     OwnerPortfolioController,
+    OwnerListingsController,
     OwnerUnitProfilesController,
     OwnerUtilityAccountsController,
     OwnerMetersController,

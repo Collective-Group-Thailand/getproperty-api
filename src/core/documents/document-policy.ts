@@ -27,6 +27,12 @@ export const DOCUMENT_POLICY: Partial<
   floor_plan: { mime: [...IMAGES, ...PDF], maxBytes: 50_000_000, retentionClass: 'other' },
   as_built: { mime: [...IMAGES, ...PDF], maxBytes: 500_000_000, retentionClass: 'other' },
   certificate: { mime: [...IMAGES, ...PDF], maxBytes: 20_000_000, retentionClass: 'other' },
+  // D-252: public listing photos — re-encoded without EXIF / location by the scan job (no HEIC: not decodable there).
+  listing_photo: {
+    mime: ['image/jpeg', 'image/png', 'image/webp'],
+    maxBytes: 15_000_000,
+    retentionClass: 'other',
+  },
   warranty: { mime: [...IMAGES, ...PDF], maxBytes: 20_000_000, retentionClass: 'other' },
   // The published notice behind a utility tariff version (platform admin upload, web F5 / D-214).
   tariff_source: { mime: [...IMAGES, ...PDF], maxBytes: 20_000_000, retentionClass: 'other' },
@@ -40,6 +46,10 @@ export const MULTIPART_THRESHOLD = 50_000_000;
 export const PART_SIZE = 10_000_000;
 
 /** Kinds whose downloads are PDPA-sensitive: every download is audited (D-025). */
-export const AUDITED_DOWNLOADS: DocumentKind[] = ['id_document', 'slip', 'contract'];
+export const AUDITED_DOWNLOADS: DocumentKind[] = ['id_document', 'slip', 'contract', 'certificate'];
+
+/** Widths of the WebP renditions of a listing photo (D-252): card, detail, full screen. */
+export const LISTING_PHOTO_WIDTHS = [480, 960, 1600] as const;
+export const renditionKey = (storageKey: string, width: number) => `${storageKey}.w${width}.webp`;
 
 export const isImage = (mime: string) => IMAGES.includes(mime) && mime !== 'image/heic';

@@ -70,6 +70,8 @@ export const API_TAGS: Record<string, string> = {
   'owner.unitBoard': 'The unit board of a building: floors with unit cards (B2.1, D-100).',
   'owner.units':
     'Units: create (one or floor × pattern), edit, status override, subscription count (D-082, D-151).',
+  'owner.listings':
+    'Rental listings of the tenant: draft, photos, availability, submit, pause, close; owner verification (D-252).',
   'owner.portfolio':
     'The landlord portfolio: add a unit in one step, every unit across projects with this month’s rent (D-251).',
   'owner.unitProfiles': 'Room types: default rent, deposit/advance months and lease lines (D-041).',
@@ -131,6 +133,7 @@ export const API_TAGS: Record<string, string> = {
   'owner.tm30':
     'TM30 notifications of foreign occupants: 24-hour deadline, the Immigration Bureau upload file per building, submissions (B6.2, D-052, D-216).',
   'resident.surveys': 'The periodic 1-question satisfaction survey in the LIFF (B6.3, D-083).',
+  'public.listings': 'Public rental listings: search, detail, sitemap, viewers\u2019 reports (D-252).',
   'public.signup': 'Self-serve sign-up of landlords by phone, LINE, Google or Apple (D-251, D-255).',
   'owner.storage':
     "The owner's storage: files and records counted against the free allowance of the tenant type, the level and the daily snapshots (D-276).",
@@ -142,6 +145,7 @@ export const API_TAGS: Record<string, string> = {
   'admin.platformUsers': 'Collective staff accounts and platform roles (D-161).',
   'admin.settings': 'Platform defaults of configurable business values (ADR-0004).',
   'admin.storage': 'Storage of every tenant: latest daily snapshot, allowance and level (D-276, D-279).',
+  'admin.listings': 'Listing moderation queue and owner verification decisions (D-252).',
   'admin.compliance':
     'The compliance rule registry with legal references, verification status and platform severities (ADR-0007, D-021a, D-149).',
   'owner.compliance':
