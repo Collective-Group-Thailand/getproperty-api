@@ -126,6 +126,22 @@ export class AuthService {
     });
   }
 
+  /**
+   * Operator tokens for a user who just became a member (landlord self-signup, B7.1): the same subject, scopes and
+   * audit as an operator sign-in with `amr` naming the identity used.
+   */
+  async issueOperator(tx: Tx, user: UserAccount, amr: string[]): Promise<TokenPair> {
+    const subject = await this.subjects.operator(tx, user.id);
+    if (subject.tenantIds.length === 0) throw new DomainException('auth.no_access');
+    const { tenantIds: _t, ...rest } = subject;
+    return this.issue(tx, rest, amr, user);
+  }
+
+  /** `POST /v1/public/signup/landlord/otp`: a sign-up code for any phone (D-251: no account or invitation needed). */
+  landlordOtpRequest(phone: string, language?: string): Promise<OtpRequestResult> {
+    return this.otp.request({ purpose: 'landlord_signup', phone, send: true, language });
+  }
+
   // ------------------------------------------------------------------------------------------- operators
 
   /** `POST /v1/auth/operator/otp/request`: sends a code when the phone belongs to an operator or has an invitation. */

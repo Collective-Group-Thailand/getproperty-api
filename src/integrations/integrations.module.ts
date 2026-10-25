@@ -8,6 +8,12 @@ import {
 } from '@collective/integrations/ai';
 import { ETAX_PROVIDERS, FakeEtaxProviders, RealEtaxProviders } from '@collective/integrations/etax';
 import {
+  FakeFirebaseVerifier,
+  FIREBASE_VERIFIER,
+  type FirebaseVerifier,
+  JoseFirebaseVerifier,
+} from '@collective/integrations/identity';
+import {
   FakeLineLogin,
   FakeLineMessaging,
   LINE_LOGIN,
@@ -260,6 +266,15 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
             ),
     },
     {
+      // D-255: Google / Apple sign-in through Firebase ID tokens, verified locally against Google's keys
+      provide: FIREBASE_VERIFIER,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig): FirebaseVerifier =>
+        config.useFakes
+          ? new FakeFirebaseVerifier()
+          : new JoseFirebaseVerifier(config.get('FIREBASE_PROJECT_ID')),
+    },
+    {
       provide: LINE_MESSAGING,
       inject: [AppConfig],
       useFactory: (config: AppConfig): LineMessagingPort =>
@@ -320,6 +335,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
     SMS,
     LINE_LOGIN,
     LINE_MESSAGING,
+    FIREBASE_VERIFIER,
     EMAIL,
     WEB_PUSH,
     VIRUS_SCAN,

@@ -62,6 +62,7 @@ import { StaffTasksService } from './ops-tasks/staff-tasks.service';
 import { Tm30Service } from './ops-tm30/tm30.service';
 import { BoardService } from './ops-units/board.service';
 import { AmenitiesService, MetersService } from './ops-units/meters-items.service';
+import { PortfolioService } from './ops-units/portfolio.service';
 import { UnitProfilesService, UtilityAccountsService } from './ops-units/profiles-accounts.service';
 import { SearchService } from './ops-units/search.service';
 import { StructureService } from './ops-units/structure.service';
@@ -71,6 +72,7 @@ import { UnitsService } from './ops-units/units.service';
 const SERVICES = [
   StructureService,
   UnitsService,
+  PortfolioService,
   UnitProfilesService,
   UtilityAccountsService,
   MetersService,

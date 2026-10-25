@@ -25,12 +25,12 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
     await db.drop();
   });
 
-  it('applies the package migrations (0.3.0: ten), then every app migration', async () => {
+  it('applies the package migrations (0.5.0: eleven), then every app migration', async () => {
     const core = await assetCoreMigrate({ client: db.admin });
-    expect(core.applied).toHaveLength(10);
+    expect(core.applied).toHaveLength(11);
     const applied = await applyPrismaMigrations(db.admin);
     expect(applied).toEqual(listMigrations().map((m) => m.name));
-    expect(applied).toHaveLength(40);
+    expect(applied).toHaveLength(41);
   });
 
   it('creates exactly the tables of schema-design §7.1–§7.3 (+ §7.5): core 18, platform 66 (+ B4.1 compliance_score, D-203 topic preferences, B6.1 platform business 17, B6.3 analytics 4, D-240 provider_credential, D-276 storage 2), ops 69 (B2.1–B4.5, B5.1 service 5, B5.3 community 8, B6.2 e-Tax / TM30 2, D-218 service messages 1, D-226 link requests 1), bridge 1, smart 28 (B1.3 + B3 + D-208 reading requests + B5.2 access 3 − T-14 telemetry_15m, partitioned parents counted once), juristic empty', async () => {

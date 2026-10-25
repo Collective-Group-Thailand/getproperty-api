@@ -76,6 +76,7 @@ export enum DocumentKindName {
 
 /** Owner console menu keys (`src/core/rbac/menu.ts` OWNER_MENU; a unit test keeps them in step). */
 export enum OwnerMenuKey {
+  Portfolio = 'portfolio',
   Dashboard = 'dashboard',
   Buildings = 'buildings',
   Units = 'units',

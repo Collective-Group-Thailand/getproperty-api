@@ -44,6 +44,10 @@ const MESSAGES: Record<OtpPurpose, { th: string; en: string }> = {
     th: 'รหัสยืนยันเบอร์โทร getproperty: {code} (หมดอายุใน {minutes} นาที)',
     en: 'getproperty phone verification code: {code} (expires in {minutes} min).',
   },
+  landlord_signup: {
+    th: 'รหัสสมัครใช้ getproperty: {code} (หมดอายุใน {minutes} นาที) ห้ามบอกรหัสนี้กับผู้อื่น',
+    en: 'getproperty sign-up code: {code} (expires in {minutes} min). Never share this code.',
+  },
 };
 
 /**

@@ -113,6 +113,18 @@
     "weak_password": {
       "title": "Password too weak",
       "detail": "Use 12 to 128 characters."
+    },
+    "identity_token_invalid": {
+      "title": "Sign-in failed",
+      "detail": "The Google or Apple sign-in could not be verified. Try again."
+    },
+    "identity_email_in_use": {
+      "title": "E-mail already has an account",
+      "detail": "This e-mail already belongs to a getproperty account. Sign in the way you did before, then add Google or Apple in your profile."
+    },
+    "identity_contact_required": {
+      "title": "Phone or e-mail needed",
+      "detail": "This sign-in did not share an e-mail address. Sign up with your phone number instead."
     }
   },
   "validation": {
@@ -955,6 +967,20 @@
     "allowance_exceeded": {
       "title": "Storage allowance reached",
       "detail": "This optional file would put the account over its storage allowance. Remove files you no longer need or ask getproperty about more space; documents the law requires are always stored."
+    }
+  },
+  "portfolio": {
+    "unit_claimed": {
+      "title": "Unit already registered",
+      "detail": "Another owner has already registered this unit number in this project. If it is yours, contact getproperty support to verify your ownership."
+    },
+    "not_a_stub": {
+      "title": "Not a stub building",
+      "detail": "Only an external stub (a condo not on getproperty yet) can be claimed."
+    },
+    "claimant_invalid": {
+      "title": "Cannot claim",
+      "detail": "The owner must be a condo juristic tenant and the operator a condo juristic or PM company tenant."
     }
   }
 }
