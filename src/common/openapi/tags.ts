@@ -138,6 +138,7 @@ export const API_TAGS: Record<string, string> = {
   'admin.supportGrants': 'Support access requests and incident approvals (D-090).',
   'admin.platformUsers': 'Collective staff accounts and platform roles (D-161).',
   'admin.settings': 'Platform defaults of configurable business values (ADR-0004).',
+  'admin.storage': 'Storage of every tenant: latest daily snapshot, allowance and level (D-276, D-279).',
   'admin.compliance':
     'The compliance rule registry with legal references, verification status and platform severities (ADR-0007, D-021a, D-149).',
   'owner.compliance':

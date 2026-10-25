@@ -11,7 +11,7 @@ inputs:
     description: Git ref of collective-shared matching package.json (the repository is private, D-275)
     default: main
   asset-core-token:
-    description: Token with read access to collective-group/collective-asset-core and collective-group/collective-shared
+    description: Token with read access to Collective-Group-Thailand/collective-asset-core and Collective-Group-Thailand/collective-shared
     required: true
 runs:
   using: composite
@@ -22,14 +22,14 @@ runs:
         TOKEN: ${{ inputs.asset-core-token }}
         REF: ${{ inputs.asset-core-ref }}
       run: |
-        git clone --depth 1 --branch "$REF" "https://x-access-token:${TOKEN}@github.com/collective-group/collective-asset-core.git" ../collective-asset-core
+        git clone --depth 1 --branch "$REF" "https://x-access-token:${TOKEN}@github.com/Collective-Group-Thailand/collective-asset-core.git" ../collective-asset-core
     - name: Check out collective-shared two levels up (link:../../collective-shared/packages/*, D-275, D-278)
       shell: bash
       env:
         TOKEN: ${{ inputs.asset-core-token }}
         REF: ${{ inputs.collective-shared-ref }}
       run: |
-        git clone --depth 1 --branch "$REF" "https://x-access-token:${TOKEN}@github.com/collective-group/collective-shared.git" ../../collective-shared
+        git clone --depth 1 --branch "$REF" "https://x-access-token:${TOKEN}@github.com/Collective-Group-Thailand/collective-shared.git" ../../collective-shared
     - uses: pnpm/action-setup@v4
     - uses: actions/setup-node@v4
       with:

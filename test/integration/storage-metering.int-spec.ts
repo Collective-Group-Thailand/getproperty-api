@@ -91,36 +91,67 @@ describe('D-276 storage metering (real PostgreSQL)', () => {
     await db?.drop();
   });
 
-  it('settings are seeded with the amounts pending: nothing metered, usage still shown and snapshotted', async () => {
+  it('5 GB free per tenant type is seeded (D-279); a type without an allowance is not metered; snapshots are daily', async () => {
     const seeded = await q<{ key: string; value: unknown }>(
       `SELECT s.key, v.value FROM platform.setting s JOIN platform.setting_version v ON v.setting_id = s.id
         WHERE s.key LIKE 'storage.%' ORDER BY s.key`,
     );
     expect(Object.fromEntries(seeded.map((r) => [r.key, r.value]))).toMatchObject({
-      'storage.free_gb': { apartment: null, landlord: null, condo_juristic: null, pm_company: null },
+      'storage.free_gb': { apartment: '5', landlord: '5', condo_juristic: '5', pm_company: '5' },
       'storage.price_per_gb_month': { apartment: null, landlord: null },
       'storage.packs': [],
       'storage.notice_at_percent': [80, 100],
       'storage.record_bytes': { _default: 1024, invoice: 2048, meter_reading: 256 },
     });
     const before = await storage();
-    expect(before).toMatchObject({ metered: false, allowanceBytes: null, level: null, freeGb: null });
+    expect(before).toMatchObject({ metered: true, allowanceBytes: '5368709120', level: 'ok', freeGb: '5' });
     expect(Object.keys(before.records).sort()).toEqual(
       ['invoice', 'lease', 'meter_reading', 'payment', 'receipt', 'service_request'].sort(),
     );
     expect(BigInt(before.usedBytes)).toBeGreaterThanOrEqual(BigInt(before.fileBytes));
 
+    // the platform admin can switch metering off for one tenant type (null allowance): usage shown, nothing held
+    await setPlatform('storage.free_gb', {
+      apartment: '5',
+      condo_juristic: '5',
+      pm_company: '5',
+      landlord: null,
+    });
+    expect(await storage(other.token)).toMatchObject({ metered: false, allowanceBytes: null, freeGb: null });
+    expect((await presign('other', 40_000_000, other.token)).status).toBe(201);
+
     expect(await metering().sweep()).toBeGreaterThanOrEqual(2); // DEV + other (+ any seeded tenant)
     expect(await metering().sweep()).toBe(0); // one snapshot per tenant and Bangkok day
-    const [snap] = await q<{ allowance_bytes: string | null; counted_bytes: string; policy_version: string }>(
-      `SELECT allowance_bytes, counted_bytes::text, policy_version FROM platform.storage_usage_daily WHERE tenant_id = $1`,
-      [DEV.tenantId],
+    const snaps = await q<{ tenant_id: string; allowance_bytes: string | null; policy_version: string }>(
+      `SELECT tenant_id, allowance_bytes::text, policy_version FROM platform.storage_usage_daily WHERE tenant_id = ANY($1)`,
+      [[DEV.tenantId, other.tenantId]],
     );
-    expect(snap).toMatchObject({ allowance_bytes: null, counted_bytes: before.usedBytes });
-    expect(snap!.policy_version.split(',')).toHaveLength(5);
+    const by = Object.fromEntries(snaps.map((r) => [r.tenant_id, r]));
+    expect(by[DEV.tenantId]!.allowance_bytes).toBe('5368709120');
+    expect(by[other.tenantId]!.allowance_bytes).toBeNull();
+    expect(by[DEV.tenantId]!.policy_version.split(',')).toHaveLength(5);
     expect(await notices()).toEqual([]);
-    // optional uploads are never held while metering is not active
-    expect((await presign('other', 40_000_000)).status).toBe(201);
+
+    // the admin overview lists the latest snapshot of every tenant (D-279)
+    const overview = (await t.http.get('/v1/admin/storage/tenants').set(bearer(admin)).expect(200)).body as {
+      data: {
+        tenantId: string;
+        usedPercent: number | null;
+        level: string | null;
+        allowanceBytes: string | null;
+      }[];
+      totals: { tenants: number; usedBytes: string };
+    };
+    expect(overview.data.find((r) => r.tenantId === DEV.tenantId)).toMatchObject({
+      level: 'ok',
+      allowanceBytes: '5368709120',
+    });
+    expect(overview.data.find((r) => r.tenantId === other.tenantId)).toMatchObject({
+      level: null,
+      allowanceBytes: null,
+    });
+    expect(overview.totals.tenants).toBeGreaterThanOrEqual(2);
+    await t.http.get('/v1/admin/storage/tenants').set(bearer(owner)).expect(403);
   });
 
   it('crossing 80 % notifies the owner once; an optional upload over the allowance is held, legal ones never', async () => {
@@ -150,7 +181,7 @@ describe('D-276 storage metering (real PostgreSQL)', () => {
     });
     expect(now.usedPercent).toBe(84);
 
-    // the landlord tenant has no override: still not metered (per tenant type, per tenant)
+    // the landlord type has no allowance (set above): still not metered — per tenant type, and per tenant override
     expect((await storage(other.token)).metered).toBe(false);
 
     // optional over the allowance while overage is not sold → held; legal and operational → always stored

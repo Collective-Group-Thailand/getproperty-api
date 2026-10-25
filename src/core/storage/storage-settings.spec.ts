@@ -9,15 +9,20 @@ import {
 } from './storage-settings';
 
 describe('storage metering settings (D-276)', () => {
-  it('seeds every amount as pending (null) and the recommended record sizes', () => {
+  it('seeds 5 GB free per tenant type (D-279), no overage price, no packs and the recommended record sizes', () => {
     const v = Object.fromEntries(SETTINGS.map((s) => [s.key, s]));
     expect(v['storage.free_gb']!.value).toEqual({
+      apartment: '5',
+      condo_juristic: '5',
+      pm_company: '5',
+      landlord: '5',
+    });
+    expect(v['storage.price_per_gb_month']!.value).toEqual({
       apartment: null,
       condo_juristic: null,
       pm_company: null,
       landlord: null,
     });
-    expect(v['storage.price_per_gb_month']!.value).toEqual(v['storage.free_gb']!.value);
     expect(v['storage.packs']!.value).toEqual([]);
     expect(v['storage.notice_at_percent']!.value).toEqual([80, 100]);
     expect(v['storage.record_bytes']!.value).toBe(DEFAULT_RECORD_BYTES);

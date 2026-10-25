@@ -8,6 +8,7 @@
 import { DEFAULT_PLATFORM_BRAND, platformBrandProblems } from '../brand/brand-setting';
 import {
   DEFAULT_RECORD_BYTES,
+  FREE_GB_PER_TYPE,
   NOT_SET_PER_TYPE,
   noticeProblems,
   packsProblems,
@@ -493,10 +494,10 @@ export const SETTINGS: readonly SettingDef[] = [
     valueType: 'json',
     scopeAllowed: ['platform', 'tenant'],
     description:
-      'D-276: free storage allowance in GB per tenant type ({"apartment": "5", …}; a tenant override for a custom deal). null = metering not active for that type: usage is snapshotted, nothing is held and no notice is sent. Amounts pending the founder.',
+      'D-276 / D-279: free storage allowance in GB per tenant type ({"apartment": "5", …}; founder 2026-10-25: 5 GB for every type) and per tenant for a custom deal. null = metering not active for that type: usage is snapshotted, nothing is held and no notice is sent.',
     editableBy: ADMIN,
-    value: NOT_SET_PER_TYPE,
-    reason: 'seed: D-276 (amounts pending)',
+    value: FREE_GB_PER_TYPE,
+    reason: 'seed: D-279 (5 GB free per tenant type)',
     check: perTenantTypeProblems,
   },
   {
@@ -504,7 +505,7 @@ export const SETTINGS: readonly SettingDef[] = [
     valueType: 'json',
     scopeAllowed: ['platform', 'tenant'],
     description:
-      'D-276: price in THB per GB-month above the allowance, per tenant type; null = overage not sold (only optional uploads are then held — legal and operational files are always stored). Billed on the monthly platform invoice next to the payment fee (D-250). Amounts pending the founder.',
+      'D-276 / D-279: price in THB per GB-month above the allowance, per tenant type (and per tenant); null = overage not sold (only optional uploads are then held — legal and operational files are always stored). Billed on the monthly platform invoice next to the payment fee (D-250). Set by the platform admin.',
     editableBy: ADMIN,
     value: NOT_SET_PER_TYPE,
     reason: 'seed: D-276 (amounts pending)',
@@ -515,7 +516,7 @@ export const SETTINGS: readonly SettingDef[] = [
     valueType: 'json',
     scopeAllowed: ['platform'],
     description:
-      'D-276: add-on storage packs a tenant can buy ([{"key": "plus-20", "gb": "20", "monthlyPrice": "49.00"}]); empty until the founder sets them.',
+      'D-276 / D-279: add-on storage packs a tenant can buy ([{"key": "plus-20", "gb": "20", "monthlyPrice": "49.00"}]); defined by the platform admin, empty until then.',
     editableBy: ADMIN,
     value: [],
     reason: 'seed: D-276 (no packs yet)',
