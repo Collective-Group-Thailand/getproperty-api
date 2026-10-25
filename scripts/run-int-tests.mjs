@@ -21,7 +21,11 @@ const run = spawnSync(
     'jest.config.ts',
     '--selectProjects',
     'integration',
-    '--runInBand',
+    // One suite at a time (createIntApp sets process.env), in a worker that is replaced once it holds more than
+    // the limit after a suite: every suite boots the whole AppModule, and in one --runInBand process the heap grows
+    // past 4 GB before the 48 suites are through (GC thrash, then out of memory).
+    '--maxWorkers=1',
+    '--workerIdleMemoryLimit=1536MB',
     ...process.argv.slice(2),
   ],
   { stdio: 'inherit', env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=4096' } },
