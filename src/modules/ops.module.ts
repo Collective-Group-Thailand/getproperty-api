@@ -28,6 +28,7 @@ import { InvoiceDocumentsService } from './ops-documents/invoice-documents.servi
 import { EtaxHooks } from './ops-etax/etax.hooks';
 import { EtaxService } from './ops-etax/etax.service';
 import { ContractRenderer } from './ops-leases/contract-renderer';
+import { LeaseNoticesService } from './ops-leases/lease-notices.service';
 import { LeaseStampDutyService } from './ops-leases/lease-stamp-duty.service';
 import { LeasesService } from './ops-leases/leases.service';
 import { ResidentLeasesService } from './ops-leases/resident-leases.service';
@@ -100,6 +101,7 @@ const SERVICES = [
   ContractRenderer,
   LeasesService,
   LeaseStampDutyService,
+  LeaseNoticesService,
   ResidentLeasesService,
   DepositDocuments,
   InspectionsService,

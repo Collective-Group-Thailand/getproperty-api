@@ -20,7 +20,7 @@
 | `compliance.deposit_wear` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (7)–(8); legal-reference §1 หักค่าเสื่อม | block | deposit | — | `owner.deposits.addDeduction` |
 | `compliance.no_forfeiture` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (4); legal-reference §1 ริบเงินประกัน | block | deposit, lease | — | `owner.deposits.recordRefund` |
 | `compliance.notice_period` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (11); legal-reference §1 ผู้เช่าบอกเลิก | warn | lease, notice | — | `owner.leases.recordNotice`, `resident.leases.giveNotice` |
-| `compliance.termination_notice` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (12); legal-reference §1 ผู้ให้เช่าบอกเลิก | warn | lease, notice | — | `owner.leases.recordNotice`, `owner.leases.terminate` |
+| `compliance.termination_notice` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (12); legal-reference §1 ผู้ให้เช่าบอกเลิก | warn | lease, notice | — | `owner.leases.issueNotice`, `owner.leases.recordNotice`, `owner.leases.terminate` |
 | `compliance.no_midterm_increase` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (3); legal-reference §1 ขึ้นค่าเช่า | block | lease, rate_plan | — | `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
 | `compliance.no_renewal_fee` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (11); legal-reference §1 ค่าต่อสัญญา | block | lease, invoice | — | `owner.billingCycles.issue`, `owner.invoiceCharges.create`, `owner.invoices.debitNote`, `owner.invoices.issue`, `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
 | `compliance.entry_notice` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (5); legal-reference §1 เข้าห้อง | warn | access | — | — (engine/worker only) |

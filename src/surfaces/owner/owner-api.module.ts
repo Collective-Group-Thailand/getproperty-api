@@ -51,6 +51,7 @@ import {
 import { OwnerInsightsController } from './insights.controller';
 import { OwnerLeaseStampDutyController, OwnerUnitDocumentsController } from './landlord-documents.controller';
 import { OwnerLeadsController } from './leads.controller';
+import { OwnerLeaseNoticesController } from './lease-notices.controller';
 import { OwnerLeasesController, OwnerLeaseTemplatesController } from './leases.controller';
 import { OwnerListingsController } from './listings.controller';
 import {
@@ -135,6 +136,7 @@ import {
     OwnerLeadsController,
     OwnerUnitDocumentsController,
     OwnerLeaseStampDutyController,
+    OwnerLeaseNoticesController,
     OwnerUnitProfilesController,
     OwnerUtilityAccountsController,
     OwnerMetersController,

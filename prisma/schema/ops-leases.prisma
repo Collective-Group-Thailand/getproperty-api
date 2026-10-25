@@ -199,6 +199,7 @@ model Lease {
   renewals         Lease[]              @relation("LeaseRenewal")
   contractDocument Document?            @relation("LeaseContractDocument", fields: [contractDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_contract_document_id_fkey")
   signedDocument   Document?            @relation("LeaseSignedDocument", fields: [signedDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_signed_document_id_fkey")
+  notices          LeaseNotice[]
   stampDutyDocument Document?           @relation("LeaseStampDutyDocument", fields: [stampDutyDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_stamp_duty_document_id_fkey")
   parties          LeaseParty[]
   lines            LeaseLine[]
@@ -360,5 +361,56 @@ enum StampDutyChannel {
   manual
 
   @@map("stamp_duty_channel")
+  @@schema("ops")
+}
+
+/// B7.5 (D-253): a written notice from the lessor (numbered, PDF, sent in LINE). Append-only.
+model LeaseNotice {
+  id            String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String          @map("tenant_id") @db.Uuid
+  leaseId       String          @map("lease_id") @db.Uuid
+  buildingId    String          @map("building_id") @db.Uuid
+  unitId        String          @map("unit_id") @db.Uuid
+  kind          LeaseNoticeKind
+  number        String
+  language      String          @default("th") @db.Char(2)
+  issuedOn      DateTime        @map("issued_on") @db.Date
+  effectiveDate DateTime?       @map("effective_date") @db.Date
+  respondBy     DateTime?       @map("respond_by") @db.Date
+  noticeDays    Int?            @map("notice_days")
+  newRent       Decimal?        @map("new_rent") @db.Decimal(14, 2)
+  renewalMonths Int?            @map("renewal_months")
+  amountDue     Decimal?        @map("amount_due") @db.Decimal(14, 2)
+  reasonCode    String?         @map("reason_code")
+  message       String?
+  details       Json            @default("{}")
+  documentId    String?         @map("document_id") @db.Uuid
+  sentAt        DateTime?       @map("sent_at") @db.Timestamptz(6)
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?         @map("created_by") @db.Uuid
+
+  tenant   Tenant    @relation("LeaseNoticeTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_notice_tenant_id_fkey")
+  lease    Lease     @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_notice_lease_id_fkey")
+  building Building  @relation("LeaseNoticeBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_notice_building_id_fkey")
+  unit     Unit      @relation("LeaseNoticeUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_notice_unit_id_fkey")
+  document Document? @relation("LeaseNoticeDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_notice_document_id_fkey")
+
+  @@unique([tenantId, number], map: "lease_notice_tenant_id_number_key")
+  @@index([leaseId, issuedOn(sort: Desc)], map: "lease_notice_lease_id_issued_on_idx")
+  @@index([buildingId], map: "lease_notice_building_id_idx")
+  @@index([unitId], map: "lease_notice_unit_id_idx")
+  @@index([documentId], map: "lease_notice_document_id_idx")
+  @@map("lease_notice")
+  @@schema("ops")
+}
+
+enum LeaseNoticeKind {
+  rent_increase
+  renewal_offer
+  non_renewal
+  termination
+  late_payment
+
+  @@map("lease_notice_kind")
   @@schema("ops")
 }

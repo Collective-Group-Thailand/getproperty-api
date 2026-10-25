@@ -1,0 +1,34 @@
+Notice of overdue rent
+
+No. | NTC-2026-00001
+
+Date | 25 October 2026
+
+From | มาลี ตัวอย่าง, 9 ถนนตัวอย่าง กรุงเทพมหานคร 10400
+
+To | Alex Example
+
+Re: the lease no. CTR-2026-00001 from 1 November 2026 to 31 October 2027 of 12/345, คอนโดตัวอย่าง, 9 ถนนตัวอย่าง กรุงเทพมหานคร 10400, at a rent of THB 15,000.00 per month.
+
+The following amounts are overdue:
+
+Invoice | Due | Overdue (THB)
+
+INV-2026-00077 | 5 September 2026 | 15,000.00
+
+Total | 15,000.00
+
+Please pay THB 15,000.00 (Fifteen thousand baht only) by 9 November 2026 with the Thai QR on the invoice. If you have already paid, please disregard this notice.
+
+This notice does not terminate the lease. The Lessor will not cut off water or electricity or block access to the premises because of arrears.
+
+Note from the Lessor
+
+Call me if anything is unclear.
+
+|
+Signed ........................................ Lessor
+
+(มาลี ตัวอย่าง)
+
+Sent electronically on 25 October 2026

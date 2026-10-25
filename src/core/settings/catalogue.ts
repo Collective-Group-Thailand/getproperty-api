@@ -725,6 +725,36 @@ export const SETTINGS: readonly SettingDef[] = [
     value: 15,
     reason: 'seed: B7.5 (e-Stamp Duty: within 15 days of signing, pending tax counsel O-019)',
   },
+  {
+    key: 'lease.notice.rent_increase_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-253 / D-020 ⚖: minimum days between a rent-increase notice and the date the new rent applies; the new rent may only apply after the current lease ends (no mid-term increase).',
+    editableBy: ADMIN_COMPLIANCE,
+    value: 30,
+    reason: 'seed: B7.5 (same period as the lessee notice of ข้อ 4 (11), pending counsel O-017)',
+  },
+  {
+    key: 'lease.notice.renewal_response_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-253: days the lessee has to answer a renewal offer (never later than the end of the current lease).',
+    editableBy: ADMIN_COMPLIANCE,
+    value: 15,
+    reason: 'seed: B7.5',
+  },
+  {
+    key: 'lease.notice.late_payment_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-253 / D-024: days a late-payment notice gives the lessee to pay; the notice never terminates the lease nor cuts a service.',
+    editableBy: ADMIN_COMPLIANCE,
+    value: 7,
+    reason: 'seed: B7.5',
+  },
   // --- platform business (Proposed until the pilot) ------------------------------------------------------
   {
     key: 'platform.subscriptions.enabled',
