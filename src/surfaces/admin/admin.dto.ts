@@ -860,6 +860,25 @@ export enum OperatorChangeReasonName {
   Other = 'other',
 }
 
+export class StubClaimDto {
+  @ApiProperty({
+    format: 'uuid',
+    example: FAKE.tenantId,
+    description: 'The condo juristic tenant that owns the building.',
+  })
+  @IsUUID()
+  ownerTenantId!: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    example: FAKE.uuid,
+    description: 'The operator: the juristic tenant itself (default) or its PM company.',
+  })
+  @IsOptional()
+  @IsUUID()
+  operatorTenantId?: string;
+}
+
 export class OperatorChangeDto {
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   @IsUUID()

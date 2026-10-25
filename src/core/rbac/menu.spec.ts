@@ -26,6 +26,17 @@ describe('menu entitlements (/me)', () => {
     }
   });
 
+  it('a landlord owner gets the portfolio-first menu (D-251), building operators never see it', () => {
+    const landlord = entitledMenu(OWNER_MENU, set('owner'), 'landlord', {});
+    expect(landlord).toEqual(
+      expect.arrayContaining(['portfolio', 'leases', 'invoices', 'payments', 'settings']),
+    );
+    expect(landlord).not.toEqual(expect.arrayContaining(['dashboard']));
+    for (const key of ['dashboard', 'buildings', 'units', 'devices', 'utility_loss'])
+      expect(landlord).not.toContain(key);
+    expect(entitledMenu(OWNER_MENU, set('owner'), 'apartment', {})).not.toContain('portfolio');
+  });
+
   it('platform roles: support sees tenants, not outbox', () => {
     const support = entitledMenu(ADMIN_MENU, set('support'), null, {});
     expect(support).toContain('tenants');

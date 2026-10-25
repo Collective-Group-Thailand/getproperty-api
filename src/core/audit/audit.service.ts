@@ -94,6 +94,7 @@ export const AUDIT_ACTIONS = [
   'retention.executed',
   'unit.status_changed',
   'unit.bulk_created',
+  'unit.portfolio_added',
   'unit.imported',
   'party.unlinked',
   'party.linked',

@@ -62,6 +62,7 @@ import { AccessService } from './tenancy/access.service';
 import { BankAccountService } from './tenancy/bank-account.service';
 import { TenantDataKeys } from './tenancy/data-keys.service';
 import { InvitationService } from './tenancy/invitation.service';
+import { LandlordSignupService } from './tenancy/landlord-signup.service';
 import { MembershipService } from './tenancy/membership.service';
 import { PlatformUsersService } from './tenancy/platform-users.service';
 import { SupportGrantService } from './tenancy/support-grant.service';
@@ -130,6 +131,7 @@ const SERVICES = [
   ProviderCredentialsService,
   DocumentsService,
   StorageMeteringService,
+  LandlordSignupService,
   NotificationService,
   NotificationRoutesService,
   NotificationTemplatesService,

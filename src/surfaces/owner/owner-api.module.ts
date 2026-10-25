@@ -62,6 +62,7 @@ import {
   partiesController,
 } from './parties.controller';
 import { OwnerPaymentsController } from './payments.controller';
+import { OwnerPortfolioController } from './portfolio.controller';
 import { OwnerDashboardController, OwnerReceivablesController } from './receivables.controller';
 import { OwnerSearchController } from './search.controller';
 import {
@@ -126,6 +127,7 @@ import {
     OwnerFloorsController,
     OwnerUnitBoardController,
     OwnerUnitsController,
+    OwnerPortfolioController,
     OwnerUnitProfilesController,
     OwnerUtilityAccountsController,
     OwnerMetersController,
