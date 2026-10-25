@@ -2073,6 +2073,28 @@
           "type": "https://errors.getproperty.co/service.unavailable"
         }
       },
+      "problem.service_cost.voided": {
+        "summary": "service_cost.voided",
+        "value": {
+          "code": "service_cost.voided",
+          "detail": "ใบเสนอราคาหรือใบเสร็จนี้ถูกยกเลิกไปก่อนหน้านี้",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ยกเลิกไปแล้ว",
+          "type": "https://errors.getproperty.co/service_cost.voided"
+        }
+      },
+      "problem.service_request.decision_unavailable": {
+        "summary": "service_request.decision_unavailable",
+        "value": {
+          "code": "service_request.decision_unavailable",
+          "detail": "การเลือกว่าใครซ่อม ใครจ่าย ใช้กับเจ้าของบ้าน/คอนโด ส่วนอาคารใช้คิวช่างประจำ",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ใช้ไม่ได้กับองค์กรนี้",
+          "type": "https://errors.getproperty.co/service_request.decision_unavailable"
+        }
+      },
       "problem.service_request.in_warranty": {
         "summary": "service_request.in_warranty",
         "value": {
@@ -2093,6 +2115,28 @@
           "status": 409,
           "title": "เปลี่ยนสถานะงานแจ้งซ่อมไม่ได้",
           "type": "https://errors.getproperty.co/service_request.invalid_state"
+        }
+      },
+      "problem.service_request.not_decided": {
+        "summary": "service_request.not_decided",
+        "value": {
+          "code": "service_request.not_decided",
+          "detail": "กรุณาเลือกว่าใครจ่ายค่าซ่อมนี้ก่อนเรียกเก็บหรือคืนเงินผู้เช่า",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ยังไม่ได้เลือกผู้จ่าย",
+          "type": "https://errors.getproperty.co/service_request.not_decided"
+        }
+      },
+      "problem.service_request.nothing_to_settle": {
+        "summary": "service_request.nothing_to_settle",
+        "value": {
+          "code": "service_request.nothing_to_settle",
+          "detail": "ใบเสร็จทั้งหมดเคลียร์กับผู้เช่าแล้ว",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ไม่มียอดต้องเคลียร์",
+          "type": "https://errors.getproperty.co/service_request.nothing_to_settle"
         }
       },
       "problem.settings.backdated": {
@@ -12815,6 +12859,35 @@
         ],
         "type": "object"
       },
+      "IncomeExpenseItemDto": {
+        "properties": {
+          "amount": {
+            "description": "The owner’s share of the receipts. Unit: THB, decimal string (D-046).",
+            "example": "900.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "categoryKey": {
+            "example": "plumbing",
+            "type": "string"
+          },
+          "nameEn": {
+            "example": "Plumbing",
+            "type": "string"
+          },
+          "nameTh": {
+            "example": "ประปา",
+            "type": "string"
+          }
+        },
+        "required": [
+          "categoryKey",
+          "nameTh",
+          "nameEn",
+          "amount"
+        ],
+        "type": "object"
+      },
       "IncomeSummaryCreateDto": {
         "properties": {
           "language": {
@@ -12878,6 +12951,12 @@
             "pattern": "^-?\\d{1,12}\\.\\d{2}$",
             "type": "string"
           },
+          "expenses": {
+            "description": "Owner-borne repairs recorded (D-263). Unit: THB, decimal string (D-046).",
+            "example": "900.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
           "gross": {
             "description": "Gross 40(5). Unit: THB, decimal string (D-046).",
             "example": "30000.00",
@@ -12887,6 +12966,12 @@
           "net": {
             "description": "Gross minus the deduction (estimate). Unit: THB, decimal string (D-046).",
             "example": "21000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "netActual": {
+            "description": "Gross minus the recorded expenses (the actual-expense estimate). Unit: THB, decimal string (D-046).",
+            "example": "29100.00",
             "pattern": "^-?\\d{1,12}\\.\\d{2}$",
             "type": "string"
           },
@@ -12909,7 +12994,9 @@
           "retained",
           "gross",
           "deduction",
-          "net"
+          "net",
+          "expenses",
+          "netActual"
         ],
         "type": "object"
       },
@@ -31007,6 +31094,17 @@
             "format": "date-time",
             "type": "string"
           },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceDecisionStateDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Landlords (D-263): who fixes it and who pays; null until the owner decides (and for buildings)."
+          },
           "description": {
             "example": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
             "type": "string"
@@ -31174,7 +31272,8 @@
           "visitConfirmedAt",
           "photos",
           "events",
-          "sla"
+          "sla",
+          "decision"
         ],
         "type": "object"
       },
@@ -32545,6 +32644,401 @@
         ],
         "type": "string"
       },
+      "ServiceCostBearer": {
+        "enum": [
+          "owner",
+          "tenant",
+          "shared"
+        ],
+        "type": "string"
+      },
+      "ServiceCostCreateDto": {
+        "properties": {
+          "amount": {
+            "description": "Unit: THB, decimal string (D-046).",
+            "example": "1800.00",
+            "type": "string"
+          },
+          "description": {
+            "example": "เปลี่ยนท่อน้ำทิ้งใต้ซิงก์",
+            "type": "string"
+          },
+          "documentId": {
+            "description": "The quotation or receipt file (`POST /v1/owner/files/presign`, then `…/actions/complete`).",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "issuedOn": {
+            "description": "Not after today.",
+            "example": "2026-11-03",
+            "format": "date",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ServiceCostKind"
+              }
+            ],
+            "example": "receipt"
+          },
+          "paidBy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceCostPayer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Receipts only (required): who paid the vendor.",
+            "example": "owner"
+          },
+          "vendorName": {
+            "example": "ช่างสมศักดิ์ ประปา",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "description",
+          "amount",
+          "issuedOn"
+        ],
+        "type": "object"
+      },
+      "ServiceCostDto": {
+        "properties": {
+          "amount": {
+            "description": "Unit: THB, decimal string (D-046).",
+            "example": "1800.00",
+            "type": "string"
+          },
+          "description": {
+            "example": "เปลี่ยนท่อน้ำทิ้งใต้ซิงก์",
+            "type": "string"
+          },
+          "documentId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "issuedOn": {
+            "example": "2026-11-03",
+            "format": "date",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ServiceCostKind"
+              }
+            ],
+            "example": "receipt"
+          },
+          "paidBy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceCostPayer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "example": "owner"
+          },
+          "url": {
+            "description": "5-minute link to the file once it passed the virus scan.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vendorName": {
+            "example": "ช่างสมศักดิ์ ประปา",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "voidReason": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "voidedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "description",
+          "amount",
+          "paidBy",
+          "vendorName",
+          "issuedOn",
+          "documentId",
+          "url",
+          "voidedAt",
+          "voidReason"
+        ],
+        "type": "object"
+      },
+      "ServiceCostKind": {
+        "enum": [
+          "quotation",
+          "receipt"
+        ],
+        "type": "string"
+      },
+      "ServiceCostPayer": {
+        "enum": [
+          "owner",
+          "tenant"
+        ],
+        "type": "string"
+      },
+      "ServiceCostVoidDto": {
+        "properties": {
+          "reason": {
+            "example": "บันทึกยอดผิด",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "ServiceCostsDto": {
+        "properties": {
+          "costs": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceCostDto"
+            },
+            "type": "array"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceDecisionStateDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decisions": {
+            "description": "Every decision, oldest first.",
+            "items": {
+              "$ref": "#/components/schemas/ServiceDecisionDto"
+            },
+            "type": "array"
+          },
+          "nextActions": {
+            "description": "Actions allowed now.",
+            "example": [
+              "decide",
+              "add-cost",
+              "settle"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "serviceRequestId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "settlement": {
+            "$ref": "#/components/schemas/ServiceSettlementSummaryDto"
+          },
+          "settlements": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceSettlementDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "serviceRequestId",
+          "decision",
+          "decisions",
+          "costs",
+          "settlements",
+          "settlement",
+          "nextActions"
+        ],
+        "type": "object"
+      },
+      "ServiceDecisionCreateDto": {
+        "properties": {
+          "costBearer": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ServiceCostBearer"
+              }
+            ],
+            "example": "shared"
+          },
+          "handledBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ServiceHandler"
+              }
+            ],
+            "example": "owner_technician"
+          },
+          "note": {
+            "example": "ผู้เช่าทำท่อแตกเอง ตกลงแบ่งกันคนละครึ่ง",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenantSharePercent": {
+            "description": "Required with `shared`: above 0 and below 100, at most two decimals.",
+            "example": "50",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "handledBy",
+          "costBearer"
+        ],
+        "type": "object"
+      },
+      "ServiceDecisionDto": {
+        "properties": {
+          "costBearer": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ServiceCostBearer"
+              }
+            ],
+            "example": "owner"
+          },
+          "decidedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "handledBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ServiceHandler"
+              }
+            ],
+            "example": "tenant"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "note": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenantSharePercent": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "handledBy",
+          "costBearer",
+          "tenantSharePercent",
+          "note",
+          "decidedAt"
+        ],
+        "type": "object"
+      },
+      "ServiceDecisionStateDto": {
+        "properties": {
+          "costBearer": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ServiceCostBearer"
+              }
+            ],
+            "example": "shared"
+          },
+          "decidedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "handledBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ServiceHandler"
+              }
+            ],
+            "example": "owner_technician"
+          },
+          "tenantSharePercent": {
+            "description": "With a shared cost: the tenant’s share in percent.",
+            "example": "50.00",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "handledBy",
+          "costBearer",
+          "tenantSharePercent",
+          "decidedAt"
+        ],
+        "type": "object"
+      },
+      "ServiceHandler": {
+        "enum": [
+          "owner_technician",
+          "tenant",
+          "partner"
+        ],
+        "type": "string"
+      },
       "ServiceMessageAuthor": {
         "enum": [
           "resident",
@@ -32845,6 +33339,17 @@
             "format": "date-time",
             "type": "string"
           },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceDecisionStateDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Landlords (D-263): who fixes it and who pays; null until the owner decides (and for buildings)."
+          },
           "description": {
             "example": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
             "type": "string"
@@ -33061,6 +33566,7 @@
           "cancelReason",
           "preferredVisit",
           "visitConfirmedAt",
+          "decision",
           "version",
           "createdAt"
         ],
@@ -33078,6 +33584,88 @@
           "cancelled"
         ],
         "type": "string"
+      },
+      "ServiceSettlementDto": {
+        "properties": {
+          "amount": {
+            "description": "Positive: billed to the tenant on the next invoice; negative: credited. THB, decimal string.",
+            "example": "900.00",
+            "type": "string"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "invoiceChargeId": {
+            "description": "The pending invoice charge it created.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "settledAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "amount",
+          "invoiceChargeId",
+          "settledAt"
+        ],
+        "type": "object"
+      },
+      "ServiceSettlementSummaryDto": {
+        "properties": {
+          "due": {
+            "description": "Still to settle: `actions/settle` bills it (positive) or credits it (negative).",
+            "example": "900.00",
+            "type": "string"
+          },
+          "ownerShare": {
+            "description": "The owner’s share (the expense of the annual summary).",
+            "example": "900.00",
+            "type": "string"
+          },
+          "paidByOwner": {
+            "example": "1800.00",
+            "type": "string"
+          },
+          "paidByTenant": {
+            "example": "0.00",
+            "type": "string"
+          },
+          "receiptsTotal": {
+            "example": "1800.00",
+            "type": "string"
+          },
+          "settled": {
+            "example": "0.00",
+            "type": "string"
+          },
+          "tenantOwes": {
+            "description": "Positive: the tenant owes the owner; negative: the other way.",
+            "example": "900.00",
+            "type": "string"
+          },
+          "tenantShare": {
+            "example": "900.00",
+            "type": "string"
+          }
+        },
+        "required": [
+          "receiptsTotal",
+          "ownerShare",
+          "tenantShare",
+          "paidByOwner",
+          "paidByTenant",
+          "tenantOwes",
+          "settled",
+          "due"
+        ],
+        "type": "object"
       },
       "ServiceSlaDto": {
         "properties": {
@@ -38428,6 +39016,19 @@
             "pattern": "^-?\\d{1,12}\\.\\d{2}$",
             "type": "string"
           },
+          "expenseItems": {
+            "description": "Owner-borne repairs per service category.",
+            "items": {
+              "$ref": "#/components/schemas/IncomeExpenseItemDto"
+            },
+            "type": "array"
+          },
+          "expenses": {
+            "description": "Repair costs the owner bore on this unit (receipts of the year on service requests, D-263). Unit: THB, decimal string (D-046).",
+            "example": "900.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
           "gross": {
             "description": "Assessable income, section 40(5). Unit: THB, decimal string (D-046).",
             "example": "30000.00",
@@ -38485,7 +39086,9 @@
           "rent",
           "charges",
           "retained",
-          "gross"
+          "gross",
+          "expenses",
+          "expenseItems"
         ],
         "type": "object"
       },
@@ -107564,8 +108167,10 @@
                   "totals": {
                     "charges": "2350.00",
                     "deduction": "9000.00",
+                    "expenses": "900.00",
                     "gross": "30000.00",
                     "net": "21000.00",
+                    "netActual": "29100.00",
                     "rent": "30000.00",
                     "retained": "0.00"
                   },
@@ -107586,6 +108191,15 @@
                         "0.00"
                       ],
                       "charges": "2350.00",
+                      "expenseItems": [
+                        {
+                          "amount": "900.00",
+                          "categoryKey": "plumbing",
+                          "nameEn": "Plumbing",
+                          "nameTh": "ประปา"
+                        }
+                      ],
+                      "expenses": "900.00",
                       "gross": "30000.00",
                       "months": [
                         "15000.00",
@@ -107822,8 +108436,10 @@
                     "totals": {
                       "charges": "2350.00",
                       "deduction": "9000.00",
+                      "expenses": "900.00",
                       "gross": "30000.00",
                       "net": "21000.00",
+                      "netActual": "29100.00",
                       "rent": "30000.00",
                       "retained": "0.00"
                     },
@@ -107844,6 +108460,15 @@
                           "0.00"
                         ],
                         "charges": "2350.00",
+                        "expenseItems": [
+                          {
+                            "amount": "900.00",
+                            "categoryKey": "plumbing",
+                            "nameEn": "Plumbing",
+                            "nameTh": "ประปา"
+                          }
+                        ],
+                        "expenses": "900.00",
                         "gross": "30000.00",
                         "months": [
                           "15000.00",
@@ -155002,6 +155627,7 @@
                       },
                       "closedAt": null,
                       "createdAt": "2026-11-01T00:15:00+07:00",
+                      "decision": null,
                       "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                       "doneAt": null,
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -155283,6 +155909,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -155577,6 +156204,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -155860,6 +156488,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -156144,6 +156773,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -156390,6 +157020,318 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/service-requests/{serviceRequestId}/actions/decide": {
+      "post": {
+        "description": "The owner’s technician, the tenant or a partner fixes it; the owner, the tenant or both pay (`shared` with the tenant’s percent). Changeable at any time — each decision is kept — and the resident is told in LINE (D-263).\n\nImplements: D-263.",
+        "operationId": "owner.serviceCosts.decide",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serviceRequestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "costBearer": "shared",
+                    "handledBy": "owner_technician",
+                    "tenantSharePercent": "50"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ServiceDecisionCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "costs": [
+                    {
+                      "amount": "1800.00",
+                      "description": "เปลี่ยนท่อน้ำทิ้งใต้ซิงก์",
+                      "documentId": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "issuedOn": "2026-11-03",
+                      "kind": "receipt",
+                      "paidBy": "owner",
+                      "url": null,
+                      "vendorName": "ช่างสมศักดิ์ ประปา",
+                      "voidReason": null,
+                      "voidedAt": null
+                    }
+                  ],
+                  "decision": {
+                    "costBearer": "shared",
+                    "decidedAt": "2026-11-01T00:15:00+07:00",
+                    "handledBy": "owner_technician",
+                    "tenantSharePercent": "50.00"
+                  },
+                  "decisions": [
+                    {
+                      "costBearer": "shared",
+                      "decidedAt": "2026-11-01T00:15:00+07:00",
+                      "handledBy": "owner_technician",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "note": "ผู้เช่าทำท่อแตกเอง ตกลงแบ่งกันคนละครึ่ง",
+                      "tenantSharePercent": "50.00"
+                    }
+                  ],
+                  "nextActions": [
+                    "decide",
+                    "add-cost",
+                    "settle"
+                  ],
+                  "serviceRequestId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "settlement": {
+                    "due": "900.00",
+                    "ownerShare": "900.00",
+                    "paidByOwner": "1800.00",
+                    "paidByTenant": "0.00",
+                    "receiptsTotal": "1800.00",
+                    "settled": "0.00",
+                    "tenantOwes": "900.00",
+                    "tenantShare": "900.00"
+                  },
+                  "settlements": []
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceCostsDto"
+                }
+              }
+            },
+            "description": "Decided",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "service_request.decision_unavailable": {
+                    "$ref": "#/components/examples/problem.service_request.decision_unavailable"
+                  },
+                  "service_request.invalid_state": {
+                    "$ref": "#/components/examples/problem.service_request.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `service_request.decision_unavailable`, `service_request.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Decide who fixes and who pays",
+        "tags": [
+          "owner.serviceCosts"
+        ],
+        "x-required-permissions": [
+          "service_request.handle"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/service-requests/{serviceRequestId}/actions/reopen": {
       "post": {
         "description": "The work did not fix it: back to triage with a reason (a new work order follows).\n\nImplements: D-072.",
@@ -156446,6 +157388,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -156696,6 +157639,322 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/service-requests/{serviceRequestId}/actions/settle": {
+      "post": {
+        "description": "Puts what is due on the tenant’s next invoice as a pending charge: their share of the receipts the owner paid (`service_charge_work`), or a credit of the owner’s share of what they paid (`discount`, negative). Only when the owner confirms; repeatable as receipts change; the resident is told in LINE (D-263).\n\nImplements: D-263, D-041.",
+        "operationId": "owner.serviceCosts.settle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serviceRequestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "costs": [
+                    {
+                      "amount": "1800.00",
+                      "description": "เปลี่ยนท่อน้ำทิ้งใต้ซิงก์",
+                      "documentId": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "issuedOn": "2026-11-03",
+                      "kind": "receipt",
+                      "paidBy": "owner",
+                      "url": null,
+                      "vendorName": "ช่างสมศักดิ์ ประปา",
+                      "voidReason": null,
+                      "voidedAt": null
+                    }
+                  ],
+                  "decision": {
+                    "costBearer": "shared",
+                    "decidedAt": "2026-11-01T00:15:00+07:00",
+                    "handledBy": "owner_technician",
+                    "tenantSharePercent": "50.00"
+                  },
+                  "decisions": [
+                    {
+                      "costBearer": "shared",
+                      "decidedAt": "2026-11-01T00:15:00+07:00",
+                      "handledBy": "owner_technician",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "note": "ผู้เช่าทำท่อแตกเอง ตกลงแบ่งกันคนละครึ่ง",
+                      "tenantSharePercent": "50.00"
+                    }
+                  ],
+                  "nextActions": [
+                    "decide",
+                    "add-cost"
+                  ],
+                  "serviceRequestId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "settlement": {
+                    "due": "0.00",
+                    "ownerShare": "900.00",
+                    "paidByOwner": "1800.00",
+                    "paidByTenant": "0.00",
+                    "receiptsTotal": "1800.00",
+                    "settled": "900.00",
+                    "tenantOwes": "900.00",
+                    "tenantShare": "900.00"
+                  },
+                  "settlements": [
+                    {
+                      "amount": "900.00",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "invoiceChargeId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "settledAt": "2026-11-01T00:15:00+07:00"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceCostsDto"
+                }
+              }
+            },
+            "description": "Settled",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "service_request.decision_unavailable": {
+                    "$ref": "#/components/examples/problem.service_request.decision_unavailable"
+                  },
+                  "service_request.not_decided": {
+                    "$ref": "#/components/examples/problem.service_request.not_decided"
+                  },
+                  "service_request.nothing_to_settle": {
+                    "$ref": "#/components/examples/problem.service_request.nothing_to_settle"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `service_request.decision_unavailable`, `service_request.not_decided`, `service_request.nothing_to_settle`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Settle the repair with the tenant",
+        "tags": [
+          "owner.serviceCosts"
+        ],
+        "x-required-permissions": [
+          "service_request.handle"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/service-requests/{serviceRequestId}/actions/triage": {
       "post": {
         "description": "Confirms the category and priority of a new request (its SLA clock keeps running).\n\nImplements: D-072, D-159.",
@@ -156752,6 +158011,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -156995,6 +158255,923 @@
         "summary": "Triage a request",
         "tags": [
           "owner.serviceRequests"
+        ],
+        "x-required-permissions": [
+          "service_request.handle"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/service-requests/{serviceRequestId}/costs": {
+      "get": {
+        "description": "The current decision and its history, the quotations and receipts (amounts, who paid, a 5-minute link to each file) and what is still to settle with the tenant (D-263).\n\nImplements: D-263.",
+        "operationId": "owner.serviceCosts.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serviceRequestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "costs": [
+                    {
+                      "amount": "1800.00",
+                      "description": "เปลี่ยนท่อน้ำทิ้งใต้ซิงก์",
+                      "documentId": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "issuedOn": "2026-11-03",
+                      "kind": "receipt",
+                      "paidBy": "owner",
+                      "url": null,
+                      "vendorName": "ช่างสมศักดิ์ ประปา",
+                      "voidReason": null,
+                      "voidedAt": null
+                    }
+                  ],
+                  "decision": {
+                    "costBearer": "shared",
+                    "decidedAt": "2026-11-01T00:15:00+07:00",
+                    "handledBy": "owner_technician",
+                    "tenantSharePercent": "50.00"
+                  },
+                  "decisions": [
+                    {
+                      "costBearer": "shared",
+                      "decidedAt": "2026-11-01T00:15:00+07:00",
+                      "handledBy": "owner_technician",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "note": "ผู้เช่าทำท่อแตกเอง ตกลงแบ่งกันคนละครึ่ง",
+                      "tenantSharePercent": "50.00"
+                    }
+                  ],
+                  "nextActions": [
+                    "decide",
+                    "add-cost",
+                    "settle"
+                  ],
+                  "serviceRequestId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "settlement": {
+                    "due": "900.00",
+                    "ownerShare": "900.00",
+                    "paidByOwner": "1800.00",
+                    "paidByTenant": "0.00",
+                    "receiptsTotal": "1800.00",
+                    "settled": "0.00",
+                    "tenantOwes": "900.00",
+                    "tenantShare": "900.00"
+                  },
+                  "settlements": []
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceCostsDto"
+                }
+              }
+            },
+            "description": "Costs",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "service_request.decision_unavailable": {
+                    "$ref": "#/components/examples/problem.service_request.decision_unavailable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `service_request.decision_unavailable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Who fixes, who pays, and the costs",
+        "tags": [
+          "owner.serviceCosts"
+        ],
+        "x-required-permissions": [
+          "service_request.read"
+        ],
+        "x-surface": "owner"
+      },
+      "post": {
+        "description": "Its amount, date, vendor and file; a receipt says who paid the vendor (the owner, or the tenant who arranged the repair). Receipts decide the settlement and, for the owner’s share, the repair expenses of the annual income summary (D-263, D-253).\n\nImplements: D-263, D-253.",
+        "operationId": "owner.serviceCosts.add",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serviceRequestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "amount": "1800.00",
+                    "description": "เปลี่ยนท่อน้ำทิ้งใต้ซิงก์",
+                    "issuedOn": "2026-11-03",
+                    "kind": "receipt",
+                    "paidBy": "owner",
+                    "vendorName": "ช่างสมศักดิ์ ประปา"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ServiceCostCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "costs": [
+                    {
+                      "amount": "1800.00",
+                      "description": "เปลี่ยนท่อน้ำทิ้งใต้ซิงก์",
+                      "documentId": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "issuedOn": "2026-11-03",
+                      "kind": "receipt",
+                      "paidBy": "owner",
+                      "url": null,
+                      "vendorName": "ช่างสมศักดิ์ ประปา",
+                      "voidReason": null,
+                      "voidedAt": null
+                    }
+                  ],
+                  "decision": {
+                    "costBearer": "shared",
+                    "decidedAt": "2026-11-01T00:15:00+07:00",
+                    "handledBy": "owner_technician",
+                    "tenantSharePercent": "50.00"
+                  },
+                  "decisions": [
+                    {
+                      "costBearer": "shared",
+                      "decidedAt": "2026-11-01T00:15:00+07:00",
+                      "handledBy": "owner_technician",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "note": "ผู้เช่าทำท่อแตกเอง ตกลงแบ่งกันคนละครึ่ง",
+                      "tenantSharePercent": "50.00"
+                    }
+                  ],
+                  "nextActions": [
+                    "decide",
+                    "add-cost",
+                    "settle"
+                  ],
+                  "serviceRequestId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "settlement": {
+                    "due": "900.00",
+                    "ownerShare": "900.00",
+                    "paidByOwner": "1800.00",
+                    "paidByTenant": "0.00",
+                    "receiptsTotal": "1800.00",
+                    "settled": "0.00",
+                    "tenantOwes": "900.00",
+                    "tenantShare": "900.00"
+                  },
+                  "settlements": []
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceCostsDto"
+                }
+              }
+            },
+            "description": "Attached",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "service_request.decision_unavailable": {
+                    "$ref": "#/components/examples/problem.service_request.decision_unavailable"
+                  },
+                  "service_request.invalid_state": {
+                    "$ref": "#/components/examples/problem.service_request.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `service_request.decision_unavailable`, `service_request.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Attach a quotation or a receipt",
+        "tags": [
+          "owner.serviceCosts"
+        ],
+        "x-required-permissions": [
+          "service_request.handle"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/service-requests/{serviceRequestId}/costs/{costId}/actions/void": {
+      "post": {
+        "description": "With a reason; it stays listed, voided. A receipt already settled is corrected by the next settlement (D-263).\n\nImplements: D-263.",
+        "operationId": "owner.serviceCosts.void",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serviceRequestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "costId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "reason": "บันทึกยอดผิด"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ServiceCostVoidDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "costs": [
+                    {
+                      "amount": "1800.00",
+                      "description": "เปลี่ยนท่อน้ำทิ้งใต้ซิงก์",
+                      "documentId": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "issuedOn": "2026-11-03",
+                      "kind": "receipt",
+                      "paidBy": "owner",
+                      "url": null,
+                      "vendorName": "ช่างสมศักดิ์ ประปา",
+                      "voidReason": null,
+                      "voidedAt": null
+                    }
+                  ],
+                  "decision": {
+                    "costBearer": "shared",
+                    "decidedAt": "2026-11-01T00:15:00+07:00",
+                    "handledBy": "owner_technician",
+                    "tenantSharePercent": "50.00"
+                  },
+                  "decisions": [
+                    {
+                      "costBearer": "shared",
+                      "decidedAt": "2026-11-01T00:15:00+07:00",
+                      "handledBy": "owner_technician",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "note": "ผู้เช่าทำท่อแตกเอง ตกลงแบ่งกันคนละครึ่ง",
+                      "tenantSharePercent": "50.00"
+                    }
+                  ],
+                  "nextActions": [
+                    "decide",
+                    "add-cost",
+                    "settle"
+                  ],
+                  "serviceRequestId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "settlement": {
+                    "due": "900.00",
+                    "ownerShare": "900.00",
+                    "paidByOwner": "1800.00",
+                    "paidByTenant": "0.00",
+                    "receiptsTotal": "1800.00",
+                    "settled": "0.00",
+                    "tenantOwes": "900.00",
+                    "tenantShare": "900.00"
+                  },
+                  "settlements": []
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceCostsDto"
+                }
+              }
+            },
+            "description": "Voided",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "service_cost.voided": {
+                    "$ref": "#/components/examples/problem.service_cost.voided"
+                  },
+                  "service_request.decision_unavailable": {
+                    "$ref": "#/components/examples/problem.service_request.decision_unavailable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `service_cost.voided`, `service_request.decision_unavailable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Void a quotation or a receipt",
+        "tags": [
+          "owner.serviceCosts"
         ],
         "x-required-permissions": [
           "service_request.handle"
@@ -192801,6 +194978,7 @@
                       },
                       "closedAt": null,
                       "createdAt": "2026-11-01T00:15:00+07:00",
+                      "decision": null,
                       "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                       "doneAt": null,
                       "events": [
@@ -193048,6 +195226,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "events": [
@@ -193325,6 +195504,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "events": [
@@ -193571,6 +195751,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "events": [
@@ -193840,6 +196021,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "events": [
@@ -194128,6 +196310,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "events": [
@@ -206655,6 +208838,7 @@
                       },
                       "closedAt": null,
                       "createdAt": "2026-11-01T00:15:00+07:00",
+                      "decision": null,
                       "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                       "doneAt": null,
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -206936,6 +209120,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -207230,6 +209415,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -207513,6 +209699,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -207797,6 +209984,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -208099,6 +210287,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -208405,6 +210594,7 @@
                   },
                   "closedAt": null,
                   "createdAt": "2026-11-01T00:15:00+07:00",
+                  "decision": null,
                   "description": "ก๊อกน้ำอ่างล้างหน้ารั่ว",
                   "doneAt": null,
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -220608,6 +222798,10 @@
     {
       "description": "Repair categories and their SLA hours: platform defaults and my versions (D-072).",
       "name": "owner.serviceCategories"
+    },
+    {
+      "description": "Landlords: who fixes a repair, who pays, quotations and receipts, settlement on the next invoice (D-263).",
+      "name": "owner.serviceCosts"
     },
     {
       "description": "Repair requests (B5.1, D-072): queue with SLA on the workflow engine (D-159), triage, work orders, warranty referral to getbuild (D-153), automatic requests from device health (D-034).",

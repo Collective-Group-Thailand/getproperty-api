@@ -146,6 +146,10 @@ model ServiceRequest {
   preferredVisit             VisitPreference?     @map("preferred_visit")
   visitConfirmedAt           DateTime?            @map("visit_confirmed_at") @db.Timestamptz(6)
   visitConfirmedFor          DateTime?            @map("visit_confirmed_for") @db.Timestamptz(6)
+  handledBy                  ServiceHandler?      @map("handled_by")
+  costBearer                 ServiceCostBearer?   @map("cost_bearer")
+  tenantSharePercent         Decimal?             @map("tenant_share_percent") @db.Decimal(5, 2)
+  decidedAt                  DateTime?            @map("decided_at") @db.Timestamptz(6)
   version                    Int                  @default(1)
   createdAt                  DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy                  String?              @map("created_by") @db.Uuid
@@ -161,6 +165,9 @@ model ServiceRequest {
   workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_request_workflow_instance_id_fkey")
   workOrders       WorkOrder[]
   csatResponses CsatResponse[]
+  decisions        ServiceDecision[]
+  costs            ServiceCost[]
+  settlements      ServiceSettlement[]
   messages         ServiceMessage[]
 
   @@index([tenantId, buildingId, status], map: "service_request_tenant_id_building_id_status_idx")
@@ -332,5 +339,117 @@ model ServiceMessage {
   @@index([authorUserId], map: "service_message_author_user_id_idx")
   @@index([authorPartyId], map: "service_message_author_party_id_idx")
   @@map("service_message")
+  @@schema("ops")
+}
+
+enum ServiceHandler {
+  owner_technician
+  tenant
+  partner
+
+  @@map("service_handler")
+  @@schema("ops")
+}
+
+enum ServiceCostBearer {
+  owner
+  tenant
+  shared
+
+  @@map("service_cost_bearer")
+  @@schema("ops")
+}
+
+enum ServiceCostKind {
+  quotation
+  receipt
+
+  @@map("service_cost_kind")
+  @@schema("ops")
+}
+
+enum ServiceCostPayer {
+  owner
+  tenant
+
+  @@map("service_cost_payer")
+  @@schema("ops")
+}
+
+/// Every who-fixes / who-pays decision on a landlord's service request (D-263); append-only.
+model ServiceDecision {
+  id                 String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String            @map("tenant_id") @db.Uuid
+  serviceRequestId   String            @map("service_request_id") @db.Uuid
+  handledBy          ServiceHandler    @map("handled_by")
+  costBearer         ServiceCostBearer @map("cost_bearer")
+  tenantSharePercent Decimal?          @map("tenant_share_percent") @db.Decimal(5, 2)
+  note               String?
+  decidedAt          DateTime          @default(now()) @map("decided_at") @db.Timestamptz(6)
+  decidedBy          String?           @map("decided_by") @db.Uuid
+
+  tenant         Tenant         @relation("ServiceDecisionTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_decision_tenant_id_fkey")
+  serviceRequest ServiceRequest @relation(fields: [serviceRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_decision_service_request_id_fkey")
+
+  @@index([serviceRequestId, decidedAt], map: "service_decision_service_request_id_idx")
+  @@index([tenantId], map: "service_decision_tenant_id_idx")
+  @@map("service_decision")
+  @@schema("ops")
+}
+
+/// Quotations and receipts of a landlord's service request (D-263); voided, never deleted.
+model ServiceCost {
+  id               String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String            @map("tenant_id") @db.Uuid
+  buildingId       String            @map("building_id") @db.Uuid
+  unitId           String?           @map("unit_id") @db.Uuid
+  serviceRequestId String            @map("service_request_id") @db.Uuid
+  kind             ServiceCostKind
+  description      String
+  amount           Decimal           @db.Decimal(14, 2)
+  paidBy           ServiceCostPayer? @map("paid_by")
+  vendorName       String?           @map("vendor_name")
+  documentId       String?           @map("document_id") @db.Uuid
+  issuedOn         DateTime          @map("issued_on") @db.Date
+  voidedAt         DateTime?         @map("voided_at") @db.Timestamptz(6)
+  voidReason       String?           @map("void_reason")
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?           @map("created_by") @db.Uuid
+
+  tenant         Tenant         @relation("ServiceCostTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_cost_tenant_id_fkey")
+  building       Building       @relation("ServiceCostBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_cost_building_id_fkey")
+  unit           Unit?          @relation("ServiceCostUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_cost_unit_id_fkey")
+  serviceRequest ServiceRequest @relation(fields: [serviceRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_cost_service_request_id_fkey")
+  document       Document?      @relation("ServiceCostDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_cost_document_id_fkey")
+
+  @@index([serviceRequestId], map: "service_cost_service_request_id_idx")
+  @@index([tenantId, issuedOn], map: "service_cost_tenant_id_issued_on_idx")
+  @@index([buildingId], map: "service_cost_building_id_idx")
+  @@index([unitId], map: "service_cost_unit_id_idx")
+  @@index([documentId], map: "service_cost_document_id_idx")
+  @@map("service_cost")
+  @@schema("ops")
+}
+
+/// The tenant's share billed (positive) or the owner's share credited (negative) as a pending invoice charge (D-263).
+model ServiceSettlement {
+  id               String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  serviceRequestId String   @map("service_request_id") @db.Uuid
+  partyId          String   @map("party_id") @db.Uuid
+  amount           Decimal  @db.Decimal(14, 2)
+  invoiceChargeId  String   @unique(map: "service_settlement_invoice_charge_id_key") @map("invoice_charge_id") @db.Uuid
+  settledAt        DateTime @default(now()) @map("settled_at") @db.Timestamptz(6)
+  settledBy        String?  @map("settled_by") @db.Uuid
+
+  tenant         Tenant         @relation("ServiceSettlementTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_settlement_tenant_id_fkey")
+  serviceRequest ServiceRequest @relation(fields: [serviceRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_settlement_service_request_id_fkey")
+  party          Party          @relation("ServiceSettlementParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_settlement_party_id_fkey")
+  invoiceCharge  InvoiceCharge  @relation(fields: [invoiceChargeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "service_settlement_invoice_charge_id_fkey")
+
+  @@index([serviceRequestId], map: "service_settlement_service_request_id_idx")
+  @@index([tenantId], map: "service_settlement_tenant_id_idx")
+  @@index([partyId], map: "service_settlement_party_id_idx")
+  @@map("service_settlement")
   @@schema("ops")
 }

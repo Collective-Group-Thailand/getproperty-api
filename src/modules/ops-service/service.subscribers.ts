@@ -57,6 +57,16 @@ async function userRecipient(tx: Tx, userId: string, tenantId: string): Promise<
 }
 
 /** Request summary for templates. */
+/** Who fixes a landlord's repair, in the resident's words (D-263). */
+const HANDLED_LABELS: Record<string, { th: string; en: string }> = {
+  owner_technician: { th: 'เจ้าของจะส่งช่างมาซ่อม', en: 'the owner sends a technician' },
+  tenant: { th: 'ให้ผู้เช่าจัดหาช่างเอง', en: 'please arrange the repair yourself' },
+  partner: {
+    th: 'เจ้าของจะประสานช่างของนิติบุคคล/พาร์ทเนอร์',
+    en: 'the owner arranges a building or partner technician',
+  },
+};
+
 async function requestData(tx: Tx, id: string) {
   const sr = await tx.serviceRequest.findUnique({
     where: { id },
@@ -132,6 +142,58 @@ export class ServiceNotifications implements OnModuleInit {
         data: {
           tenant: { name: await tenantName(tx, e.tenantId) },
           request: { ...r.data, statusTh: label.th, statusEn: label.en },
+          link: this.link(`/requests/${r.sr.id}`),
+        },
+        consentPurpose: 'resident.service',
+      };
+    });
+    // D-263: a landlord's decision and the settlement of a repair reach the resident who reported it.
+    registerNotifiable('service_request.decided', async (tx, e) => {
+      const partyId = e.payload.requesterPartyId as string | null;
+      if (!e.tenantId || !partyId || e.payload.reporterKind !== 'resident') return null;
+      const r = await requestData(tx, e.payload.serviceRequestId as string);
+      if (!r) return null;
+      const handled = HANDLED_LABELS[e.payload.handledBy as string] ?? HANDLED_LABELS.owner_technician!;
+      const share = e.payload.tenantSharePercent as string | null;
+      const bearer =
+        e.payload.costBearer === 'tenant'
+          ? { th: 'ผู้เช่าเป็นผู้จ่าย', en: 'paid by you' }
+          : e.payload.costBearer === 'shared'
+            ? { th: `แบ่งจ่าย ผู้เช่า ${Number(share)}%`, en: `shared, your part ${Number(share)}%` }
+            : { th: 'เจ้าของเป็นผู้จ่าย', en: 'paid by the owner' };
+      return {
+        recipients: await billedParty(tx, partyId),
+        data: {
+          tenant: { name: await tenantName(tx, e.tenantId) },
+          request: r.data,
+          decision: {
+            handledTh: handled.th,
+            handledEn: handled.en,
+            bearerTh: bearer.th,
+            bearerEn: bearer.en,
+          },
+          link: this.link(`/requests/${r.sr.id}`),
+        },
+        consentPurpose: 'resident.service',
+      };
+    });
+    registerNotifiable('service_request.cost_settled', async (tx, e) => {
+      const partyId = e.payload.partyId as string | null;
+      if (!e.tenantId || !partyId) return null;
+      const r = await requestData(tx, e.payload.serviceRequestId as string);
+      if (!r) return null;
+      const amount = String(e.payload.amount);
+      const credit = amount.startsWith('-');
+      return {
+        recipients: await billedParty(tx, partyId),
+        data: {
+          tenant: { name: await tenantName(tx, e.tenantId) },
+          request: r.data,
+          settlement: {
+            amount: credit ? amount.slice(1) : amount,
+            th: credit ? 'เงินคืนค่าซ่อม' : 'ค่าซ่อมส่วนของคุณ',
+            en: credit ? 'a repair credit' : 'your share of the repair',
+          },
           link: this.link(`/requests/${r.sr.id}`),
         },
         consentPurpose: 'resident.service',

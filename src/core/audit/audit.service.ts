@@ -10,6 +10,10 @@ import { Injectable, Logger } from '@nestjs/common';
  * `platform.audit_log.action`; keep names `<area>.<event>` and never rename (reports and alerts filter on them).
  */
 export const AUDIT_ACTIONS = [
+  'service_request.decided',
+  'service_request.settled',
+  'service_cost.added',
+  'service_cost.voided',
   'auth.login',
   'auth.login_failed',
   'auth.identity_linked',

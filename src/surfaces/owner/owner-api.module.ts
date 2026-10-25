@@ -81,6 +81,7 @@ import {
   serviceRequestsController,
   workOrdersController,
 } from './service.controller';
+import { OwnerServiceCostsController } from './service-costs.controller';
 import {
   deviceInstallsController,
   devicesController,
@@ -118,6 +119,7 @@ import {
     systemPingController(SURFACES.owner),
     OwnerMeController,
     OwnerIdentitiesController,
+    OwnerServiceCostsController,
     OwnerTenantController,
     OwnerMembersController,
     OwnerInvitationsController,

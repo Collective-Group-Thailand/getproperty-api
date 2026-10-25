@@ -12,6 +12,7 @@ import { PDF_RENDERER, type PdfRendererPort } from '@integrations/pdf/pdf-render
 import { Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
+import { tenantFraction } from '../ops-service/service-costs.service';
 import { incomeSummaryBody, incomeSummaryTitle } from './certificate-templates';
 import { type ContractLanguage, ContractRenderer } from './contract-renderer';
 import { bahtTextEn, englishDate } from './english-text';
@@ -30,13 +31,25 @@ export interface UnitIncome {
   charges: string;
   retained: string;
   gross: string;
+  /** Repair costs the owner bore on this unit's service requests (receipts of the year, D-263). */
+  expenses: string;
+  expenseItems: { categoryKey: string; nameTh: string; nameEn: string; amount: string }[];
 }
 
 export interface IncomeYear {
   year: number;
   deductionPercent: string;
   units: UnitIncome[];
-  totals: { rent: string; charges: string; retained: string; gross: string; deduction: string; net: string };
+  totals: {
+    rent: string;
+    charges: string;
+    retained: string;
+    gross: string;
+    deduction: string;
+    net: string;
+    expenses: string;
+    netActual: string;
+  };
 }
 
 /** Invoice line kinds that are rent of property (section 40(5)); everything else is a utility or a service (D-282). */
@@ -100,7 +113,8 @@ const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'
  * charges received (receipts and receipt-tax invoices issued through the platform, not voided, deposits excluded),
  * the deposit deductions kept at settlement, the gross assessable income and the flat-rate deduction
  * (`tax.income_40_5.flat_deduction_percent`) as an estimate. The PDF (`pdf_summary`, series `income_summary`) is a
- * summary for the owner's PND 90 / 94, never a filing (⚖ O-017 wording). Owner expenses join with B7.6.
+ * summary for the owner's PND 90 / 94, never a filing (⚖ O-017 wording). Owner-borne repairs of landlords' service
+ * requests (D-263) are listed as recorded expenses, with the actual-expense alternative beside the flat rate.
  */
 @Injectable()
 export class IncomeSummariesService extends TenantScopedRepository {
@@ -152,7 +166,7 @@ export class IncomeSummariesService extends TenantScopedRepository {
         },
       },
     } as const;
-    const [receipts, taxReceipts, settlements] = await this.db.tenant(ctx, (tx) =>
+    const [receipts, taxReceipts, settlements, repairs] = await this.db.tenant(ctx, (tx) =>
       Promise.all([
         tx.receipt.findMany({
           where: {
@@ -178,17 +192,48 @@ export class IncomeSummariesService extends TenantScopedRepository {
           where: { ...scope, refundedAt: { gte: from, lt: to }, deductionsTotal: { gt: 0 } },
           select: { unitId: true, buildingId: true, deductionsTotal: true },
         }),
+        tx.serviceCost.findMany({
+          where: {
+            ...scope,
+            unitId: unitId ?? { not: null },
+            kind: 'receipt',
+            voidedAt: null,
+            issuedOn: {
+              gte: new Date(`${year}-01-01T00:00:00Z`),
+              lt: new Date(`${year + 1}-01-01T00:00:00Z`),
+            },
+            serviceRequest: { costBearer: { not: null } },
+          },
+          select: {
+            unitId: true,
+            buildingId: true,
+            amount: true,
+            serviceRequest: {
+              select: {
+                costBearer: true,
+                tenantSharePercent: true,
+                category: { select: { key: true, nameTh: true, nameEn: true } },
+              },
+            },
+          },
+        }),
       ]),
     );
     const zeros = () => Array.from({ length: 12 }, () => new Decimal(0));
     const byUnit = new Map<
       string,
-      { buildingId: string; rent: Decimal[]; charges: Decimal[]; retained: Decimal }
+      {
+        buildingId: string;
+        rent: Decimal[];
+        charges: Decimal[];
+        retained: Decimal;
+        expenses: Map<string, { nameTh: string; nameEn: string; amount: Decimal }>;
+      }
     >();
     const slot = (id: string, buildingId: string) => {
       let s = byUnit.get(id);
       if (!s) {
-        s = { buildingId, rent: zeros(), charges: zeros(), retained: new Decimal(0) };
+        s = { buildingId, rent: zeros(), charges: zeros(), retained: new Decimal(0), expenses: new Map() };
         byUnit.set(id, s);
       }
       return s;
@@ -212,6 +257,21 @@ export class IncomeSummariesService extends TenantScopedRepository {
       const s = slot(d.unitId, d.buildingId);
       s.retained = s.retained.plus(d.deductionsTotal.toString());
     }
+    // Owner-borne repairs (D-263): each receipt times the owner's share under the request's current decision.
+    for (const r of repairs) {
+      const sr = r.serviceRequest;
+      const owner = new Decimal(1).minus(tenantFraction(sr.costBearer, sr.tenantSharePercent).toString());
+      const amount = new Decimal(r.amount.toString()).times(owner).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      if (amount.isZero()) continue;
+      const s = slot(r.unitId!, r.buildingId);
+      const item = s.expenses.get(sr.category.key) ?? {
+        nameTh: sr.category.nameTh,
+        nameEn: sr.category.nameEn,
+        amount: new Decimal(0),
+      };
+      item.amount = item.amount.plus(amount);
+      s.expenses.set(sr.category.key, item);
+    }
     const unitRows = byUnit.size
       ? await this.db.platform((tx) =>
           tx.unit.findMany({ where: { id: { in: [...byUnit.keys()] } }, select: { id: true, unitNo: true } }),
@@ -222,13 +282,16 @@ export class IncomeSummariesService extends TenantScopedRepository {
     let rent = new Decimal(0);
     let charges = new Decimal(0);
     let retained = new Decimal(0);
+    let expenses = new Decimal(0);
     const units: UnitIncome[] = [...byUnit.entries()]
       .map(([id, s]) => {
         const r = sum(s.rent);
         const c = sum(s.charges);
+        const e = sum([...s.expenses.values()].map((x) => x.amount));
         rent = rent.plus(r);
         charges = charges.plus(c);
         retained = retained.plus(s.retained);
+        expenses = expenses.plus(e);
         return {
           unitId: id,
           unitNo: unitNo.get(id) ?? '—',
@@ -239,6 +302,15 @@ export class IncomeSummariesService extends TenantScopedRepository {
           charges: c.toFixed(2),
           retained: s.retained.toFixed(2),
           gross: r.plus(s.retained).toFixed(2),
+          expenses: e.toFixed(2),
+          expenseItems: [...s.expenses.entries()]
+            .map(([categoryKey, x]) => ({
+              categoryKey,
+              nameTh: x.nameTh,
+              nameEn: x.nameEn,
+              amount: x.amount.toFixed(2),
+            }))
+            .sort((a, b) => a.categoryKey.localeCompare(b.categoryKey)),
         };
       })
       .sort((a, b) => a.unitNo.localeCompare(b.unitNo, 'th'));
@@ -255,6 +327,8 @@ export class IncomeSummariesService extends TenantScopedRepository {
         gross: gross.toFixed(2),
         deduction: deduction.toFixed(2),
         net: gross.minus(deduction).toFixed(2),
+        expenses: expenses.toFixed(2),
+        netActual: gross.minus(expenses).toFixed(2),
       },
     };
   }
@@ -313,6 +387,12 @@ export class IncomeSummariesService extends TenantScopedRepository {
           deductionPercent: summary.deductionPercent,
           deduction: formatThb(summary.totals.deduction),
           net: formatThb(summary.totals.net),
+          expenses: formatThb(summary.totals.expenses),
+          expenseItems: (row?.expenseItems ?? []).map((e) => ({
+            label: en ? e.nameEn : e.nameTh,
+            amount: formatThb(e.amount),
+          })),
+          netActual: formatThb(summary.totals.netActual),
         });
         const html = await this.renderer.brandedDocument(body, title, language);
         const pdf = await this.pdf.render(html, {

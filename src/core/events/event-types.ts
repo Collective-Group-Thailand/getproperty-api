@@ -251,6 +251,10 @@ export const DOMAIN_EVENT_TYPES = {
     'A request inside a getbuild warranty was referred to the developer instead of the building technician (D-153).',
   'service_request.visit_confirmed':
     'The resident confirmed the scheduled visit of their repair request (LIFF #24, D-218).',
+  'service_request.decided':
+    'A landlord decided who fixes a service request and who pays (D-263); the resident is told in LINE.',
+  'service_request.cost_settled':
+    "The tenant's share of a repair was billed on the next invoice, or the owner's share credited (D-263).",
   'service_request.message':
     'A message was posted in the thread of a repair request or work order (LIFF #23, D-218; named as the consumers listen to it).',
   'work_order.created': 'A work order was opened (repair, preventive, install, de-install, inspection).',

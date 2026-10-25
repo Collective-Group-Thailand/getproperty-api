@@ -72,6 +72,12 @@ const summary = (en: boolean): IncomeSummaryData => ({
   deductionPercent: '30',
   deduction: '45,600.00',
   net: '106,400.00',
+  expenses: '3,500.00',
+  expenseItems: [
+    { label: en ? 'Plumbing' : 'ประปา', amount: '2,000.00' },
+    { label: en ? 'Air conditioning' : 'เครื่องปรับอากาศ', amount: '1,500.00' },
+  ],
+  netActual: '148,500.00',
 });
 
 /** Golden texts of the rent certificate and the annual income summary (B7.5 part 3, D-253), th and en. */
