@@ -125,6 +125,22 @@
     "identity_contact_required": {
       "title": "Phone or e-mail needed",
       "detail": "This sign-in did not share an e-mail address. Sign up with your phone number instead."
+    },
+    "identity_not_linked": {
+      "title": "Not linked to an account",
+      "detail": "This sign-in is not linked to a getproperty account yet. Sign in with your phone number, then add it in your profile."
+    },
+    "identity_in_use": {
+      "title": "Linked to another account",
+      "detail": "This sign-in already belongs to another getproperty account. Sign in with it there, or remove it from that account first."
+    },
+    "identity_locked": {
+      "title": "Cannot be removed here",
+      "detail": "LINE and your phone number carry your notifications and links to your leases, so they stay on the account."
+    },
+    "identity_last": {
+      "title": "Keep one way to sign in",
+      "detail": "This is your only way to sign in. Add your phone number or another sign-in first."
     }
   },
   "validation": {

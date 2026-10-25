@@ -12,6 +12,8 @@ import { Injectable, Logger } from '@nestjs/common';
 export const AUDIT_ACTIONS = [
   'auth.login',
   'auth.login_failed',
+  'auth.identity_linked',
+  'auth.identity_unlinked',
   'auth.logout',
   'auth.refresh_reuse_detected',
   'auth.refresh_grace_reused',

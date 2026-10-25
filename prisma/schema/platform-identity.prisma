@@ -32,6 +32,7 @@ enum OtpPurpose {
   lease_signature
   phone_verify
   landlord_signup
+  prospect_login
 
   @@map("otp_purpose")
   @@schema("platform")

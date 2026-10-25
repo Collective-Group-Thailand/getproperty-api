@@ -48,6 +48,10 @@ const MESSAGES: Record<OtpPurpose, { th: string; en: string }> = {
     th: 'รหัสสมัครใช้ getproperty: {code} (หมดอายุใน {minutes} นาที) ห้ามบอกรหัสนี้กับผู้อื่น',
     en: 'getproperty sign-up code: {code} (expires in {minutes} min). Never share this code.',
   },
+  prospect_login: {
+    th: 'รหัสเข้าสู่ระบบ getproperty สำหรับหาห้องเช่า: {code} (หมดอายุใน {minutes} นาที) ห้ามบอกรหัสนี้กับผู้อื่น',
+    en: 'getproperty code to look for a place: {code} (expires in {minutes} min). Never share this code.',
+  },
 };
 
 /**

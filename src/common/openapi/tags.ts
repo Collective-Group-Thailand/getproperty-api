@@ -39,6 +39,8 @@ export const API_TAGS: Record<string, string> = {
     'Gateway first boot: provisioning code + CSR → certificate from the platform CA, device JWT and MQTT ACL (D-130).',
   'owner.me':
     'Who I am in the owner console: tenants, current tenant and type, role, permissions, menu entitlements, feature flags, subscription state; password and TOTP setup.',
+  'owner.identities':
+    'My ways to sign in to the console: phone, password, Google, Apple, LINE (D-255, D-283).',
   'owner.tenant': 'Company data of the current tenant (D-050, D-151).',
   'owner.members': 'People working for the tenant: roles and building limits (D-090).',
   'owner.invitations': 'Invitations of operators by SMS, QR or link (D-145).',
@@ -103,6 +105,8 @@ export const API_TAGS: Record<string, string> = {
   'staff.pushSubscriptions': 'Web push (VAPID) subscriptions of the staff PWA.',
   'staff.realtime': 'Realtime auth and the server-sent events stream (contract §6).',
   'resident.me': 'Who I am in the LINE Mini App: leases, units, language, consent state (D-060, D-154).',
+  'resident.identities':
+    'My ways to open the resident app outside LINE: phone, Google, Apple (D-255, D-283).',
   'resident.consents': 'PDPA consents of the resident (D-025).',
   'resident.dataSubjectRequests': 'PDPA requests filed by the resident (D-025).',
   'resident.notifications': 'In-app inbox of the resident.',

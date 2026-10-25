@@ -38,6 +38,7 @@ import { OutboxRelay } from './events/outbox-relay.service';
 import { EventSubscriberRegistry } from './events/subscribers';
 import { FeatureFlagsService } from './feature-flags/feature-flags.service';
 import { AuthService } from './identity/auth.service';
+import { IdentitySignInService } from './identity/identity-sign-in.service';
 import { OtpService } from './identity/otp.service';
 import { SessionService } from './identity/session.service';
 import { SigningKeys } from './identity/signing-keys';
@@ -103,6 +104,7 @@ const SERVICES = [
   SubjectService,
   OtpService,
   AuthService,
+  IdentitySignInService,
   AccessService,
   InvitationService,
   MembershipService,
