@@ -512,8 +512,7 @@ export class LeadLeaseDraftCreateDto {
   @ApiPropertyOptional({
     enum: LanguageName,
     enumName: 'Language',
-    default: LanguageName.Th,
-    description: 'Contract language of the landlord template (B7.5).',
+    description: 'Contract language of the landlord template (B7.5), default `th`.',
   })
   @IsOptional()
   @IsEnum(LanguageName)

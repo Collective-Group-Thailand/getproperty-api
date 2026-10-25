@@ -15459,8 +15459,7 @@
                 "$ref": "#/components/schemas/Language"
               }
             ],
-            "default": "th",
-            "description": "Contract language of the landlord template (B7.5)."
+            "description": "Contract language of the landlord template (B7.5), default `th`."
           },
           "months": {
             "description": "Default: the prospect's term, at least the listing's minimum.",
@@ -15893,8 +15892,7 @@
                 "$ref": "#/components/schemas/Language"
               }
             ],
-            "default": "th",
-            "description": "Contract language (B7.5, D-253): a landlord lease is written on the landlord template of the unit kind in Thai or English; the สคบ. 2568 standard is Thai only."
+            "description": "Contract language (B7.5, D-253), default `th`: a landlord lease is written on the landlord template of the unit kind in Thai or English; the สคบ. 2568 standard is Thai only."
           },
           "lesseePartyId": {
             "description": "A party of my tenant (D-151).",
@@ -15949,8 +15947,7 @@
                 "$ref": "#/components/schemas/StampDutyPayer"
               }
             ],
-            "default": "lessor",
-            "description": "Who pays the stamp duty (O-019; the lessor by law unless agreed otherwise)."
+            "description": "Who pays the stamp duty (O-019), default `lessor` (liable by law unless agreed otherwise)."
           },
           "startDate": {
             "example": "2026-11-01",
@@ -17162,8 +17159,7 @@
                 "$ref": "#/components/schemas/Language"
               }
             ],
-            "default": "th",
-            "description": "Contract language (B7.5, D-253): a landlord lease is written on the landlord template of the unit kind in Thai or English; the สคบ. 2568 standard is Thai only."
+            "description": "Contract language (B7.5, D-253), default `th`: a landlord lease is written on the landlord template of the unit kind in Thai or English; the สคบ. 2568 standard is Thai only."
           },
           "lines": {
             "items": {
@@ -17201,8 +17197,7 @@
                 "$ref": "#/components/schemas/StampDutyPayer"
               }
             ],
-            "default": "lessor",
-            "description": "Who pays the stamp duty (O-019; the lessor by law unless agreed otherwise)."
+            "description": "Who pays the stamp duty (O-019), default `lessor` (liable by law unless agreed otherwise)."
           },
           "startDate": {
             "example": "2026-11-01",

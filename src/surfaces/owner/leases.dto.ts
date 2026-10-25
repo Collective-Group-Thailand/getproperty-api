@@ -340,9 +340,8 @@ export class LeaseCreateDto {
   @ApiPropertyOptional({
     enum: LanguageName,
     enumName: 'Language',
-    default: LanguageName.Th,
     description:
-      'Contract language (B7.5, D-253): a landlord lease is written on the landlord template of the unit kind in Thai or English; the สคบ. 2568 standard is Thai only.',
+      'Contract language (B7.5, D-253), default `th`: a landlord lease is written on the landlord template of the unit kind in Thai or English; the สคบ. 2568 standard is Thai only.',
   })
   @IsOptional()
   @IsEnum(LanguageName)
@@ -351,8 +350,7 @@ export class LeaseCreateDto {
   @ApiPropertyOptional({
     enum: StampDutyPayerName,
     enumName: 'StampDutyPayer',
-    default: StampDutyPayerName.Lessor,
-    description: 'Who pays the stamp duty (O-019; the lessor by law unless agreed otherwise).',
+    description: 'Who pays the stamp duty (O-019), default `lessor` (liable by law unless agreed otherwise).',
   })
   @IsOptional()
   @IsEnum(StampDutyPayerName)
@@ -450,9 +448,8 @@ export class LeaseUpdateDto {
   @ApiPropertyOptional({
     enum: LanguageName,
     enumName: 'Language',
-    default: LanguageName.Th,
     description:
-      'Contract language (B7.5, D-253): a landlord lease is written on the landlord template of the unit kind in Thai or English; the สคบ. 2568 standard is Thai only.',
+      'Contract language (B7.5, D-253), default `th`: a landlord lease is written on the landlord template of the unit kind in Thai or English; the สคบ. 2568 standard is Thai only.',
   })
   @IsOptional()
   @IsEnum(LanguageName)
@@ -461,8 +458,7 @@ export class LeaseUpdateDto {
   @ApiPropertyOptional({
     enum: StampDutyPayerName,
     enumName: 'StampDutyPayer',
-    default: StampDutyPayerName.Lessor,
-    description: 'Who pays the stamp duty (O-019; the lessor by law unless agreed otherwise).',
+    description: 'Who pays the stamp duty (O-019), default `lessor` (liable by law unless agreed otherwise).',
   })
   @IsOptional()
   @IsEnum(StampDutyPayerName)
