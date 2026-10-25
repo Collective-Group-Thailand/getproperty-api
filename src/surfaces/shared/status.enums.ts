@@ -79,6 +79,7 @@ export enum DocumentKindName {
 /** Owner console menu keys (`src/core/rbac/menu.ts` OWNER_MENU; a unit test keeps them in step). */
 export enum OwnerMenuKey {
   Portfolio = 'portfolio',
+  Listings = 'listings',
   Dashboard = 'dashboard',
   Buildings = 'buildings',
   Units = 'units',
@@ -120,6 +121,7 @@ export enum StaffMenuKey {
 /** Platform admin menu keys (ADMIN_MENU). */
 export enum AdminMenuKey {
   Tenants = 'tenants',
+  Listings = 'listings',
   PlatformUsers = 'platform_users',
   UtilityTariffs = 'utility_tariffs',
   Settings = 'settings',

@@ -20,6 +20,8 @@ const BUILDING_OPERATORS: readonly TenantTypeKey[] = ['apartment', 'condo_jurist
 export const OWNER_MENU: readonly MenuEntry[] = [
   // D-251: a landlord's home is the portfolio of its units across projects, not a building
   { key: 'portfolio', anyOf: ['unit.read'], tenantTypes: ['landlord'] },
+  // D-252: listings — landlords first (apartments later for vacant units)
+  { key: 'listings', anyOf: ['listing.read'], tenantTypes: ['landlord'] },
   { key: 'dashboard', anyOf: ['report.read', 'property.read'], tenantTypes: BUILDING_OPERATORS },
   { key: 'buildings', anyOf: ['property.read'], tenantTypes: BUILDING_OPERATORS },
   { key: 'units', anyOf: ['unit.read'], tenantTypes: BUILDING_OPERATORS },
@@ -64,6 +66,7 @@ export const STAFF_MENU: readonly MenuEntry[] = [
 
 export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'tenants', anyOf: ['admin.tenant.read'] },
+  { key: 'listings', anyOf: ['admin.listing.moderate', 'admin.listing.verify'] },
   { key: 'platform_users', anyOf: ['admin.user.manage'] },
   { key: 'utility_tariffs', anyOf: ['admin.utility_tariff.enter', 'admin.utility_tariff.verify'] },
   { key: 'settings', anyOf: ['admin.setting.manage', 'admin.compliance.manage'] },

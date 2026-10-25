@@ -3072,6 +3072,7 @@
       "AdminMenuKey": {
         "enum": [
           "tenants",
+          "listings",
           "platform_users",
           "utility_tariffs",
           "settings",
@@ -21080,6 +21081,7 @@
         "description": "Menu entitlements of the owner console (keys of the web routes).",
         "enum": [
           "portfolio",
+          "listings",
           "dashboard",
           "buildings",
           "units",
