@@ -41,6 +41,11 @@ model UnitDetail {
   currentLeaseId String?  @map("current_lease_id") @db.Uuid
   statusReason   String?  @map("status_reason")
   notes          String?
+  kind           PortfolioUnitKind?
+  bedrooms       Int?     @db.SmallInt
+  bathrooms      Int?     @db.SmallInt
+  floorLabel     String?  @map("floor_label")
+  furnishing     Furnishing?
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy      String?  @map("created_by") @db.Uuid
   updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -82,5 +87,25 @@ model UtilityAccount {
   @@unique([buildingId, utility, customerNo], map: "utility_account_building_id_utility_customer_no_key")
   @@index([tenantId, buildingId], map: "utility_account_tenant_id_building_id_idx")
   @@map("utility_account")
+  @@schema("ops")
+}
+
+/// What a landlord rents out (D-251).
+enum PortfolioUnitKind {
+  condo_unit
+  house
+  townhouse
+  room
+
+  @@map("portfolio_unit_kind")
+  @@schema("ops")
+}
+
+enum Furnishing {
+  unfurnished
+  partly_furnished
+  fully_furnished
+
+  @@map("furnishing")
   @@schema("ops")
 }

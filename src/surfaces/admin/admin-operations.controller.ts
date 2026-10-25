@@ -20,6 +20,7 @@ import {
   type NotificationTemplateVersion,
   type UtilityTariffVersion,
 } from '@generated/prisma/client';
+import { PortfolioService } from '@modules/ops-units/portfolio.service';
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -52,6 +53,7 @@ import {
   type OutboxStateName,
   ProvisioningCodeDto,
   RenderedMessageDto,
+  StubClaimDto,
   TariffEnterDto,
   TariffSampleQuery,
   TariffVerifyDto,
@@ -681,7 +683,10 @@ export class AdminDevicesController {
 @ApiSurface(SURFACES.admin)
 @Controller('admin/buildings')
 export class AdminBuildingsController {
-  constructor(private readonly buildings: BuildingService) {}
+  constructor(
+    private readonly buildings: BuildingService,
+    private readonly portfolio: PortfolioService,
+  ) {}
 
   @Post(':buildingId/actions/change-operator')
   @HttpCode(200)
@@ -710,6 +715,39 @@ export class AdminBuildingsController {
     @Body() body: OperatorChangeDto,
   ): Promise<OperatorChangedDto> {
     const b = await this.buildings.changeOperator(id, body);
-    return { buildingId: b.id, ownerTenantId: b.ownerTenantId, operatorTenantId: b.operatorTenantId };
+    return { buildingId: b.id, ownerTenantId: b.ownerTenantId, operatorTenantId: b.operatorTenantId! };
+  }
+
+  @Post(':buildingId/actions/claim-stub')
+  @HttpCode(200)
+  @Idempotent()
+  @Can('admin.building.manage')
+  @ApiEndpoint({
+    id: 'admin.buildings.claimStub',
+    summary: 'Hand a condo stub over to its juristic person',
+    description:
+      'A condo whose landlords added units before its juristic person joined lives in a stub building (status `external`, D-251). When the juristic tenant signs up, the platform hands the stub over: owner = the condo juristic tenant, operator = itself or its PM company, status `active`, an operator period `juristic_formed` opens. The landlords keep their units, leases and invoices — nothing is copied or moved (D-280). Audited and evented (`building.operator_changed`).',
+    implements: ['D-251', 'D-280'],
+  })
+  @ApiJsonBody(StubClaimDto, { ownerTenantId: FAKE.tenantId })
+  @ApiSuccess(200, {
+    description: 'Handed over',
+    type: OperatorChangedDto,
+    example: { buildingId: FAKE.buildingId, ownerTenantId: FAKE.tenantId, operatorTenantId: FAKE.tenantId },
+  })
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.bad_request',
+    'http.not_found',
+    'http.conflict',
+    'portfolio.not_a_stub',
+    'portfolio.claimant_invalid',
+  )
+  async claimStub(
+    @Param('buildingId', ParseUUIDPipe) id: string,
+    @Body() body: StubClaimDto,
+  ): Promise<OperatorChangedDto> {
+    const b = await this.portfolio.claim(id, body);
+    return { buildingId: b.id, ownerTenantId: b.ownerTenantId, operatorTenantId: b.operatorTenantId! };
   }
 }

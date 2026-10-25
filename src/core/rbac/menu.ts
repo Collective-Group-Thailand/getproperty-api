@@ -14,24 +14,34 @@ export interface MenuEntry {
   flag?: string;
 }
 
+/** Operator tenants that run buildings (everything but the landlord's portfolio-first console, D-251). */
+const BUILDING_OPERATORS: readonly TenantTypeKey[] = ['apartment', 'condo_juristic', 'pm_company'];
+
 export const OWNER_MENU: readonly MenuEntry[] = [
-  { key: 'dashboard', anyOf: ['report.read', 'property.read'] },
-  { key: 'buildings', anyOf: ['property.read'] },
-  { key: 'units', anyOf: ['unit.read'] },
+  // D-251: a landlord's home is the portfolio of its units across projects, not a building
+  { key: 'portfolio', anyOf: ['unit.read'], tenantTypes: ['landlord'] },
+  { key: 'dashboard', anyOf: ['report.read', 'property.read'], tenantTypes: BUILDING_OPERATORS },
+  { key: 'buildings', anyOf: ['property.read'], tenantTypes: BUILDING_OPERATORS },
+  { key: 'units', anyOf: ['unit.read'], tenantTypes: BUILDING_OPERATORS },
   { key: 'parties', anyOf: ['party.read'] },
   { key: 'leases', anyOf: ['lease.read'] },
   { key: 'deposits', anyOf: ['deposit.read'] },
   { key: 'readings', anyOf: ['reading.read'] },
-  { key: 'devices', anyOf: ['device.read'] },
+  { key: 'devices', anyOf: ['device.read'], tenantTypes: BUILDING_OPERATORS },
   { key: 'rate_plans', anyOf: ['rate_plan.read'] },
   { key: 'invoices', anyOf: ['invoice.read'] },
   { key: 'payments', anyOf: ['payment.read'] },
   { key: 'reports', anyOf: ['report.read', 'export.create'] },
   { key: 'utility_loss', anyOf: ['report.read'], tenantTypes: ['apartment', 'condo_juristic', 'pm_company'] },
   { key: 'service_requests', anyOf: ['service_request.read'], flag: 'module.service_requests' },
-  { key: 'access', anyOf: ['access.read'], flag: 'module.smart_access' },
-  { key: 'parcels', anyOf: ['parcel.manage'], flag: 'module.community' },
-  { key: 'announcements', anyOf: ['announcement.manage'], flag: 'module.community' },
+  { key: 'access', anyOf: ['access.read'], flag: 'module.smart_access', tenantTypes: BUILDING_OPERATORS },
+  { key: 'parcels', anyOf: ['parcel.manage'], flag: 'module.community', tenantTypes: BUILDING_OPERATORS },
+  {
+    key: 'announcements',
+    anyOf: ['announcement.manage'],
+    flag: 'module.community',
+    tenantTypes: BUILDING_OPERATORS,
+  },
   { key: 'members', anyOf: ['tenant.member.read'] },
   { key: 'bank_accounts', anyOf: ['tenant.bank_account.manage'] },
   { key: 'settings', anyOf: ['tenant.settings.read'] },

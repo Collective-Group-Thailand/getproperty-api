@@ -469,6 +469,14 @@ export class EnvironmentVariables {
   @IsString()
   LINE_LOGIN_CHANNEL_IDS?: string;
 
+  /**
+   * getproperty's Firebase project id: Google and Apple sign-in ID tokens are verified against it (D-255). Empty =
+   * those providers answer `provider.unavailable` in real mode.
+   */
+  @IsOptional()
+  @IsString()
+  FIREBASE_PROJECT_ID?: string;
+
   /** LINE Messaging API channel access token (push messages, Flex). */
   @IsOptional()
   @IsString()
