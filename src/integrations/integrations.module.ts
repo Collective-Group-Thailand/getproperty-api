@@ -50,6 +50,9 @@ import { FakeEmail } from './email/fake-email';
 import { SesEmailAdapter } from './email/ses-email.adapter';
 import { KEY_WRAP } from './kms/key-wrap.port';
 import { LocalKeyWrap } from './kms/local-key-wrap';
+import { FakeLineChannelApi } from './line-channels/fake-line-channel-api';
+import { LineChannelApiAdapter } from './line-channels/line-channel-api.adapter';
+import { LINE_CHANNEL_API, type LineChannelApiPort } from './line-channels/line-channel-api.port';
 import { FakeLockVendors } from './locks/fake-lock-vendors';
 import { LOCK_VENDORS } from './locks/lock-vendor.port';
 import { RealLockVendors } from './locks/real-lock-vendors';
@@ -303,6 +306,13 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
             ),
     },
     {
+      // D-254: operators' own LINE OAs, called with each channel's token (the shared OA stays LINE_MESSAGING)
+      provide: LINE_CHANNEL_API,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig): LineChannelApiPort =>
+        config.useFakes ? new FakeLineChannelApi() : new LineChannelApiAdapter(),
+    },
+    {
       provide: WEB_PUSH,
       inject: [AppConfig],
       useFactory: (config: AppConfig): WebPushPort =>
@@ -345,6 +355,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
     SMS,
     LINE_LOGIN,
     LINE_MESSAGING,
+    LINE_CHANNEL_API,
     FIREBASE_VERIFIER,
     EMAIL,
     WEB_PUSH,

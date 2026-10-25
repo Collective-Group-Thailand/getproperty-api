@@ -7,6 +7,7 @@ import { ResidentDepositsController, ResidentUploadsController } from '../owner/
 import { ResidentInvoiceDocumentsController } from '../owner/documents.controller';
 import { ResidentLeaseNoticesController } from '../owner/lease-notices.controller';
 import { ResidentInvitationsController, ResidentLeasesController } from '../owner/leases.controller';
+import { ResidentMessagingLinksController } from '../owner/messaging.controller';
 import { ResidentPrivacyController } from '../owner/parties.controller';
 import { ResidentPaymentsController } from '../owner/payments.controller';
 import { ResidentRentCertificatesController } from '../owner/rent-certificates.controller';
@@ -36,6 +37,7 @@ import { ResidentCsatSurveyController } from './resident-survey.controller';
     systemPingController(SURFACES.resident),
     ResidentMeController,
     ResidentIdentitiesController,
+    ResidentMessagingLinksController,
     ResidentLinkController,
     ResidentConsentsController,
     ResidentDsrController,

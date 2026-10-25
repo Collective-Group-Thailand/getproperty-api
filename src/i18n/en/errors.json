@@ -1108,5 +1108,23 @@
       "title": "Already voided",
       "detail": "This quotation or receipt was voided before."
     }
+  },
+  "messaging": {
+    "link_invalid": {
+      "title": "Link not found",
+      "detail": "This LINE link is not valid. Send a message to the LINE account again for a new one."
+    },
+    "link_expired": {
+      "title": "Link expired",
+      "detail": "This LINE link has expired. Send a message to the LINE account again for a new one."
+    },
+    "link_used": {
+      "title": "Link already used",
+      "detail": "This LINE link was already used."
+    },
+    "line_user_taken": {
+      "title": "Linked to someone else",
+      "detail": "This LINE account is already linked to another getproperty user."
+    }
   }
 }

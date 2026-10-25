@@ -7,6 +7,7 @@ import { WEB_PUSH, type WebPushPort } from '@integrations/web-push/web-push.port
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { CLOCK, type Clock } from '../clock/clock';
+import { MessagingChannelsService } from '../messaging/messaging-channels.service';
 import { RealtimeHub } from '../realtime/realtime.hub';
 import { type RenderedMessage } from './renderer';
 
@@ -26,6 +27,7 @@ export class NotificationDelivery {
   constructor(
     private readonly db: TenantTx,
     private readonly realtime: RealtimeHub,
+    private readonly channels: MessagingChannelsService,
     @Inject(SMS) private readonly sms: SmsPort,
     @Inject(LINE_MESSAGING) private readonly line: LineMessagingPort,
     @Inject(EMAIL) private readonly email: EmailPort,
@@ -110,6 +112,20 @@ export class NotificationDelivery {
         const payload = message.flex
           ? [{ type: 'flex' as const, altText: message.text.slice(0, 400), contents: message.flex }]
           : [{ type: 'text' as const, text: message.text.slice(0, 5000) }];
+        // D-254: the operator's own OA (building → tenant) when the resident linked it; else the shared OA.
+        const own = n.recipientId ? await this.channels.channelFor(tx, n.tenantId, n.buildingId) : null;
+        const linked =
+          own && n.recipientId
+            ? await this.channels.linkedUser(tx, own.id, { type: n.recipientType, id: n.recipientId })
+            : null;
+        if (own && linked) {
+          const r = await this.channels.push(tx, own, linked.lineUserId, payload, n.id);
+          return {
+            state: 'sent',
+            provider: `${this.line.mode === 'fake' ? 'fake-line' : 'line'}:${own.id}`,
+            providerMessageId: r.providerMessageId,
+          };
+        }
         const r = await this.line.push(n.recipientAddress!, payload, n.id);
         return {
           state: 'sent',

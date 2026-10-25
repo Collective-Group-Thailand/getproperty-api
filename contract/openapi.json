@@ -1600,6 +1600,50 @@
           "type": "https://errors.getproperty.co/membership.last_owner"
         }
       },
+      "problem.messaging.line_user_taken": {
+        "summary": "messaging.line_user_taken",
+        "value": {
+          "code": "messaging.line_user_taken",
+          "detail": "บัญชี LINE นี้เชื่อมกับผู้ใช้ getproperty คนอื่นอยู่แล้ว",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "เชื่อมกับผู้ใช้อื่นแล้ว",
+          "type": "https://errors.getproperty.co/messaging.line_user_taken"
+        }
+      },
+      "problem.messaging.link_expired": {
+        "summary": "messaging.link_expired",
+        "value": {
+          "code": "messaging.link_expired",
+          "detail": "ลิงก์ LINE นี้หมดอายุแล้ว ส่งข้อความหา LINE ของเจ้าของอีกครั้งเพื่อรับลิงก์ใหม่",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 410,
+          "title": "ลิงก์หมดอายุ",
+          "type": "https://errors.getproperty.co/messaging.link_expired"
+        }
+      },
+      "problem.messaging.link_invalid": {
+        "summary": "messaging.link_invalid",
+        "value": {
+          "code": "messaging.link_invalid",
+          "detail": "ลิงก์ LINE นี้ใช้ไม่ได้ ส่งข้อความหา LINE ของเจ้าของอีกครั้งเพื่อรับลิงก์ใหม่",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 404,
+          "title": "ไม่พบลิงก์",
+          "type": "https://errors.getproperty.co/messaging.link_invalid"
+        }
+      },
+      "problem.messaging.link_used": {
+        "summary": "messaging.link_used",
+        "value": {
+          "code": "messaging.link_used",
+          "detail": "ลิงก์ LINE นี้ถูกใช้ไปแล้ว",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ใช้ลิงก์นี้ไปแล้ว",
+          "type": "https://errors.getproperty.co/messaging.link_used"
+        }
+      },
       "problem.meter.already_assigned": {
         "summary": "meter.already_assigned",
         "value": {
@@ -17983,6 +18027,19 @@
         ],
         "type": "string"
       },
+      "LineWebhookAckDto": {
+        "properties": {
+          "handled": {
+            "description": "Events acted on (link replies, unfollows).",
+            "example": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "handled"
+        ],
+        "type": "object"
+      },
       "ListingAvailabilityDto": {
         "properties": {
           "exceptions": {
@@ -19790,6 +19847,197 @@
           "active",
           "suspended",
           "removed"
+        ],
+        "type": "string"
+      },
+      "MessagingChannelConnectDto": {
+        "properties": {
+          "accessToken": {
+            "description": "Messaging API → Channel access token (long-lived). Stored encrypted (D-148), never shown again.",
+            "example": "eyJhbGciOiJIUzI1NiJ9.long-lived-channel-access-token",
+            "type": "string"
+          },
+          "buildingId": {
+            "description": "Only this building’s residents; omit for every building of the tenant.",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channelSecret": {
+            "description": "Basic settings → Channel secret.",
+            "example": "0123456789abcdef0123456789abcdef",
+            "type": "string"
+          },
+          "lineChannelId": {
+            "description": "LINE Developers console → Messaging API channel → Channel ID.",
+            "example": "1657000000",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lineChannelId",
+          "channelSecret",
+          "accessToken"
+        ],
+        "type": "object"
+      },
+      "MessagingChannelDto": {
+        "properties": {
+          "botName": {
+            "example": "หอพักสุขใจ",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "botPictureUrl": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "buildingId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "lastCheckedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastError": {
+            "description": "Why the last check failed.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lineChannelId": {
+            "example": "1657000000",
+            "type": "string"
+          },
+          "linkedUsers": {
+            "description": "Residents who linked this OA.",
+            "example": 12,
+            "type": "integer"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessagingChannelState"
+              }
+            ],
+            "example": "verified"
+          },
+          "verifiedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "webhookUrl": {
+            "description": "Set it as the channel’s Webhook URL in the LINE Developers console and turn “Use webhook” on.",
+            "example": "https://api.getproperty.co/webhooks/line/q2r8XoT1Vb9mJ0yPz4LkWnE6aGs3dHf5",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "buildingId",
+          "lineChannelId",
+          "state",
+          "botName",
+          "botPictureUrl",
+          "webhookUrl",
+          "verifiedAt",
+          "lastCheckedAt",
+          "lastError",
+          "linkedUsers",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "MessagingChannelState": {
+        "enum": [
+          "pending",
+          "verified",
+          "failing",
+          "revoked"
+        ],
+        "type": "string"
+      },
+      "MessagingLinkDto": {
+        "properties": {
+          "botName": {
+            "example": "หอพักสุขใจ",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "botPictureUrl": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiresAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessagingLinkState"
+              }
+            ],
+            "example": "valid"
+          },
+          "tenantName": {
+            "description": "The operator asking to link.",
+            "example": "หอพักสุขใจ",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantName",
+          "botName",
+          "botPictureUrl",
+          "expiresAt",
+          "state"
+        ],
+        "type": "object"
+      },
+      "MessagingLinkState": {
+        "enum": [
+          "valid",
+          "used",
+          "expired"
         ],
         "type": "string"
       },
@@ -136936,6 +137184,875 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/messaging/channels": {
+      "get": {
+        "description": "The own LINE OAs connected for the tenant or a building, with their state, the webhook URL to set at LINE and how many residents linked them. None = residents are messaged through the shared getproperty OA (D-254).\n\nImplements: D-254.",
+        "operationId": "owner.messagingChannels.list",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "botName": "หอพักสุขใจ",
+                    "botPictureUrl": null,
+                    "buildingId": null,
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "lastCheckedAt": "2026-11-01T00:15:00+07:00",
+                    "lastError": null,
+                    "lineChannelId": "1657000000",
+                    "linkedUsers": 12,
+                    "state": "verified",
+                    "verifiedAt": "2026-11-01T00:15:00+07:00",
+                    "webhookUrl": "https://api.getproperty.co/webhooks/line/q2r8XoT1Vb9mJ0yPz4LkWnE6aGs3dHf5"
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MessagingChannelDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Channels",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "My LINE Official Accounts",
+        "tags": [
+          "owner.messaging"
+        ],
+        "x-required-permissions": [
+          "tenant.settings.read"
+        ],
+        "x-surface": "owner"
+      },
+      "post": {
+        "description": "The Messaging API channel id, secret and access token (sealed with the tenant key, D-148), for the tenant or one building; replaces the one connected before. getproperty checks the token with LINE (`verified`, or `failing` with the reason) and answers the webhook URL to set in the LINE console. Messages then go out under the operator’s OA to residents who linked it — the others keep the shared OA until they do; LINE’s quota and charges are the operator’s (D-254).\n\nImplements: D-254, D-148.",
+        "operationId": "owner.messagingChannels.connect",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "accessToken": "eyJhbGciOiJIUzI1NiJ9.long-lived-channel-access-token",
+                    "channelSecret": "0123456789abcdef0123456789abcdef",
+                    "lineChannelId": "1657000000"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/MessagingChannelConnectDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "botName": "หอพักสุขใจ",
+                  "botPictureUrl": null,
+                  "buildingId": null,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "lastCheckedAt": "2026-11-01T00:15:00+07:00",
+                  "lastError": null,
+                  "lineChannelId": "1657000000",
+                  "linkedUsers": 12,
+                  "state": "verified",
+                  "verifiedAt": "2026-11-01T00:15:00+07:00",
+                  "webhookUrl": "https://api.getproperty.co/webhooks/line/q2r8XoT1Vb9mJ0yPz4LkWnE6aGs3dHf5"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingChannelDto"
+                }
+              }
+            },
+            "description": "Connected",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Connect my own LINE Official Account",
+        "tags": [
+          "owner.messaging"
+        ],
+        "x-required-permissions": [
+          "tenant.settings.update"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/messaging/channels/{channelId}/actions/revoke": {
+      "post": {
+        "description": "Messages go back through the shared getproperty OA at once; the credentials stay sealed and unused (D-254).\n\nImplements: D-254.",
+        "operationId": "owner.messagingChannels.revoke",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channelId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Disconnected",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Disconnect my LINE Official Account",
+        "tags": [
+          "owner.messaging"
+        ],
+        "x-required-permissions": [
+          "tenant.settings.update"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/messaging/channels/{channelId}/actions/verify": {
+      "post": {
+        "description": "Asks LINE for the bot of the channel with its token; `verified` or `failing` with the reason (D-254).\n\nImplements: D-254.",
+        "operationId": "owner.messagingChannels.verify",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channelId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "botName": "หอพักสุขใจ",
+                  "botPictureUrl": null,
+                  "buildingId": null,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "lastCheckedAt": "2026-11-01T00:15:00+07:00",
+                  "lastError": null,
+                  "lineChannelId": "1657000000",
+                  "linkedUsers": 12,
+                  "state": "verified",
+                  "verifiedAt": "2026-11-01T00:15:00+07:00",
+                  "webhookUrl": "https://api.getproperty.co/webhooks/line/q2r8XoT1Vb9mJ0yPz4LkWnE6aGs3dHf5"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingChannelDto"
+                }
+              }
+            },
+            "description": "Checked",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Check my LINE Official Account again",
+        "tags": [
+          "owner.messaging"
+        ],
+        "x-required-permissions": [
+          "tenant.settings.update"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/meter-readings": {
       "post": {
         "description": "The photo (`meter_photo`) is read by OCR (vision model behind the AI gateway); a typed value is checked against it, without one the OCR value is used (source `ocr`). The reading is accepted, or goes to the owner review queue when outside the plausibility band, decreasing without a swap, or OCR is doubtful (D-035); an accepted decrease is impossible (D-030). Staff readings join the reading round of the billing period.\n\nImplements: D-035, D-012, D-030, D-031.",
@@ -192598,6 +193715,385 @@
         "x-surface": "resident"
       }
     },
+    "/v1/resident/messaging-links/{token}": {
+      "get": {
+        "description": "The operator and its LINE OA behind the link the OA replied with, and whether it can still be used (D-254).\n\nImplements: D-254.",
+        "operationId": "resident.messagingLinks.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "botName": "หอพักสุขใจ",
+                  "botPictureUrl": null,
+                  "expiresAt": "2026-11-01T00:45:00+07:00",
+                  "state": "valid",
+                  "tenantName": "หอพักสุขใจ"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingLinkDto"
+                }
+              }
+            },
+            "description": "The link",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "messaging.link_invalid": {
+                    "$ref": "#/components/examples/problem.messaging.link_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `messaging.link_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Who asks me to link their LINE account",
+        "tags": [
+          "resident.messagingLinks"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/messaging-links/{token}/actions/confirm": {
+      "post": {
+        "description": "My bills, repairs and lease messages from this operator then come through its own OA; the same OA user cannot be linked to another person (`messaging.line_user_taken`). Single use; expires after `messaging.link_token.ttl_minutes` (D-254).\n\nImplements: D-254.",
+        "operationId": "resident.messagingLinks.confirm",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "botName": "หอพักสุขใจ",
+                  "botPictureUrl": null,
+                  "expiresAt": "2026-11-01T00:45:00+07:00",
+                  "state": "used",
+                  "tenantName": "หอพักสุขใจ"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingLinkDto"
+                }
+              }
+            },
+            "description": "Linked",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "messaging.link_invalid": {
+                    "$ref": "#/components/examples/problem.messaging.link_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `messaging.link_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "messaging.line_user_taken": {
+                    "$ref": "#/components/examples/problem.messaging.line_user_taken"
+                  },
+                  "messaging.link_used": {
+                    "$ref": "#/components/examples/problem.messaging.link_used"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `messaging.line_user_taken`, `messaging.link_used`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "410": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "messaging.link_expired": {
+                    "$ref": "#/components/examples/problem.messaging.link_expired"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `messaging.link_expired`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Link the operator’s LINE account to me",
+        "tags": [
+          "resident.messagingLinks"
+        ],
+        "x-surface": "resident"
+      }
+    },
     "/v1/resident/notifications": {
       "get": {
         "description": "The in-app inbox of the signed-in user across tenants, newest first (cursor feed). Other channels (LINE, SMS, email, web push) are listed in the delivery log, not here. B1.3 notifications.\n\nImplements: D-063, ADR-0003.",
@@ -221839,6 +223335,222 @@
         "x-surface": "webhooks"
       }
     },
+    "/webhooks/line/{webhookKey}": {
+      "post": {
+        "description": "Each connected own OA has its own URL. The signature is checked with that channel’s secret (401 `webhook.signature_invalid` otherwise); a follow or a message from an OA user who is not linked gets a reply with a single-use link to the LIFF (replies are not counted by LINE); an unfollow ends the link (D-254).\n\nImplements: D-254.",
+        "operationId": "webhooks.line.callback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "webhookKey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Base64 HMAC-SHA256 of the raw body with the channel secret (Messaging API).",
+            "in": "header",
+            "name": "X-Line-Signature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "follow": {
+                  "summary": "A user follows the OA",
+                  "value": {
+                    "destination": "U0123456789abcdef0123456789abcdef",
+                    "events": [
+                      {
+                        "replyToken": "nHuyWiB7yP5Zw52FIkcQobQuGDXCTA",
+                        "source": {
+                          "type": "user",
+                          "userId": "U4af4980629a1b2c3d4e5f60718293a4b"
+                        },
+                        "type": "follow"
+                      }
+                    ]
+                  }
+                }
+              },
+              "schema": {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            }
+          },
+          "description": "LINE’s webhook body (`destination`, `events`).",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "handled": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/LineWebhookAckDto"
+                }
+              }
+            },
+            "description": "Accepted",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.malformed_json": {
+                    "$ref": "#/components/examples/problem.http.malformed_json"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.malformed_json`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "webhook.signature_invalid": {
+                    "$ref": "#/components/examples/problem.webhook.signature_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `webhook.signature_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "webhook.malformed": {
+                    "$ref": "#/components/examples/problem.webhook.malformed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `webhook.malformed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "LINE webhook of an own OA",
+        "tags": [
+          "webhooks.line"
+        ],
+        "x-surface": "webhooks"
+      }
+    },
     "/webhooks/payments/{provider}": {
       "post": {
         "description": "KBank / SCB / Opn (O-001) POST a signed payment confirmation for a merchant. The API finds the merchant, verifies the signature with its secret (401 `webhook.signature_invalid` otherwise), stores the callback once per provider event id and answers 200 at once; the worker confirms each paid reference whose QR was issued for that same merchant account, idempotently on the provider transaction reference (D-042).\n\nImplements: D-042, ADR-0008.",
@@ -222740,6 +224452,10 @@
       "name": "owner.members"
     },
     {
+      "description": "The operator’s own LINE Official Account: connect, check, disconnect (D-254).",
+      "name": "owner.messaging"
+    },
+    {
       "description": "Meter readings (IoT, OCR, manual), usage series from the rollups and the reading rounds (D-012, D-030, D-035, D-162).",
       "name": "owner.meterReadings"
     },
@@ -222952,6 +224668,10 @@
       "name": "resident.me"
     },
     {
+      "description": "Link an operator’s own LINE OA to me (D-254).",
+      "name": "resident.messagingLinks"
+    },
+    {
       "description": "My notification topics per channel; billing and lease notices are locked on (D-025, D-063).",
       "name": "resident.notificationPreferences"
     },
@@ -223084,6 +224804,10 @@
       "name": "webhooks.integration"
     },
     {
+      "description": "Signed LINE Messaging API events for an operator’s own LINE Official Account: follow, message, unfollow (D-254).",
+      "name": "webhooks.line"
+    },
+    {
       "description": "Signed payment confirmations from KBank, SCB and Opn (O-001) for each landlord’s own merchant account (D-042, ADR-0008).",
       "name": "webhooks.payments"
     },
@@ -223095,6 +224819,9 @@
   "webhooks": {
     "integration.receive": {
       "$ref": "#/paths/~1webhooks~1integration~1%7Bplatform%7D"
+    },
+    "line.callback": {
+      "$ref": "#/paths/~1webhooks~1line~1%7BwebhookKey%7D"
     },
     "payments.callback": {
       "$ref": "#/paths/~1webhooks~1payments~1%7Bprovider%7D"

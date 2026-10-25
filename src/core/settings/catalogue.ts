@@ -765,6 +765,16 @@ export const SETTINGS: readonly SettingDef[] = [
     value: '30',
     reason: 'seed: B7.5 (Royal Decree No. 11, pending tax counsel)',
   },
+  {
+    key: 'messaging.link_token.ttl_minutes',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      "D-254 (B7 deliverable 7.7): how long the account-linking link an operator's own LINE OA replies with stays valid, in minutes.",
+    editableBy: ADMIN,
+    value: 30,
+    reason: 'seed: B7 deliverable 7.7',
+  },
   // --- platform business (Proposed until the pilot) ------------------------------------------------------
   {
     key: 'platform.subscriptions.enabled',
