@@ -408,7 +408,7 @@ export class AuthService {
   // ------------------------------------------------------------------------------ residents & technicians
 
   /** LINE id token → user (created on first sign-in) → parties carrying that LINE id are linked (`line_match`). */
-  async lineLogin(idToken: string, audience: 'resident' | 'technician'): Promise<TokenPair> {
+  async lineLogin(idToken: string, audience: 'resident' | 'technician' | 'prospect'): Promise<TokenPair> {
     const claims = await this.line.verifyIdToken(idToken).catch(() => null);
     if (!claims) {
       await this.loginFailed('line_token_invalid', { audience });
@@ -454,7 +454,9 @@ export class AuthService {
       const subject =
         audience === 'resident'
           ? await this.subjects.resident(tx, user.id)
-          : await this.subjects.technician(tx, user.id);
+          : audience === 'prospect'
+            ? this.subjects.prospect(user.id)
+            : await this.subjects.technician(tx, user.id);
       return this.issue(tx, subject, ['line'], user);
     });
   }

@@ -58,6 +58,8 @@ model Listing {
   photos       ListingPhoto[]
   availability ListingAvailability?
   reports      ListingReport[]
+  leads        ListingLead[]
+  viewings     ListingViewing[]
 
   @@unique([unitId, tenantId], map: "listing_unit_id_live_key", where: raw("(state = ANY (ARRAY['pending_review'::ops.listing_state, 'published'::ops.listing_state, 'paused'::ops.listing_state]))"))
   @@index([tenantId, state], map: "listing_tenant_id_state_idx")

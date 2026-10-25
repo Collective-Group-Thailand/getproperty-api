@@ -15,6 +15,7 @@ import {
   type AdminMeDto,
   type MeUserDto,
   type OperatorMeDto,
+  type ProspectMeDto,
   type ResidentLinkedDto,
   type ResidentMeDto,
   type SubscriptionStateName,
@@ -343,6 +344,19 @@ export class MeService {
       scopes,
       linkRequestsPending: await this.linkRequestsPending(userId),
     };
+  }
+
+  async prospect(): Promise<ProspectMeDto> {
+    const userId = this.userId();
+    const { dto } = await this.user(userId);
+    const now = this.clock.now();
+    const [openEnquiries, upcomingViewings] = await this.db.platform(async (tx) => [
+      await tx.listingLead.count({ where: { userId, state: { notIn: ['won', 'lost'] } } }),
+      await tx.listingViewing.count({
+        where: { lead: { userId }, state: { in: ['requested', 'confirmed'] }, startsAt: { gt: now } },
+      }),
+    ]);
+    return { user: dto, openEnquiries, upcomingViewings };
   }
 
   async admin(): Promise<AdminMeDto> {

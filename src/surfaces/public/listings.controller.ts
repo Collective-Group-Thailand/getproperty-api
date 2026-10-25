@@ -1,9 +1,11 @@
 import { Public } from '@common/auth/auth.decorators';
 import { ApiEndpoint, ApiJsonBody, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
+import { toBangkokIso } from '@common/time/bangkok';
+import { ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
 import { ListingModerationService } from '@modules/ops-listings/listing-moderation.service';
 import { PublicListingsService } from '@modules/ops-listings/public-listings.service';
 import { Body, Controller, Get, Header, Param, Post, Query, Req } from '@nestjs/common';
-import { ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { seconds, Throttle } from '@nestjs/throttler';
 import { Type } from 'class-transformer';
 import {
@@ -19,6 +21,7 @@ import {
 } from 'class-validator';
 import { type Request } from 'express';
 
+import { ViewingSlotsDto } from '../owner/leads.dto';
 import { FurnishingName, PortfolioUnitKindName } from '../owner/portfolio.controller';
 import { MoneyOutput } from '../shared/fields';
 import { ApiSurface, SURFACES } from '../surfaces';
@@ -343,6 +346,7 @@ export class PublicListingsController {
   constructor(
     private readonly listings: PublicListingsService,
     private readonly moderation: ListingModerationService,
+    private readonly leads: ListingLeadsService,
   ) {}
 
   @Get()
@@ -420,6 +424,44 @@ export class PublicListingsController {
       slug.slice(0, 80),
       lang(req.headers['accept-language']),
     )) as unknown as PublicListingDetailDto;
+  }
+
+  @Get(':slug/viewing-slots')
+  @Public()
+  @Throttle(SEARCH_LIMIT)
+  @Header('Cache-Control', 'public, max-age=30')
+  @ApiEndpoint({
+    id: 'public.listings.viewingSlots',
+    summary: 'Free viewing times',
+    description:
+      'Free slots of a published listing’s viewing availability from `from` (`YYYY-MM-DD`, default today in Bangkok) for `days` days (default 14), leaving out times already requested or confirmed and those inside `listing.viewing.min_notice_hours` or beyond `listing.viewing.horizon_days` (D-252). No personal data.',
+    implements: ['D-252'],
+  })
+  @ApiQuery({ name: 'from', required: false, schema: { type: 'string', format: 'date' } })
+  @ApiQuery({ name: 'days', required: false, schema: { type: 'integer', minimum: 1, maximum: 60 } })
+  @ApiSuccess(200, {
+    description: 'Free slots',
+    type: ViewingSlotsDto,
+    example: {
+      slotMinutes: 30,
+      slots: [{ startsAt: '2026-11-07T10:00:00+07:00', endsAt: '2026-11-07T10:30:00+07:00' }],
+    },
+  })
+  @ApiStandardErrors('validation.failed', 'http.not_found', 'http.too_many_requests')
+  async viewingSlots(
+    @Param('slug') slug: string,
+    @Query('from') from?: string,
+    @Query('days') days?: string,
+  ): Promise<ViewingSlotsDto> {
+    const span = days && /^\d{1,2}$/.test(days) ? Math.min(60, Math.max(1, Number(days))) : 14;
+    const result = await this.leads.slots(slug.slice(0, 80), from, span);
+    return {
+      slotMinutes: result.slotMinutes,
+      slots: result.slots.map((s) => ({
+        startsAt: toBangkokIso(s.startsAt),
+        endsAt: toBangkokIso(s.endsAt),
+      })),
+    };
   }
 
   @Post(':slug/reports')

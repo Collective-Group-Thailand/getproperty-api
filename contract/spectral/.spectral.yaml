@@ -31,7 +31,7 @@ rules:
       field: operationId
       function: pattern
       functionOptions:
-        match: '^(auth|owner|staff|resident|technician|admin|device|webhooks|public|ops)\.[a-z][A-Za-z0-9]*\.[a-z][A-Za-z0-9]*$'
+        match: '^(auth|owner|staff|resident|technician|prospect|admin|device|webhooks|public|ops)\.[a-z][A-Za-z0-9]*\.[a-z][A-Za-z0-9]*$'
 
   getproperty-operation-summary:
     description: Every operation has a one-line summary.
@@ -52,7 +52,7 @@ rules:
         match: '(D-\d{3}|ADR-\d{4})'
 
   getproperty-operation-surface-tag:
-    description: Exactly one tag, prefixed by the surface (owner., staff., resident., technician., admin., device., auth., webhooks., public., ops.).
+    description: Exactly one tag, prefixed by the surface (owner., staff., resident., technician., prospect., admin., device., auth., webhooks., public., ops.).
     severity: error
     given: $.paths[*][get,put,post,delete,patch]
     then:
@@ -65,7 +65,7 @@ rules:
           maxItems: 1
           items:
             type: string
-            pattern: '^(auth|owner|staff|resident|technician|admin|device|webhooks|public|ops)\.[a-z][A-Za-z0-9]*$'
+            pattern: '^(auth|owner|staff|resident|technician|prospect|admin|device|webhooks|public|ops)\.[a-z][A-Za-z0-9]*$'
 
   getproperty-operation-security-declared:
     description: Every operation declares `security` (an empty list means public, on purpose).
@@ -76,7 +76,7 @@ rules:
       function: defined
 
   getproperty-surface-security:
-    description: /v1/owner, /v1/staff, /v1/resident, /v1/technician, /v1/admin and /v1/device operations use their audience's bearer scheme.
+    description: /v1/owner, /v1/staff, /v1/resident, /v1/technician, /v1/prospect, /v1/admin and /v1/device operations use their audience's bearer scheme.
     message: '{{error}}'
     resolved: false
     severity: error

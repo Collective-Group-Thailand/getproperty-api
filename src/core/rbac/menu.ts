@@ -22,6 +22,8 @@ export const OWNER_MENU: readonly MenuEntry[] = [
   { key: 'portfolio', anyOf: ['unit.read'], tenantTypes: ['landlord'] },
   // D-252: listings — landlords first (apartments later for vacant units)
   { key: 'listings', anyOf: ['listing.read'], tenantTypes: ['landlord'] },
+  // B7.3: the enquiries inbox beside the listings
+  { key: 'leads', anyOf: ['listing.read'], tenantTypes: ['landlord'] },
   { key: 'dashboard', anyOf: ['report.read', 'property.read'], tenantTypes: BUILDING_OPERATORS },
   { key: 'buildings', anyOf: ['property.read'], tenantTypes: BUILDING_OPERATORS },
   { key: 'units', anyOf: ['unit.read'], tenantTypes: BUILDING_OPERATORS },

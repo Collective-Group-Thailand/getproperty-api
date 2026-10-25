@@ -80,6 +80,7 @@ export enum DocumentKindName {
 export enum OwnerMenuKey {
   Portfolio = 'portfolio',
   Listings = 'listings',
+  Leads = 'leads',
   Dashboard = 'dashboard',
   Buildings = 'buildings',
   Units = 'units',

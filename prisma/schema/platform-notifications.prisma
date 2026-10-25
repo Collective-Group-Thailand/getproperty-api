@@ -19,6 +19,7 @@ enum NotificationAudience {
   staff
   accountant
   platform
+  prospect
 
   @@map("notification_audience")
   @@schema("platform")

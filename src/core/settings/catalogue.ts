@@ -646,6 +646,55 @@ export const SETTINGS: readonly SettingDef[] = [
     value: 90,
     reason: 'seed: O-018 (conservative default)',
   },
+  // --- enquiries and viewings (D-252, B7.3) ----------------------------------------------------------------
+  {
+    key: 'listing.lead.nudge_after_hours',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-252 (B7.3): hours after which an enquiry the owner has not answered yet reminds the owner once (LINE and console). 0 = off.',
+    editableBy: ['admin.listing.moderate'],
+    value: 12,
+    reason: 'seed: B7.3',
+  },
+  {
+    key: 'listing.lead.daily_limit',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-252 (B7.3): new enquiries one prospect may start in a Bangkok day across all listings — a brake on spam; follow-up messages in an open enquiry do not count.',
+    editableBy: ['admin.listing.moderate'],
+    value: 20,
+    reason: 'seed: B7.3',
+  },
+  {
+    key: 'listing.viewing.min_notice_hours',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description: 'D-252 (B7.3): the earliest a viewing can start, in hours from the moment it is booked.',
+    editableBy: ['admin.listing.moderate'],
+    value: 2,
+    reason: 'seed: B7.3',
+  },
+  {
+    key: 'listing.viewing.horizon_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description: 'D-252 (B7.3): how many days ahead a viewing can be booked.',
+    editableBy: ['admin.listing.moderate'],
+    value: 30,
+    reason: 'seed: B7.3',
+  },
+  {
+    key: 'listing.viewing.reminder_hours_before',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-252 (B7.3): hours before a confirmed viewing when the prospect and the owner are both reminded (once). 0 = off.',
+    editableBy: ['admin.listing.moderate'],
+    value: 3,
+    reason: 'seed: B7.3',
+  },
   // --- platform business (Proposed until the pilot) ------------------------------------------------------
   {
     key: 'platform.subscriptions.enabled',

@@ -140,6 +140,11 @@ export class SubjectService {
     };
   }
 
+  /** B7.3 (D-252): a prospect — no scopes; every prospect operation reads the caller's own enquiries. */
+  prospect(userId: string): Subject {
+    return { id: userId, type: 'user', audience: 'prospect', roles: [], permissions: [], scopes: [] };
+  }
+
   async platform(tx: Tx, userId: string): Promise<Subject> {
     const now = this.clock.now();
     const rows = await tx.platformRoleAssignment.findMany({
@@ -193,6 +198,8 @@ export class SubjectService {
         return this.resident(tx, user.id);
       case 'technician':
         return this.technician(tx, user.id);
+      case 'prospect':
+        return this.prospect(user.id);
       case 'platform': {
         const s = await this.platform(tx, user.id);
         return s.roles.length ? s : null;

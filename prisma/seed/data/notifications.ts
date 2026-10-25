@@ -6,7 +6,7 @@
 export interface TemplateSeed {
   key: string;
   channel: 'line' | 'sms' | 'email' | 'in_app' | 'web_push';
-  audience: 'resident' | 'owner' | 'technician';
+  audience: 'resident' | 'owner' | 'technician' | 'prospect';
   description: string;
   versions: {
     language: 'th' | 'en';
@@ -291,6 +291,113 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
       '{{tenant.name}}: e-Tax {{summary.month}} — {{summary.signed}} documents signed, VAT {{summary.vat}} THB, {{summary.problems}} with problems; download the register in Exports.',
     ],
   },
+  // --- listings and enquiries (B7.2 / B7.3, D-252) — the owner of a landlord or apartment tenant
+  {
+    key: 'listing.rejected',
+    description: 'Owner: moderation did not approve a listing; the reason says what to change (D-252)',
+    th: [
+      'ประกาศ "{{listing.title}}" ยังไม่ผ่านการตรวจ',
+      'ประกาศ "{{listing.title}}" ของ {{tenant.name}} ยังไม่ผ่านการตรวจ เหตุผล: {{reason}} — แก้ไขแล้วส่งตรวจใหม่ได้ในหน้าประกาศ',
+    ],
+    en: [
+      'Listing "{{listing.titleEn}}" not approved',
+      'The listing "{{listing.titleEn}}" of {{tenant.name}} was not approved. Reason: {{reason}} — edit it and submit again on the listing page.',
+    ],
+  },
+  {
+    key: 'listing.hidden',
+    description: 'Owner: a listing was hidden pending review (reports or a moderator) (D-252)',
+    th: [
+      'ประกาศ "{{listing.title}}" ถูกซ่อนชั่วคราว',
+      'ประกาศ "{{listing.title}}" ของ {{tenant.name}} ถูกซ่อนจากหน้าค้นหาชั่วคราวระหว่างทีมงานตรวจสอบ เหตุผล: {{reason}} — ทีมงานจะแจ้งผลโดยเร็ว',
+    ],
+    en: [
+      'Listing "{{listing.titleEn}}" hidden for now',
+      'The listing "{{listing.titleEn}}" of {{tenant.name}} is hidden from search while our team checks it. Reason: {{reason}} — we will let you know soon.',
+    ],
+  },
+  {
+    key: 'listing.verification_decided',
+    description: 'Owner: the owner verification of a unit was decided (D-252)',
+    th: [
+      'ผลการยืนยันเจ้าของห้อง {{unit.name}}',
+      'การยืนยันเจ้าของห้อง {{unit.name}} ของ {{tenant.name}}: {{verification.result}}',
+    ],
+    en: [
+      'Owner verification of {{unit.name}}',
+      'Owner verification of {{unit.name}} for {{tenant.name}}: {{verification.resultEn}}',
+    ],
+  },
+  {
+    key: 'listing.lead_received',
+    description: 'Owner: a prospect asked about a listing (B7.3, D-252)',
+    th: [
+      'มีคนสนใจ "{{listing.title}}"',
+      '{{lead.name}} สอบถามประกาศ "{{listing.title}}": {{message.excerpt}} — ตอบกลับได้ในกล่องคนสนใจ',
+    ],
+    en: [
+      'New enquiry about "{{listing.titleEn}}"',
+      '{{lead.name}} asked about "{{listing.titleEn}}": {{message.excerpt}} — reply in your enquiries inbox.',
+    ],
+  },
+  {
+    key: 'listing.lead_message',
+    description: 'Owner: a prospect wrote again in an open enquiry (B7.3, D-252)',
+    th: [
+      'ข้อความใหม่จาก {{lead.name}}',
+      '{{lead.name}} ส่งข้อความเรื่อง "{{listing.title}}": {{message.excerpt}}',
+    ],
+    en: [
+      'New message from {{lead.name}}',
+      '{{lead.name}} wrote about "{{listing.titleEn}}": {{message.excerpt}}',
+    ],
+  },
+  {
+    key: 'listing.lead_unanswered',
+    description: 'Owner: an enquiry has waited listing.lead.nudge_after_hours without an answer (B7.3)',
+    th: [
+      '{{lead.name}} ยังรอคำตอบอยู่',
+      '{{lead.name}} สอบถามประกาศ "{{listing.title}}" มาแล้วกว่า {{hours}} ชั่วโมงและยังไม่ได้รับคำตอบ ผู้เช่าที่ได้คำตอบเร็วมักตัดสินใจเร็วกว่า',
+    ],
+    en: [
+      '{{lead.name}} is still waiting',
+      '{{lead.name}} asked about "{{listing.titleEn}}" more than {{hours}} hours ago and has no answer yet. Quick answers win renters.',
+    ],
+  },
+  {
+    key: 'listing.viewing_requested',
+    description:
+      'Owner: a prospect asked for a viewing slot (new or rescheduled) — confirm or decline (B7.3, D-252)',
+    th: [
+      'ขอนัดดูห้อง {{viewing.at}}',
+      '{{lead.name}} ขอนัดดู "{{listing.title}}" {{viewing.at}} น. — ยืนยันหรือปฏิเสธได้ในกล่องคนสนใจ',
+    ],
+    en: [
+      'Viewing request {{viewing.atEn}}',
+      '{{lead.name}} asks to view "{{listing.titleEn}}" on {{viewing.atEn}} — confirm or decline in your enquiries inbox.',
+    ],
+  },
+  {
+    key: 'listing.viewing_cancelled',
+    description: 'Owner: the prospect cancelled a viewing (B7.3, D-252)',
+    th: [
+      'ยกเลิกนัดดูห้อง {{viewing.at}}',
+      '{{lead.name}} ยกเลิกนัดดู "{{listing.title}}" {{viewing.at}} น. แล้ว',
+    ],
+    en: [
+      'Viewing cancelled {{viewing.atEn}}',
+      '{{lead.name}} cancelled the viewing of "{{listing.titleEn}}" on {{viewing.atEn}}.',
+    ],
+  },
+  {
+    key: 'listing.viewing_reminder',
+    description: 'Owner: a confirmed viewing is near (B7.3)',
+    th: ['ใกล้ถึงเวลานัดดูห้อง', 'อย่าลืมนัดดู "{{listing.title}}" กับ {{lead.name}} {{viewing.at}} น.'],
+    en: [
+      'Viewing soon',
+      'Reminder: viewing of "{{listing.titleEn}}" with {{lead.name}} on {{viewing.atEn}}.',
+    ],
+  },
 ];
 
 /** Operator audiences per event: workflow → owner + manager; device/meter health → owner + manager + staff. */
@@ -331,6 +438,15 @@ const operatorTemplates = (): TemplateSeed[] =>
  * Platform default routing matrix (event × audience × channel). Operator events go in-app and by LINE (urgent ones
  * ignore quiet hours); resident billing messages go by LINE. Tenants override resident routes (B1.3).
  */
+/** B7.3 (D-252): the prospect hears the owner's answers in LINE (consent `prospect.enquiry`, quiet hours). */
+const PROSPECT_EVENTS = [
+  'listing.lead_replied',
+  'listing.viewing_confirmed',
+  'listing.viewing_declined',
+  'listing.viewing_cancelled',
+  'listing.viewing_reminder',
+];
+
 export const NOTIFICATION_ROUTES: {
   eventType: string;
   audience: string;
@@ -371,6 +487,12 @@ export const NOTIFICATION_ROUTES: {
   { eventType: 'service_request.message', audience: 'technician', channel: 'line', urgent: false },
   { eventType: 'service_request.visit_confirmed', audience: 'technician', channel: 'line', urgent: false },
   { eventType: 'access.credential_issued', audience: 'technician', channel: 'line', urgent: false },
+  ...PROSPECT_EVENTS.map((eventType) => ({
+    eventType,
+    audience: 'prospect',
+    channel: 'line',
+    urgent: false,
+  })),
 ];
 
 export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
@@ -697,6 +819,96 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         language: 'en',
         subject: null,
         body: '{{tenant.name}}: your e-Receipt / e-Tax Invoice {{document.number}} is digitally signed — download the PDF at {{link}}',
+      },
+    ],
+  },
+  {
+    key: 'listing.lead_replied',
+    channel: 'line',
+    audience: 'prospect',
+    description: 'Prospect: the owner replied to my enquiry (B7.3, D-252)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}} ตอบเรื่อง "{{listing.title}}": {{message.excerpt}}\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}} replied about "{{listing.titleEn}}": {{message.excerpt}}\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'listing.viewing_confirmed',
+    channel: 'line',
+    audience: 'prospect',
+    description: 'Prospect: the owner confirmed my viewing (B7.3, D-252)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'ยืนยันนัดดู "{{listing.title}}" {{viewing.at}} น. แล้ว — ดูที่อยู่และแผนที่ได้ในแอป\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'Your viewing of "{{listing.titleEn}}" on {{viewing.atEn}} is confirmed — address and map in the app.\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'listing.viewing_declined',
+    channel: 'line',
+    audience: 'prospect',
+    description: 'Prospect: the owner could not keep my viewing time (B7.3, D-252)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'เจ้าของไม่สะดวกนัดดู "{{listing.title}}" {{viewing.at}} น. ({{viewing.reason}}) — เลือกเวลาใหม่ได้ในแอป\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'The owner cannot do the viewing of "{{listing.titleEn}}" on {{viewing.atEn}} ({{viewing.reason}}) — pick another time in the app.\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'listing.viewing_cancelled',
+    channel: 'line',
+    audience: 'prospect',
+    description: 'Prospect: my viewing was cancelled because the owner closed the enquiry (B7.3, D-252)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'นัดดู "{{listing.title}}" {{viewing.at}} น. ถูกยกเลิกแล้ว ขอบคุณที่สนใจ — ดูประกาศอื่นได้ในแอป\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'The viewing of "{{listing.titleEn}}" on {{viewing.atEn}} was cancelled. Thank you for your interest — see other places in the app.\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'listing.viewing_reminder',
+    channel: 'line',
+    audience: 'prospect',
+    description: 'Prospect: my confirmed viewing is near (B7.3)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'อย่าลืมนัดดู "{{listing.title}}" {{viewing.at}} น. — ดูที่อยู่และแผนที่ได้ในแอป\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'Reminder: viewing of "{{listing.titleEn}}" on {{viewing.atEn}} — address and map in the app.\n{{link}}',
       },
     ],
   },

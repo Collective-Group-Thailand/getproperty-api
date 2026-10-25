@@ -5,7 +5,7 @@
  */
 export interface ConsentPurposeSeed {
   key: string;
-  audience: 'resident' | 'owner' | 'platform';
+  audience: 'resident' | 'owner' | 'platform' | 'prospect';
   required: boolean;
   th: { title: string; body: string };
   en: { title: string; body: string };
@@ -31,6 +31,19 @@ export const CONSENT_PURPOSES: ConsentPurposeSeed[] = [
     required: false,
     th: { title: 'ข่าวสารและข้อเสนอ', body: 'ร่าง ⚖ — รับข่าวสารและข้อเสนอจากผู้ให้เช่า (เลือกได้)' },
     en: { title: 'News and offers', body: 'Draft ⚖ — receive news and offers from the lessor (optional).' },
+  },
+  {
+    key: 'prospect.enquiry',
+    audience: 'prospect',
+    required: true,
+    th: {
+      title: 'การใช้ข้อมูลเพื่อตอบคำถามเรื่องเช่า',
+      body: 'ร่าง ⚖ — เจ้าของประกาศ (ผู้ควบคุมข้อมูล) ใช้ชื่อ ข้อความ และช่องทาง LINE ของท่าน เพื่อตอบคำถาม นัดดูห้อง และติดต่อเรื่องการเช่าห้องที่ท่านสอบถามเท่านั้น',
+    },
+    en: {
+      title: 'Use of your details to answer a rental enquiry',
+      body: 'Draft ⚖ — the owner of the listing (data controller) uses your name, messages and LINE contact only to answer your enquiry, arrange viewings and talk about renting the place you asked about.',
+    },
   },
   {
     key: 'tenant.terms',

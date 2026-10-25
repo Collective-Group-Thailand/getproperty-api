@@ -12,6 +12,7 @@ export const API_TAGS: Record<string, string> = {
   'staff.system': `${SURFACE_DESCRIPTIONS[SURFACES.staff]} System: ping.`,
   'resident.system': `${SURFACE_DESCRIPTIONS[SURFACES.resident]} System: ping.`,
   'technician.system': `${SURFACE_DESCRIPTIONS[SURFACES.technician]} System: ping.`,
+  'prospect.system': `${SURFACE_DESCRIPTIONS[SURFACES.prospect]} System: ping.`,
   'admin.system': `${SURFACE_DESCRIPTIONS[SURFACES.admin]} System: ping and build information.`,
   'device.system': `${SURFACE_DESCRIPTIONS[SURFACES.device]} System: ping.`,
   'webhooks.system': `${SURFACE_DESCRIPTIONS[SURFACES.webhooks]} Ping.`,
@@ -26,6 +27,7 @@ export const API_TAGS: Record<string, string> = {
     'Resident sign-in from the LINE Mini App: LIFF id-token exchange with party linking, SMS OTP fallback (D-060, D-154).',
   'auth.technician':
     'Technician sign-in from the LINE Mini App; the token carries `work_order:<uuid>` for the work orders assigned to me (B5.1, D-154).',
+  'auth.prospect': 'Prospect sign-in for enquiries and viewings: LINE (B7.3, D-252, D-255).',
   'auth.platform':
     'Collective staff sign-in: email + password + mandatory TOTP, enrolment on first sign-in (D-161).',
   'auth.sessions':
@@ -72,6 +74,8 @@ export const API_TAGS: Record<string, string> = {
     'Units: create (one or floor × pattern), edit, status override, subscription count (D-082, D-151).',
   'owner.listings':
     'Rental listings of the tenant: draft, photos, availability, submit, pause, close; owner verification (D-252).',
+  'owner.leads':
+    'The enquiries inbox: leads of my listings, replies (delivered in LINE), notes, won / lost; viewings and their calendar (D-252).',
   'owner.portfolio':
     'The landlord portfolio: add a unit in one step, every unit across projects with this month’s rent (D-251).',
   'owner.unitProfiles': 'Room types: default rent, deposit/advance months and lease lines (D-041).',
@@ -103,6 +107,9 @@ export const API_TAGS: Record<string, string> = {
   'resident.dataSubjectRequests': 'PDPA requests filed by the resident (D-025).',
   'resident.notifications': 'In-app inbox of the resident.',
   'resident.realtime': 'Realtime auth and the server-sent events stream (contract §6).',
+  'prospect.me': 'Who I am as a prospect: open enquiries and upcoming viewings (B7.3, D-252).',
+  'prospect.enquiries':
+    'My enquiries about listings and my viewings: ask, book, reschedule, cancel, write to the owner (D-252).',
   'technician.me': 'Who I am as a technician and the work orders my token covers (B5.1, D-154).',
   'technician.workOrders':
     'My work orders in the technician app (B5.1, D-072, D-154): accept, check in, before / after photos, parts and labour, complete.',

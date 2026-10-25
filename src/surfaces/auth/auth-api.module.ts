@@ -5,6 +5,7 @@ import { systemPingController } from '../system-ping.controller';
 import {
   OperatorAuthController,
   PlatformAuthController,
+  ProspectAuthController,
   ResidentAuthController,
   SessionsController,
   TechnicianAuthController,
@@ -17,6 +18,7 @@ import {
     OperatorAuthController,
     ResidentAuthController,
     TechnicianAuthController,
+    ProspectAuthController,
     PlatformAuthController,
     SessionsController,
   ],

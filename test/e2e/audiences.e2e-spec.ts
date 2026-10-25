@@ -13,6 +13,7 @@ const SURFACE_ME: Record<string, Audience> = {
   '/v1/staff/me': 'operator',
   '/v1/resident/me': 'resident',
   '/v1/technician/me': 'technician',
+  '/v1/prospect/me': 'prospect',
   '/v1/admin/me': 'platform',
 };
 
@@ -37,7 +38,7 @@ describe('audience guard (e2e, fake data stores)', () => {
       scopes: aud === 'device' ? [`device:${randomUUID()}`] : [],
     }).token;
 
-  it.each(['operator', 'resident', 'technician', 'platform', 'device'] as const)(
+  it.each(['operator', 'resident', 'technician', 'platform', 'device', 'prospect'] as const)(
     'a %s token is refused on the other surfaces',
     async (aud) => {
       const token = tokenFor(aud);

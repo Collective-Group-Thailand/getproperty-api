@@ -1,0 +1,144 @@
+// B7.3 part 2 prospects' enquiries, lead messages and viewings (D-252); migration 0043, schema-design §7.5 rows 112–115.
+
+/// A prospect's interest in a listing (D-252): one open lead per listing and prospect.
+model ListingLead {
+  id             String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String                  @map("tenant_id") @db.Uuid
+  listingId      String                  @map("listing_id") @db.Uuid
+  partyId        String                  @map("party_id") @db.Uuid
+  userId         String                  @map("user_id") @db.Uuid
+  state          ListingLeadState        @default(new)
+  moveInDate     DateTime?               @map("move_in_date") @db.Date
+  termMonths     Int?                    @map("term_months") @db.SmallInt
+  occupants      Int?                    @db.SmallInt
+  nationality    String?                 @db.Char(2)
+  notes          String?
+  lostReason     ListingLeadLostReason?  @map("lost_reason")
+  lostNote       String?                 @map("lost_note")
+  lastProspectAt DateTime                @default(now()) @map("last_prospect_at") @db.Timestamptz(6)
+  lastOwnerAt    DateTime?               @map("last_owner_at") @db.Timestamptz(6)
+  nudgedAt       DateTime?               @map("nudged_at") @db.Timestamptz(6)
+  version        Int                     @default(1)
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy      String?                 @map("updated_by") @db.Uuid
+
+  tenant   Tenant               @relation("ListingLeadTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_lead_tenant_id_fkey")
+  listing  Listing              @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_lead_listing_id_fkey")
+  party    Party                @relation("ListingLeadParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_lead_party_id_fkey")
+  user     UserAccount          @relation("ListingLeadUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_lead_user_id_fkey")
+  messages ListingLeadMessage[]
+  viewings ListingViewing[]
+
+  @@unique([listingId, userId], map: "listing_lead_listing_id_user_id_open_key", where: raw("(state <> ALL (ARRAY['won'::ops.listing_lead_state, 'lost'::ops.listing_lead_state]))"))
+  @@index([tenantId, state, lastProspectAt(sort: Desc)], map: "listing_lead_tenant_id_state_idx")
+  @@index([listingId], map: "listing_lead_listing_id_idx")
+  @@index([partyId], map: "listing_lead_party_id_idx")
+  @@index([userId], map: "listing_lead_user_id_idx")
+  @@index([lastProspectAt], map: "listing_lead_unanswered_idx", where: raw("((state = 'new'::ops.listing_lead_state) AND (nudged_at IS NULL))"))
+  @@map("listing_lead")
+  @@schema("ops")
+}
+
+/// The conversation of a lead (D-252); append-only.
+model ListingLeadMessage {
+  id           String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String            @map("tenant_id") @db.Uuid
+  leadId       String            @map("lead_id") @db.Uuid
+  author       ListingLeadAuthor
+  authorUserId String?           @map("author_user_id") @db.Uuid
+  body         String
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant     Tenant       @relation("ListingLeadMessageTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_lead_message_tenant_id_fkey")
+  lead       ListingLead  @relation(fields: [leadId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "listing_lead_message_lead_id_fkey")
+  authorUser UserAccount? @relation("ListingLeadMessageAuthorUser", fields: [authorUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_lead_message_author_user_id_fkey")
+
+  @@index([leadId, createdAt], map: "listing_lead_message_lead_id_created_at_idx")
+  @@index([tenantId], map: "listing_lead_message_tenant_id_idx")
+  @@index([authorUserId], map: "listing_lead_message_author_user_id_idx")
+  @@map("listing_lead_message")
+  @@schema("ops")
+}
+
+/// A viewing of a listing (D-252); live viewings of one listing never overlap (exclusion constraint).
+model ListingViewing {
+  id            String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String              @map("tenant_id") @db.Uuid
+  listingId     String              @map("listing_id") @db.Uuid
+  leadId        String              @map("lead_id") @db.Uuid
+  startsAt      DateTime            @map("starts_at") @db.Timestamptz(6)
+  endsAt        DateTime            @map("ends_at") @db.Timestamptz(6)
+  state         ListingViewingState @default(requested)
+  note          String?
+  declineReason String?             @map("decline_reason")
+  cancelledBy   ListingLeadAuthor?  @map("cancelled_by")
+  rescheduledTo String?             @map("rescheduled_to") @db.Uuid
+  decidedBy     String?             @map("decided_by") @db.Uuid
+  decidedAt     DateTime?           @map("decided_at") @db.Timestamptz(6)
+  remindedAt    DateTime?           @map("reminded_at") @db.Timestamptz(6)
+  version       Int                 @default(1)
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant           @relation("ListingViewingTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_viewing_tenant_id_fkey")
+  listing     Listing          @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_viewing_listing_id_fkey")
+  lead        ListingLead      @relation(fields: [leadId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "listing_viewing_lead_id_fkey")
+  replacement ListingViewing?  @relation("ListingViewingReschedule", fields: [rescheduledTo], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_viewing_rescheduled_to_fkey")
+  replaces    ListingViewing[] @relation("ListingViewingReschedule")
+
+  @@index([tenantId, startsAt], map: "listing_viewing_tenant_id_starts_at_idx")
+  @@index([listingId, startsAt], map: "listing_viewing_listing_id_starts_at_idx")
+  @@index([leadId], map: "listing_viewing_lead_id_idx")
+  @@index([rescheduledTo], map: "listing_viewing_rescheduled_to_idx")
+  @@index([startsAt], map: "listing_viewing_reminder_idx", where: raw("((state = 'confirmed'::ops.listing_viewing_state) AND (reminded_at IS NULL))"))
+  @@map("listing_viewing")
+  @@schema("ops")
+}
+
+enum ListingLeadState {
+  new
+  contacted
+  viewing_booked
+  viewed
+  applied
+  won
+  lost
+
+  @@map("listing_lead_state")
+  @@schema("ops")
+}
+
+enum ListingLeadLostReason {
+  price
+  location
+  unit_unsuitable
+  chose_other
+  no_response
+  not_qualified
+  unit_leased
+  other
+
+  @@map("listing_lead_lost_reason")
+  @@schema("ops")
+}
+
+enum ListingLeadAuthor {
+  prospect
+  owner
+
+  @@map("listing_lead_author")
+  @@schema("ops")
+}
+
+enum ListingViewingState {
+  requested
+  confirmed
+  declined
+  cancelled
+  completed
+  no_show
+
+  @@map("listing_viewing_state")
+  @@schema("ops")
+}

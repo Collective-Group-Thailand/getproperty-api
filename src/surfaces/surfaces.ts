@@ -13,6 +13,7 @@ export const SURFACES = {
   staff: 'staff',
   resident: 'resident',
   technician: 'technician',
+  prospect: 'prospect',
   admin: 'admin',
   device: 'device',
   webhooks: 'webhooks',
@@ -23,9 +24,10 @@ export type Surface = (typeof SURFACES)[keyof typeof SURFACES];
 /**
  * Token audiences: `operator` (people working for a tenant: owner, manager, accountant, building staff),
  * `resident` (lessees, co-occupants, condo owners — LIFF), `technician` (external contractors — LIFF, R2),
- * `platform` (Collective Group staff), `device` (gateways).
+ * `platform` (Collective Group staff), `device` (gateways), `prospect` (people looking for a place to rent who
+ * enquire about a listing or book a viewing — LIFF and web, B7.3, D-252).
  */
-export const AUDIENCES = ['operator', 'resident', 'technician', 'platform', 'device'] as const;
+export const AUDIENCES = ['operator', 'resident', 'technician', 'platform', 'device', 'prospect'] as const;
 export type Audience = (typeof AUDIENCES)[number];
 
 /** OpenAPI security scheme name per audience (`operatorBearer`, …). */
@@ -35,6 +37,7 @@ export const SECURITY_SCHEMES: Record<Audience, string> = {
   technician: 'technicianBearer',
   platform: 'platformBearer',
   device: 'deviceBearer',
+  prospect: 'prospectBearer',
 };
 
 /** URL prefix of each surface; `auth` issues tokens and `webhooks` verifies signatures (no audience). */
@@ -44,6 +47,7 @@ export const SURFACE_PREFIX: Record<Surface, string> = {
   staff: '/v1/staff/',
   resident: '/v1/resident/',
   technician: '/v1/technician/',
+  prospect: '/v1/prospect/',
   admin: '/v1/admin/',
   device: '/v1/device/',
   webhooks: '/webhooks/',
@@ -56,6 +60,7 @@ export const SURFACE_AUDIENCE: Record<Surface, Audience | null> = {
   staff: 'operator',
   resident: 'resident',
   technician: 'technician',
+  prospect: 'prospect',
   admin: 'platform',
   device: 'device',
   webhooks: null,
@@ -72,6 +77,8 @@ export const SURFACE_DESCRIPTIONS: Record<Surface, string> = {
     'Resident LINE Mini App (getproperty-liff, D-154) — lessees, co-occupants and condo owners, scoped to their leases and units (`resident` audience, D-060, D-151).',
   technician:
     'Technician LINE Mini App (getproperty-liff) — external technicians and contractors, scoped to the work orders assigned to them (`technician` audience; R2).',
+  prospect:
+    'Prospects (getproperty-liff and the public listing pages of getproperty-web, B7.3) — people looking for a place to rent: enquiries about a listing, viewings, my enquiries (`prospect` audience, D-252, D-255).',
   admin:
     'Platform admin zone — Collective Group staff: tenants, subscriptions, device fleet, tariffs, support, AI usage cost (`platform` audience, D-161).',
   device:
