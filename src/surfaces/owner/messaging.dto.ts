@@ -1,6 +1,16 @@
 import { FAKE } from '@common/openapi/examples';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, Length, Matches } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+  Matches,
+  Max,
+  Min,
+} from 'class-validator';
 
 export enum MessagingChannelStateName {
   Pending = 'pending',
@@ -121,4 +131,213 @@ export class MessagingLinkDto {
 export class LineWebhookAckDto {
   @ApiProperty({ type: 'integer', example: 1, description: 'Events acted on (link replies, unfollows).' })
   handled!: number;
+}
+
+/** The shared getproperty OA this month: counted messages against the free ones, and what is charged beyond. */
+export class MessagingSharedUsageDto {
+  @ApiProperty({
+    type: 'integer',
+    example: 812,
+    description: 'Messages LINE counts (push; replies are free).',
+  })
+  counted!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    example: 1000,
+    description:
+      'Free messages this month (per tenant + per unit); null while no rate is published (not charged).',
+  })
+  allowance!: number | null;
+
+  @ApiProperty({ type: 'integer', nullable: true, example: 188 })
+  left!: number | null;
+
+  @ApiProperty({ type: 'integer', nullable: true, example: 81 })
+  usedPercent!: number | null;
+
+  @ApiProperty({ type: 'integer', example: 0, description: 'Counted messages beyond the free ones.' })
+  chargeable!: number;
+
+  @ApiProperty({ type: String, nullable: true, example: '0.1000', description: 'THB per counted message.' })
+  pricePerMessage!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: '7.00' })
+  vatPercent!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '0.00',
+    description: 'chargeable × price, ex VAT, THB — billed on the monthly platform invoice.',
+  })
+  estimatedCharge!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: '0.00' })
+  estimatedVat!: string | null;
+}
+
+/** The operator's own OA this month: LINE bills the operator; shown, never charged by getproperty. */
+export class MessagingOwnUsageDto {
+  @ApiProperty({ type: 'integer', example: 240, description: 'Push messages LINE counts on your own OA.' })
+  counted!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    example: 31,
+    description: 'Replies (account-linking links): not counted by LINE.',
+  })
+  replies!: number;
+}
+
+export class MessagingUsageDto {
+  @ApiProperty({ example: '2026-11', description: 'Bangkok month.' })
+  month!: string;
+
+  @ApiProperty({ type: MessagingSharedUsageDto })
+  shared!: MessagingSharedUsageDto;
+
+  @ApiProperty({ type: MessagingOwnUsageDto })
+  own!: MessagingOwnUsageDto;
+
+  @ApiProperty({
+    type: 'integer',
+    example: 0,
+    description: 'LINE messages refused for quota this month (sent by SMS instead where a phone was known).',
+  })
+  quotaFallbacks!: number;
+}
+
+export class MessagingUsageQuery {
+  @ApiPropertyOptional({ example: '2026-11', description: 'YYYY-MM (Bangkok); default this month.' })
+  @IsOptional()
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/)
+  month?: string;
+}
+
+export enum MessagingRateStateName {
+  Entered = 'entered',
+  Published = 'published',
+  Withdrawn = 'withdrawn',
+}
+
+/** A version of the shared OA's charge (platform admin, maker-checker). */
+export class MessagingRateDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({ format: 'date', example: '2026-12-01' })
+  effectiveFrom!: string;
+
+  @ApiProperty({ type: 'integer', example: 500, description: 'Free counted messages per tenant per month.' })
+  freePerTenant!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    example: 10,
+    description: 'Free counted messages per active unit per month.',
+  })
+  freePerUnit!: number;
+
+  @ApiProperty({ example: '0.1000', description: 'THB per counted message beyond the free ones.' })
+  pricePerMessage!: string;
+
+  @ApiProperty({ example: '7.00' })
+  vatPercent!: string;
+
+  @ApiProperty({ type: String, nullable: true, example: null })
+  notes!: string | null;
+
+  @ApiProperty({
+    enum: MessagingRateStateName,
+    enumName: 'MessagingRateState',
+    example: MessagingRateStateName.Entered,
+  })
+  state!: MessagingRateStateName;
+
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  enteredBy!: string;
+
+  @ApiProperty({ format: 'date-time', example: FAKE.dateTime })
+  enteredAt!: string;
+
+  @ApiProperty({ type: String, format: 'uuid', nullable: true, example: null })
+  publishedBy!: string | null;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
+  publishedAt!: string | null;
+}
+
+export class MessagingRateCreateDto {
+  @ApiProperty({ format: 'date', example: '2026-12-01', description: 'Today or later (Bangkok).' })
+  @IsDateString({ strict: true })
+  effectiveFrom!: string;
+
+  @ApiProperty({ type: 'integer', example: 500, minimum: 0, maximum: 1000000 })
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  freePerTenant!: number;
+
+  @ApiPropertyOptional({ type: 'integer', example: 10, minimum: 0, maximum: 100000 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100_000)
+  freePerUnit?: number;
+
+  @ApiProperty({ example: '0.1000', description: 'THB, up to 4 decimals.' })
+  @Matches(/^\d{1,5}(\.\d{1,4})?$/)
+  pricePerMessage!: string;
+
+  @ApiProperty({ example: '7.00' })
+  @Matches(/^(100(\.0{1,2})?|\d{1,2}(\.\d{1,2})?)$/)
+  vatPercent!: string;
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'ตาม LINE Pro ส.ค. 2567', maxLength: 300 })
+  @IsOptional()
+  @IsString()
+  @Length(1, 300)
+  notes?: string | null;
+}
+
+/** What a prospect may see of the shared OA's charge (no tenant data). */
+export class PublicMessagingRateDto {
+  @ApiProperty({ format: 'date', example: '2026-12-01' })
+  effectiveFrom!: string;
+
+  @ApiProperty({ type: 'integer', example: 500 })
+  freePerTenant!: number;
+
+  @ApiProperty({ type: 'integer', example: 10 })
+  freePerUnit!: number;
+
+  @ApiProperty({ example: '0.1000' })
+  pricePerMessage!: string;
+
+  @ApiProperty({ example: '7.00' })
+  vatPercent!: string;
+
+  @ApiProperty({
+    example: true,
+    description: 'Replies are never charged; only messages LINE counts (push) beyond the free ones.',
+  })
+  repliesFree!: boolean;
+}
+
+export class PublicPricingDto {
+  @ApiProperty({
+    type: PublicMessagingRateDto,
+    nullable: true,
+    description: 'The shared getproperty LINE OA in force today; null = messaging not charged.',
+  })
+  messaging!: PublicMessagingRateDto | null;
+
+  @ApiProperty({
+    type: PublicMessagingRateDto,
+    nullable: true,
+    description: 'A published change that takes effect later, if any.',
+  })
+  messagingNext!: PublicMessagingRateDto | null;
 }

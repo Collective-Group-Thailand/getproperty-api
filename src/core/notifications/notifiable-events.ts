@@ -159,6 +159,44 @@ export const NOTIFIABLE_EVENTS: Record<string, NotifiableResolver> = {
           },
         }
       : null,
+  /** D-254: the shared OA's free messages (80 % / 100 %, once a month), a quota refusal, a failing own OA. */
+  'messaging.allowance_threshold': async (tx, e) =>
+    e.tenantId
+      ? {
+          recipients: await operators(tx, e.tenantId, ['owner'], 'owner'),
+          data: {
+            tenant: { name: await tenantName(tx, e.tenantId) },
+            messaging: {
+              usedPercent: e.payload.thresholdPct,
+              counted: e.payload.counted,
+              allowance: e.payload.allowance,
+            },
+          },
+        }
+      : null,
+  'messaging.quota_fallback': async (tx, e) =>
+    e.tenantId
+      ? {
+          recipients: await operators(tx, e.tenantId, ['owner'], 'owner'),
+          data: {
+            tenant: { name: await tenantName(tx, e.tenantId) },
+            messaging: {
+              oaLabelTh: e.payload.oa === 'own' ? ' LINE OA ของคุณ' : ' LINE ของ getproperty',
+              oaLabelEn: e.payload.oa === 'own' ? 'your LINE OA' : 'getproperty’s LINE',
+            },
+          },
+        }
+      : null,
+  'messaging.channel_failing': async (tx, e) =>
+    e.tenantId
+      ? {
+          recipients: await operators(tx, e.tenantId, ['owner'], 'owner'),
+          data: {
+            tenant: { name: await tenantName(tx, e.tenantId) },
+            channel: { name: e.payload.name, reason: e.payload.reason },
+          },
+        }
+      : null,
   /** B3.4 (D-034): meter health and gateway offline reach the operators of the building's tenant. */
   'meter.stale': meterHealth,
   'meter.silent': meterHealth,

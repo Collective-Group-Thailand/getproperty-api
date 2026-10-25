@@ -2,6 +2,7 @@ import { AppConfig } from '@config/app-config';
 import { ComplianceScoreService } from '@core/compliance/compliance-score.service';
 import { type DispatchJob, EventConsumer, type SubscriberJob } from '@core/events/event-consumer.service';
 import { OutboxRelay } from '@core/events/outbox-relay.service';
+import { MessagingChannelsService } from '@core/messaging/messaging-channels.service';
 import { type DeliveryJob, NotificationService } from '@core/notifications/notification.service';
 import { NotificationDelivery } from '@core/notifications/notification-delivery.service';
 import { RetentionService } from '@core/privacy/retention.service';
@@ -78,6 +79,8 @@ export const MAINTENANCE_JOBS = {
   'integration-delivery': 30_000,
   // D-276: daily storage snapshot per tenant (idempotent per Bangkok day) and its notices
   'storage-metering': 3_600_000,
+  // D-254: own LINE OAs re-checked every messaging.health_check.hours (the job only picks the due ones)
+  'messaging-health': 900_000,
   // D-252 / O-018: ownership evidence deleted after its retention
   'listing-evidence-purge': 3_600_000,
   // B7.3: viewing reminders (both sides) and the owner's nudge on unanswered enquiries
@@ -127,6 +130,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly loss: UtilityLossService,
     private readonly integrations: IntegrationDeliveryService,
     private readonly storageMetering: StorageMeteringService,
+    private readonly messagingChannels: MessagingChannelsService,
     private readonly listingModeration: ListingModerationService,
     private readonly listingLeads: ListingLeadsService,
   ) {}
@@ -246,6 +250,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'storage-metering':
         await this.storageMetering.sweep();
+        break;
+      case 'messaging-health':
+        await this.messagingChannels.healthCheck();
         break;
       case 'listing-evidence-purge':
         await this.listingModeration.purgeEvidence();

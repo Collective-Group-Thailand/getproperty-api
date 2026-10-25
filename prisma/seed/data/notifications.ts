@@ -54,6 +54,42 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     ],
   },
   {
+    key: 'messaging.allowance_threshold',
+    description: 'Owner: the shared LINE OA reached 80 % / 100 % of the free messages this month (D-254)',
+    th: [
+      'ข้อความ LINE ใช้ไปแล้ว {{messaging.usedPercent}}% ของโควตาฟรี',
+      'เดือนนี้ {{tenant.name}} ส่งข้อความผ่าน LINE ของ getproperty ไปแล้ว {{messaging.counted}} จาก {{messaging.allowance}} ข้อความฟรี ข้อความหลังจากนี้คิดค่าบริการตามอัตราที่ประกาศ ดูรายละเอียดหรือเชื่อม LINE OA ของตัวเองได้ในหน้าตั้งค่า',
+    ],
+    en: [
+      'LINE messages: {{messaging.usedPercent}}% of the free messages used',
+      'This month {{tenant.name}} has sent {{messaging.counted}} of {{messaging.allowance}} free messages through getproperty’s LINE. Further messages are charged at the published rate. See details, or connect your own LINE OA, in Settings.',
+    ],
+  },
+  {
+    key: 'messaging.quota_fallback',
+    description: 'Owner: LINE refused a message for quota and it went by SMS (D-254)',
+    th: [
+      'LINE ส่งข้อความไม่ได้เพราะเกินโควตา',
+      'LINE ปฏิเสธข้อความของ {{tenant.name}} เพราะเกินโควตาของ{{messaging.oaLabelTh}} ข้อความที่สำคัญจะส่งทาง SMS แทนเมื่อมีเบอร์โทร ตรวจสอบแพ็กเกจ LINE OA หรือดูรายละเอียดในหน้าตั้งค่า',
+    ],
+    en: [
+      'LINE refused messages: quota reached',
+      'LINE refused a message of {{tenant.name}} because {{messaging.oaLabelEn}} reached its quota. Messages go by SMS instead where a phone number is known. Check the LINE OA plan, or see details in Settings.',
+    ],
+  },
+  {
+    key: 'messaging.channel_failing',
+    description: 'Owner: the own LINE OA no longer accepts the access token (D-254)',
+    th: [
+      'LINE OA ของคุณเชื่อมต่อไม่ได้',
+      'LINE ไม่รับ access token ของ {{channel.name}} แล้ว ({{channel.reason}}) ระหว่างนี้ข้อความจะส่งผ่าน LINE ของ getproperty แก้ไขได้ในหน้าตั้งค่า › LINE OA',
+    ],
+    en: [
+      'Your LINE OA is not connecting',
+      'LINE no longer accepts the access token of {{channel.name}} ({{channel.reason}}). Meanwhile messages go through getproperty’s LINE. Fix it in Settings › LINE OA.',
+    ],
+  },
+  {
     key: 'tenant.bank_account.changed',
     description: 'Owner: receiving bank account changed (D-091)',
     th: [

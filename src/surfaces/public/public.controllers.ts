@@ -2,12 +2,15 @@ import { Public } from '@common/auth/auth.decorators';
 import { ApiEndpoint, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { bangkokDate } from '@common/time/bangkok';
 import { CLOCK, type Clock } from '@core/clock/clock';
+import { MessagingUsageService } from '@core/messaging/messaging-usage.service';
 import { UtilityTariffsService } from '@core/utility-tariffs/utility-tariffs.service';
 import { TenantTx } from '@database/tenant-tx';
+import { type MessagingRate } from '@generated/prisma/client';
 import { Controller, Get, Header, Inject, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 import { type UtilityName, type UtilityProviderName } from '../owner/assets.dto';
+import { PublicMessagingRateDto, PublicPricingDto } from '../owner/messaging.dto';
 import { dateOnly } from '../shared/mappers';
 import { ApiSurface, SURFACES } from '../surfaces';
 import { publicPlansFromCatalogue } from './plans';
@@ -123,5 +126,56 @@ export class PublicUtilityTariffsController {
       effectiveFrom: dateOnly(pick.version.effectiveFrom)!,
       sourceUrl: pick.version.sourceUrl,
     };
+  }
+}
+
+function publicRate(r: MessagingRate | null): PublicMessagingRateDto | null {
+  return r
+    ? {
+        effectiveFrom: r.effectiveFrom.toISOString().slice(0, 10),
+        freePerTenant: r.freePerTenant,
+        freePerUnit: r.freePerUnit,
+        pricePerMessage: r.pricePerMessage.toFixed(4),
+        vatPercent: r.vatPercent.toFixed(2),
+        repliesFree: true,
+      }
+    : null;
+}
+
+@ApiTags('public.pricing')
+@ApiSurface(SURFACES.public)
+@Controller('public/pricing')
+export class PublicPricingController {
+  constructor(private readonly usage: MessagingUsageService) {}
+
+  @Get()
+  @Public()
+  @Header('Cache-Control', CACHE)
+  @ApiEndpoint({
+    id: 'public.pricing.get',
+    summary: 'Published prices',
+    description:
+      'What an operator pays getproperty, as published: the shared LINE OA’s free messages and price per counted message beyond them (replies free; an own OA is never charged by getproperty) — in force today and the next published change (D-254). Payment fee rules join with the payment gateway (D-250). Anonymous and cacheable.',
+    implements: ['D-254'],
+  })
+  @ApiSuccess(200, {
+    description: 'Prices',
+    type: PublicPricingDto,
+    example: {
+      messaging: {
+        effectiveFrom: '2026-12-01',
+        freePerTenant: 500,
+        freePerUnit: 10,
+        pricePerMessage: '0.1000',
+        vatPercent: '7.00',
+        repliesFree: true,
+      },
+      messagingNext: null,
+    },
+  })
+  @ApiStandardErrors()
+  async get(): Promise<PublicPricingDto> {
+    const { current, next } = await this.usage.pricing();
+    return { messaging: publicRate(current), messagingNext: publicRate(next) };
   }
 }

@@ -45,6 +45,7 @@ import { SigningKeys } from './identity/signing-keys';
 import { SubjectService } from './identity/subjects.service';
 import { TokenService } from './identity/token.service';
 import { MessagingChannelsService } from './messaging/messaging-channels.service';
+import { MessagingUsageService } from './messaging/messaging-usage.service';
 import { NotificationService } from './notifications/notification.service';
 import { NotificationDelivery } from './notifications/notification-delivery.service';
 import { NotificationRoutesService } from './notifications/notification-routes.service';
@@ -107,6 +108,7 @@ const SERVICES = [
   AuthService,
   IdentitySignInService,
   MessagingChannelsService,
+  MessagingUsageService,
   AccessService,
   InvitationService,
   MembershipService,

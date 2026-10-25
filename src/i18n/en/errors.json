@@ -1126,5 +1126,19 @@
       "title": "Linked to someone else",
       "detail": "This LINE account is already linked to another getproperty user."
     }
+  },
+  "messaging_rate": {
+    "in_the_past": {
+      "title": "Effective date in the past",
+      "detail": "The effective date must be today or later"
+    },
+    "invalid_state": {
+      "title": "Rate already handled",
+      "detail": "This rate was already published or withdrawn"
+    },
+    "same_checker": {
+      "title": "Another user must publish",
+      "detail": "The rate must be published by a different platform user than the one who entered it"
+    }
   }
 }

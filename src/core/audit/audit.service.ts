@@ -13,6 +13,8 @@ export const AUDIT_ACTIONS = [
   'messaging.channel_connected',
   'messaging.channel_revoked',
   'messaging.user_linked',
+  'messaging.rate_entered',
+  'messaging.rate_published',
   'service_request.decided',
   'service_request.settled',
   'service_cost.added',
