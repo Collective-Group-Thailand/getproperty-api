@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { filesController } from '../shared/files.controller';
+import { OwnerIdentitiesController } from '../shared/identities.controllers';
 import { OwnerMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
 import { OwnerConsentsController } from '../shared/privacy.controllers';
@@ -116,6 +117,7 @@ import {
     OwnerRulesContactsController,
     systemPingController(SURFACES.owner),
     OwnerMeController,
+    OwnerIdentitiesController,
     OwnerTenantController,
     OwnerMembersController,
     OwnerInvitationsController,

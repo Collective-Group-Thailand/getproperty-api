@@ -1,6 +1,7 @@
 import { Public } from '@common/auth/auth.decorators';
 import { ApiEndpoint, ApiJsonBody, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { AuthService } from '@core/identity/auth.service';
+import { IdentitySignInService } from '@core/identity/identity-sign-in.service';
 import { SigningKeys } from '@core/identity/signing-keys';
 import { WEB_PUSH, type WebPushPort } from '@integrations/web-push/web-push.port';
 import { Body, Controller, Get, HttpCode, Inject, Post } from '@nestjs/common';
@@ -8,6 +9,8 @@ import { ApiTags } from '@nestjs/swagger';
 import { seconds, Throttle } from '@nestjs/throttler';
 
 import {
+  FirebaseSignInDto,
+  IdentitySignInDto,
   JwksDto,
   LineExchangeDto,
   OperatorOtpVerifyDto,
@@ -37,7 +40,40 @@ const OTP_EXAMPLE: OtpChallengeDto = {
 @ApiSurface(SURFACES.auth)
 @Controller('auth/operator')
 export class OperatorAuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly identities: IdentitySignInService,
+  ) {}
+
+  @Post('identity')
+  @HttpCode(200)
+  @Public()
+  @Throttle(LIMIT)
+  @ApiEndpoint({
+    id: 'auth.operatorIdentity.exchange',
+    summary: 'Sign in an operator with Google, Apple or LINE',
+    description:
+      'Verifies the Firebase (Google / Apple) or LINE id token and signs in the account the identity is linked to — linked on the profile (`POST /v1/owner/me/identities`) or by the landlord sign-up. An identity never creates an operator and is never matched by e-mail: an unknown one is `auth.identity_not_linked` (sign in by phone, then link it). Returns tokens of audience `operator` like the SMS sign-in (D-255, D-283).',
+    implements: ['D-090', 'D-255', 'D-283', 'ADR-0003'],
+  })
+  @ApiJsonBody(IdentitySignInDto, {
+    provider: 'firebase_google',
+    idToken: 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJVMDAwMCJ9.c2lnbmF0dXJl',
+  })
+  @ApiSuccess(200, { description: 'Signed in', type: TokenPairDto, example: TOKEN_PAIR_EXAMPLE })
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.bad_request',
+    'auth.line_token_invalid',
+    'auth.identity_token_invalid',
+    'auth.identity_not_linked',
+    'auth.no_access',
+    'auth.account_disabled',
+    'provider.unavailable',
+  )
+  async identity(@Body() body: IdentitySignInDto): Promise<TokenPairDto> {
+    return tokenPairDto(await this.identities.signIn('operator', body));
+  }
 
   @Post('otp/request')
   @HttpCode(200)
@@ -122,7 +158,38 @@ export class OperatorAuthController {
 @ApiSurface(SURFACES.auth)
 @Controller('auth/resident')
 export class ResidentAuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly identities: IdentitySignInService,
+  ) {}
+
+  @Post('identity')
+  @HttpCode(200)
+  @Public()
+  @Throttle(LIMIT)
+  @ApiEndpoint({
+    id: 'auth.residentIdentity.exchange',
+    summary: 'Sign in a resident with Google or Apple',
+    description:
+      'Outside LINE (D-255): verifies the Firebase ID token and signs in the account the identity is linked to (`POST /v1/resident/me/identities`); an unknown identity is `auth.identity_not_linked` — a resident first signs in with LINE or the SMS code, which is what links them to their leases (D-061, D-226). Returns `resident` tokens.',
+    implements: ['D-060', 'D-255', 'D-283', 'ADR-0003'],
+  })
+  @ApiJsonBody(FirebaseSignInDto, {
+    provider: 'firebase_apple',
+    idToken: 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJVMDAwMCJ9.c2lnbmF0dXJl',
+  })
+  @ApiSuccess(200, { description: 'Signed in', type: TokenPairDto, example: TOKEN_PAIR_EXAMPLE })
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.bad_request',
+    'auth.identity_token_invalid',
+    'auth.identity_not_linked',
+    'auth.account_disabled',
+    'provider.unavailable',
+  )
+  async identity(@Body() body: FirebaseSignInDto): Promise<TokenPairDto> {
+    return tokenPairDto(await this.identities.signIn('resident', body));
+  }
 
   @Post('line')
   @HttpCode(200)
@@ -487,7 +554,95 @@ export class SessionsController {
 @ApiSurface(SURFACES.auth)
 @Controller('auth/prospect')
 export class ProspectAuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly identities: IdentitySignInService,
+  ) {}
+
+  @Post('identity')
+  @HttpCode(200)
+  @Public()
+  @Throttle(LIMIT)
+  @ApiEndpoint({
+    id: 'auth.prospectIdentity.exchange',
+    summary: 'Sign in a prospect with Google or Apple',
+    description:
+      'For people looking for a place outside LINE (D-252, D-255): verifies the Firebase ID token; the first sign-in creates the account, which needs the verified e-mail of the token when no other account holds it (`auth.identity_contact_required`, `auth.identity_email_in_use`). Returns `prospect` tokens.',
+    implements: ['D-252', 'D-255', 'D-283', 'ADR-0003'],
+  })
+  @ApiJsonBody(FirebaseSignInDto, {
+    provider: 'firebase_google',
+    idToken: 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJVMDAwMCJ9.c2lnbmF0dXJl',
+  })
+  @ApiSuccess(200, {
+    description: 'Signed in',
+    type: TokenPairDto,
+    example: {
+      ...TOKEN_PAIR_EXAMPLE,
+      subject: {
+        ...TOKEN_PAIR_EXAMPLE.subject,
+        audience: 'prospect',
+        roles: [],
+        permissions: [],
+        scopes: [],
+      },
+    },
+  })
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.bad_request',
+    'auth.identity_token_invalid',
+    'auth.identity_contact_required',
+    'auth.identity_email_in_use',
+    'auth.account_disabled',
+    'provider.unavailable',
+  )
+  async identity(@Body() body: FirebaseSignInDto): Promise<TokenPairDto> {
+    return tokenPairDto(await this.identities.signIn('prospect', body));
+  }
+
+  @Post('otp/request')
+  @HttpCode(200)
+  @Public()
+  @Throttle(LIMIT)
+  @ApiEndpoint({
+    id: 'auth.prospectOtp.request',
+    summary: 'Send a sign-in code by SMS to a prospect',
+    description:
+      'Outside LINE (D-255): a code to any phone — a prospect has no account before the first sign-in. One code per OTP_RESEND_SECONDS, at most OTP_MAX_PER_HOUR per hour; codes expire after OTP_TTL_SECONDS (contract §4).',
+    implements: ['D-252', 'D-255', 'D-283', 'ADR-0003'],
+  })
+  @ApiJsonBody(OtpRequestDto, { phone: '+66810001234', language: 'en' })
+  @ApiSuccess(200, { description: 'Challenge created', type: OtpChallengeDto, example: OTP_EXAMPLE })
+  @ApiStandardErrors('validation.failed', 'http.bad_request', 'auth.otp_rate_limited', 'provider.unavailable')
+  async otpRequest(@Body() body: OtpRequestDto): Promise<OtpChallengeDto> {
+    return otpChallengeDto(await this.auth.prospectOtpRequest(body.phone, body.language));
+  }
+
+  @Post('otp/verify')
+  @HttpCode(200)
+  @Public()
+  @Throttle(LIMIT)
+  @ApiEndpoint({
+    id: 'auth.prospectOtp.verify',
+    summary: 'Sign in a prospect with the SMS code',
+    description:
+      'Checks the code (5 attempts per challenge) and creates the account on first use; returns `prospect` tokens (no scopes). Parties an owner entered with this phone are not linked here — a prospect sees only their own enquiries (D-281).',
+    implements: ['D-252', 'D-255', 'D-281', 'D-283', 'ADR-0003'],
+  })
+  @ApiJsonBody(OtpVerifyDto, { challengeId: '3b241101-e2bb-4255-8caf-4136c566a962', code: '123456' })
+  @ApiSuccess(200, { description: 'Signed in', type: TokenPairDto, example: TOKEN_PAIR_EXAMPLE })
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.bad_request',
+    'auth.otp_invalid',
+    'auth.otp_expired',
+    'auth.otp_attempts_exceeded',
+    'auth.account_disabled',
+  )
+  async otpVerify(@Body() body: OtpVerifyDto): Promise<TokenPairDto> {
+    return tokenPairDto(await this.auth.prospectOtpVerify(body.challengeId, body.code));
+  }
 
   @Post('line')
   @HttpCode(200)
@@ -497,7 +652,7 @@ export class ProspectAuthController {
     id: 'auth.prospectLine.exchange',
     summary: 'Sign in a prospect with a LINE id token',
     description:
-      'For people looking for a place to rent (B7.3, D-252): verifies the LIFF / LINE Login id token, creates the account on first use and returns tokens of audience `prospect` (no scopes — every prospect operation reads only the caller’s own enquiries and viewings). Phone, Google and Apple sign-in for prospects follow with the OAuth clients of D-255.',
+      'For people looking for a place to rent (B7.3, D-252): verifies the LIFF / LINE Login id token, creates the account on first use and returns tokens of audience `prospect` (no scopes — every prospect operation reads only the caller’s own enquiries and viewings). Phone, Google and Apple: `…/otp/*` and `…/identity` (D-255, D-283).',
     implements: ['D-252', 'D-255', 'ADR-0003'],
   })
   @ApiJsonBody(LineExchangeDto, { idToken: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVMDAwMCJ9.c2lnbmF0dXJl' })

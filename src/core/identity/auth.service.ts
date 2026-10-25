@@ -137,6 +137,39 @@ export class AuthService {
     return this.issue(tx, rest, amr, user);
   }
 
+  /**
+   * Tokens for a user signed in with a Google / Apple / LINE identity (D-255, D-283): the subject of the audience
+   * (operators need an active membership, `auth.no_access` otherwise) and `amr` naming the provider.
+   */
+  async issueAs(
+    tx: Tx,
+    user: UserAccount,
+    audience: 'operator' | 'resident' | 'prospect',
+    amr: string[],
+  ): Promise<TokenPair> {
+    if (audience === 'operator') return this.issueOperator(tx, user, amr);
+    const subject =
+      audience === 'resident' ? await this.subjects.resident(tx, user.id) : this.subjects.prospect(user.id);
+    return this.issue(tx, subject, amr, user);
+  }
+
+  /**
+   * `POST /v1/auth/prospect/otp/request` (D-255, D-283): a code for any phone — a prospect has no account until the
+   * first sign-in, as a landlord signing up (rate limits per phone apply).
+   */
+  prospectOtpRequest(phone: string, language?: string): Promise<OtpRequestResult> {
+    return this.otp.request({ purpose: 'prospect_login', phone, send: true, language });
+  }
+
+  /** `POST /v1/auth/prospect/otp/verify`: the account of the verified phone (created on first use), `prospect` tokens. */
+  async prospectOtpVerify(challengeId: string, code: string): Promise<TokenPair> {
+    const challenge = await this.otp.verify({ challengeId, code, purpose: 'prospect_login' });
+    return this.db.platform(async (tx) => {
+      const user = await this.phoneUser(tx, challenge.phoneE164);
+      return this.issue(tx, this.subjects.prospect(user.id), ['otp'], user);
+    });
+  }
+
   /** `POST /v1/public/signup/landlord/otp`: a sign-up code for any phone (D-251: no account or invitation needed). */
   landlordOtpRequest(phone: string, language?: string): Promise<OtpRequestResult> {
     return this.otp.request({ purpose: 'landlord_signup', phone, send: true, language });

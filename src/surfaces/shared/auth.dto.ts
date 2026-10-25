@@ -251,3 +251,100 @@ export class VapidKeyDto {
   })
   publicKey!: string;
 }
+
+export const IDENTITY_TOKEN_PROVIDERS = ['line', 'firebase_google', 'firebase_apple'] as const;
+export const FIREBASE_PROVIDERS = ['firebase_google', 'firebase_apple'] as const;
+
+export class IdentitySignInDto {
+  @ApiProperty({
+    enum: IDENTITY_TOKEN_PROVIDERS,
+    enumName: 'IdentityTokenProvider',
+    example: 'firebase_google',
+    description: 'LINE Login / LIFF, or Google / Apple through Firebase Authentication (D-255).',
+  })
+  @IsIn(IDENTITY_TOKEN_PROVIDERS)
+  provider!: (typeof IDENTITY_TOKEN_PROVIDERS)[number];
+
+  @ApiProperty({
+    example: 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJVMDAwMCJ9.c2lnbmF0dXJl',
+    description: '`line`: the LINE id token; `firebase_google` / `firebase_apple`: the Firebase ID token.',
+  })
+  @IsString()
+  @Length(10, 8192)
+  idToken!: string;
+}
+
+export class FirebaseSignInDto {
+  @ApiProperty({
+    enum: FIREBASE_PROVIDERS,
+    enumName: 'FirebaseProvider',
+    example: 'firebase_apple',
+    description: 'Google or Apple through Firebase Authentication (D-255); LINE has its own exchange.',
+  })
+  @IsIn(FIREBASE_PROVIDERS)
+  provider!: (typeof FIREBASE_PROVIDERS)[number];
+
+  @ApiProperty({
+    example: 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJVMDAwMCJ9.c2lnbmF0dXJl',
+    description: 'The Firebase ID token (`user.getIdToken()`).',
+  })
+  @IsString()
+  @Length(10, 8192)
+  idToken!: string;
+}
+
+export enum IdentityProviderName {
+  Line = 'line',
+  LineLiff = 'line_liff',
+  Google = 'google',
+  PhoneOtp = 'phone_otp',
+  FirebaseGoogle = 'firebase_google',
+  FirebaseApple = 'firebase_apple',
+}
+
+export class AccountIdentityDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({ enum: IdentityProviderName, enumName: 'IdentityProvider', example: 'firebase_google' })
+  provider!: IdentityProviderName;
+
+  @ApiProperty({ type: String, nullable: true, example: 'Somchai J.' })
+  displayName!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'test@example.com',
+    description: 'Verified by the provider.',
+  })
+  email!: string | null;
+
+  @ApiProperty({ format: 'date-time', example: '2026-11-01T00:15:00+07:00' })
+  linkedAt!: string;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: '2026-11-02T09:00:00+07:00' })
+  lastSeenAt!: string | null;
+
+  @ApiProperty({
+    example: true,
+    description: 'Google and Apple can be removed; LINE and the phone carry notifications and lease links.',
+  })
+  removable!: boolean;
+}
+
+export class AccountIdentitiesDto {
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '08•-•••-1234',
+    description: 'The verified phone, masked.',
+  })
+  phoneMasked!: string | null;
+
+  @ApiProperty({ example: false })
+  hasPassword!: boolean;
+
+  @ApiProperty({ type: [AccountIdentityDto] })
+  identities!: AccountIdentityDto[];
+}
