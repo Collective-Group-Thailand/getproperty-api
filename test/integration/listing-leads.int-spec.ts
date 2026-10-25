@@ -338,7 +338,13 @@ describe('listing leads (B7.3, real PostgreSQL)', () => {
       'SELECT starts_at FROM ops.listing_viewing WHERE id = $1',
       [viewingId],
     );
-    t.clock.set(new Date(rows[0]!.starts_at.getTime() - 2 * 3_600_000));
+    const at = new Date(rows[0]!.starts_at.getTime() - 2 * 3_600_000);
+    // the unanswered enquiry is older than the nudge window whatever the time of day the suite runs at
+    await db.admin.query(
+      `UPDATE ops.listing_lead SET last_prospect_at = $1 WHERE state = 'new' AND last_owner_at IS NULL`,
+      [new Date(at.getTime() - 13 * 3_600_000)],
+    );
+    t.clock.set(at);
     expect(await leads.remind()).toEqual({ viewings: 1, leads: 1, relists: 0 });
     expect(await leads.remind()).toEqual({ viewings: 0, leads: 0, relists: 0 });
     expect((await notifications('listing.viewing_reminder', 'owner')).length).toBeGreaterThan(0);

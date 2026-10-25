@@ -944,7 +944,7 @@ export class ListingLeadsService {
   async leaseDraft(
     ctx: TenantContext,
     id: string,
-    input: { startDate?: string; months?: number; acknowledgementIds?: string[] },
+    input: { startDate?: string; months?: number; acknowledgementIds?: string[]; language?: 'th' | 'en' },
   ) {
     const by = userIdOf(RequestContext.actor());
     const { lead, listing } = await this.db.tenant(ctx, async (tx) => {
@@ -974,6 +974,7 @@ export class ListingLeadsService {
       depositAmount: rent.times(listing.depositMonths).toFixed(2),
       advanceRentAmount: rent.times(listing.advanceMonths).toFixed(2),
       acknowledgementIds: input.acknowledgementIds,
+      language: input.language,
     });
     return this.db.tenant(ctx, async (tx) => {
       await tx.listingLead.update({

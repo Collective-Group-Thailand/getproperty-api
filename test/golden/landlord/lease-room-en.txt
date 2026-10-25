@@ -1,0 +1,109 @@
+Room Lease Agreement
+
+Between the owner of the property and the lessee, for residential use
+
+Lease no. | CTR-2026-00001
+
+Made at | คอนโดตัวอย่าง
+
+Date | 25 October 2026
+
+This agreement is made between มาลี ตัวอย่าง, of 9 ถนนตัวอย่าง เขตตัวอย่าง กรุงเทพมหานคร 10400, hereinafter the “Lessor”, of the one part,
+
+and Alex Example, passport no. X0000000, nationality GB, telephone +66810009402, hereinafter the “Lessee”, of the other part.
+
+The parties agree as follows.
+
+1. The premises
+
+The Lessor agrees to let and the Lessee agrees to rent room no. 12/345, ชั้น 12, in the house or building อาคาร 1 (คอนโดตัวอย่าง), located at 9 ถนนตัวอย่าง เขตตัวอย่าง กรุงเทพมหานคร 10400, approximately 28.50 square metres, for residential use only, with reasonable shared use of the common areas of the house.
+
+Together with the following fixtures and equipment:
+
+เครื่องปรับอากาศ (ห้องนอน)
+
+2 key(s). The condition of the premises is recorded in the inspection report with photographs attached to this agreement.
+
+2. Term
+
+The lease runs for 12 months, from 1 November 2026 to 31 October 2027. A renewal is made by a new agreement, and the Lessor charges no renewal fee.
+
+3. Rent and payment
+
+The Lessee will pay rent of THB 15,000.00 (Fifteen thousand baht only) per month by day 5 of each month, through the Thai QR payment on the invoice or by transfer to the Lessor's account stated on the invoice. The Lessor issues a receipt for every payment.
+
+The Lessor will not change the rent or the service charges before the lease ends.
+
+4. Utilities
+
+The Lessee pays for electricity and water by the units actually used according to the meters, at rates not above those charged by the Metropolitan Electricity Authority and the Metropolitan Waterworks Authority. Each invoice shows the meter readings, the units used and the rate per unit.
+
+5. Common charges, taxes and other services
+
+The Lessor pays the land and building tax and the costs of the common areas of the house, and will not pass them on to the Lessee.
+
+The Lessee will pay the following agreed services:
+
+อินเทอร์เน็ต | THB 500.00 | per month
+
+6. Security deposit and advance rent
+
+On signing, the Lessee has placed a security deposit of THB 30,000.00 (Thirty thousand baht only) and paid advance rent of THB 15,000.00 (Fifteen thousand baht only). The Lessor issues a receipt for the deposit and advance rent.
+
+7. Use of the premises
+
+The Lessee will use the premises as a residence only, and not for any unlawful purpose or in a way that causes nuisance to others.
+
+The Lessee will share the common areas of the house, such as the kitchen, shared bathrooms and laundry area, reasonably with the other occupants, keep them clean and respect the privacy of the other occupants.
+
+The Lessee will not alter the room without the Lessor's written consent.
+
+The Lessee will not sublet or assign the lease, in whole or in part, without the Lessor's written consent.
+
+8. Repairs
+
+The Lessor is responsible for major repairs and for defects arising from normal use of the premises and equipment. The Lessee is responsible for minor routine maintenance and for damage caused by the Lessee or their household. The Lessee can report a defect with photographs in the app at any time, and the Lessor will schedule the repair within a reasonable time.
+
+9. Condition reports and entry
+
+The parties inspect the premises together at hand-over and at hand-back and record a report with photographs confirmed by both. The Lessor may enter the premises to inspect or repair them after notifying the Lessee in advance and at a reasonable time, except in an emergency.
+
+10. Return of the deposit
+
+When the lease ends and the Lessee has handed the premises back, the Lessor will return the deposit within 7 days. Where the Lessee caused damage or owes money, the Lessor will give written itemised deductions with evidence, deduct only those amounts and return the balance within the same period. The Lessor will not deduct for normal wear and tear.
+
+11. Termination by the Lessee
+
+The Lessee may terminate the lease before it ends by giving the Lessor at least 30 days' notice in writing or through the app.
+
+12. Termination by the Lessor
+
+The Lessor may terminate the lease only if (a) the Lessee is in material breach, including unpaid rent, has been given written notice to remedy it within at least 30 days and has not done so, or (b) the Lessee endangers the safety or peace of others and has been warned in writing at least 7 days in advance.
+
+The Lessor will not cut off water or electricity, change the locks, block access to the premises or remove the Lessee's belongings because of arrears.
+
+13. Stamp duty
+
+This agreement bears stamp duty under the Revenue Code of THB 180.00 (One hundred eighty baht only), paid by the Lessor and the Lessee in equal shares.
+
+14. Additional terms
+
+สัตว์เลี้ยง ไม่อนุญาตให้เลี้ยงสัตว์
+
+Any additional term that is unlawful or gives the Lessee less protection than this agreement has no effect.
+
+15. Signature and counterparts
+
+The parties sign this agreement electronically. The Lessee confirms their identity with a one-time password sent by telephone and their LINE account; the system records the time and the SHA-256 hash of the signed document. This agreement is made in two identical counterparts; each party receives the electronic copy as soon as both have signed.
+
+Where a Thai version of this agreement is signed with it, the Thai version prevails in case of inconsistency.
+
+Signed ........................................ Lessor
+
+(มาลี ตัวอย่าง)
+|
+Signed ........................................ Lessee
+
+(Alex Example)
+
+Template landlord_room version 1 · Civil and Commercial Code ss. 537–571 (hire of property); Contract Committee announcement B.E. 2568 on residential rentals (applied as the minimum standard, D-020); Revenue Code, schedule of stamp duties, instrument 1 (O-019) ⚖ O-017

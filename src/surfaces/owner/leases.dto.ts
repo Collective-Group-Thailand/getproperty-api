@@ -23,9 +23,11 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+import { LanguageName } from '../shared/common.dto';
 import { MoneyInput, MoneyOutput } from '../shared/fields';
 import { LeasePartyRoleName, LeaseStatusName } from '../shared/status.enums';
 import { LeaseLineKindName } from './assets.dto';
+import { StampDutyPayerName } from './landlord-documents.dto';
 import { InvitationChannelName, InvitationStateName } from './tenancy.dto';
 
 export { LeasePartyRoleName, LeaseStatusName };
@@ -334,6 +336,27 @@ export class LeaseCreateDto {
   @IsArray()
   @IsUUID('all', { each: true })
   acknowledgementIds?: string[];
+
+  @ApiPropertyOptional({
+    enum: LanguageName,
+    enumName: 'Language',
+    default: LanguageName.Th,
+    description:
+      'Contract language (B7.5, D-253): a landlord lease is written on the landlord template of the unit kind in Thai or English; the สคบ. 2568 standard is Thai only.',
+  })
+  @IsOptional()
+  @IsEnum(LanguageName)
+  language?: LanguageName;
+
+  @ApiPropertyOptional({
+    enum: StampDutyPayerName,
+    enumName: 'StampDutyPayer',
+    default: StampDutyPayerName.Lessor,
+    description: 'Who pays the stamp duty (O-019; the lessor by law unless agreed otherwise).',
+  })
+  @IsOptional()
+  @IsEnum(StampDutyPayerName)
+  stampDutyPayer?: StampDutyPayerName;
 }
 
 export class LeaseUpdateDto {
@@ -423,6 +446,27 @@ export class LeaseUpdateDto {
   @IsArray()
   @IsUUID('all', { each: true })
   acknowledgementIds?: string[];
+
+  @ApiPropertyOptional({
+    enum: LanguageName,
+    enumName: 'Language',
+    default: LanguageName.Th,
+    description:
+      'Contract language (B7.5, D-253): a landlord lease is written on the landlord template of the unit kind in Thai or English; the สคบ. 2568 standard is Thai only.',
+  })
+  @IsOptional()
+  @IsEnum(LanguageName)
+  language?: LanguageName;
+
+  @ApiPropertyOptional({
+    enum: StampDutyPayerName,
+    enumName: 'StampDutyPayer',
+    default: StampDutyPayerName.Lessor,
+    description: 'Who pays the stamp duty (O-019; the lessor by law unless agreed otherwise).',
+  })
+  @IsOptional()
+  @IsEnum(StampDutyPayerName)
+  stampDutyPayer?: StampDutyPayerName;
 }
 
 export class LeaseListQuery extends PageQuery {
@@ -681,6 +725,17 @@ export class LeaseContractViewDto {
   signed!: boolean;
 }
 
+export class LeaseTemplateRefDto {
+  @ApiProperty({ example: 'landlord_condo_unit' })
+  key!: string;
+
+  @ApiProperty({ type: 'integer', example: 1 })
+  version!: number;
+
+  @ApiProperty({ enum: LanguageName, enumName: 'Language', example: LanguageName.Th })
+  language!: LanguageName;
+}
+
 export class LeaseDto {
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   id!: string;
@@ -799,6 +854,15 @@ export class LeaseDto {
 
   @ApiProperty({ type: () => LeaseComplianceViewDto })
   compliance!: LeaseComplianceViewDto;
+
+  @ApiProperty({
+    type: () => LeaseTemplateRefDto,
+    description: 'The contract template version the lease is written on.',
+  })
+  template!: LeaseTemplateRefDto;
+
+  @ApiProperty({ enum: StampDutyPayerName, enumName: 'StampDutyPayer', example: StampDutyPayerName.Lessor })
+  stampDutyPayer!: StampDutyPayerName;
 
   @ApiProperty({ type: [String], example: ['record-notice', 'begin-move-out', 'terminate', 'renew'] })
   nextActions!: string[];

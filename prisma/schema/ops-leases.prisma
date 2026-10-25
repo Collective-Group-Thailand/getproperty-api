@@ -177,6 +177,13 @@ model Lease {
   signedDocumentId               String?            @map("signed_document_id") @db.Uuid
   contractSha256                 Bytes?             @map("contract_sha256")
   complianceSnapshot             Json               @default("{}") @map("compliance_snapshot")
+  /// B7.5 (D-253, O-019): stamp duty on the lease.
+  stampDutyPayer                 StampDutyPayer     @default(lessor) @map("stamp_duty_payer")
+  stampDutyAmount                Decimal?           @map("stamp_duty_amount") @db.Decimal(14, 2)
+  stampDutyChannel               StampDutyChannel?  @map("stamp_duty_channel")
+  stampDutyReference             String?            @map("stamp_duty_reference")
+  stampDutyPaidAt                DateTime?          @map("stamp_duty_paid_at") @db.Timestamptz(6)
+  stampDutyDocumentId            String?            @map("stamp_duty_document_id") @db.Uuid
   createdAt                      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy                      String?            @map("created_by") @db.Uuid
   updatedAt                      DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -192,6 +199,7 @@ model Lease {
   renewals         Lease[]              @relation("LeaseRenewal")
   contractDocument Document?            @relation("LeaseContractDocument", fields: [contractDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_contract_document_id_fkey")
   signedDocument   Document?            @relation("LeaseSignedDocument", fields: [signedDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_signed_document_id_fkey")
+  stampDutyDocument Document?           @relation("LeaseStampDutyDocument", fields: [stampDutyDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_stamp_duty_document_id_fkey")
   parties          LeaseParty[]
   lines            LeaseLine[]
   signatures       LeaseSignature[]
@@ -221,6 +229,7 @@ model Lease {
   @@index([tenantId, buildingId, status], map: "lease_tenant_id_building_id_status_idx")
   @@index([unitId, status], map: "lease_unit_id_status_idx")
   @@index([lesseePartyId], map: "lease_lessee_party_id_idx")
+  @@index([stampDutyDocumentId], map: "lease_stamp_duty_document_id_idx")
   @@index([tenantId, endDate], map: "lease_tenant_id_end_date_idx", where: raw("(status = ANY (ARRAY['active'::ops.lease_status, 'notice_given'::ops.lease_status, 'ending'::ops.lease_status]))"))
   @@index([renewedFromLeaseId], map: "lease_renewed_from_lease_id_idx")
   @@index([powerRatePlanId], map: "lease_power_rate_plan_id_idx")
@@ -334,5 +343,22 @@ model LeaseEvent {
   @@index([leaseId, occurredAt], map: "lease_event_lease_id_occurred_at_idx")
   @@index([tenantId], map: "lease_event_tenant_id_idx")
   @@map("lease_event")
+  @@schema("ops")
+}
+
+enum StampDutyPayer {
+  lessor
+  lessee
+  shared
+
+  @@map("stamp_duty_payer")
+  @@schema("ops")
+}
+
+enum StampDutyChannel {
+  e_stamp
+  manual
+
+  @@map("stamp_duty_channel")
   @@schema("ops")
 }

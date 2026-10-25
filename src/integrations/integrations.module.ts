@@ -43,6 +43,8 @@ import { FieldEncryption } from '@common/crypto/field-encryption';
 import { AppConfig } from '@config/app-config';
 import { Global, Inject, Injectable, Logger, Module, type OnApplicationShutdown } from '@nestjs/common';
 
+import { E_STAMP, type EStampPort, EStampUnavailable } from './e-stamp/e-stamp.port';
+import { FakeEStamp } from './e-stamp/fake-e-stamp';
 import { EMAIL, type EmailPort } from './email/email.port';
 import { FakeEmail } from './email/fake-email';
 import { SesEmailAdapter } from './email/ses-email.adapter';
@@ -212,6 +214,13 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
       },
     },
     {
+      // B7.5 / O-019: e-Stamp Duty — off until an adapter is configured
+      provide: E_STAMP,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig): EStampPort =>
+        config.get('E_STAMP_MODE') === 'fake' ? new FakeEStamp() : new EStampUnavailable(),
+    },
+    {
       // D-236 / D-242 (ADR-0012): `queue` = the shared pdf-render queue (getpack's Chromium), `real` = own Chromium
       provide: PDF_RENDERER,
       inject: [AppConfig, OBJECT_STORAGE],
@@ -328,6 +337,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
     ETAX_PROVIDERS,
     SLIP_VERIFIER,
     PDF_RENDERER,
+    E_STAMP,
     SECRETS_PROVIDER,
     MQTT_CLIENT,
     AI_GATEWAY,

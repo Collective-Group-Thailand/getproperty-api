@@ -57,7 +57,7 @@ describe('migrate + reference seed as the platform product login (D-230)', () =>
 
   it('applies core + app migrations, skips TimescaleDB without it, seeds the reference data; idempotent', async () => {
     const first = await runDeployMigrations(db, { timescale: 'auto' });
-    expect(first.core).toHaveLength(11);
+    expect(first.core).toHaveLength(12);
     expect(first.app).toEqual(listMigrations().map((m) => m.name));
     expect(first.timescale).toBe('skipped_unavailable');
 

@@ -705,6 +705,26 @@ export const SETTINGS: readonly SettingDef[] = [
     value: 60,
     reason: 'seed: B7.4 (D-253: default 60)',
   },
+  {
+    key: 'lease.stamp_duty.baht_per_thousand',
+    valueType: 'decimal',
+    scopeAllowed: ['platform'],
+    description:
+      'D-253 / O-019 ⚖: stamp duty on a lease of land or buildings, in baht per 1,000 baht (or fraction) of the rent over the whole term (Revenue Code, schedule of stamp duties, instrument 1: 1 baht). Fixed on the lease when it is sent for signature.',
+    editableBy: ADMIN_COMPLIANCE,
+    value: '1',
+    reason: 'seed: B7.5 (Revenue Code instrument 1, pending tax counsel O-019)',
+  },
+  {
+    key: 'lease.stamp_duty.due_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-253 / O-019 ⚖: days after the lease is signed by both parties within which the stamp duty is paid in cash or through e-Stamp (shown as the due date; the owner is reminded on the lease).',
+    editableBy: ADMIN_COMPLIANCE,
+    value: 15,
+    reason: 'seed: B7.5 (e-Stamp Duty: within 15 days of signing, pending tax counsel O-019)',
+  },
   // --- platform business (Proposed until the pilot) ------------------------------------------------------
   {
     key: 'platform.subscriptions.enabled',

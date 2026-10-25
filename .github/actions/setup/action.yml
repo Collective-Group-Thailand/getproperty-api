@@ -6,7 +6,7 @@ description: >-
 inputs:
   asset-core-ref:
     description: Git ref of collective-asset-core matching package.json
-    default: v0.5.0
+    default: v0.6.0
   collective-shared-ref:
     description: Git ref of collective-shared matching package.json (the repository is private, D-275)
     default: main

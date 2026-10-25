@@ -35,9 +35,15 @@ export interface ContractData {
   };
   term: { months: number; startDate: string; endDate: string };
   rent: { amount: string; text: string; dueDay: string };
-  rentIncreases: { effectiveFrom: string; amount: string; text: string }[];
+  rentIncreases: {
+    effectiveFrom: string;
+    amount: string;
+    text: string;
+    effectiveFromEn?: string;
+    textEn?: string;
+  }[];
   utilities: { metered: boolean; electricProvider: string; waterProvider: string };
-  lines: { description: string; amount: string; recurrence: string }[];
+  lines: { description: string; amount: string; recurrence: string; recurrenceEn?: string }[];
   deposit: { amount: string; text: string };
   advanceRent: { amount: string; text: string };
   depositCapMonths: string;
@@ -48,11 +54,38 @@ export interface ContractData {
   disturbanceDays: number;
   addendum: { title: string; text: string }[];
   signatures: {
-    lessor: { signedAt: string; imageDataUrl: string } | null;
-    lessee: { signedAt: string; imageDataUrl: string } | null;
+    lessor: { signedAt: string; signedAtEn?: string; imageDataUrl: string } | null;
+    lessee: { signedAt: string; signedAtEn?: string; imageDataUrl: string } | null;
   };
   template: { key: string; version: number; legalRef: string };
+  /**
+   * B7.5 (D-253): the same values spelled for the English landlord templates (dates in the Gregorian calendar,
+   * amounts in English words, providers and labels in English). The Thai fields above stay the canonical ones.
+   */
+  en?: {
+    madeOn: string;
+    startDate: string;
+    endDate: string;
+    rentText: string;
+    depositText: string;
+    advanceText: string;
+    idDocumentLabel: string;
+    electricProvider: string;
+    waterProvider: string;
+  };
+  /** B7.5: who stamps the lease (O-019 default: the lessor) and the duty in words; null before it is computed. */
+  stampDuty?: {
+    amount: string;
+    text: string;
+    textEn: string;
+    payer: 'lessor' | 'lessee' | 'shared';
+    payerTh: string;
+    payerEn: string;
+  } | null;
 }
+
+/** The language a template version is written in (`lease_template_version.language`). */
+export type ContractLanguage = 'th' | 'en';
 
 const STYLE = `
 @page { size: A4; }
@@ -107,11 +140,11 @@ const hbs = Handlebars.create();
  * body on purpose — `text()` / `contentSha256` cover the agreement itself, so the brand never changes a signed
  * contract's hash.
  */
-export function platformFooter(platform: PdfBrand): string {
+export function platformFooter(platform: PdfBrand, language: ContractLanguage = 'th'): string {
   const logo = platform.logoDataUrl
     ? `<img class="platform-logo" src="${platform.logoDataUrl}" alt="${hbs.Utils.escapeExpression(platform.altText)}">`
     : '';
-  return `<footer class="platform">${logo}<span>ออกเอกสารผ่านระบบ ${hbs.Utils.escapeExpression(platform.name)}</span></footer>`;
+  return `<footer class="platform">${logo}<span>${language === 'en' ? 'Issued via' : 'ออกเอกสารผ่านระบบ'} ${hbs.Utils.escapeExpression(platform.name)}</span></footer>`;
 }
 
 /**
@@ -136,14 +169,19 @@ export class ContractRenderer {
   }
 
   /** The printable HTML: the body, then the platform line (D-232). */
-  document(body: string, title: string, platform: PdfBrand = DEFAULT_PDF_BRAND): string {
+  document(
+    body: string,
+    title: string,
+    platform: PdfBrand = DEFAULT_PDF_BRAND,
+    language: ContractLanguage = 'th',
+  ): string {
     const esc = hbs.Utils.escapeExpression(title);
-    return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc}</title><style>${fonts()}\n${STYLE}</style></head><body>${body}\n${platformFooter(platform)}</body></html>`;
+    return `<!doctype html><html lang="${language}"><head><meta charset="utf-8"><title>${esc}</title><style>${fonts()}\n${STYLE}</style></head><body>${body}\n${platformFooter(platform, language)}</body></html>`;
   }
 
   /** `document()` with the platform brand in force (logo embedded). */
-  async brandedDocument(body: string, title: string): Promise<string> {
-    return this.document(body, title, (await this.brand?.pdf()) ?? DEFAULT_PDF_BRAND);
+  async brandedDocument(body: string, title: string, language: ContractLanguage = 'th'): Promise<string> {
+    return this.document(body, title, (await this.brand?.pdf()) ?? DEFAULT_PDF_BRAND, language);
   }
 
   /** Canonical text of a rendered contract body (golden tests, content hash). */
@@ -158,14 +196,20 @@ export class ContractRenderer {
   async render(
     templateBody: string,
     data: ContractData,
+    language: ContractLanguage = 'th',
   ): Promise<{ pdf: Buffer; sha256: Buffer; contentSha256: string; text: string }> {
     const body = this.body(templateBody, data);
     const contentSha256 = this.contentSha256(body);
-    const title = `สัญญาเช่า ${data.contract.number ?? '(ร่าง)'}`;
-    const pdf = await this.pdf.render(await this.brandedDocument(body, title), {
-      title,
-      footer: `สัญญาเลขที่ ${data.contract.number ?? 'ร่าง'} · SHA-256 ของข้อความ ${contentSha256.slice(0, 16)}…${contentSha256.slice(-8)}`,
-    });
+    const hash = `${contentSha256.slice(0, 16)}…${contentSha256.slice(-8)}`;
+    const title =
+      language === 'en'
+        ? `Lease ${data.contract.number ?? '(draft)'}`
+        : `สัญญาเช่า ${data.contract.number ?? '(ร่าง)'}`;
+    const footer =
+      language === 'en'
+        ? `Lease no. ${data.contract.number ?? 'draft'} · SHA-256 of the text ${hash}`
+        : `สัญญาเลขที่ ${data.contract.number ?? 'ร่าง'} · SHA-256 ของข้อความ ${hash}`;
+    const pdf = await this.pdf.render(await this.brandedDocument(body, title, language), { title, footer });
     return { pdf, sha256: createHash('sha256').update(pdf).digest(), contentSha256, text: this.text(body) };
   }
 }

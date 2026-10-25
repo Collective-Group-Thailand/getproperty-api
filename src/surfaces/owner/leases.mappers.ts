@@ -5,8 +5,10 @@ import { type LeaseEvent } from '@generated/prisma/client';
 import { hasRuleClauses, RULES_ACK_STATES } from '@modules/ops-leases/lease-rules';
 import { type LeaseRow, LeasesService, nextActions } from '@modules/ops-leases/leases.service';
 
+import { type LanguageName } from '../shared/common.dto';
 import { dateOnly, iso, isoOrNull } from '../shared/mappers';
 import { type LeaseLineKindName } from './assets.dto';
+import { type StampDutyPayerName } from './landlord-documents.dto';
 import {
   type AddendumClauseDto,
   type ComplianceOutcomeName,
@@ -131,6 +133,12 @@ export function leaseDto(l: LeaseRow): LeaseDto {
         acknowledgementId: c.acknowledgementId ?? null,
       })),
     },
+    template: {
+      key: l.templateVersion.template.key,
+      version: l.templateVersion.version,
+      language: (l.templateVersion.language === 'en' ? 'en' : 'th') as LanguageName,
+    },
+    stampDutyPayer: l.stampDutyPayer as StampDutyPayerName,
     nextActions: nextActions(l.status),
     createdAt: iso(l.createdAt),
     version: l.version,
@@ -278,6 +286,8 @@ export const LEASE_EXAMPLE: LeaseDto = {
       },
     ],
   },
+  template: { key: 'ocpb_2568_residential_th', version: 1, language: 'th' as LanguageName },
+  stampDutyPayer: 'lessor' as StampDutyPayerName,
   nextActions: ['record-notice', 'begin-move-out', 'terminate', 'renew'],
   createdAt: FAKE.dateTime,
   version: 3,

@@ -567,6 +567,18 @@
     "signature_invalid": {
       "title": "Invalid signature image",
       "detail": "The signature must be a PNG image of at most 200 KB."
+    },
+    "stamp_duty_not_fixed": {
+      "title": "Stamp duty not fixed yet",
+      "detail": "The stamp duty is computed when the lease is sent for signature. Send the lease first, then record the payment."
+    },
+    "stamp_duty_paid": {
+      "title": "Stamp duty already paid",
+      "detail": "A stamp duty payment is already recorded on this lease."
+    },
+    "e_stamp_unavailable": {
+      "title": "e-Stamp payment is not available",
+      "detail": "e-Stamp is not connected or the lease is not signed by both parties yet. Pay at the Revenue Department and record the payment with the receipt instead."
     }
   },
   "deposit": {

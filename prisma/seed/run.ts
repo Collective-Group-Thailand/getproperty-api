@@ -31,6 +31,12 @@ import {
   STANDARD_TEMPLATE_NAME,
   STANDARD_TEMPLATE_VERSION,
 } from '../../src/modules/ops-leases/contract-template';
+import {
+  LANDLORD_TEMPLATE_EFFECTIVE_FROM,
+  LANDLORD_TEMPLATE_VERSION,
+  landlordLegalRef,
+  landlordTemplates,
+} from '../../src/modules/ops-leases/landlord-templates';
 import { DEFAULT_SERVICE_CATEGORIES } from '../../src/modules/ops-service/service-rules';
 import { HOLIDAYS } from './data/holidays';
 import { NOTIFICATION_ROUTES, NOTIFICATION_TEMPLATES } from './data/notifications';
@@ -443,6 +449,33 @@ async function seedLeaseTemplates(db: ClientBase): Promise<void> {
       STANDARD_TEMPLATE_EFFECTIVE_FROM,
     ],
   );
+  // B7.5 (D-253): landlord templates per unit kind, th + en, published (founder 2026-10-24; counsel revises, O-017)
+  for (const t of landlordTemplates()) {
+    await db.query(
+      `INSERT INTO ops.lease_template (tenant_id, key, name)
+       SELECT NULL, $1, $2 WHERE NOT EXISTS (SELECT 1 FROM ops.lease_template WHERE tenant_id IS NULL AND key = $1)`,
+      [t.key, t.name],
+    );
+    await db.query(
+      `INSERT INTO ops.lease_template_version (template_id, tenant_id, version, language, body_html, clause_schema,
+                                              forbidden_clause_types, legal_ref, state, effective_from, published_at)
+       SELECT t.id, NULL, $2, $3, $4, $5::jsonb, $6::text[], $7, 'published', $8, now()
+         FROM ops.lease_template t
+        WHERE t.tenant_id IS NULL AND t.key = $1
+          AND NOT EXISTS (SELECT 1 FROM ops.lease_template_version v
+                           WHERE v.template_id = t.id AND v.language = $3 AND v.version = $2)`,
+      [
+        t.key,
+        LANDLORD_TEMPLATE_VERSION,
+        t.language,
+        t.body,
+        JSON.stringify(CLAUSE_SCHEMA),
+        [...FORBIDDEN_CLAUSE_TYPES],
+        landlordLegalRef(t.language),
+        LANDLORD_TEMPLATE_EFFECTIVE_FROM,
+      ],
+    );
+  }
 }
 
 /**

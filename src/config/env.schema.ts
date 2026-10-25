@@ -105,6 +105,14 @@ export class EnvironmentVariables {
   @IsIn(['fake', 'real', 'queue'])
   PDF_RENDERER_MODE?: 'fake' | 'real' | 'queue';
 
+  /**
+   * Revenue Department e-Stamp Duty (B7.5, O-019): `off` (default — owners record the stamp duty payment by hand) or
+   * `fake` (tests and demos). A real adapter is added behind the same port and switched on here.
+   */
+  @IsOptional()
+  @IsIn(['off', 'fake'])
+  E_STAMP_MODE: 'off' | 'fake' = 'off';
+
   @IsEnum(DataStoresMode)
   DATA_STORES_MODE: DataStoresMode = DataStoresMode.Fake;
 

@@ -23,6 +23,20 @@ export const FINANCIAL_KINDS: DocumentKind[] = [
   'contract',
 ];
 
+/**
+ * The landlord document set (B7.5, D-253): every PDF the platform generates for a unit — the lease, deposit receipt
+ * and statement, invoices, notes, receipts, tax invoices, inspection reports, notices, certificates, summaries and the
+ * stamp duty receipt (`other`).
+ */
+export const DOCUMENT_SET_KINDS: DocumentKind[] = [
+  ...FINANCIAL_KINDS,
+  'inspection_report',
+  'pdf_notice',
+  'pdf_certificate',
+  'pdf_summary',
+  'other',
+];
+
 export interface DocumentLink {
   documentId: string;
   number: string;
@@ -158,6 +172,35 @@ export class InvoiceDocumentsService extends TenantScopedRepository {
         deletedAt: null,
         uploadState: 'verified',
         ...(q.buildingId ? { buildingId: q.buildingId } : {}),
+        ...(ctx.buildingIds ? { buildingId: { in: [...ctx.buildingIds] } } : {}),
+      };
+      const [rows, total] = await Promise.all([
+        tx.document.findMany({
+          where,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          skip: q.skip,
+          take: q.take,
+        }),
+        tx.document.count({ where }),
+      ]);
+      return { rows, total };
+    });
+  }
+
+  /**
+   * Generated PDFs of one unit, or of every unit the actor may see (B7.5 `GET /v1/owner/documents`), newest first.
+   * Unit-scoped documents only: building-wide archives stay in the month view.
+   */
+  ofUnits(ctx: TenantContext, q: { unitId?: string; kind?: DocumentKind; skip: number; take: number }) {
+    return this.db.tenant(ctx, async (tx) => {
+      const where: Prisma.DocumentWhereInput = {
+        tenantId: ctx.tenantId,
+        scopeType: 'unit',
+        ...(q.unitId ? { scopeId: q.unitId } : {}),
+        kind: q.kind && DOCUMENT_SET_KINDS.includes(q.kind) ? q.kind : { in: DOCUMENT_SET_KINDS },
+        mimeType: 'application/pdf',
+        deletedAt: null,
+        uploadState: 'verified',
         ...(ctx.buildingIds ? { buildingId: { in: [...ctx.buildingIds] } } : {}),
       };
       const [rows, total] = await Promise.all([
