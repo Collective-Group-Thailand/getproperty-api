@@ -39,6 +39,8 @@ export const API_TAGS: Record<string, string> = {
     'Gateway first boot: provisioning code + CSR → certificate from the platform CA, device JWT and MQTT ACL (D-130).',
   'owner.me':
     'Who I am in the owner console: tenants, current tenant and type, role, permissions, menu entitlements, feature flags, subscription state; password and TOTP setup.',
+  'owner.serviceCosts':
+    'Landlords: who fixes a repair, who pays, quotations and receipts, settlement on the next invoice (D-263).',
   'owner.identities':
     'My ways to sign in to the console: phone, password, Google, Apple, LINE (D-255, D-283).',
   'owner.tenant': 'Company data of the current tenant (D-050, D-151).',

@@ -506,6 +506,8 @@ export const NOTIFICATION_ROUTES: {
     'lease.notice_issued',
     'lease.rent_certificate_issued',
     'lease.rent_certificate_declined',
+    'service_request.decided',
+    'service_request.cost_settled',
   ].map((eventType) => ({
     eventType,
     audience: 'resident',
@@ -597,6 +599,42 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         language: 'en',
         subject: null,
         body: '{{tenant.name}} proposes your deposit settlement: {{settlement.deductionsTotal}} THB deducted, {{settlement.proposedRefund}} THB refunded by {{settlement.deadlineOn}} — tap to see the items and evidence, then accept or dispute.',
+      },
+    ],
+  },
+  {
+    key: 'service_request.decided',
+    channel: 'line',
+    audience: 'resident',
+    description: 'The landlord decided who fixes my repair request and who pays (D-263)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'แจ้งซ่อม {{request.ref}} ({{request.category}}): {{decision.handledTh}} ค่าใช้จ่าย{{decision.bearerTh}}\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'Repair {{request.ref}} ({{request.category}}): {{decision.handledEn}}; cost {{decision.bearerEn}}.\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'service_request.cost_settled',
+    channel: 'line',
+    audience: 'resident',
+    description: 'My share of a repair goes on my next bill, or a credit is coming (D-263)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'แจ้งซ่อม {{request.ref}}: {{settlement.th}} {{settlement.amount}} บาท จะอยู่ในบิลถัดไปของคุณ\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'Repair {{request.ref}}: {{settlement.en}} of THB {{settlement.amount}} will be on your next bill.\n{{link}}',
       },
     ],
   },

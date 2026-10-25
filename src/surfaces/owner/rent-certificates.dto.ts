@@ -190,6 +190,20 @@ export class IncomeSummaryCreateDto {
   language?: LanguageName;
 }
 
+export class IncomeExpenseItemDto {
+  @ApiProperty({ example: 'plumbing' })
+  categoryKey!: string;
+
+  @ApiProperty({ example: 'ประปา' })
+  nameTh!: string;
+
+  @ApiProperty({ example: 'Plumbing' })
+  nameEn!: string;
+
+  @MoneyOutput({ example: '900.00', description: 'The owner’s share of the receipts.' })
+  amount!: string;
+}
+
 export class UnitIncomeDto {
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   unitId!: string;
@@ -251,6 +265,16 @@ export class UnitIncomeDto {
 
   @MoneyOutput({ example: '30000.00', description: 'Assessable income, section 40(5).' })
   gross!: string;
+
+  @MoneyOutput({
+    example: '900.00',
+    description:
+      'Repair costs the owner bore on this unit (receipts of the year on service requests, D-263).',
+  })
+  expenses!: string;
+
+  @ApiProperty({ type: [IncomeExpenseItemDto], description: 'Owner-borne repairs per service category.' })
+  expenseItems!: IncomeExpenseItemDto[];
 }
 
 export class IncomeTotalsDto {
@@ -271,6 +295,15 @@ export class IncomeTotalsDto {
 
   @MoneyOutput({ example: '21000.00', description: 'Gross minus the deduction (estimate).' })
   net!: string;
+
+  @MoneyOutput({ example: '900.00', description: 'Owner-borne repairs recorded (D-263).' })
+  expenses!: string;
+
+  @MoneyOutput({
+    example: '29100.00',
+    description: 'Gross minus the recorded expenses (the actual-expense estimate).',
+  })
+  netActual!: string;
 }
 
 export class IncomeYearDto {

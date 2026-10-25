@@ -126,6 +126,8 @@ const YEAR_EXAMPLE: IncomeYearDto = {
       charges: '2350.00',
       retained: '0.00',
       gross: '30000.00',
+      expenses: '900.00',
+      expenseItems: [{ categoryKey: 'plumbing', nameTh: 'ประปา', nameEn: 'Plumbing', amount: '900.00' }],
     },
   ],
   totals: {
@@ -135,6 +137,8 @@ const YEAR_EXAMPLE: IncomeYearDto = {
     gross: '30000.00',
     deduction: '9000.00',
     net: '21000.00',
+    expenses: '900.00',
+    netActual: '29100.00',
   },
 };
 const yearDto = (y: IncomeYear): IncomeYearDto => ({

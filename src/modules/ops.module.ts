@@ -65,6 +65,7 @@ import {
 import { MaintenancePlansService } from './ops-service/maintenance-plans.service';
 import { AutoServiceRequests, ServiceNotifications, WarrantyBridge } from './ops-service/service.subscribers';
 import { ServiceCategoriesService } from './ops-service/service-categories.service';
+import { ServiceCostsService } from './ops-service/service-costs.service';
 import { ServiceMessagesService } from './ops-service/service-messages.service';
 import { ServiceRequestsService } from './ops-service/service-requests.service';
 import { WorkOrdersService } from './ops-service/work-orders.service';
@@ -142,6 +143,7 @@ const SERVICES = [
   IntegrationDeliveryService,
   ServiceCategoriesService,
   ServiceRequestsService,
+  ServiceCostsService,
   WorkOrdersService,
   MaintenancePlansService,
   TechnicianWorkOrdersService,

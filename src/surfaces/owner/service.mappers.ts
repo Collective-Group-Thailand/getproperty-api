@@ -31,6 +31,11 @@ import {
   type WorkOrderKindName,
   type WorkOrderStatusName,
 } from './service.dto';
+import {
+  type ServiceCostBearerName,
+  type ServiceDecisionStateDto,
+  type ServiceHandlerName,
+} from './service-costs.dto';
 
 export const refOf = (id: string): string => id.replace(/-/g, '').slice(-8).toUpperCase();
 
@@ -100,6 +105,7 @@ export function serviceRequestDto(
     closedAt: isoOrNull(r.closedAt),
     cancelledAt: isoOrNull(r.cancelledAt),
     cancelReason: r.cancelReason,
+    decision: decisionStateDto(r),
     version: r.version,
     createdAt: iso(r.createdAt),
   };
@@ -117,6 +123,22 @@ export function serviceMessageDto(m: ServiceMessage, me: string | null): Service
     body: m.body,
     createdAt: iso(m.createdAt),
     mine: !!me && m.authorUserId === me,
+  };
+}
+
+/** The current decision of a landlord's request (D-263), or null. */
+export function decisionStateDto(r: {
+  handledBy: string | null;
+  costBearer: string | null;
+  tenantSharePercent: { toFixed(n: number): string } | null;
+  decidedAt: Date | null;
+}): ServiceDecisionStateDto | null {
+  if (!r.handledBy || !r.costBearer || !r.decidedAt) return null;
+  return {
+    handledBy: r.handledBy as ServiceHandlerName,
+    costBearer: r.costBearer as ServiceCostBearerName,
+    tenantSharePercent: r.tenantSharePercent?.toFixed(2) ?? null,
+    decidedAt: iso(r.decidedAt),
   };
 }
 
@@ -157,6 +179,7 @@ export function residentServiceRequestDto(
     sla: detail.sla
       ? { dueAt: isoOrNull(detail.sla.dueAt), state: detail.sla.state as ServiceSlaStateName }
       : null,
+    decision: decisionStateDto(r),
   };
 }
 
@@ -354,6 +377,7 @@ export const SERVICE_REQUEST_EXAMPLE = {
   closedAt: null,
   cancelledAt: null,
   cancelReason: null,
+  decision: null,
   version: 1,
   createdAt: FAKE.dateTime,
 };
@@ -383,6 +407,7 @@ export const RESIDENT_REQUEST_EXAMPLE = {
   ],
   events: [{ status: 'new', at: FAKE.dateTime }],
   sla: { dueAt: '2026-11-02T00:15:00+07:00', state: 'on_track' },
+  decision: null,
 };
 
 export const MESSAGE_EXAMPLE = {

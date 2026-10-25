@@ -891,6 +891,18 @@
     "in_warranty": {
       "title": "Referred to the warranty",
       "detail": "This request is inside the developer warranty and was referred to them; it cannot get a work order of the building."
+    },
+    "decision_unavailable": {
+      "title": "Not for this organisation",
+      "detail": "Who fixes and who pays is decided by landlords; buildings use the technician queue."
+    },
+    "not_decided": {
+      "title": "Decide first",
+      "detail": "Choose who pays for this repair before settling it with the tenant."
+    },
+    "nothing_to_settle": {
+      "title": "Nothing to settle",
+      "detail": "The receipts are already settled with the tenant."
     }
   },
   "work_order": {
@@ -1089,6 +1101,12 @@
     "invalid_state": {
       "title": "Already answered",
       "detail": "This certificate request was already issued or declined."
+    }
+  },
+  "service_cost": {
+    "voided": {
+      "title": "Already voided",
+      "detail": "This quotation or receipt was voided before."
     }
   }
 }

@@ -19,6 +19,7 @@ import {
 } from 'class-validator';
 
 import { ResidentUploadContentTypeName } from './deposits.dto';
+import { ServiceDecisionStateDto } from './service-costs.dto';
 
 const toBool = ({ value }: { value: unknown }) =>
   value === undefined ? undefined : value === true || value === 'true' || value === '1';
@@ -819,6 +820,14 @@ export class ServiceRequestDto {
   })
   visitConfirmedAt!: string | null;
 
+  @ApiProperty({
+    type: ServiceDecisionStateDto,
+    nullable: true,
+    description:
+      'Landlords (D-263): who fixes it and who pays; null until the owner decides (and for buildings).',
+  })
+  decision!: ServiceDecisionStateDto | null;
+
   @ApiProperty({ type: 'integer', example: 1 })
   version!: number;
 
@@ -1214,6 +1223,14 @@ export class ResidentServiceRequestDto {
     description: 'Null for a request without an SLA clock.',
   })
   sla!: ServiceSlaDto | null;
+
+  @ApiProperty({
+    type: ServiceDecisionStateDto,
+    nullable: true,
+    description:
+      'Landlords (D-263): who fixes it and who pays; null until the owner decides (and for buildings).',
+  })
+  decision!: ServiceDecisionStateDto | null;
 }
 
 export class ResidentServiceRequestCreateDto {

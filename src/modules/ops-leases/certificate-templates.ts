@@ -48,6 +48,11 @@ export interface IncomeSummaryData {
   deductionPercent: string;
   deduction: string;
   net: string;
+  /** Owner-borne repair costs recorded on service requests (D-263), by category; empty = none recorded. */
+  expenses: string;
+  expenseItems: { label: string; amount: string }[];
+  /** Gross minus the recorded expenses (the actual-expense alternative, an estimate). */
+  netActual: string;
 }
 
 const PURPOSE: Record<ContractLanguage, Record<RentCertificatePurpose, string>> = {
@@ -129,10 +134,18 @@ export function incomeSummaryBody(language: ContractLanguage, d: IncomeSummaryDa
 <tr><td>${th ? 'เงินได้หลังหักค่าใช้จ่าย (ประมาณการ)' : 'Income after the deduction (estimate)'}</td><td class="num">${esc(d.net)}</td></tr>
 <tr><td>${th ? 'ค่าน้ำ ค่าไฟ และค่าบริการที่เรียกเก็บตามจริง (แสดงแยก ไม่รวมในเงินได้ข้างต้น)' : 'Utilities and service charges passed on (shown apart, not in the income above)'}</td><td class="num">${esc(d.charges)}</td></tr>
 </table>`;
+  const expenses = d.expenseItems.length
+    ? `<table class="lines"><tr><th>${th ? 'ค่าซ่อมแซมที่เจ้าของรับภาระ (บันทึกในระบบ)' : 'Repairs borne by the owner (recorded on the platform)'}</th><th class="num">${th ? 'บาท' : 'THB'}</th></tr>${d.expenseItems
+        .map((e) => `<tr><td>${esc(e.label)}</td><td class="num">${esc(e.amount)}</td></tr>`)
+        .join('')}
+<tr><td><b>${th ? 'รวมค่าซ่อมแซม' : 'Total repairs'}</b></td><td class="num"><b>${esc(d.expenses)}</b></td></tr>
+<tr><td>${th ? 'เงินได้หลังหักค่าใช้จ่ายตามจริงที่บันทึก (ประมาณการ)' : 'Income after the recorded actual expenses (estimate)'}</td><td class="num">${esc(d.netActual)}</td></tr>
+</table>`
+    : '';
   const note = th
     ? `<p>เงินได้พึงประเมินรวม ${esc(d.gross)} บาท (${esc(d.grossText)})</p><p class="sub">เอกสารนี้สรุปจากใบเสร็จที่ออกผ่านระบบในปีภาษี เพื่อประกอบการยื่นแบบ ภ.ง.ด. 90 / 94 ของผู้มีเงินได้ที่เป็นบุคคลธรรมดา ไม่ใช่การยื่นภาษี และไม่รวมรายได้หรือค่าใช้จ่ายที่ไม่ได้บันทึกในระบบ กรณีเลือกหักค่าใช้จ่ายตามความจำเป็นและสมควร ต้องใช้หลักฐานค่าใช้จ่ายจริง</p>`
     : `<p>Total assessable income THB ${esc(d.gross)} (${esc(d.grossText)}).</p><p class="sub">Summarised from the receipts issued through the platform in the tax year, to help an individual owner file PND 90 / 94. This is not a tax filing and leaves out income or expenses not recorded on the platform; deducting actual expenses instead of the flat rate needs the actual evidence.</p>`;
-  return `<article class="summary">${head}<section>${months}${totals}${note}</section></article>`;
+  return `<article class="summary">${head}<section>${months}${totals}${expenses}${note}</section></article>`;
 }
 
 export const purposeText = (purpose: RentCertificatePurpose, language: ContractLanguage) =>

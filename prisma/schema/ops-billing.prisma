@@ -458,6 +458,7 @@ model InvoiceCharge {
   kindRule     InvoiceLineKindRule @relation(fields: [lineKind], references: [lineKind], onDelete: Restrict, onUpdate: NoAction, map: "invoice_charge_line_kind_fkey")
   appliedLine  InvoiceLine?        @relation(fields: [appliedInvoiceLineId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "invoice_charge_applied_line_fkey")
   penaltyAssessments PenaltyAssessment[]
+  serviceSettlement  ServiceSettlement?
 
   @@index([tenantId, status], map: "invoice_charge_tenant_id_status_idx")
   @@index([unitId, partyId], map: "invoice_charge_unit_id_party_id_idx")
