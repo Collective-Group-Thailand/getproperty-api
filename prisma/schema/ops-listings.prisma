@@ -46,6 +46,8 @@ model Listing {
   pausedAt         DateTime?           @map("paused_at") @db.Timestamptz(6)
   closedAt         DateTime?           @map("closed_at") @db.Timestamptz(6)
   closedReason     ListingCloseReason? @map("closed_reason")
+  leaseId          String?             @map("lease_id") @db.Uuid
+  relistRemindedAt DateTime?           @map("relist_reminded_at") @db.Timestamptz(6)
   version          Int                 @default(1)
   createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy        String?             @map("created_by") @db.Uuid
@@ -54,6 +56,7 @@ model Listing {
 
   tenant       Tenant               @relation("ListingTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_tenant_id_fkey")
   unit         Unit                 @relation("ListingUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_unit_id_fkey")
+  lease        Lease?               @relation("ListingLease", fields: [leaseId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_lease_id_fkey")
   building     Building             @relation("ListingBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_building_id_fkey")
   photos       ListingPhoto[]
   availability ListingAvailability?
@@ -66,6 +69,7 @@ model Listing {
   @@index([province, district, rent], map: "listing_public_search_idx", where: raw("((state = 'published'::ops.listing_state) AND (hidden_at IS NULL))"))
   @@index([publishedAt(sort: Desc)], map: "listing_public_published_at_idx", where: raw("((state = 'published'::ops.listing_state) AND (hidden_at IS NULL))"))
   @@index([buildingId], map: "listing_building_id_idx")
+  @@index([leaseId], map: "listing_lease_id_idx")
   @@map("listing")
   @@schema("ops")
 }

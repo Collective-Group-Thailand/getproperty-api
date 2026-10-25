@@ -20,7 +20,9 @@ import {
   type ListingViewingState,
   Prisma,
 } from '@generated/prisma/client';
+import { IN_FORCE, LeasesService } from '@modules/ops-leases/leases.service';
 import { Inject, Injectable } from '@nestjs/common';
+import Decimal from 'decimal.js';
 
 import { type AvailabilityException, type WeeklySlot } from './listings.service';
 import { type Availability, freeSlots, type Slot, slotAt, type SlotRules } from './viewing-slots';
@@ -96,6 +98,7 @@ export class ListingLeadsService {
     private readonly audit: AuditService,
     private readonly events: DomainEvents,
     private readonly hasher: LookupHasher,
+    private readonly leases: LeasesService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
@@ -930,6 +933,165 @@ export class ListingLeadsService {
     });
   }
 
+  // ------------------------------------------------------------------------------------------- lead → lease
+
+  /**
+   * B7.4 (D-252, D-253): a lease draft (B2) from the listing's terms with the prospect as lessee — rent, deposit and
+   * advance months, the term (the prospect's, else the listing's minimum), the start (given, else the prospect's
+   * move-in, else the listing's available date, else today). The lead becomes `applied` and remembers the lease; the
+   * lease's compliance checks answer as they do for any draft.
+   */
+  async leaseDraft(
+    ctx: TenantContext,
+    id: string,
+    input: { startDate?: string; months?: number; acknowledgementIds?: string[] },
+  ) {
+    const by = userIdOf(RequestContext.actor());
+    const { lead, listing } = await this.db.tenant(ctx, async (tx) => {
+      const lead = await this.ownerLead(tx, ctx, id);
+      if (!OPEN.includes(lead.state)) throw new DomainException('listing.lead_invalid_state');
+      if (lead.leaseId) {
+        const existing = await tx.lease.findUnique({ where: { id: lead.leaseId }, select: { status: true } });
+        if (existing && existing.status !== 'cancelled') throw new DomainException('listing.lease_exists');
+      }
+      const listing = await tx.listing.findUniqueOrThrow({ where: { id: lead.listingId } });
+      return { lead, listing };
+    });
+    const today = bangkokDate(this.clock.now());
+    const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
+    const later = (a: string | null) => (a && a > today ? a : null);
+    const startDate =
+      input.startDate ?? later(day(lead.moveInDate)) ?? later(day(listing.availableFrom)) ?? today;
+    if (!DAY.test(startDate)) throw invalid('startDate', 'startDate is YYYY-MM-DD');
+    const months = Math.max(input.months ?? lead.termMonths ?? listing.minTermMonths, listing.minTermMonths);
+    const rent = new Decimal(listing.rent.toString());
+    const lease = await this.leases.createDraft(ctx, {
+      unitId: listing.unitId,
+      lesseePartyId: lead.partyId,
+      startDate,
+      months,
+      rent: rent.toFixed(2),
+      depositAmount: rent.times(listing.depositMonths).toFixed(2),
+      advanceRentAmount: rent.times(listing.advanceMonths).toFixed(2),
+      acknowledgementIds: input.acknowledgementIds,
+    });
+    return this.db.tenant(ctx, async (tx) => {
+      await tx.listingLead.update({
+        where: { id },
+        data: {
+          leaseId: lease.id,
+          state: 'applied',
+          updatedBy: by,
+          version: { increment: 1 },
+        },
+      });
+      await this.audit.record(tx, {
+        action: 'listing.lead_lease_drafted',
+        tenantId: ctx.tenantId,
+        buildingId: listing.buildingId,
+        subjectType: 'ops.listing_lead',
+        subjectId: id,
+        after: { leaseId: lease.id, startDate, months, rent: rent.toFixed(2) },
+      });
+      if (lead.state !== 'applied')
+        await this.event(tx, 'listing.lead_state_changed', listing, {
+          leadId: id,
+          partyId: lead.partyId,
+          from: lead.state,
+          to: 'applied',
+          lostReason: null,
+        });
+      return { leaseId: lease.id, lead: await this.ownerLead(tx, ctx, id) };
+    });
+  }
+
+  /**
+   * Subscriber hook of `lease.activated` (B7.4): the unit is let — every live listing of it closes (`leased`, with
+   * the lease), the lead the lease was drafted from is won, the other open leads of those listings are lost
+   * (`unit_leased`, their live viewings cancelled) and their prospects get one polite LINE message.
+   */
+  async onLeaseActivated(tx: Tx, leaseId: string): Promise<{ closed: number; won: number; lost: number }> {
+    const lease = await tx.lease.findUnique({
+      where: { id: leaseId },
+      select: { id: true, tenantId: true, unitId: true, buildingId: true },
+    });
+    if (!lease) return { closed: 0, won: 0, lost: 0 };
+    const now = this.clock.now();
+    const live = await tx.listing.findMany({
+      where: {
+        unitId: lease.unitId,
+        tenantId: lease.tenantId,
+        state: { in: ['pending_review', 'published', 'paused'] },
+      },
+    });
+    for (const listing of live) {
+      await tx.listing.update({
+        where: { id: listing.id },
+        data: { state: 'closed', closedAt: now, closedReason: 'leased', leaseId, version: { increment: 1 } },
+      });
+      await this.audit.record(tx, {
+        action: 'listing.closed',
+        tenantId: listing.tenantId,
+        buildingId: listing.buildingId,
+        subjectType: 'ops.listing',
+        subjectId: listing.id,
+        before: { state: listing.state },
+        after: { state: 'closed', reason: 'leased', leaseId },
+      });
+      await this.events.record(tx, {
+        type: 'listing.closed',
+        aggregateType: 'listing',
+        aggregateId: listing.id,
+        tenantId: listing.tenantId,
+        buildingId: listing.buildingId,
+        payload: { listingId: listing.id, unitId: listing.unitId, reason: 'leased', leaseId },
+      });
+    }
+    const leads = await tx.listingLead.findMany({
+      where: {
+        tenantId: lease.tenantId,
+        state: { in: OPEN },
+        OR: [{ listingId: { in: live.map((l) => l.id) } }, { leaseId }],
+      },
+      include: { listing: true, viewings: true },
+    });
+    let won = 0;
+    let lost = 0;
+    for (const lead of leads) {
+      const winner = lead.leaseId === leaseId;
+      await tx.listingLead.update({
+        where: { id: lead.id },
+        data: winner
+          ? { state: 'won', version: { increment: 1 } }
+          : { state: 'lost', lostReason: 'unit_leased', version: { increment: 1 } },
+      });
+      for (const v of lead.viewings.filter((x) => LIVE_VIEWING.includes(x.state)))
+        await tx.listingViewing.update({
+          where: { id: v.id },
+          data: { state: 'cancelled', cancelledBy: 'owner', version: { increment: 1 } },
+        });
+      await this.audit.record(tx, {
+        action: 'listing.lead_state_changed',
+        tenantId: lead.tenantId,
+        buildingId: lead.listing.buildingId,
+        subjectType: 'ops.listing_lead',
+        subjectId: lead.id,
+        before: { state: lead.state },
+        after: { state: winner ? 'won' : 'lost', lostReason: winner ? null : 'unit_leased', leaseId },
+      });
+      await this.event(tx, 'listing.lead_state_changed', lead.listing, {
+        leadId: lead.id,
+        partyId: lead.partyId,
+        from: lead.state,
+        to: winner ? 'won' : 'lost',
+        lostReason: winner ? null : 'unit_leased',
+      });
+      if (winner) won += 1;
+      else lost += 1;
+    }
+    return { closed: live.length, won, lost };
+  }
+
   // ----------------------------------------------------------------------------------------------- reminders
 
   /**
@@ -937,7 +1099,7 @@ export class ListingLeadsService {
    * reminded once (both sides); each enquiry still `new` after `listing.lead.nudge_after_hours` reminds the owner
    * once. Returns how many reminders were raised.
    */
-  async remind(): Promise<{ viewings: number; leads: number }> {
+  async remind(): Promise<{ viewings: number; leads: number; relists: number }> {
     const now = this.clock.now();
     const [hoursBefore, nudgeHours] = await Promise.all([
       this.settings.valueAt<number>('listing.viewing.reminder_hours_before', now),
@@ -996,7 +1158,48 @@ export class ListingLeadsService {
           leads += 1;
         }
       }
-      return { viewings, leads };
+      return { viewings, leads, relists: await this.relistReminders(tx, now) };
     });
+  }
+
+  /** Listings closed by a lease that ends within `listing.relist.remind_days_before` remind the owner once (B7.4). */
+  private async relistReminders(tx: Tx, now: Date): Promise<number> {
+    const days = await this.settings.valueAt<number>('listing.relist.remind_days_before', now);
+    if (days <= 0) return 0;
+    const today = bangkokDate(now);
+    const until = new Date(startOfBangkokDay(today).getTime() + days * 86_400_000);
+    const due = await tx.listing.findMany({
+      where: {
+        state: 'closed',
+        closedReason: 'leased',
+        relistRemindedAt: null,
+        lease: { status: { in: IN_FORCE }, endDate: { gte: new Date(`${today}T00:00:00Z`), lte: until } },
+      },
+      include: { lease: { select: { id: true, endDate: true } } },
+      take: 500,
+    });
+    let count = 0;
+    for (const listing of due) {
+      const claimed = await tx.listing.updateMany({
+        where: { id: listing.id, relistRemindedAt: null },
+        data: { relistRemindedAt: now },
+      });
+      if (!claimed.count) continue;
+      await this.events.record(tx, {
+        type: 'listing.relist_due',
+        aggregateType: 'listing',
+        aggregateId: listing.id,
+        tenantId: listing.tenantId,
+        buildingId: listing.buildingId,
+        payload: {
+          listingId: listing.id,
+          unitId: listing.unitId,
+          leaseId: listing.lease?.id ?? null,
+          endDate: listing.lease?.endDate.toISOString().slice(0, 10) ?? null,
+        },
+      });
+      count += 1;
+    }
+    return count;
   }
 }

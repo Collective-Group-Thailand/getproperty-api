@@ -60,6 +60,8 @@ export const DOMAIN_EVENT_TYPES = {
   'listing.viewing_cancelled':
     'A viewing was cancelled (by the prospect, or with the enquiry closed) (B7.3, D-252).',
   'listing.viewing_completed': 'The owner recorded how a viewing went (viewed or no show) (B7.3, D-252).',
+  'listing.relist_due':
+    'A lease that came from a listing ends within listing.relist.remind_days_before; the owner is reminded to re-list (B7.4).',
   'listing.viewing_reminder':
     'A confirmed viewing is near; the prospect and the owner are reminded once (B7.3).',
   'storage.threshold_crossed':

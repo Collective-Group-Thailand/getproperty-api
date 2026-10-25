@@ -197,6 +197,7 @@ export const ERROR_CODES = {
   'listing.viewing_slot_taken': HttpStatus.CONFLICT,
   'listing.viewing_exists': HttpStatus.CONFLICT,
   'listing.viewing_invalid_state': HttpStatus.CONFLICT,
+  'listing.lease_exists': HttpStatus.CONFLICT,
   'subscription.not_found': HttpStatus.NOT_FOUND,
   'subscription.invalid_state': HttpStatus.CONFLICT,
   'subscription.plan_mismatch': HttpStatus.UNPROCESSABLE_ENTITY,

@@ -265,7 +265,10 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
     return n > 0;
   }
 
-  /** May the current tenant lease out this unit: owner/operator of the building, or an ops.lease write grant. */
+  /**
+   * May the current tenant lease out this unit: owner/operator of the building, the unit's own owner (a landlord's
+   * condo unit in a shared building, D-251 / D-280: an ownership of this tenant in force), or an ops.lease write grant.
+   */
   private async leasableUnit(tx: Tx, ctx: TenantContext, unitId: string) {
     const unit = this.found(
       await tx.unit.findFirst({
@@ -276,7 +279,16 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
     if (ctx.buildingIds && !ctx.buildingIds.includes(unit.buildingId))
       throw new DomainException('http.not_found');
     const building = await tx.building.findFirst({ where: { id: unit.buildingId, deletedAt: null } });
-    if (!building || !operates(ctx, building)) {
+    const ownsUnit =
+      (await tx.unitOwnership.count({
+        where: {
+          tenantId: ctx.tenantId,
+          unitId,
+          validFrom: { lte: new Date(bangkokDate(this.clock.now())) },
+          OR: [{ validTo: null }, { validTo: { gt: new Date(bangkokDate(this.clock.now())) } }],
+        },
+      })) > 0;
+    if (!ownsUnit && (!building || !operates(ctx, building))) {
       const granted = await tx.$queryRaw<{ ok: boolean }[]>`
         SELECT ${unitId}::uuid = ANY (core.accessible_unit_ids('ops.lease', 'write')) AS ok`;
       if (!granted[0]?.ok) throw new DomainException('asset.read_only');

@@ -339,8 +339,8 @@ describe('listing leads (B7.3, real PostgreSQL)', () => {
       [viewingId],
     );
     t.clock.set(new Date(rows[0]!.starts_at.getTime() - 2 * 3_600_000));
-    expect(await leads.remind()).toEqual({ viewings: 1, leads: 1 });
-    expect(await leads.remind()).toEqual({ viewings: 0, leads: 0 });
+    expect(await leads.remind()).toEqual({ viewings: 1, leads: 1, relists: 0 });
+    expect(await leads.remind()).toEqual({ viewings: 0, leads: 0, relists: 0 });
     expect((await notifications('listing.viewing_reminder', 'owner')).length).toBeGreaterThan(0);
     expect((await notifications('listing.viewing_reminder', 'prospect')).length).toBe(1);
     expect((await notifications('listing.lead_unanswered', 'owner')).length).toBeGreaterThan(0);

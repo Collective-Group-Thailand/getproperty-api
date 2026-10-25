@@ -18,6 +18,7 @@ model ListingLead {
   lastProspectAt DateTime                @default(now()) @map("last_prospect_at") @db.Timestamptz(6)
   lastOwnerAt    DateTime?               @map("last_owner_at") @db.Timestamptz(6)
   nudgedAt       DateTime?               @map("nudged_at") @db.Timestamptz(6)
+  leaseId        String?                 @map("lease_id") @db.Uuid
   version        Int                     @default(1)
   createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -27,6 +28,7 @@ model ListingLead {
   listing  Listing              @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_lead_listing_id_fkey")
   party    Party                @relation("ListingLeadParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_lead_party_id_fkey")
   user     UserAccount          @relation("ListingLeadUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_lead_user_id_fkey")
+  lease    Lease?               @relation("ListingLeadLease", fields: [leaseId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_lead_lease_id_fkey")
   messages ListingLeadMessage[]
   viewings ListingViewing[]
 
@@ -35,6 +37,7 @@ model ListingLead {
   @@index([listingId], map: "listing_lead_listing_id_idx")
   @@index([partyId], map: "listing_lead_party_id_idx")
   @@index([userId], map: "listing_lead_user_id_idx")
+  @@index([leaseId], map: "listing_lead_lease_id_idx")
   @@index([lastProspectAt], map: "listing_lead_unanswered_idx", where: raw("((state = 'new'::ops.listing_lead_state) AND (nudged_at IS NULL))"))
   @@map("listing_lead")
   @@schema("ops")

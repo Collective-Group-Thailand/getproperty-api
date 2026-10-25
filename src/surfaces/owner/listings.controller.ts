@@ -315,6 +315,29 @@ export class OwnerListingsController {
     return this.dto(ctx, await this.listings.setAvailability(ctx, id, body));
   }
 
+  @Post('listings/:listingId/actions/relist')
+  @TenantScoped()
+  @Can('listing.manage')
+  @ApiEndpoint({
+    id: 'owner.listings.relist',
+    summary: 'Re-open a closed listing',
+    description:
+      "One tap before a lease ends (B7.4, D-253): a new draft copied from a closed listing of the unit — texts, terms, facilities, transit, photos in order and viewing times — with the unit's facts refreshed. Submit it as usual (one live listing per unit).",
+    implements: ['D-252', 'D-253'],
+  })
+  @ApiSuccess(201, {
+    description: 'New draft',
+    type: ListingDto,
+    example: { ...LISTING_EXAMPLE, state: 'draft' },
+  })
+  @ApiStandardErrors(...WRITE)
+  async relist(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('listingId', ParseUUIDPipe) id: string,
+  ): Promise<ListingDto> {
+    return this.dto(ctx, await this.listings.relist(ctx, id));
+  }
+
   @Post('listings/:listingId/actions/submit')
   @HttpCode(200)
   @TenantScoped()
