@@ -18,6 +18,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { AuditService } from '../audit/audit.service';
 import { CLOCK, type Clock } from '../clock/clock';
+import { DomainEvents } from '../events/domain-events';
 import { opaqueToken } from '../identity/crypto/secrets';
 import { SettingsService } from '../settings/settings.service';
 import { TenantDataKeys } from '../tenancy/data-keys.service';
@@ -72,6 +73,7 @@ export class MessagingChannelsService extends TenantScopedRepository {
     private readonly audit: AuditService,
     private readonly settings: SettingsService,
     private readonly config: AppConfig,
+    private readonly events: DomainEvents,
     @Inject(LINE_CHANNEL_API) private readonly api: LineChannelApiPort,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
@@ -135,17 +137,64 @@ export class MessagingChannelsService extends TenantScopedRepository {
         },
       });
     } catch (error) {
-      const reason =
-        error instanceof LineChannelError
-          ? error.status === 401
-            ? 'LINE refused the channel access token (401)'
-            : `LINE answered ${error.status}`
-          : 'LINE could not be reached';
-      return tx.messagingChannel.update({
-        where: { id: channel.id },
-        data: { state: 'failing', lastCheckedAt: now, lastError: reason, updatedAt: now },
-      });
+      return this.markFailing(tx, channel, error);
     }
+  }
+
+  /**
+   * LINE refused the channel (a check, or a push with a revoked token): `failing` with the reason; a channel that was
+   * working tells the owner (event `messaging.channel_failing`). Messages go through the shared OA meanwhile.
+   */
+  async markFailing(tx: Tx, channel: MessagingChannel, error: unknown): Promise<MessagingChannel> {
+    const now = this.clock.now();
+    const wasWorking = channel.state === 'verified';
+    const reason =
+      error instanceof LineChannelError
+        ? error.status === 401
+          ? 'LINE refused the channel access token (401)'
+          : `LINE answered ${error.status}`
+        : 'LINE could not be reached';
+    const failing = await tx.messagingChannel.update({
+      where: { id: channel.id },
+      data: { state: 'failing', lastCheckedAt: now, lastError: reason, updatedAt: now },
+    });
+    if (wasWorking)
+      await this.events.record(tx, {
+        type: 'messaging.channel_failing',
+        aggregateType: 'messaging_channel',
+        aggregateId: channel.id,
+        tenantId: channel.tenantId,
+        buildingId: channel.buildingId,
+        payload: { channelId: channel.id, name: channel.botName ?? channel.lineChannelId, reason },
+      });
+    return failing;
+  }
+
+  /**
+   * Health check (job `messaging-health`): every live own OA not checked for `messaging.health_check.hours` is asked
+   * again; one that stopped working is marked `failing` and its owner told once.
+   */
+  async healthCheck(): Promise<number> {
+    const now = this.clock.now();
+    const hours = Number(await this.settings.valueAt<number>('messaging.health_check.hours', now, {}));
+    const before = new Date(now.getTime() - Math.max(1, hours) * 3_600_000);
+    const due = await this.db.platform((tx) =>
+      tx.messagingChannel.findMany({
+        where: {
+          state: { in: ['verified', 'failing'] },
+          OR: [{ lastCheckedAt: null }, { lastCheckedAt: { lt: before } }],
+        },
+        take: 200,
+      }),
+    );
+    for (const channel of due) {
+      try {
+        await this.db.platform(async (tx) => this.check(tx, channel));
+      } catch (error) {
+        this.logger.warn(`health check of channel ${channel.id} failed: ${(error as Error).message}`);
+      }
+    }
+    return due.length;
   }
 
   /** Connects (or replaces) the own OA of the tenant or of one building, then verifies it with LINE. */

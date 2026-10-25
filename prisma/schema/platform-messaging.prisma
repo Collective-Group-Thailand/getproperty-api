@@ -34,6 +34,7 @@ model MessagingChannel {
   building   Building?               @relation("MessagingChannelBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "messaging_channel_building_id_fkey")
   users      MessagingChannelUser[]
   linkTokens MessagingLinkToken[]
+  usage      MessageUsage[]
 
   @@unique([tenantId], map: "messaging_channel_tenant_scope_key", where: raw("((building_id IS NULL) AND (state <> 'revoked'::platform.messaging_channel_state))"))
   @@unique([tenantId, buildingId], map: "messaging_channel_building_scope_key", where: raw("((building_id IS NOT NULL) AND (state <> 'revoked'::platform.messaging_channel_state))"))
@@ -84,5 +85,102 @@ model MessagingLinkToken {
   @@index([tenantId], map: "messaging_link_token_tenant_id_idx")
   @@index([usedBy], map: "messaging_link_token_used_by_idx")
   @@map("messaging_link_token")
+  @@schema("platform")
+}
+
+enum MessagingRateState {
+  entered
+  published
+  withdrawn
+
+  @@map("messaging_rate_state")
+  @@schema("platform")
+}
+
+enum MessagingOa {
+  shared
+  own
+
+  @@map("messaging_oa")
+  @@schema("platform")
+}
+
+enum MessageKind {
+  push
+  reply
+
+  @@map("message_kind")
+  @@schema("platform")
+}
+
+enum MessagingNoticeKind {
+  allowance_80
+  allowance_100
+  quota
+
+  @@map("messaging_notice_kind")
+  @@schema("platform")
+}
+
+/// The shared getproperty OA's charge per version (D-254); maker-checker publish. None published = not charged.
+model MessagingRate {
+  id              String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  effectiveFrom   DateTime           @map("effective_from") @db.Date
+  freePerTenant   Int                @map("free_per_tenant")
+  freePerUnit     Int                @default(0) @map("free_per_unit")
+  pricePerMessage Decimal            @map("price_per_message") @db.Decimal(10, 4)
+  vatPercent      Decimal            @map("vat_percent") @db.Decimal(5, 2)
+  notes           String?
+  state           MessagingRateState @default(entered)
+  enteredBy       String             @map("entered_by") @db.Uuid
+  enteredAt       DateTime           @default(now()) @map("entered_at") @db.Timestamptz(6)
+  publishedBy     String?            @map("published_by") @db.Uuid
+  publishedAt     DateTime?          @map("published_at") @db.Timestamptz(6)
+  withdrawnAt     DateTime?          @map("withdrawn_at") @db.Timestamptz(6)
+
+  enterer   UserAccount  @relation("MessagingRateEnterer", fields: [enteredBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "messaging_rate_entered_by_fkey")
+  publisher UserAccount? @relation("MessagingRatePublisher", fields: [publishedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "messaging_rate_published_by_fkey")
+
+  @@unique([effectiveFrom], map: "messaging_rate_published_key", where: raw("(state = 'published'::platform.messaging_rate_state)"))
+  @@map("messaging_rate")
+  @@schema("platform")
+}
+
+/// Every LINE message sent for a tenant (D-254): shared or own OA, push or reply, what LINE counts. Append-only.
+model MessageUsage {
+  id             String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String      @map("tenant_id") @db.Uuid
+  buildingId     String?     @map("building_id") @db.Uuid
+  channelId      String?     @map("channel_id") @db.Uuid
+  notificationId String?     @unique(map: "message_usage_notification_id_key") @map("notification_id") @db.Uuid
+  oa             MessagingOa
+  kind           MessageKind
+  counted        Int
+  month          DateTime    @db.Date
+  occurredAt     DateTime    @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  tenant  Tenant            @relation("MessageUsageTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "message_usage_tenant_id_fkey")
+  channel MessagingChannel? @relation(fields: [channelId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "message_usage_channel_id_fkey")
+
+  @@index([tenantId, month], map: "message_usage_tenant_id_month_idx")
+  @@index([channelId], map: "message_usage_channel_id_idx")
+  @@map("message_usage")
+  @@schema("platform")
+}
+
+/// Messaging notices sent to a tenant (D-254): 80 % / 100 % of the free messages, a quota refusal — once per month.
+model MessagingNotice {
+  id        String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String              @map("tenant_id") @db.Uuid
+  month     DateTime            @db.Date
+  kind      MessagingNoticeKind
+  counted   Int
+  allowance Int?
+  sentAt    DateTime            @default(now()) @map("sent_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation("MessagingNoticeTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "messaging_notice_tenant_id_fkey")
+
+  @@unique([tenantId, month, kind], map: "messaging_notice_tenant_id_month_kind_key")
+  @@map("messaging_notice")
   @@schema("platform")
 }

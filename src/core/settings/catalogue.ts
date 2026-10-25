@@ -775,6 +775,16 @@ export const SETTINGS: readonly SettingDef[] = [
     value: 30,
     reason: 'seed: B7 deliverable 7.7',
   },
+  {
+    key: 'messaging.health_check.hours',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      "D-254 (B7 deliverable 7.7): how often each operator's own LINE OA is checked with LINE, in hours; one that stopped working is marked failing and its owner told once.",
+    editableBy: ADMIN,
+    value: 6,
+    reason: 'seed: B7 deliverable 7.7',
+  },
   // --- platform business (Proposed until the pilot) ------------------------------------------------------
   {
     key: 'platform.subscriptions.enabled',

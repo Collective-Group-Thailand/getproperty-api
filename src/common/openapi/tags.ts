@@ -149,6 +149,7 @@ export const API_TAGS: Record<string, string> = {
     'TM30 notifications of foreign occupants: 24-hour deadline, the Immigration Bureau upload file per building, submissions (B6.2, D-052, D-216).',
   'resident.surveys': 'The periodic 1-question satisfaction survey in the LIFF (B6.3, D-083).',
   'public.listings': 'Public rental listings: search, detail, sitemap, viewers\u2019 reports (D-252).',
+  'public.pricing': 'Published prices an operator pays getproperty: the shared LINE OA’s messages (D-254).',
   'public.signup': 'Self-serve sign-up of landlords by phone, LINE, Google or Apple (D-251, D-255).',
   'owner.storage':
     "The owner's storage: files and records counted against the free allowance of the tenant type, the level and the daily snapshots (D-276).",
@@ -159,6 +160,8 @@ export const API_TAGS: Record<string, string> = {
   'admin.supportGrants': 'Support access requests and incident approvals (D-090).',
   'admin.platformUsers': 'Collective staff accounts and platform roles (D-161).',
   'admin.settings': 'Platform defaults of configurable business values (ADR-0004).',
+  'admin.messagingRates':
+    'Rates of the shared getproperty LINE OA: free messages, price per counted message, VAT; maker-checker (D-254).',
   'admin.storage': 'Storage of every tenant: latest daily snapshot, allowance and level (D-276, D-279).',
   'admin.listings': 'Listing moderation queue and owner verification decisions (D-252).',
   'admin.compliance':

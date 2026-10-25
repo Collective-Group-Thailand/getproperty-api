@@ -64,6 +64,11 @@ export const DOMAIN_EVENT_TYPES = {
     'A lease that came from a listing ends within listing.relist.remind_days_before; the owner is reminded to re-list (B7.4).',
   'listing.viewing_reminder':
     'A confirmed viewing is near; the prospect and the owner are reminded once (B7.3).',
+  'messaging.allowance_threshold':
+    "The shared getproperty OA reached 80 % or 100 % of a tenant's free messages this month (D-254, once per month).",
+  'messaging.quota_fallback':
+    'LINE refused a message for quota; it went by SMS (or could not). Once per tenant and month (D-254).',
+  'messaging.channel_failing': 'The health check found an own LINE OA LINE no longer accepts (D-254).',
   'storage.threshold_crossed':
     'A tenant reached a storage notice threshold of its allowance (D-276: 80 % / 100 %, once per crossing).',
   'document.uploaded': 'A file finished uploading; scan and thumbnail follow.',

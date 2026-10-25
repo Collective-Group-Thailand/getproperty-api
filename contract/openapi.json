@@ -1644,6 +1644,39 @@
           "type": "https://errors.getproperty.co/messaging.link_used"
         }
       },
+      "problem.messaging_rate.in_the_past": {
+        "summary": "messaging_rate.in_the_past",
+        "value": {
+          "code": "messaging_rate.in_the_past",
+          "detail": "วันที่มีผลต้องเป็นวันนี้หรือหลังจากนี้",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 422,
+          "title": "วันที่มีผลย้อนหลังไม่ได้",
+          "type": "https://errors.getproperty.co/messaging_rate.in_the_past"
+        }
+      },
+      "problem.messaging_rate.invalid_state": {
+        "summary": "messaging_rate.invalid_state",
+        "value": {
+          "code": "messaging_rate.invalid_state",
+          "detail": "อัตรานี้เผยแพร่หรือถูกยกเลิกไปแล้ว",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "อัตรานี้ดำเนินการแล้ว",
+          "type": "https://errors.getproperty.co/messaging_rate.invalid_state"
+        }
+      },
+      "problem.messaging_rate.same_checker": {
+        "summary": "messaging_rate.same_checker",
+        "value": {
+          "code": "messaging_rate.same_checker",
+          "detail": "ผู้เผยแพร่อัตราต้องเป็นผู้ใช้แพลตฟอร์มคนละคนกับผู้บันทึก",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ต้องให้อีกคนเผยแพร่",
+          "type": "https://errors.getproperty.co/messaging_rate.same_checker"
+        }
+      },
       "problem.meter.already_assigned": {
         "summary": "meter.already_assigned",
         "value": {
@@ -20041,6 +20074,273 @@
         ],
         "type": "string"
       },
+      "MessagingOwnUsageDto": {
+        "properties": {
+          "counted": {
+            "description": "Push messages LINE counts on your own OA.",
+            "example": 240,
+            "type": "integer"
+          },
+          "replies": {
+            "description": "Replies (account-linking links): not counted by LINE.",
+            "example": 31,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "counted",
+          "replies"
+        ],
+        "type": "object"
+      },
+      "MessagingRateCreateDto": {
+        "properties": {
+          "effectiveFrom": {
+            "description": "Today or later (Bangkok).",
+            "example": "2026-12-01",
+            "format": "date",
+            "type": "string"
+          },
+          "freePerTenant": {
+            "example": 500,
+            "maximum": 1000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "freePerUnit": {
+            "example": 10,
+            "maximum": 100000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notes": {
+            "example": "ตาม LINE Pro ส.ค. 2567",
+            "maxLength": 300,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pricePerMessage": {
+            "description": "THB, up to 4 decimals.",
+            "example": "0.1000",
+            "type": "string"
+          },
+          "vatPercent": {
+            "example": "7.00",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effectiveFrom",
+          "freePerTenant",
+          "pricePerMessage",
+          "vatPercent"
+        ],
+        "type": "object"
+      },
+      "MessagingRateDto": {
+        "properties": {
+          "effectiveFrom": {
+            "example": "2026-12-01",
+            "format": "date",
+            "type": "string"
+          },
+          "enteredAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "enteredBy": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "freePerTenant": {
+            "description": "Free counted messages per tenant per month.",
+            "example": 500,
+            "type": "integer"
+          },
+          "freePerUnit": {
+            "description": "Free counted messages per active unit per month.",
+            "example": 10,
+            "type": "integer"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "notes": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pricePerMessage": {
+            "description": "THB per counted message beyond the free ones.",
+            "example": "0.1000",
+            "type": "string"
+          },
+          "publishedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "publishedBy": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessagingRateState"
+              }
+            ],
+            "example": "entered"
+          },
+          "vatPercent": {
+            "example": "7.00",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "effectiveFrom",
+          "freePerTenant",
+          "freePerUnit",
+          "pricePerMessage",
+          "vatPercent",
+          "notes",
+          "state",
+          "enteredBy",
+          "enteredAt",
+          "publishedBy",
+          "publishedAt"
+        ],
+        "type": "object"
+      },
+      "MessagingRateState": {
+        "enum": [
+          "entered",
+          "published",
+          "withdrawn"
+        ],
+        "type": "string"
+      },
+      "MessagingSharedUsageDto": {
+        "properties": {
+          "allowance": {
+            "description": "Free messages this month (per tenant + per unit); null while no rate is published (not charged).",
+            "example": 1000,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "chargeable": {
+            "description": "Counted messages beyond the free ones.",
+            "example": 0,
+            "type": "integer"
+          },
+          "counted": {
+            "description": "Messages LINE counts (push; replies are free).",
+            "example": 812,
+            "type": "integer"
+          },
+          "estimatedCharge": {
+            "description": "chargeable × price, ex VAT, THB — billed on the monthly platform invoice.",
+            "example": "0.00",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "estimatedVat": {
+            "example": "0.00",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "left": {
+            "example": 188,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "pricePerMessage": {
+            "description": "THB per counted message.",
+            "example": "0.1000",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "usedPercent": {
+            "example": 81,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "vatPercent": {
+            "example": "7.00",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "counted",
+          "allowance",
+          "left",
+          "usedPercent",
+          "chargeable",
+          "pricePerMessage",
+          "vatPercent",
+          "estimatedCharge",
+          "estimatedVat"
+        ],
+        "type": "object"
+      },
+      "MessagingUsageDto": {
+        "properties": {
+          "month": {
+            "description": "Bangkok month.",
+            "example": "2026-11",
+            "type": "string"
+          },
+          "own": {
+            "$ref": "#/components/schemas/MessagingOwnUsageDto"
+          },
+          "quotaFallbacks": {
+            "description": "LINE messages refused for quota this month (sent by SMS instead where a phone was known).",
+            "example": 0,
+            "type": "integer"
+          },
+          "shared": {
+            "$ref": "#/components/schemas/MessagingSharedUsageDto"
+          }
+        },
+        "required": [
+          "month",
+          "shared",
+          "own",
+          "quotaFallbacks"
+        ],
+        "type": "object"
+      },
       "MeterAssignmentHistoryDto": {
         "properties": {
           "assetItemId": {
@@ -27661,6 +27961,45 @@
         ],
         "type": "object"
       },
+      "PublicMessagingRateDto": {
+        "properties": {
+          "effectiveFrom": {
+            "example": "2026-12-01",
+            "format": "date",
+            "type": "string"
+          },
+          "freePerTenant": {
+            "example": 500,
+            "type": "integer"
+          },
+          "freePerUnit": {
+            "example": 10,
+            "type": "integer"
+          },
+          "pricePerMessage": {
+            "example": "0.1000",
+            "type": "string"
+          },
+          "repliesFree": {
+            "description": "Replies are never charged; only messages LINE counts (push) beyond the free ones.",
+            "example": true,
+            "type": "boolean"
+          },
+          "vatPercent": {
+            "example": "7.00",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effectiveFrom",
+          "freePerTenant",
+          "freePerUnit",
+          "pricePerMessage",
+          "vatPercent",
+          "repliesFree"
+        ],
+        "type": "object"
+      },
       "PublicPlanDto": {
         "properties": {
           "currency": {
@@ -27813,6 +28152,37 @@
         },
         "required": [
           "data"
+        ],
+        "type": "object"
+      },
+      "PublicPricingDto": {
+        "properties": {
+          "messaging": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicMessagingRateDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The shared getproperty LINE OA in force today; null = messaging not charged."
+          },
+          "messagingNext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicMessagingRateDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A published change that takes effect later, if any."
+          }
+        },
+        "required": [
+          "messaging",
+          "messagingNext"
         ],
         "type": "object"
       },
@@ -53162,6 +53532,636 @@
         "summary": "Who I am in the platform admin",
         "tags": [
           "admin.me"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/messaging-rates": {
+      "get": {
+        "description": "Every version (entered, published, withdrawn), newest first: free messages per tenant and per unit, price per counted message, VAT (D-254).\n\nImplements: D-254.",
+        "operationId": "admin.messagingRates.list",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "effectiveFrom": "2026-12-01",
+                    "enteredAt": "2026-11-01T00:15:00+07:00",
+                    "enteredBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "freePerTenant": 500,
+                    "freePerUnit": 10,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "notes": null,
+                    "pricePerMessage": "0.1000",
+                    "publishedAt": null,
+                    "publishedBy": null,
+                    "state": "entered",
+                    "vatPercent": "7.00"
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MessagingRateDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Rates",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Rates of the shared LINE OA",
+        "tags": [
+          "admin.messagingRates"
+        ],
+        "x-required-permissions": [
+          "admin.setting.manage"
+        ],
+        "x-surface": "admin"
+      },
+      "post": {
+        "description": "A new version in state `entered`, effective from today or later (`messaging_rate.in_the_past`). Another platform user publishes it (D-254, D-091). LINE’s own prices are not hard-coded: re-check them before setting a rate.\n\nImplements: D-254, D-091.",
+        "operationId": "admin.messagingRates.enter",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "effectiveFrom": "2026-12-01",
+                    "freePerTenant": 500,
+                    "freePerUnit": 10,
+                    "pricePerMessage": "0.1000",
+                    "vatPercent": "7.00"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/MessagingRateCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "effectiveFrom": "2026-12-01",
+                  "enteredAt": "2026-11-01T00:15:00+07:00",
+                  "enteredBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "freePerTenant": 500,
+                  "freePerUnit": 10,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "notes": null,
+                  "pricePerMessage": "0.1000",
+                  "publishedAt": null,
+                  "publishedBy": null,
+                  "state": "entered",
+                  "vatPercent": "7.00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingRateDto"
+                }
+              }
+            },
+            "description": "Entered",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.conflict": {
+                    "$ref": "#/components/examples/problem.http.conflict"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.conflict`, `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "messaging_rate.in_the_past": {
+                    "$ref": "#/components/examples/problem.messaging_rate.in_the_past"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `messaging_rate.in_the_past`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Enter a rate (maker)",
+        "tags": [
+          "admin.messagingRates"
+        ],
+        "x-required-permissions": [
+          "admin.setting.manage"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/messaging-rates/{rateId}/actions/publish": {
+      "post": {
+        "description": "A platform user other than the one who entered it (`messaging_rate.same_checker`) publishes the version; a version already published for the same day is withdrawn. It is charged from its effective date and shown on the public pricing (D-254, D-091).\n\nImplements: D-254, D-091.",
+        "operationId": "admin.messagingRates.publish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rateId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "effectiveFrom": "2026-12-01",
+                  "enteredAt": "2026-11-01T00:15:00+07:00",
+                  "enteredBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "freePerTenant": 500,
+                  "freePerUnit": 10,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "notes": null,
+                  "pricePerMessage": "0.1000",
+                  "publishedAt": "2026-11-01T00:15:00+07:00",
+                  "publishedBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "state": "published",
+                  "vatPercent": "7.00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingRateDto"
+                }
+              }
+            },
+            "description": "Published",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "messaging_rate.invalid_state": {
+                    "$ref": "#/components/examples/problem.messaging_rate.invalid_state"
+                  },
+                  "messaging_rate.same_checker": {
+                    "$ref": "#/components/examples/problem.messaging_rate.same_checker"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `messaging_rate.invalid_state`, `messaging_rate.same_checker`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "messaging_rate.in_the_past": {
+                    "$ref": "#/components/examples/problem.messaging_rate.in_the_past"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `messaging_rate.in_the_past`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Publish a rate (checker)",
+        "tags": [
+          "admin.messagingRates"
+        ],
+        "x-required-permissions": [
+          "admin.setting.manage"
         ],
         "x-surface": "admin"
       }
@@ -138053,6 +139053,223 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/messaging/usage": {
+      "get": {
+        "description": "Messages LINE counts through the shared getproperty OA against the free ones of the published rate (80 % / 100 % notices once a month), the estimated charge beyond them (billed on the monthly platform invoice), messages through my own OA (LINE bills me; replies free) and quota refusals that went by SMS (D-254).\n\nImplements: D-254.",
+        "operationId": "owner.messagingUsage.get",
+        "parameters": [
+          {
+            "description": "YYYY-MM (Bangkok); default this month.",
+            "in": "query",
+            "name": "month",
+            "required": false,
+            "schema": {
+              "example": "2026-11",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "month": "2026-11",
+                  "own": {
+                    "counted": 0,
+                    "replies": 0
+                  },
+                  "quotaFallbacks": 0,
+                  "shared": {
+                    "allowance": 1000,
+                    "chargeable": 0,
+                    "counted": 812,
+                    "estimatedCharge": "0.00",
+                    "estimatedVat": "0.00",
+                    "left": 188,
+                    "pricePerMessage": "0.1000",
+                    "usedPercent": 81,
+                    "vatPercent": "7.00"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingUsageDto"
+                }
+              }
+            },
+            "description": "Usage",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "My LINE messages this month",
+        "tags": [
+          "owner.messaging"
+        ],
+        "x-required-permissions": [
+          "tenant.settings.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/meter-readings": {
       "post": {
         "description": "The photo (`meter_photo`) is read by OCR (vision model behind the AI gateway); a typed value is checked against it, without one the OCR value is used (source `ocr`). The reading is accepted, or goes to the owner review queue when outside the plausibility band, decreasing without a swap, or OCR is doubtful (D-035); an accepted decrease is impossible (D-030). Staff readings join the reading round of the billing period.\n\nImplements: D-035, D-012, D-030, D-031.",
@@ -180922,6 +182139,103 @@
         "summary": "Price plans for the pricing page",
         "tags": [
           "public.plans"
+        ],
+        "x-surface": "public"
+      }
+    },
+    "/v1/public/pricing": {
+      "get": {
+        "description": "What an operator pays getproperty, as published: the shared LINE OA’s free messages and price per counted message beyond them (replies free; an own OA is never charged by getproperty) — in force today and the next published change (D-254). Payment fee rules join with the payment gateway (D-250). Anonymous and cacheable.\n\nImplements: D-254.",
+        "operationId": "public.pricing.get",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "messaging": {
+                    "effectiveFrom": "2026-12-01",
+                    "freePerTenant": 500,
+                    "freePerUnit": 10,
+                    "pricePerMessage": "0.1000",
+                    "repliesFree": true,
+                    "vatPercent": "7.00"
+                  },
+                  "messagingNext": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPricingDto"
+                }
+              }
+            },
+            "description": "Prices",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Published prices",
+        "tags": [
+          "public.pricing"
         ],
         "x-surface": "public"
       }
@@ -224176,6 +225490,10 @@
       "name": "admin.me"
     },
     {
+      "description": "Rates of the shared getproperty LINE OA: free messages, price per counted message, VAT; maker-checker (D-254).",
+      "name": "admin.messagingRates"
+    },
+    {
       "description": "Notification templates: versions, preview, publish, test send.",
       "name": "admin.notificationTemplates"
     },
@@ -224606,6 +225924,10 @@
     {
       "description": "Price plans of the platform for the public pricing page (D-156; Proposed until the pilot).",
       "name": "public.plans"
+    },
+    {
+      "description": "Published prices an operator pays getproperty: the shared LINE OA’s messages (D-254).",
+      "name": "public.pricing"
     },
     {
       "description": "Self-serve sign-up of landlords by phone, LINE, Google or Apple (D-251, D-255).",

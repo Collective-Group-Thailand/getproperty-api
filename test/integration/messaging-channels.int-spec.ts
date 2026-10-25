@@ -5,7 +5,7 @@ import { type FakeLineChannelApi } from '@integrations/line-channels/fake-line-c
 import { LINE_CHANNEL_API } from '@integrations/line-channels/line-channel-api.port';
 
 import { createIntApp, type IntApp } from '../support/int-app';
-import { bearer, idem } from '../support/int-auth';
+import { adminToken, bearer, idem, platformToken } from '../support/int-auth';
 import { createIntDatabase, type IntDatabase } from '../support/int-db';
 
 const ADDRESS = { line1: 'ถนนสุขุมวิท', district: 'คลองเตย', province: 'กรุงเทพมหานคร', postcode: '10110' };
@@ -17,7 +17,9 @@ const SECRET = 'own-oa-channel-secret-0001';
 /**
  * B7 deliverable 7.7 part 1 acceptance (D-254): an operator connects its own LINE OA → LINE events arrive signed on
  * the channel's own webhook → a resident who follows gets a single-use link → confirms in the LIFF → that resident's
- * messages go out through the own OA; everybody else stays on the shared getproperty OA.
+ * messages go out through the own OA; everybody else stays on the shared getproperty OA. Part 2: every message is
+ * metered (shared vs own, replies free), the shared OA's free messages come from a maker-checker rate with a notice at
+ * 80 % / 100 %, and a message LINE refuses for quota goes by SMS with one notice to the owner.
  */
 describe('own LINE Official Account: connect, link residents, deliver (D-254, real PostgreSQL)', () => {
   let db: IntDatabase;
@@ -306,6 +308,144 @@ describe('own LINE Official Account: connect, link residents, deliver (D-254, re
       provider: 'fake-line',
       state: 'sent',
     });
+  });
+
+  it('rates: one platform user enters, another publishes; the public pricing shows it', async () => {
+    const admin = await adminToken(t);
+    const entered = await t.http
+      .post('/v1/admin/messaging-rates')
+      .set(bearer(admin))
+      .set(idem())
+      .send({ effectiveFrom: today(), freePerTenant: 4, pricePerMessage: '0.5000', vatPercent: '7.00' })
+      .expect(201);
+    expect(entered.body).toMatchObject({ state: 'entered', freePerUnit: 0, pricePerMessage: '0.5000' });
+    const past = await t.http
+      .post('/v1/admin/messaging-rates')
+      .set(bearer(admin))
+      .set(idem())
+      .send({ effectiveFrom: '2020-01-01', freePerTenant: 4, pricePerMessage: '0.5000', vatPercent: '7.00' });
+    expect(past.body.code).toBe('messaging_rate.in_the_past');
+    const self = await t.http
+      .post(`/v1/admin/messaging-rates/${entered.body.id}/actions/publish`)
+      .set(bearer(admin));
+    expect(self.status).toBe(409);
+    expect(self.body.code).toBe('messaging_rate.same_checker');
+    await t.http
+      .post('/v1/admin/platform-users')
+      .set(bearer(admin))
+      .set(idem())
+      .send({
+        email: 'rates-checker@getproperty.invalid',
+        displayName: 'Rates checker (test)',
+        roles: ['platform_admin'],
+        temporaryPassword: 'Checker-Passw0rd-Test!',
+      })
+      .expect(201);
+    const checker = await platformToken(t, 'rates-checker@getproperty.invalid', 'Checker-Passw0rd-Test!');
+    await t.http
+      .post(`/v1/admin/messaging-rates/${entered.body.id}/actions/publish`)
+      .set(bearer(checker))
+      .expect(200);
+    const pricing = await t.http.get('/v1/public/pricing').expect(200);
+    expect(pricing.body).toEqual({
+      messaging: {
+        effectiveFrom: today(),
+        freePerTenant: 4,
+        freePerUnit: 0,
+        pricePerMessage: '0.5000',
+        vatPercent: '7.00',
+        repliesFree: true,
+      },
+      messagingNext: null,
+    });
+  });
+
+  it('meters every message; the owner hears once when the free messages run out; beyond them is charged', async () => {
+    // So far: two messages through the shared OA, one through the own OA, link replies (free).
+    await decide('tenant');
+    await drain();
+    await decide('owner');
+    await drain();
+    const notices = await db.admin.query<{ kind: string }>(
+      `SELECT kind::text FROM platform.messaging_notice WHERE tenant_id = $1 ORDER BY kind`,
+      [owner.tenantId],
+    );
+    expect(notices.rows.map((r) => r.kind).sort()).toEqual(['allowance_100', 'allowance_80']);
+    const events = async () =>
+      (
+        await db.admin.query<{ pct: number }>(
+          `SELECT (payload->>'thresholdPct')::int AS pct FROM platform.domain_event
+            WHERE type = 'messaging.allowance_threshold' AND tenant_id = $1`,
+          [owner.tenantId],
+        )
+      ).rows;
+    expect(await events()).toEqual([{ pct: 100 }]);
+    await drain();
+    const told = await db.admin.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM platform.notification n JOIN platform.domain_event e ON e.id = n.event_id
+        WHERE e.type = 'messaging.allowance_threshold' AND n.channel = 'in_app'`,
+    );
+    expect(told.rows[0]!.n).toBe(1);
+
+    await decide('tenant');
+    await drain();
+    expect(await events()).toHaveLength(1);
+    const usage = await t.http.get('/v1/owner/messaging/usage').set(as()).expect(200);
+    expect(usage.body).toMatchObject({
+      shared: {
+        counted: 5,
+        allowance: 4,
+        left: 0,
+        usedPercent: 125,
+        chargeable: 1,
+        pricePerMessage: '0.5000',
+        estimatedCharge: '0.50',
+        estimatedVat: '0.04',
+      },
+      own: { counted: 1 },
+      quotaFallbacks: 0,
+    });
+  });
+
+  it('a message LINE refuses for quota goes by SMS, and the owner is told once', async () => {
+    const connected = await t.http
+      .post('/v1/owner/messaging/channels')
+      .set(as())
+      .send({ lineChannelId: '1650000002', channelSecret: SECRET, accessToken: 'fake-token-quota-บ้านสมใจ' })
+      .expect(201);
+    channelId = connected.body.id as string;
+    webhookKey = /\/webhooks\/line\/([A-Za-z0-9_-]+)$/.exec(connected.body.webhookUrl as string)![1]!;
+    await webhook(webhookKey, [follow(OA_USER, 'rt-q1')]).expect(200);
+    await t.http
+      .post(`/v1/resident/messaging-links/${encodeURIComponent(linkFrom('rt-q1'))}/actions/confirm`)
+      .set(bearer(resident))
+      .expect(200);
+
+    const sms = t.sms.sent.length;
+    await decide('owner');
+    await drain();
+    const rows = await db.admin.query<{ channel: string; state: string; failed_reason: string | null }>(
+      `SELECT channel::text, state::text, failed_reason FROM platform.notification
+        WHERE event_id = (SELECT event_id FROM platform.notification
+                           WHERE channel = 'line' AND recipient_type = 'party' ORDER BY created_at DESC LIMIT 1)
+          AND recipient_type = 'party'
+        ORDER BY channel`,
+    );
+    expect(rows.rows).toEqual([
+      { channel: 'line', state: 'failed', failed_reason: 'line_quota → sms' },
+      { channel: 'sms', state: 'sent', failed_reason: null },
+    ]);
+    expect(t.sms.sent.slice(sms).map((m) => m.to)).toEqual(['+66810007702']);
+
+    await decide('tenant');
+    await drain();
+    const quota = await db.admin.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM platform.domain_event WHERE type = 'messaging.quota_fallback' AND tenant_id = $1`,
+      [owner.tenantId],
+    );
+    expect(quota.rows[0]!.n).toBe(1);
+    const usage = await t.http.get('/v1/owner/messaging/usage').set(as()).expect(200);
+    expect(usage.body.quotaFallbacks).toBe(2);
   });
 
   it('disconnects: the webhook stops and other tenants never see the channel', async () => {

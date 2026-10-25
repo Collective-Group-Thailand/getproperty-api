@@ -11,6 +11,7 @@ import {
   type LinkPreview,
   MessagingChannelsService,
 } from '@core/messaging/messaging-channels.service';
+import { MessagingUsageService } from '@core/messaging/messaging-usage.service';
 import {
   Body,
   Controller,
@@ -20,6 +21,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Req,
   VERSION_NEUTRAL,
 } from '@nestjs/common';
@@ -34,6 +36,8 @@ import {
   type MessagingChannelStateName,
   MessagingLinkDto,
   type MessagingLinkStateName,
+  MessagingUsageDto,
+  MessagingUsageQuery,
 } from './messaging.dto';
 
 const T = [
@@ -282,5 +286,49 @@ export class LineWebhooksController {
     @Req() req: RawBodyRequest,
   ): Promise<LineWebhookAckDto> {
     return this.channels.receive(webhookKey.slice(0, 64), signature, req.rawBody);
+  }
+}
+
+const USAGE_EXAMPLE: MessagingUsageDto = {
+  month: '2026-11',
+  shared: {
+    counted: 812,
+    allowance: 1000,
+    left: 188,
+    usedPercent: 81,
+    chargeable: 0,
+    pricePerMessage: '0.1000',
+    vatPercent: '7.00',
+    estimatedCharge: '0.00',
+    estimatedVat: '0.00',
+  },
+  own: { counted: 0, replies: 0 },
+  quotaFallbacks: 0,
+};
+
+/** Message usage of the tenant (D-254). */
+@ApiTags('owner.messaging')
+@ApiSurface(SURFACES.owner)
+@Controller('owner/messaging/usage')
+export class OwnerMessagingUsageController {
+  constructor(private readonly usage: MessagingUsageService) {}
+
+  @Get()
+  @TenantScoped()
+  @Can('tenant.settings.read')
+  @ApiEndpoint({
+    id: 'owner.messagingUsage.get',
+    summary: 'My LINE messages this month',
+    description:
+      'Messages LINE counts through the shared getproperty OA against the free ones of the published rate (80 % / 100 % notices once a month), the estimated charge beyond them (billed on the monthly platform invoice), messages through my own OA (LINE bills me; replies free) and quota refusals that went by SMS (D-254).',
+    implements: ['D-254'],
+  })
+  @ApiSuccess(200, { description: 'Usage', type: MessagingUsageDto, example: USAGE_EXAMPLE })
+  @ApiStandardErrors('validation.failed', ...T)
+  async get(
+    @CurrentTenant() ctx: TenantContext,
+    @Query() query: MessagingUsageQuery,
+  ): Promise<MessagingUsageDto> {
+    return this.usage.summary(ctx, query.month);
   }
 }
