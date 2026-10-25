@@ -367,7 +367,8 @@ export class LeaseNoticesService extends TenantScopedRepository implements OnMod
     return new Decimal(value).toFixed(2);
   }
 
-  private async baseData(lease: LeaseRow, language: ContractLanguage) {
+  /** Lessor, lessee, premises and lease facts for a letter (shared by notices and certificates). */
+  async baseData(lease: LeaseRow, language: ContractLanguage) {
     const [tenant, party, unit] = await Promise.all([
       this.db.platform((tx) => tx.tenant.findUniqueOrThrow({ where: { id: lease.tenantId } })),
       this.db.platform((tx) => tx.party.findUniqueOrThrow({ where: { id: lease.lesseePartyId } })),

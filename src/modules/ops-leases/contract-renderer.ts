@@ -106,6 +106,7 @@ table.sign td { width: 50%; text-align: center; vertical-align: bottom; }
 img.sig { max-height: 18mm; max-width: 60mm; display: block; margin: 0 auto 1mm; }
 .when { font-size: 10pt; color: #444; }
 footer.notes { margin-top: 8mm; font-size: 9pt; color: #555; }
+.page-break { break-before: page; page-break-before: always; }
 footer.platform { margin-top: 8mm; padding-top: 2mm; border-top: 0.2mm solid #ddd; display: flex; align-items: center; gap: 2mm; font-size: 8.5pt; color: #555; }
 img.platform-logo { height: 4.2mm; width: auto; }
 `;

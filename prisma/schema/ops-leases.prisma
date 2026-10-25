@@ -178,6 +178,8 @@ model Lease {
   contractSha256                 Bytes?             @map("contract_sha256")
   complianceSnapshot             Json               @default("{}") @map("compliance_snapshot")
   /// B7.5 (D-253, O-019): stamp duty on the lease.
+  /// B7.5: Thai and English texts in one signed PDF.
+  bilingual                      Boolean            @default(false)
   stampDutyPayer                 StampDutyPayer     @default(lessor) @map("stamp_duty_payer")
   stampDutyAmount                Decimal?           @map("stamp_duty_amount") @db.Decimal(14, 2)
   stampDutyChannel               StampDutyChannel?  @map("stamp_duty_channel")
@@ -200,6 +202,7 @@ model Lease {
   contractDocument Document?            @relation("LeaseContractDocument", fields: [contractDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_contract_document_id_fkey")
   signedDocument   Document?            @relation("LeaseSignedDocument", fields: [signedDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_signed_document_id_fkey")
   notices          LeaseNotice[]
+  rentCertificates RentCertificate[]
   stampDutyDocument Document?           @relation("LeaseStampDutyDocument", fields: [stampDutyDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_stamp_duty_document_id_fkey")
   parties          LeaseParty[]
   lines            LeaseLine[]
@@ -412,5 +415,64 @@ enum LeaseNoticeKind {
   late_payment
 
   @@map("lease_notice_kind")
+  @@schema("ops")
+}
+
+/// B7.5 (D-253): a rent payment certificate, requested by the resident or issued by the owner.
+model RentCertificate {
+  id                 String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String                 @map("tenant_id") @db.Uuid
+  leaseId            String                 @map("lease_id") @db.Uuid
+  buildingId         String                 @map("building_id") @db.Uuid
+  unitId             String                 @map("unit_id") @db.Uuid
+  requestedByPartyId String?                @map("requested_by_party_id") @db.Uuid
+  purpose            RentCertificatePurpose
+  periodFrom         DateTime               @map("period_from") @db.Date
+  periodTo           DateTime               @map("period_to") @db.Date
+  language           String                 @default("th") @db.Char(2)
+  note               String?
+  state              RentCertificateState   @default(requested)
+  number             String?
+  documentId         String?                @map("document_id") @db.Uuid
+  totalPaid          Decimal?               @map("total_paid") @db.Decimal(14, 2)
+  declineReason      String?                @map("decline_reason")
+  requestedAt        DateTime               @default(now()) @map("requested_at") @db.Timestamptz(6)
+  decidedAt          DateTime?              @map("decided_at") @db.Timestamptz(6)
+  decidedBy          String?                @map("decided_by") @db.Uuid
+
+  tenant      Tenant    @relation("RentCertificateTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rent_certificate_tenant_id_fkey")
+  lease       Lease     @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rent_certificate_lease_id_fkey")
+  building    Building  @relation("RentCertificateBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rent_certificate_building_id_fkey")
+  unit        Unit      @relation("RentCertificateUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rent_certificate_unit_id_fkey")
+  requestedBy Party?    @relation("RentCertificateRequester", fields: [requestedByPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rent_certificate_requested_by_party_id_fkey")
+  document    Document? @relation("RentCertificateDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rent_certificate_document_id_fkey")
+
+  @@unique([tenantId, number], map: "rent_certificate_tenant_id_number_key", where: raw("(number IS NOT NULL)"))
+  @@unique([leaseId], map: "rent_certificate_one_open_key", where: raw("(state = 'requested'::ops.rent_certificate_state)"))
+  @@index([tenantId, state, requestedAt(sort: Desc)], map: "rent_certificate_tenant_id_state_idx")
+  @@index([buildingId], map: "rent_certificate_building_id_idx")
+  @@index([unitId], map: "rent_certificate_unit_id_idx")
+  @@index([requestedByPartyId], map: "rent_certificate_requested_by_party_id_idx")
+  @@index([documentId], map: "rent_certificate_document_id_idx")
+  @@map("rent_certificate")
+  @@schema("ops")
+}
+
+enum RentCertificatePurpose {
+  visa
+  bank
+  employer
+  other
+
+  @@map("rent_certificate_purpose")
+  @@schema("ops")
+}
+
+enum RentCertificateState {
+  requested
+  issued
+  declined
+
+  @@map("rent_certificate_state")
   @@schema("ops")
 }

@@ -9,6 +9,7 @@ import { ResidentLeaseNoticesController } from '../owner/lease-notices.controlle
 import { ResidentInvitationsController, ResidentLeasesController } from '../owner/leases.controller';
 import { ResidentPrivacyController } from '../owner/parties.controller';
 import { ResidentPaymentsController } from '../owner/payments.controller';
+import { ResidentRentCertificatesController } from '../owner/rent-certificates.controller';
 import { ResidentServiceRequestsController } from '../owner/service.controller';
 import { ResidentUsageController } from '../owner/smart.controller';
 import { ResidentLinkController, ResidentMeController } from '../shared/me.controllers';
@@ -39,6 +40,7 @@ import { ResidentCsatSurveyController } from './resident-survey.controller';
     ResidentPrivacyController,
     ResidentLeasesController,
     ResidentLeaseNoticesController,
+    ResidentRentCertificatesController,
     ResidentInvitationsController,
     ResidentDepositsController,
     ResidentUploadsController,

@@ -127,6 +127,8 @@ export const ERROR_CODES = {
   'lease.stamp_duty_paid': HttpStatus.CONFLICT,
   'lease.e_stamp_unavailable': HttpStatus.CONFLICT,
   'lease.notice_nothing_overdue': HttpStatus.UNPROCESSABLE_ENTITY,
+  'rent_certificate.request_open': HttpStatus.CONFLICT,
+  'rent_certificate.invalid_state': HttpStatus.CONFLICT,
   'consent.required': HttpStatus.CONFLICT,
   'invitation.party_mismatch': HttpStatus.CONFLICT,
   'deposit.invalid_state': HttpStatus.CONFLICT,
