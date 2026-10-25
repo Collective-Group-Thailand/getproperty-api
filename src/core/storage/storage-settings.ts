@@ -1,7 +1,8 @@
 /**
- * Storage metering settings (D-276): every number is a setting with effective dates, per tenant type, edited by the
- * platform admin. Amounts stay null until the founder sets them — null free allowance = metering not active for that
- * tenant type (usage is still snapshotted, nothing is held, no notice is sent); null price = overage not sold.
+ * Storage metering settings (D-276, D-279): every number is a setting with effective dates, per tenant type, edited by
+ * the platform admin (admin console → subscriptions → storage). 5 GB free per type (D-279); a null free allowance =
+ * metering not active for that type (usage is still snapshotted, nothing is held, no notice is sent); a null price =
+ * overage not sold.
  */
 export const TENANT_TYPES = ['apartment', 'condo_juristic', 'pm_company', 'landlord'] as const;
 export type StorageTenantType = (typeof TENANT_TYPES)[number];
@@ -84,4 +85,10 @@ export const DEFAULT_RECORD_BYTES: Record<CountedRecordType | '_default', number
 export const NOT_SET_PER_TYPE = Object.fromEntries(TENANT_TYPES.map((t) => [t, null])) as Record<
   StorageTenantType,
   null
+>;
+
+/** D-279 (founder 2026-10-25): 5 GB free for every tenant type; changed by the platform admin, never in code. */
+export const FREE_GB_PER_TYPE = Object.fromEntries(TENANT_TYPES.map((t) => [t, '5'])) as Record<
+  StorageTenantType,
+  string
 >;

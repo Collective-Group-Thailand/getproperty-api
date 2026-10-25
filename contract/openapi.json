@@ -2777,6 +2777,117 @@
         ],
         "type": "string"
       },
+      "AdminStorageOverviewDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/AdminStorageTenantDto"
+            },
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AdminStorageTotalsDto"
+          }
+        },
+        "required": [
+          "data",
+          "totals"
+        ],
+        "type": "object"
+      },
+      "AdminStorageTenantDto": {
+        "properties": {
+          "allowanceBytes": {
+            "description": "null = not metered.",
+            "example": "5368709120",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "day": {
+            "description": "Day of the latest snapshot.",
+            "example": "2026-10-25",
+            "format": "date",
+            "type": "string"
+          },
+          "displayName": {
+            "example": "หอพักตัวอย่าง",
+            "type": "string"
+          },
+          "fileBytes": {
+            "example": "650000000",
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StorageLevel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "example": "ok"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "type": {
+            "description": "Tenant type (core.tenant_type).",
+            "example": "apartment",
+            "type": "string"
+          },
+          "usedBytes": {
+            "description": "Counted bytes (files + records), decimal string.",
+            "example": "734003200",
+            "type": "string"
+          },
+          "usedPercent": {
+            "example": 13,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "tenantId",
+          "displayName",
+          "type",
+          "day",
+          "usedBytes",
+          "fileBytes",
+          "allowanceBytes",
+          "usedPercent",
+          "level"
+        ],
+        "type": "object"
+      },
+      "AdminStorageTotalsDto": {
+        "properties": {
+          "nearOrOver": {
+            "description": "Tenants at or above 80 % of their allowance.",
+            "example": 1,
+            "type": "integer"
+          },
+          "tenants": {
+            "example": 12,
+            "type": "integer"
+          },
+          "usedBytes": {
+            "example": "8808038400",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenants",
+          "usedBytes",
+          "nearOrOver"
+        ],
+        "type": "object"
+      },
       "AgingBucket": {
         "enum": [
           "current",
@@ -55604,6 +55715,182 @@
         ],
         "x-required-permissions": [
           "admin.device.manage"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/storage/tenants": {
+      "get": {
+        "description": "The latest daily storage snapshot of each tenant (counted bytes, files, allowance, percent, level) and totals (D-276, D-279). Tenants without a snapshot yet are not listed.\n\nImplements: D-276, D-279.",
+        "operationId": "admin.storage.tenants",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "allowanceBytes": "5368709120",
+                      "day": "2026-10-25",
+                      "displayName": "หอพักตัวอย่าง",
+                      "fileBytes": "650000000",
+                      "level": "ok",
+                      "tenantId": "0199f2a0-0000-7000-8000-000000000001",
+                      "type": "apartment",
+                      "usedBytes": "734003200",
+                      "usedPercent": 13
+                    }
+                  ],
+                  "totals": {
+                    "nearOrOver": 0,
+                    "tenants": 1,
+                    "usedBytes": "734003200"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStorageOverviewDto"
+                }
+              }
+            },
+            "description": "Storage per tenant",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Storage of every tenant",
+        "tags": [
+          "admin.storage"
+        ],
+        "x-required-permissions": [
+          "admin.tenant.read"
         ],
         "x-surface": "admin"
       }
@@ -194256,6 +194543,10 @@
     {
       "description": "Platform defaults of configurable business values (ADR-0004).",
       "name": "admin.settings"
+    },
+    {
+      "description": "Storage of every tenant: latest daily snapshot, allowance and level (D-276, D-279).",
+      "name": "admin.storage"
     },
     {
       "description": "Subscriptions of tenants (D-082): trial → active → past_due → suspended (read-only) → cancelled, plan changes, typed-confirmation suspension.",

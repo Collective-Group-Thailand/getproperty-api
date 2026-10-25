@@ -313,3 +313,45 @@ export class StorageMeteringService {
     return monthlyStorageCharge({ dailyUsedBytes: daily, policy: p.policy });
   }
 }
+
+export interface StorageOverviewRow {
+  tenantId: string;
+  displayName: string;
+  type: string;
+  day: string;
+  usedBytes: bigint;
+  fileBytes: bigint;
+  allowanceBytes: bigint | null;
+}
+
+/** The latest snapshot of every tenant (platform admin overview, D-279), most used first. Run as gp_platform. */
+export async function storageOverview(tx: Tx): Promise<StorageOverviewRow[]> {
+  const rows = await tx.$queryRawUnsafe<
+    {
+      tenant_id: string;
+      display_name: string;
+      type: string;
+      day: Date;
+      counted_bytes: bigint;
+      file_bytes: bigint;
+      allowance_bytes: bigint | null;
+    }[]
+  >(
+    `SELECT DISTINCT ON (u.tenant_id) u.tenant_id, t.display_name, t.type::text AS type, u.day, u.counted_bytes,
+            u.file_bytes, u.allowance_bytes
+       FROM platform.storage_usage_daily u JOIN core.tenant t ON t.id = u.tenant_id
+      WHERE t.deleted_at IS NULL
+      ORDER BY u.tenant_id, u.day DESC`,
+  );
+  return rows
+    .map((r) => ({
+      tenantId: r.tenant_id,
+      displayName: r.display_name,
+      type: r.type,
+      day: r.day.toISOString().slice(0, 10),
+      usedBytes: r.counted_bytes,
+      fileBytes: r.file_bytes,
+      allowanceBytes: r.allowance_bytes,
+    }))
+    .sort((a, b) => (b.usedBytes > a.usedBytes ? 1 : b.usedBytes < a.usedBytes ? -1 : 0));
+}
