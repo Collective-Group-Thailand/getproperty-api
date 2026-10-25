@@ -7,6 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Length,
   Matches,
   Max,
@@ -229,8 +230,29 @@ export class OwnerLeadDto extends OwnerLeadSummaryDto {
   @ApiProperty({ type: [LeadViewingDto], description: 'Newest first.' })
   viewings!: LeadViewingDto[];
 
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: null,
+    description: 'The lease drafted from this enquiry (B7.4), when there is one.',
+  })
+  leaseId!: string | null;
+
   @ApiProperty({ example: 1 })
   version!: number;
+}
+
+export class LeadLeaseDraftDto {
+  @ApiProperty({
+    format: 'uuid',
+    example: FAKE.uuid,
+    description: 'The new lease draft (`GET /v1/owner/leases/{id}`).',
+  })
+  leaseId!: string;
+
+  @ApiProperty({ type: () => OwnerLeadDto })
+  lead!: OwnerLeadDto;
 }
 
 export class OwnerViewingListingDto {
@@ -451,6 +473,40 @@ export class ViewingDeclineDto {
   @IsString()
   @Length(1, 500)
   reason!: string;
+}
+
+export class LeadLeaseDraftCreateDto {
+  @ApiPropertyOptional({
+    type: String,
+    format: 'date',
+    example: '2026-12-01',
+    description: "Default: the prospect's move-in date, else the listing's available date, else today.",
+  })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  startDate?: string;
+
+  @ApiPropertyOptional({
+    type: 'integer',
+    minimum: 1,
+    maximum: 120,
+    example: 12,
+    description: "Default: the prospect's term, at least the listing's minimum.",
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(120)
+  months?: number;
+
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    description: 'Acknowledged compliance warnings of the lease terms (D-021a), as for any lease draft.',
+  })
+  @IsOptional()
+  @IsUUID('all', { each: true })
+  acknowledgementIds?: string[];
 }
 
 export class ViewingCompleteDto {

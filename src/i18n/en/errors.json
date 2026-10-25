@@ -1043,6 +1043,10 @@
     "viewing_invalid_state": {
       "title": "Not possible now",
       "detail": "This viewing is not in a state that allows this action."
+    },
+    "lease_exists": {
+      "title": "Lease already drafted",
+      "detail": "A lease was already drafted from this enquiry. Open it from Leases."
     }
   }
 }

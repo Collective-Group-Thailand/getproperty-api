@@ -115,6 +115,7 @@ export const AUDIT_ACTIONS = [
   'listing.lead_replied',
   'listing.lead_updated',
   'listing.lead_state_changed',
+  'listing.lead_lease_drafted',
   'listing.viewing_requested',
   'listing.viewing_confirmed',
   'listing.viewing_declined',

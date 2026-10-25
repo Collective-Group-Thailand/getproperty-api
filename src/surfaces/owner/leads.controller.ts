@@ -12,6 +12,8 @@ import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
+  LeadLeaseDraftCreateDto,
+  LeadLeaseDraftDto,
   LeadMessageCreateDto,
   type LeadMessageDto,
   LeadNotesDto,
@@ -103,6 +105,7 @@ export function ownerLeadDto(lead: LeadWithParts): OwnerLeadDto {
     lostNote: lead.lostNote,
     messages: lead.messages.map(leadMessageDto),
     viewings: lead.viewings.map(leadViewingDto),
+    leaseId: lead.leaseId,
     version: lead.version,
   };
 }
@@ -180,6 +183,7 @@ export const OWNER_LEAD_EXAMPLE: OwnerLeadDto = {
     },
   ],
   viewings: [VIEWING_EXAMPLE],
+  leaseId: null,
   version: 2,
 };
 
@@ -348,6 +352,52 @@ export class OwnerLeadsController {
         lostNote: body.lostNote ?? null,
       }),
     );
+  }
+
+  @Post('leads/:leadId/lease-draft')
+  @TenantScoped()
+  @Can('lease.manage')
+  @ApiEndpoint({
+    id: 'owner.leads.leaseDraft',
+    summary: 'Draft a lease from an enquiry',
+    description:
+      "A B2 lease draft from the listing's terms with the prospect as lessee: rent, deposit and advance months, the term (the prospect's, at least the listing's minimum), the start (given, else the prospect's move-in, else the listing's available date, else today). The enquiry becomes `applied`; when the lease is activated the listing closes (`leased`), this enquiry is won and the others are lost with a polite LINE message (B7.4, D-252, D-253). Compliance warnings of the terms answer as for any draft.",
+    implements: ['D-252', 'D-253', 'D-020'],
+  })
+  @ApiJsonBody(LeadLeaseDraftCreateDto, { startDate: '2026-12-01', months: 12 })
+  @ApiSuccess(201, {
+    description: 'Drafted',
+    type: LeadLeaseDraftDto,
+    example: {
+      leaseId: FAKE.uuid,
+      lead: { ...OWNER_LEAD_EXAMPLE, state: ListingLeadStateName.Applied, leaseId: FAKE.uuid },
+    },
+  })
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.bad_request',
+    'http.not_found',
+    'listing.lead_invalid_state',
+    'listing.lease_exists',
+    'lease.unit_unavailable',
+    'asset.read_only',
+    'compliance.acknowledgement_required',
+    'compliance.deposit_cap',
+    'compliance.forbidden_clause',
+    'compliance.no_renewal_fee',
+    'compliance.bill_disclosure',
+    'compliance.no_midterm_increase',
+    'compliance.water_minimum',
+    'compliance.late_fee_policy',
+    ...T,
+  )
+  async leaseDraft(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('leadId', ParseUUIDPipe) id: string,
+    @Body() body: LeadLeaseDraftCreateDto,
+  ): Promise<LeadLeaseDraftDto> {
+    const result = await this.leads.leaseDraft(ctx, id, body);
+    return { leaseId: result.leaseId, lead: ownerLeadDto(result.lead) };
   }
 
   @Get('listing-viewings')

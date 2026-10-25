@@ -641,6 +641,77 @@ export class ListingsService {
     });
   }
 
+  /**
+   * B7.4 (D-253): "re-open the listing" — a new draft copied from a closed listing of the unit (texts, terms,
+   * facilities, transit, photos in order, viewing times), the unit's facts refreshed. Submit it as usual.
+   */
+  async relist(ctx: TenantContext, id: string) {
+    return this.db.tenant(ctx, async (tx) => {
+      const from = await this.found(tx, ctx, id);
+      if (from.state !== 'closed') throw new DomainException('listing.invalid_state');
+      const now = this.clock.now();
+      const newId = uuidv7(now.getTime());
+      const snap = await this.snapshot(tx, ctx, from.unitId, from.showUnitNo);
+      const { furnishing: _furnishing, ...facts } = snap;
+      void _furnishing;
+      const slug = `${KIND_SLUG[snap.unitKind]}-${snap.bedrooms ?? 0}br-${newId.replace(/-/g, '').slice(-10)}`;
+      await tx.listing.create({
+        data: {
+          ...facts,
+          id: newId,
+          tenantId: ctx.tenantId,
+          unitId: from.unitId,
+          slug,
+          titleTh: from.titleTh,
+          titleEn: from.titleEn,
+          descriptionTh: from.descriptionTh,
+          descriptionEn: from.descriptionEn,
+          rent: from.rent,
+          depositMonths: from.depositMonths,
+          advanceMonths: from.advanceMonths,
+          minTermMonths: from.minTermMonths,
+          furnishing: from.furnishing,
+          petsAllowed: from.petsAllowed,
+          smokingAllowed: from.smokingAllowed,
+          facilities: from.facilities,
+          showUnitNo: from.showUnitNo,
+          transitName: from.transitName,
+          transitLine: from.transitLine,
+          transitDistanceM: from.transitDistanceM,
+          createdBy: userIdOf(RequestContext.actor()),
+        },
+      });
+      for (const photo of from.photos)
+        await tx.listingPhoto.create({
+          data: {
+            tenantId: ctx.tenantId,
+            listingId: newId,
+            documentId: photo.documentId,
+            sortOrder: photo.sortOrder,
+            caption: photo.caption,
+          },
+        });
+      await tx.listingAvailability.create({
+        data: {
+          listingId: newId,
+          tenantId: ctx.tenantId,
+          weekly: from.availability?.weekly ?? [],
+          exceptions: from.availability?.exceptions ?? [],
+          slotMinutes: from.availability?.slotMinutes ?? 30,
+        },
+      });
+      await this.audit.record(tx, {
+        action: 'listing.created',
+        tenantId: ctx.tenantId,
+        buildingId: snap.buildingId,
+        subjectType: 'ops.listing',
+        subjectId: newId,
+        after: { unitId: from.unitId, slug, relistedFrom: id },
+      });
+      return this.found(tx, ctx, newId);
+    });
+  }
+
   // ----------------------------------------------------------------------------------------- verification
 
   async verification(ctx: TenantContext, unitId: string) {

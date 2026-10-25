@@ -695,6 +695,16 @@ export const SETTINGS: readonly SettingDef[] = [
     value: 3,
     reason: 'seed: B7.3',
   },
+  {
+    key: 'listing.relist.remind_days_before',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-253 (B7.4): days before a lease that came from a listing ends when the owner is reminded once to re-open the listing (or offer a renewal). 0 = off.',
+    editableBy: ['admin.listing.moderate'],
+    value: 60,
+    reason: 'seed: B7.4 (D-253: default 60)',
+  },
   // --- platform business (Proposed until the pilot) ------------------------------------------------------
   {
     key: 'platform.subscriptions.enabled',

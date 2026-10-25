@@ -390,6 +390,19 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     ],
   },
   {
+    key: 'listing.relist_due',
+    description:
+      'Owner: a lease that came from a listing ends soon — re-open the listing or offer a renewal (B7.4, D-253)',
+    th: [
+      'สัญญาห้อง {{listing.unitNo}} จะหมด {{lease.endDate}}',
+      'สัญญาเช่าที่ได้จากประกาศ "{{listing.title}}" จะหมด {{lease.endDate}} เปิดประกาศใหม่ได้ในคลิกเดียวจากหน้าประกาศ หรือเสนอต่อสัญญาให้ผู้เช่าเดิม',
+    ],
+    en: [
+      'Lease of {{listing.unitNo}} ends {{lease.endDateEn}}',
+      'The lease that came from "{{listing.titleEn}}" ends {{lease.endDateEn}}. Re-open the listing in one tap from the listing page, or offer the tenant a renewal.',
+    ],
+  },
+  {
     key: 'listing.viewing_reminder',
     description: 'Owner: a confirmed viewing is near (B7.3)',
     th: ['ใกล้ถึงเวลานัดดูห้อง', 'อย่าลืมนัดดู "{{listing.title}}" กับ {{lead.name}} {{viewing.at}} น.'],
@@ -441,6 +454,7 @@ const operatorTemplates = (): TemplateSeed[] =>
 /** B7.3 (D-252): the prospect hears the owner's answers in LINE (consent `prospect.enquiry`, quiet hours). */
 const PROSPECT_EVENTS = [
   'listing.lead_replied',
+  'listing.lead_state_changed',
   'listing.viewing_confirmed',
   'listing.viewing_declined',
   'listing.viewing_cancelled',
@@ -909,6 +923,24 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         language: 'en',
         subject: null,
         body: 'Reminder: viewing of "{{listing.titleEn}}" on {{viewing.atEn}} — address and map in the app.\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'listing.lead_state_changed',
+    channel: 'line',
+    audience: 'prospect',
+    description: 'Prospect: the place I asked about has been rented to someone else (B7.4, D-252)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'ขอบคุณที่สนใจ "{{listing.title}}" ตอนนี้ห้องนี้มีผู้เช่าแล้ว ลองดูห้องอื่นที่ใกล้เคียงได้ในแอป\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'Thank you for your interest in "{{listing.titleEn}}". It has now been rented. Have a look at similar places in the app.\n{{link}}',
       },
     ],
   },

@@ -34,6 +34,22 @@ export function viewingTime(iso: unknown): { th: string; en: string } {
   };
 }
 
+/** "25 ต.ค. 2569" / "25 Oct 2026" for a Bangkok business date (`YYYY-MM-DD`). */
+export function businessDay(day: unknown): { th: string; en: string } {
+  if (typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return { th: '-', en: '-' };
+  const at = new Date(`${day}T12:00:00+07:00`);
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: BANGKOK,
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  };
+  return {
+    th: new Intl.DateTimeFormat('th-TH-u-ca-buddhist', options).format(at),
+    en: new Intl.DateTimeFormat('en-GB', options).format(at),
+  };
+}
+
 /** The prospect (party copy in the owner's tenant) as a `prospect` recipient. */
 async function prospect(tx: Tx, partyId: unknown): Promise<Recipient[]> {
   if (typeof partyId !== 'string') return [];
@@ -191,6 +207,24 @@ export class ListingNotifications implements OnModuleInit {
     );
     registerNotifiable('listing.viewing_confirmed', this.toProspect(viewing));
     registerNotifiable('listing.viewing_declined', this.toProspect(viewing));
+
+    // --- B7.4: the unit was let to someone else — one polite message to each other prospect
+    const leased = this.toProspect();
+    registerNotifiable('listing.lead_state_changed', (tx, e) =>
+      e.payload.to === 'lost' && e.payload.lostReason === 'unit_leased'
+        ? leased(tx, e)
+        : Promise.resolve(null),
+    );
+    // --- B7.4: re-list before the lease that came from the listing ends
+    registerNotifiable('listing.relist_due', async (tx, e) => {
+      const base = await this.base(tx, e);
+      if (!base) return null;
+      const end = businessDay(e.payload.endDate);
+      return {
+        recipients: await operators(tx, e.tenantId!, ['owner'], 'owner'),
+        data: { ...base, lease: { endDate: end.th, endDateEn: end.en } },
+      };
+    });
 
     // --- both sides
     const toOwner = this.toOwner(viewing);

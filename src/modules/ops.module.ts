@@ -31,6 +31,7 @@ import { ContractRenderer } from './ops-leases/contract-renderer';
 import { LeasesService } from './ops-leases/leases.service';
 import { ResidentLeasesService } from './ops-leases/resident-leases.service';
 import { ListingNotifications } from './ops-listings/listing.notifications';
+import { ListingLeaseHooks } from './ops-listings/listing.subscribers';
 import { ListingLeadsService } from './ops-listings/listing-leads.service';
 import { ListingModerationService } from './ops-listings/listing-moderation.service';
 import { ListingsService } from './ops-listings/listings.service';
@@ -82,6 +83,7 @@ const SERVICES = [
   ListingModerationService,
   ListingLeadsService,
   ListingNotifications,
+  ListingLeaseHooks,
   PublicListingsService,
   UnitProfilesService,
   UtilityAccountsService,
