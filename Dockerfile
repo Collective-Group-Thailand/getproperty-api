@@ -80,6 +80,9 @@ FROM ${NODE_IMAGE} AS runtime
 RUN apt-get update \
   && apt-get install -y --no-install-recommends tini ca-certificates tzdata chromium fonts-thai-tlwg fonts-noto-core \
   && rm -rf /var/lib/apt/lists/*
+# The commands run `node` only; the base image's bundled npm/corepack (and their dependency CVEs) are not shipped.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 ARG GIT_COMMIT=
 ENV NODE_ENV=production PROCESS=main GIT_COMMIT=${GIT_COMMIT} TZ=Asia/Bangkok \
     PDF_RENDERER_MODE=real PDF_CHROMIUM_EXECUTABLE=/usr/bin/chromium
