@@ -55,6 +55,7 @@ import { OwnerLeadsController } from './leads.controller';
 import { OwnerLeaseNoticesController } from './lease-notices.controller';
 import { OwnerLeasesController, OwnerLeaseTemplatesController } from './leases.controller';
 import { OwnerListingsController } from './listings.controller';
+import { OwnerMessagingController } from './messaging.controller';
 import {
   OwnerBankAccountsController,
   OwnerComplianceAcknowledgementsController,
@@ -120,6 +121,7 @@ import {
     OwnerMeController,
     OwnerIdentitiesController,
     OwnerServiceCostsController,
+    OwnerMessagingController,
     OwnerTenantController,
     OwnerMembersController,
     OwnerInvitationsController,

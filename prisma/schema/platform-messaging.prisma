@@ -1,0 +1,88 @@
+enum MessagingChannelState {
+  pending
+  verified
+  failing
+  revoked
+
+  @@map("messaging_channel_state")
+  @@schema("platform")
+}
+
+/// An operator's own LINE Messaging API channel (D-254); no row = the shared getproperty OA.
+model MessagingChannel {
+  id            String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String                @map("tenant_id") @db.Uuid
+  buildingId    String?               @map("building_id") @db.Uuid
+  lineChannelId String                @map("line_channel_id")
+  secretEnc     Bytes                 @map("secret_enc")
+  tokenEnc      Bytes                 @map("token_enc")
+  webhookKey    String                @unique(map: "messaging_channel_webhook_key_key") @map("webhook_key")
+  botUserId     String?               @map("bot_user_id")
+  botName       String?               @map("bot_name")
+  botPictureUrl String?               @map("bot_picture_url")
+  state         MessagingChannelState @default(pending)
+  verifiedAt    DateTime?             @map("verified_at") @db.Timestamptz(6)
+  lastCheckedAt DateTime?             @map("last_checked_at") @db.Timestamptz(6)
+  lastError     String?               @map("last_error")
+  revokedAt     DateTime?             @map("revoked_at") @db.Timestamptz(6)
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?               @map("created_by") @db.Uuid
+  updatedAt     DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?               @map("updated_by") @db.Uuid
+
+  tenant     Tenant                  @relation("MessagingChannelTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "messaging_channel_tenant_id_fkey")
+  building   Building?               @relation("MessagingChannelBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "messaging_channel_building_id_fkey")
+  users      MessagingChannelUser[]
+  linkTokens MessagingLinkToken[]
+
+  @@unique([tenantId], map: "messaging_channel_tenant_scope_key", where: raw("((building_id IS NULL) AND (state <> 'revoked'::platform.messaging_channel_state))"))
+  @@unique([tenantId, buildingId], map: "messaging_channel_building_scope_key", where: raw("((building_id IS NOT NULL) AND (state <> 'revoked'::platform.messaging_channel_state))"))
+  @@index([buildingId], map: "messaging_channel_building_id_idx")
+  @@map("messaging_channel")
+  @@schema("platform")
+}
+
+/// A login linked to an own OA: the OA's user id for that login (D-254).
+model MessagingChannelUser {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  channelId  String    @map("channel_id") @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  lineUserId String    @map("line_user_id")
+  linkedAt   DateTime  @default(now()) @map("linked_at") @db.Timestamptz(6)
+  unlinkedAt DateTime? @map("unlinked_at") @db.Timestamptz(6)
+
+  tenant  Tenant           @relation("MessagingChannelUserTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "messaging_channel_user_tenant_id_fkey")
+  channel MessagingChannel @relation(fields: [channelId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "messaging_channel_user_channel_id_fkey")
+  user    UserAccount      @relation("MessagingChannelUserUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "messaging_channel_user_user_id_fkey")
+
+  @@unique([channelId, userId], map: "messaging_channel_user_channel_user_key", where: raw("(unlinked_at IS NULL)"))
+  @@unique([channelId, lineUserId], map: "messaging_channel_user_channel_line_key", where: raw("(unlinked_at IS NULL)"))
+  @@index([userId], map: "messaging_channel_user_user_id_idx")
+  @@index([tenantId], map: "messaging_channel_user_tenant_id_idx")
+  @@map("messaging_channel_user")
+  @@schema("platform")
+}
+
+/// Single-use account-linking tokens of an own OA (D-254).
+model MessagingLinkToken {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  channelId  String    @map("channel_id") @db.Uuid
+  tokenHash  Bytes     @unique(map: "messaging_link_token_token_hash_key") @map("token_hash")
+  lineUserId String    @map("line_user_id")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt     DateTime? @map("used_at") @db.Timestamptz(6)
+  usedBy     String?   @map("used_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant           @relation("MessagingLinkTokenTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "messaging_link_token_tenant_id_fkey")
+  channel MessagingChannel @relation(fields: [channelId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "messaging_link_token_channel_id_fkey")
+  user    UserAccount?     @relation("MessagingLinkTokenUser", fields: [usedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "messaging_link_token_used_by_fkey")
+
+  @@index([channelId, lineUserId], map: "messaging_link_token_channel_id_idx")
+  @@index([tenantId], map: "messaging_link_token_tenant_id_idx")
+  @@index([usedBy], map: "messaging_link_token_used_by_idx")
+  @@map("messaging_link_token")
+  @@schema("platform")
+}

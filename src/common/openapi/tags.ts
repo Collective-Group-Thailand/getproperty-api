@@ -39,6 +39,7 @@ export const API_TAGS: Record<string, string> = {
     'Gateway first boot: provisioning code + CSR → certificate from the platform CA, device JWT and MQTT ACL (D-130).',
   'owner.me':
     'Who I am in the owner console: tenants, current tenant and type, role, permissions, menu entitlements, feature flags, subscription state; password and TOTP setup.',
+  'owner.messaging': 'The operator’s own LINE Official Account: connect, check, disconnect (D-254).',
   'owner.serviceCosts':
     'Landlords: who fixes a repair, who pays, quotations and receipts, settlement on the next invoice (D-263).',
   'owner.identities':
@@ -107,6 +108,7 @@ export const API_TAGS: Record<string, string> = {
   'staff.pushSubscriptions': 'Web push (VAPID) subscriptions of the staff PWA.',
   'staff.realtime': 'Realtime auth and the server-sent events stream (contract §6).',
   'resident.me': 'Who I am in the LINE Mini App: leases, units, language, consent state (D-060, D-154).',
+  'resident.messagingLinks': 'Link an operator’s own LINE OA to me (D-254).',
   'resident.identities':
     'My ways to open the resident app outside LINE: phone, Google, Apple (D-255, D-283).',
   'resident.consents': 'PDPA consents of the resident (D-025).',
@@ -250,6 +252,8 @@ export const API_TAGS: Record<string, string> = {
     'PLACEHOLDER provider callback shape (payload, signature header, expected response); the real providers (payment QR, slip verification, LINE) arrive in B4.',
   'webhooks.payments':
     'Signed payment confirmations from KBank, SCB and Opn (O-001) for each landlord’s own merchant account (D-042, ADR-0008).',
+  'webhooks.line':
+    'Signed LINE Messaging API events for an operator’s own LINE Official Account: follow, message, unfollow (D-254).',
   // contract requests before B6 (D-203)
   'staff.field':
     'Staff PWA field views: the buildings of my scope, the meter points of a building with their gateway channel, the edge meter drivers (D-013, D-090).',

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { LineWebhooksController } from '../owner/messaging.controller';
 import { PaymentWebhooksController } from '../owner/payments.controller';
 import { PlatformPaymentWebhooksController } from '../owner/subscription.controller';
 import { SURFACES } from '../surfaces';
@@ -13,6 +14,7 @@ import { IntegrationWebhooksController } from './integration-webhooks.controller
     PaymentWebhooksController,
     PlatformPaymentWebhooksController,
     IntegrationWebhooksController,
+    LineWebhooksController,
   ],
 })
 export class WebhooksModule {}
