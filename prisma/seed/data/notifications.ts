@@ -491,6 +491,7 @@ export const NOTIFICATION_ROUTES: {
     'parcel.received',
     'building_rule.published',
     'etax.signed',
+    'lease.notice_issued',
   ].map((eventType) => ({
     eventType,
     audience: 'resident',
@@ -582,6 +583,25 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         language: 'en',
         subject: null,
         body: '{{tenant.name}} proposes your deposit settlement: {{settlement.deductionsTotal}} THB deducted, {{settlement.proposedRefund}} THB refunded by {{settlement.deadlineOn}} — tap to see the items and evidence, then accept or dispute.',
+      },
+    ],
+  },
+  {
+    key: 'lease.notice_issued',
+    channel: 'line',
+    audience: 'resident',
+    description:
+      'A written notice from the landlord: rent change, renewal offer, non-renewal, termination or overdue rent (B7.5, D-253)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}} ส่ง{{notice.titleTh}} เลขที่ {{notice.number}} ถึงคุณ แตะเพื่ออ่านฉบับเต็ม\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}} sent you a letter: {{notice.titleEn}} ({{notice.number}}). Tap to read it in full.\n{{link}}',
       },
     ],
   },

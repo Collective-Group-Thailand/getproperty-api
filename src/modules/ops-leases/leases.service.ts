@@ -136,7 +136,7 @@ const PROVIDER_EN: Record<string, string> = {
 };
 const RECURRENCE_EN: Record<string, string> = { monthly: 'per month', once: 'once' };
 
-const addressText = (a: unknown): string => {
+export const addressText = (a: unknown): string => {
   const v = (a ?? {}) as Record<string, string | undefined>;
   return [v.line1, v.line2, v.subdistrict, v.district, v.province, v.postcode].filter(Boolean).join(' ');
 };

@@ -725,7 +725,7 @@ export class OwnerLeaseTemplatesController {
     id: 'owner.leaseTemplates.list',
     summary: 'Contract templates',
     description:
-      'The platform standard residential lease (สคบ. 2568, Thai) with its versions, the clause types an addendum may use and the forbidden ones (D-020).',
+      'The templates this tenant writes on, with their versions: the platform standard residential lease (สคบ. 2568, Thai), or for a landlord the condo unit / house / room templates in Thai and English (B7.5, D-253); the clause types an addendum may use and the forbidden ones (D-020).',
     implements: ['D-020'],
   })
   @ApiSuccess(200, {

@@ -18,6 +18,7 @@ export const SERIES_PREFIX: Partial<Record<DocumentType, string>> = {
   platform_invoice: 'PIV',
   platform_receipt: 'PRC',
   platform_credit_note: 'PCN',
+  notice: 'NTC',
 };
 
 /**

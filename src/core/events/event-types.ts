@@ -105,6 +105,8 @@ export const DOMAIN_EVENT_TYPES = {
   'lease.cancelled': 'A draft or unsigned lease was cancelled.',
   'lease.stamp_duty_paid':
     'The stamp duty of a lease was paid through e-Stamp or recorded by the owner (B7.5, O-019).',
+  'lease.notice_issued':
+    'A written notice (rent change, renewal offer, non-renewal, termination, late payment) was issued to the lessee as a PDF and sent in LINE (B7.5, D-253).',
   'lease.invitation_created': 'A resident was invited to a lease (LINE QR / SMS / link, D-061).',
   'lease.invitation_accepted': 'A resident accepted a lease invitation and linked their login (D-061).',
   // B2.4 deposits and inspections

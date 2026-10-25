@@ -1259,6 +1259,17 @@
           "type": "https://errors.getproperty.co/lease.not_signer"
         }
       },
+      "problem.lease.notice_nothing_overdue": {
+        "summary": "lease.notice_nothing_overdue",
+        "value": {
+          "code": "lease.notice_nothing_overdue",
+          "detail": "สัญญานี้ไม่มีใบแจ้งหนี้ที่เลยกำหนดชำระ จึงยังส่งหนังสือแจ้งค้างชำระไม่ได้",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 422,
+          "title": "ไม่มียอดค้างชำระ",
+          "type": "https://errors.getproperty.co/lease.notice_nothing_overdue"
+        }
+      },
       "problem.lease.overlap": {
         "summary": "lease.overlap",
         "value": {
@@ -16612,6 +16623,269 @@
         ],
         "type": "string"
       },
+      "LeaseNoticeCreateDto": {
+        "properties": {
+          "acknowledgementIds": {
+            "description": "Acknowledged compliance warnings (D-021a).",
+            "example": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "effectiveDate": {
+            "description": "rent_increase: the date the new rent applies (after the lease ends, at least `lease.notice.rent_increase_days` ahead); termination: the date the lease ends. Ignored for renewal_offer (the day after the lease ends) and non_renewal (the end date).",
+            "example": "2027-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "evidenceDocumentIds": {
+            "description": "termination: uploaded evidence (a breach needs it, D-176).",
+            "example": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LeaseNoticeKind"
+              }
+            ],
+            "example": "renewal_offer"
+          },
+          "language": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Language"
+              }
+            ],
+            "description": "Letter language; default the lease's contract language."
+          },
+          "message": {
+            "example": "ขอบคุณที่เช่ากับเรามาตลอดปี",
+            "maxLength": 2000,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "newRent": {
+            "description": "rent_increase (required) and renewal_offer (default the current rent): the monthly rent.",
+            "example": "15500.00",
+            "type": "string"
+          },
+          "reasonCode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LessorReason"
+              }
+            ],
+            "description": "termination: the legal ground (required): lessee_breach, disturbance, unlawful_use or mutual_agreement (end_of_term is the non_renewal letter)."
+          },
+          "renewalMonths": {
+            "description": "renewal_offer: the new term (default the current one).",
+            "example": 12,
+            "maximum": 120,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "type": "object"
+      },
+      "LeaseNoticeDto": {
+        "properties": {
+          "amountDue": {
+            "description": "Total overdue (late payment). Unit: THB, decimal string (D-046).",
+            "example": null,
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "documentId": {
+            "description": "The PDF (pdf_notice).",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "effectiveDate": {
+            "example": "2027-11-01",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "issuedOn": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "items": {
+            "description": "The overdue invoices of a late-payment notice.",
+            "items": {
+              "$ref": "#/components/schemas/LeaseNoticeItemDto"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LeaseNoticeKind"
+              }
+            ],
+            "example": "renewal_offer"
+          },
+          "language": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Language"
+              }
+            ],
+            "example": "th"
+          },
+          "leaseId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "message": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "newRent": {
+            "description": "New monthly rent (rent change, renewal offer). Unit: THB, decimal string (D-046).",
+            "example": "15500.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "noticeDays": {
+            "description": "Days between the letter and its effect (or the days given to pay).",
+            "example": 37,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "number": {
+            "example": "NTC-2026-00001",
+            "type": "string"
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LessorReason"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "example": null
+          },
+          "renewalMonths": {
+            "example": 12,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "respondBy": {
+            "description": "Answer (renewal offer) or pay (late payment) by.",
+            "example": "2026-11-09",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sentAt": {
+            "description": "When it was sent to the resident in LINE.",
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "leaseId",
+          "kind",
+          "number",
+          "language",
+          "issuedOn",
+          "effectiveDate",
+          "respondBy",
+          "noticeDays",
+          "newRent",
+          "renewalMonths",
+          "amountDue",
+          "reasonCode",
+          "message",
+          "items",
+          "documentId",
+          "sentAt"
+        ],
+        "type": "object"
+      },
+      "LeaseNoticeItemDto": {
+        "properties": {
+          "balance": {
+            "description": "Overdue balance. Unit: THB, decimal string (D-046).",
+            "example": "15000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "dueDate": {
+            "example": "2026-10-05",
+            "format": "date",
+            "type": "string"
+          },
+          "number": {
+            "example": "INV-2026-00042",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "dueDate",
+          "balance"
+        ],
+        "type": "object"
+      },
+      "LeaseNoticeKind": {
+        "enum": [
+          "rent_increase",
+          "renewal_offer",
+          "non_renewal",
+          "termination",
+          "late_payment"
+        ],
+        "type": "string"
+      },
       "LeaseNoticeViewDto": {
         "properties": {
           "by": {
@@ -17222,7 +17496,6 @@
         "type": "object"
       },
       "LessorReason": {
-        "description": "Required for a lessor notice (ข้อ 4 (12)).",
         "enum": [
           "lessee_breach",
           "disturbance",
@@ -114816,9 +115089,208 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/lease-notices/{noticeId}/document": {
+      "get": {
+        "description": "A 5-minute signed URL of the notice PDF (B7.5, D-253).\n\nImplements: D-253.",
+        "operationId": "owner.leaseNotices.document",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "noticeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "expiresAt": "2026-11-01T00:20:00+07:00",
+                  "number": "NTC-2026-00001",
+                  "url": "https://storage.example.com/notice.pdf?X-Amz-Signature=abc"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDownloadDto"
+                }
+              }
+            },
+            "description": "Download",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Open a notice",
+        "tags": [
+          "owner.leases"
+        ],
+        "x-required-permissions": [
+          "lease.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/lease-templates": {
       "get": {
-        "description": "The platform standard residential lease (สคบ. 2568, Thai) with its versions, the clause types an addendum may use and the forbidden ones (D-020).\n\nImplements: D-020.",
+        "description": "The templates this tenant writes on, with their versions: the platform standard residential lease (สคบ. 2568, Thai), or for a landlord the condo unit / house / room templates in Thai and English (B7.5, D-253); the clause types an addendum may use and the forbidden ones (D-020).\n\nImplements: D-020.",
         "operationId": "owner.leaseTemplates.list",
         "parameters": [
           {
@@ -121053,6 +121525,523 @@
         "summary": "Invite a resident to the lease",
         "tags": [
           "owner.leases"
+        ],
+        "x-required-permissions": [
+          "lease.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/leases/{leaseId}/notices": {
+      "get": {
+        "description": "Every written notice of the lease, newest first (B7.5, D-253).\n\nImplements: D-253.",
+        "operationId": "owner.leases.notices",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leaseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "amountDue": null,
+                    "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "effectiveDate": "2027-11-01",
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "issuedOn": "2026-11-01",
+                    "items": [],
+                    "kind": "renewal_offer",
+                    "language": "th",
+                    "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "message": null,
+                    "newRent": "15500.00",
+                    "noticeDays": 365,
+                    "number": "NTC-2026-00001",
+                    "reasonCode": null,
+                    "renewalMonths": 12,
+                    "respondBy": "2026-11-09",
+                    "sentAt": "2026-11-01T00:15:00+07:00"
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LeaseNoticeDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Notices",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Notices sent on a lease",
+        "tags": [
+          "owner.leases"
+        ],
+        "x-required-permissions": [
+          "lease.read"
+        ],
+        "x-surface": "owner"
+      },
+      "post": {
+        "description": "A numbered letter (NTC series) in the landlord's name and language, stored as a PDF with the unit and sent to the resident in LINE (B7.5, D-253): `rent_increase` — the new rent applies only after the lease ends and at least `lease.notice.rent_increase_days` ahead (D-020: no mid-term increase); `renewal_offer` — new rent and term from the day after the lease ends, answer within `lease.notice.renewal_response_days`; `non_renewal` and `termination` — also record the lessor's notice on the lease through the D-020 rules (legal ground, notice length, evidence; warnings need an acknowledgement); `late_payment` — the overdue invoices of the lease and a pay-by date `lease.notice.late_payment_days` ahead; it never terminates the lease nor cuts a service (D-024).\n\nImplements: D-253, D-020, D-024.",
+        "operationId": "owner.leases.issueNotice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leaseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "kind": "renewal_offer",
+                    "newRent": "15500.00",
+                    "renewalMonths": 12
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/LeaseNoticeCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "amountDue": null,
+                  "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "effectiveDate": "2027-11-01",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "issuedOn": "2026-11-01",
+                  "items": [],
+                  "kind": "renewal_offer",
+                  "language": "th",
+                  "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "message": null,
+                  "newRent": "15500.00",
+                  "noticeDays": 365,
+                  "number": "NTC-2026-00001",
+                  "reasonCode": null,
+                  "renewalMonths": 12,
+                  "respondBy": "2026-11-09",
+                  "sentAt": "2026-11-01T00:15:00+07:00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseNoticeDto"
+                }
+              }
+            },
+            "description": "Sent",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "compliance.acknowledgement_required": {
+                    "$ref": "#/components/examples/problem.compliance.acknowledgement_required"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "lease.invalid_state": {
+                    "$ref": "#/components/examples/problem.lease.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `compliance.acknowledgement_required`, `idempotency.in_progress`, `lease.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "compliance.termination_notice": {
+                    "$ref": "#/components/examples/problem.compliance.termination_notice"
+                  },
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "lease.notice_nothing_overdue": {
+                    "$ref": "#/components/examples/problem.lease.notice_nothing_overdue"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `compliance.termination_notice`, `idempotency.key_reused`, `lease.notice_nothing_overdue`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Send a notice to the lessee",
+        "tags": [
+          "owner.leases"
+        ],
+        "x-compliance-rules": [
+          "compliance.termination_notice"
         ],
         "x-required-permissions": [
           "lease.manage"
@@ -181047,6 +182036,406 @@
         ],
         "x-compliance-rules": [
           "compliance.notice_period"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/leases/{leaseId}/notices": {
+      "get": {
+        "description": "The written notices of my lease, newest first (B7.5, D-253); each also arrived in LINE.\n\nImplements: D-253.",
+        "operationId": "resident.leases.notices",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leaseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "amountDue": null,
+                    "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "effectiveDate": "2027-11-01",
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "issuedOn": "2026-11-01",
+                    "items": [],
+                    "kind": "renewal_offer",
+                    "language": "th",
+                    "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "message": null,
+                    "newRent": "15500.00",
+                    "noticeDays": 365,
+                    "number": "NTC-2026-00001",
+                    "reasonCode": null,
+                    "renewalMonths": 12,
+                    "respondBy": "2026-11-09",
+                    "sentAt": "2026-11-01T00:15:00+07:00"
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LeaseNoticeDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Notices",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Letters from my landlord",
+        "tags": [
+          "resident.leases"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/leases/{leaseId}/notices/{noticeId}/document": {
+      "get": {
+        "description": "A 5-minute signed URL of the notice PDF (B7.5, D-253).\n\nImplements: D-253.",
+        "operationId": "resident.leases.noticeDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leaseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "noticeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "expiresAt": "2026-11-01T00:20:00+07:00",
+                  "number": "NTC-2026-00001",
+                  "url": "https://storage.example.com/notice.pdf?X-Amz-Signature=abc"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDownloadDto"
+                }
+              }
+            },
+            "description": "Download",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Open a letter from my landlord",
+        "tags": [
+          "resident.leases"
         ],
         "x-surface": "resident"
       }

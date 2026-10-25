@@ -24,6 +24,7 @@ enum DocumentType {
   platform_invoice
   platform_receipt
   platform_credit_note
+  notice
 
   @@map("document_type")
   @@schema("ops")
