@@ -46,7 +46,7 @@ export const PUBLISHED_EXT = {
 const ext = (base: string, source: string, value: unknown) => ApiExtension(`${base}-${source}`, value);
 
 export const OPERATION_ID_PATTERN =
-  /^(auth|owner|resident|staff|technician|admin|device|webhooks|public|ops)\.[a-z][A-Za-z0-9]*\.[a-z][A-Za-z0-9]*$/;
+  /^(auth|owner|resident|staff|technician|prospect|admin|device|webhooks|public|ops)\.[a-z][A-Za-z0-9]*\.[a-z][A-Za-z0-9]*$/;
 const REFERENCE_PATTERN = /^(D-\d{3}[a-z]?|ADR-\d{4})$/;
 
 export interface ApiEndpointOptions {

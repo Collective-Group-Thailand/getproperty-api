@@ -482,3 +482,46 @@ export class SessionsController {
     return { publicKey: this.webPush.publicKey };
   }
 }
+
+@ApiTags('auth.prospect')
+@ApiSurface(SURFACES.auth)
+@Controller('auth/prospect')
+export class ProspectAuthController {
+  constructor(private readonly auth: AuthService) {}
+
+  @Post('line')
+  @HttpCode(200)
+  @Public()
+  @Throttle(LIMIT)
+  @ApiEndpoint({
+    id: 'auth.prospectLine.exchange',
+    summary: 'Sign in a prospect with a LINE id token',
+    description:
+      'For people looking for a place to rent (B7.3, D-252): verifies the LIFF / LINE Login id token, creates the account on first use and returns tokens of audience `prospect` (no scopes — every prospect operation reads only the caller’s own enquiries and viewings). Phone, Google and Apple sign-in for prospects follow with the OAuth clients of D-255.',
+    implements: ['D-252', 'D-255', 'ADR-0003'],
+  })
+  @ApiJsonBody(LineExchangeDto, { idToken: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJVMDAwMCJ9.c2lnbmF0dXJl' })
+  @ApiSuccess(200, {
+    description: 'Signed in',
+    type: TokenPairDto,
+    example: {
+      ...TOKEN_PAIR_EXAMPLE,
+      subject: {
+        ...TOKEN_PAIR_EXAMPLE.subject,
+        audience: 'prospect',
+        roles: [],
+        permissions: [],
+        scopes: [],
+      },
+    },
+  })
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.bad_request',
+    'auth.line_token_invalid',
+    'auth.account_disabled',
+  )
+  async line(@Body() body: LineExchangeDto): Promise<TokenPairDto> {
+    return tokenPairDto(await this.auth.lineLogin(body.idToken, 'prospect'));
+  }
+}

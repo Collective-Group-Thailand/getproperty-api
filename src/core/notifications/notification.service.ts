@@ -24,7 +24,7 @@ export interface DeliveryJob {
   notificationId: string;
 }
 
-const RESIDENT_AUDIENCES: NotificationAudience[] = ['resident', 'technician'];
+const RESIDENT_AUDIENCES: NotificationAudience[] = ['resident', 'technician', 'prospect'];
 
 /**
  * Plans notifications for a domain event (subscriber `notifications`, worker): routing matrix event × audience ×

@@ -44,6 +44,24 @@ export const DOMAIN_EVENT_TYPES = {
   'listing.restored': 'A hidden listing was made public again by a moderator (D-252).',
   'listing.reported': 'A viewer reported a listing (no reporter in the payload) (D-252).',
   'listing.verification_decided': 'Owner verification of a unit was approved or rejected (D-252).',
+  'listing.lead_received': 'A prospect started an enquiry about a listing; the owner is told (B7.3, D-252).',
+  'listing.lead_message': 'A prospect wrote again in an open enquiry; the owner is told (B7.3, D-252).',
+  'listing.lead_replied':
+    'The owner replied to an enquiry; the reply reaches the prospect in LINE (B7.3, D-252).',
+  'listing.lead_state_changed':
+    'The owner moved an enquiry on (contacted, viewed, applied, won, lost) (B7.3, D-252).',
+  'listing.lead_unanswered':
+    'An enquiry waited listing.lead.nudge_after_hours without an answer; the owner is reminded (B7.3).',
+  'listing.viewing_requested':
+    'A prospect asked for a viewing slot (new or rescheduled); the owner is told (B7.3, D-252).',
+  'listing.viewing_confirmed': 'The owner confirmed a viewing; the prospect is told (B7.3, D-252).',
+  'listing.viewing_declined':
+    'The owner declined a viewing with a reason; the prospect is told (B7.3, D-252).',
+  'listing.viewing_cancelled':
+    'A viewing was cancelled (by the prospect, or with the enquiry closed) (B7.3, D-252).',
+  'listing.viewing_completed': 'The owner recorded how a viewing went (viewed or no show) (B7.3, D-252).',
+  'listing.viewing_reminder':
+    'A confirmed viewing is near; the prospect and the owner are reminded once (B7.3).',
   'storage.threshold_crossed':
     'A tenant reached a storage notice threshold of its allowance (D-276: 80 % / 100 %, once per crossing).',
   'document.uploaded': 'A file finished uploading; scan and thumbnail follow.',

@@ -8,6 +8,7 @@ export enum SurfaceName {
   Staff = 'staff',
   Resident = 'resident',
   Technician = 'technician',
+  Prospect = 'prospect',
   Admin = 'admin',
   Device = 'device',
   Webhooks = 'webhooks',

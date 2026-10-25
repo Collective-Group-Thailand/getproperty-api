@@ -13,6 +13,7 @@ import { TotpSecretDto } from './auth.dto';
 import {
   AdminMeDto,
   OperatorMeDto,
+  ProspectMeDto,
   ResidentLinkDto,
   ResidentLinkedDto,
   ResidentMeDto,
@@ -352,6 +353,42 @@ export class TechnicianMeController {
   @ApiStandardErrors('http.not_found')
   get(): Promise<TechnicianMeDto> {
     return this.me.technician();
+  }
+}
+
+@ApiTags('prospect.me')
+@ApiSurface(SURFACES.prospect)
+@Controller('prospect/me')
+export class ProspectMeController {
+  constructor(private readonly me: MeService) {}
+
+  @Get()
+  @ApiEndpoint({
+    id: 'prospect.me.get',
+    summary: 'Who I am as a prospect',
+    description:
+      'The signed-in prospect, with how many of my enquiries are open and how many viewings are still to come (B7.3, D-252).',
+    implements: ['D-252'],
+  })
+  @ApiSuccess(200, {
+    description: 'The signed-in prospect',
+    type: ProspectMeDto,
+    example: {
+      user: {
+        id: FAKE.uuid,
+        displayName: FAKE.name,
+        phone: null,
+        email: null,
+        language: 'th' as never,
+        lineLinked: true,
+      },
+      openEnquiries: 1,
+      upcomingViewings: 1,
+    } satisfies ProspectMeDto,
+  })
+  @ApiStandardErrors('http.not_found')
+  get(): Promise<ProspectMeDto> {
+    return this.me.prospect();
   }
 }
 

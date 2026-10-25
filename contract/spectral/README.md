@@ -11,7 +11,7 @@ generated `contract/openapi.json`. Any warning fails CI. The rules implement
 | `getproperty-operation-implements` | `description` cites `D-###` or `ADR-####` |
 | `getproperty-operation-surface-tag` | exactly one tag, prefixed by the surface; tags need a description (`tag-description`, `operation-tag-defined`) |
 | `getproperty-operation-security-declared` | `security` is always present (`[]` = public, via `@Public()`) |
-| `getproperty-surface-security` | `/v1/owner`, `/v1/staff` (`operatorBearer`), `/v1/resident` (`residentBearer`), `/v1/technician` (`technicianBearer`), `/v1/admin` (`platformBearer`), `/v1/device` (`deviceBearer`) use only their audience scheme, or are explicitly public / optionally authenticated (contract §2, ADR-0003 as amended by ADR-0009) |
+| `getproperty-surface-security` | `/v1/owner`, `/v1/staff` (`operatorBearer`), `/v1/resident` (`residentBearer`), `/v1/technician` (`technicianBearer`), `/v1/prospect` (`prospectBearer`), `/v1/admin` (`platformBearer`), `/v1/device` (`deviceBearer`) use only their audience scheme, or are explicitly public / optionally authenticated (contract §2, ADR-0003 as amended by ADR-0009) |
 | `getproperty-response-set` | a 2xx and a 500; a 4xx (except `ops.*`); 401 and 403 when secured; 400 and 422 with a body; errors only as `application/problem+json` → `ProblemDetails` |
 | `getproperty-status-by-kind` | `If-Match` ⇒ 412; `Idempotency-Key` ⇒ 409; a 202 names the operation to poll or says "Nothing to poll." (`@ApiAsync`) |
 | `getproperty-response-example`, `getproperty-request-example` | every body has `example` or `examples` |

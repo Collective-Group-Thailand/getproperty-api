@@ -15,6 +15,7 @@ import { IntegrationDeliveryService } from '@modules/bridge-integrations/integra
 import { BillingCyclesService } from '@modules/ops-billing/billing-cycles.service';
 import { EtaxService } from '@modules/ops-etax/etax.service';
 import { LeasesService } from '@modules/ops-leases/leases.service';
+import { ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
 import { ListingModerationService } from '@modules/ops-listings/listing-moderation.service';
 import { SettlementsService } from '@modules/ops-payments/settlements.service';
 import { ReceivablesService } from '@modules/ops-receivables/receivables.service';
@@ -79,6 +80,8 @@ export const MAINTENANCE_JOBS = {
   'storage-metering': 3_600_000,
   // D-252 / O-018: ownership evidence deleted after its retention
   'listing-evidence-purge': 3_600_000,
+  // B7.3: viewing reminders (both sides) and the owner's nudge on unanswered enquiries
+  'listing-reminders': 300_000,
 } as const;
 type MaintenanceJob = keyof typeof MAINTENANCE_JOBS;
 
@@ -125,6 +128,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly integrations: IntegrationDeliveryService,
     private readonly storageMetering: StorageMeteringService,
     private readonly listingModeration: ListingModerationService,
+    private readonly listingLeads: ListingLeadsService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -245,6 +249,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'listing-evidence-purge':
         await this.listingModeration.purgeEvidence();
+        break;
+      case 'listing-reminders':
+        await this.listingLeads.remind();
         break;
       default:
         this.logger.warn(`unknown maintenance job ${job.name}`);

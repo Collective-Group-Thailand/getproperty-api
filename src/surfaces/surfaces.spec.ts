@@ -19,6 +19,8 @@ describe('surfaces registry', () => {
     expect(SURFACE_AUDIENCE.technician).toBe('technician');
     expect(SURFACE_AUDIENCE.admin).toBe('platform');
     expect(SURFACE_AUDIENCE.device).toBe('device');
+    expect(surfaceOfPath('/v1/prospect/enquiries')).toBe(SURFACES.prospect);
+    expect(SURFACE_AUDIENCE.prospect).toBe('prospect');
     expect(SURFACE_AUDIENCE.auth).toBeNull();
   });
 });

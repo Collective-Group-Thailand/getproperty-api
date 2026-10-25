@@ -407,6 +407,7 @@ export enum NotificationAudienceName {
   Staff = 'staff',
   Accountant = 'accountant',
   Platform = 'platform',
+  Prospect = 'prospect',
 }
 
 export enum TenantRoutableAudienceName {

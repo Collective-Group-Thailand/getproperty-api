@@ -11,6 +11,7 @@ export enum TokenAudience {
   Technician = 'technician',
   Platform = 'platform',
   Device = 'device',
+  Prospect = 'prospect',
 }
 
 export enum SubjectType {

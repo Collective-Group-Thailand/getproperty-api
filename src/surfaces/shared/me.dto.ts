@@ -407,6 +407,26 @@ export class TechnicianMeDto {
   linkRequestsPending!: number;
 }
 
+/** `GET /v1/prospect/me` (B7.3, D-252). */
+export class ProspectMeDto {
+  @ApiProperty({ type: () => MeUserDto })
+  user!: MeUserDto;
+
+  @ApiProperty({
+    type: 'integer',
+    example: 1,
+    description: 'My enquiries that are still open (not won or lost).',
+  })
+  openEnquiries!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    example: 1,
+    description: 'My viewings still to come (requested or confirmed, start in the future).',
+  })
+  upcomingViewings!: number;
+}
+
 export class AdminMeDto {
   @ApiProperty({ type: () => MeUserDto })
   user!: MeUserDto;

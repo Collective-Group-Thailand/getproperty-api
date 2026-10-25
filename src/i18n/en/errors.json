@@ -1015,6 +1015,34 @@
     "checker_same_user": {
       "title": "Second reviewer needed",
       "detail": "Another platform user must confirm this approval."
+    },
+    "consent_required": {
+      "title": "Consent needed",
+      "detail": "Agree to the owner using your details to answer your enquiry, then send again."
+    },
+    "enquiry_limit": {
+      "title": "Too many enquiries today",
+      "detail": "You have started many enquiries today. Please try again tomorrow, or continue in an enquiry you already have."
+    },
+    "lead_invalid_state": {
+      "title": "Not possible now",
+      "detail": "This enquiry is closed or not in a state that allows this action."
+    },
+    "viewing_slot_unavailable": {
+      "title": "Time not available",
+      "detail": "Pick one of the viewing times the owner offers."
+    },
+    "viewing_slot_taken": {
+      "title": "Time just taken",
+      "detail": "Someone else booked this time a moment ago. Please pick another time."
+    },
+    "viewing_exists": {
+      "title": "Viewing already booked",
+      "detail": "You already have a viewing of this place. Change its time instead of booking another."
+    },
+    "viewing_invalid_state": {
+      "title": "Not possible now",
+      "detail": "This viewing is not in a state that allows this action."
     }
   }
 }

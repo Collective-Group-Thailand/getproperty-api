@@ -29,7 +29,15 @@ describe('menu entitlements (/me)', () => {
   it('a landlord owner gets the portfolio-first menu (D-251), building operators never see it', () => {
     const landlord = entitledMenu(OWNER_MENU, set('owner'), 'landlord', {});
     expect(landlord).toEqual(
-      expect.arrayContaining(['portfolio', 'listings', 'leases', 'invoices', 'payments', 'settings']),
+      expect.arrayContaining([
+        'portfolio',
+        'listings',
+        'leads',
+        'leases',
+        'invoices',
+        'payments',
+        'settings',
+      ]),
     );
     expect(landlord).not.toEqual(expect.arrayContaining(['dashboard']));
     for (const key of ['dashboard', 'buildings', 'units', 'devices', 'utility_loss'])

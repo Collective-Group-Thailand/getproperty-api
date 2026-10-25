@@ -19,13 +19,14 @@
 | `/v1/staff/*` | staff PWA of `getproperty-web` (readings, inspections, installs, service requests, parcels) — same `operator` audience with the Staff role; split as a prefix so the PWA's allow-list stays narrow | `operator` |
 | `/v1/resident/*` | `getproperty-liff` resident pages (LINE Mini App, with a mobile-web fallback; D-060, D-154): lessees, co-occupants, condo owners | `resident` (scoped to `lease:<uuid>` / `unit:<uuid>` lists) |
 | `/v1/technician/*` | `getproperty-liff` technician pages: external technicians and contractors (R2; placeholder until B5) | `technician` (scoped to `work_order:<uuid>` list) |
+| `/v1/prospect/*` | prospects — people looking for a place to rent — in `getproperty-liff` and on the public listing pages of `getproperty-web` (B7.3, D-252, D-281): enquiries, viewings, my enquiries | `prospect` (no scopes; only the caller's own enquiries and viewings) |
 | `/v1/admin/*` | platform admin zone of `getproperty-web` (Collective Group staff: tenants, subscriptions, device fleet, tariffs, support, AI usage cost) | `platform` |
 | `/v1/device/*` | gateways (`getproperty-edge`) over HTTPS for provisioning, bootstrap, OTA manifests and large uploads; telemetry itself goes over MQTT (D-130) | `device` (mTLS client certificate; a short-lived JWT is minted at bootstrap) |
 | `/webhooks/*` | payment gateways / banks, slip verification, LINE Messaging, lock vendors, e-Tax provider — signature-verified | none |
 | `/v1/public/*` | marketing pages of `getproperty-web` (price plans, the published tariff ceiling) — anonymous, cacheable, never personal data | none |
 | `/health`, `/docs`, `/docs-json` | ops | none (docs disabled in prod unless `DOCS_ENABLED`) |
 
-A token issued for one audience is rejected on every other prefix (guard checks `aud`). OpenAPI tags are prefixed by surface (`owner.invoices`, `resident.invoices`, `admin.devices`…) so generated types are easy to navigate. Security schemes: `operatorBearer`, `residentBearer`, `technicianBearer`, `platformBearer`, `deviceBearer`.
+A token issued for one audience is rejected on every other prefix (guard checks `aud`). OpenAPI tags are prefixed by surface (`owner.invoices`, `resident.invoices`, `admin.devices`…) so generated types are easy to navigate. Security schemes: `operatorBearer`, `residentBearer`, `technicianBearer`, `prospectBearer`, `platformBearer`, `deviceBearer`.
 
 ## 3. Resource & payload rules
 - JSON keys `camelCase`. Resource nouns, plural, named after the schema entities (D-151): `GET /v1/owner/buildings/{buildingId}/units`, `GET /v1/owner/invoices/{invoiceId}`. Actions that are not CRUD: `POST /v1/owner/invoices/{invoiceId}/actions/{action-name}` (`issue`, `void`, `send-reminder`).
@@ -45,10 +46,10 @@ A token issued for one audience is rejected on every other prefix (guard checks 
 
 ## 4. Auth handshake (backend is cookie-agnostic)
 - Login endpoints return tokens in the **body**: `{ accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt, subject: { id, type, roles, permissions, scopes } }`.
-- Access token: JWT (EdDSA), 10–15 min, claims `sub`, `aud` (`operator|resident|technician|platform|device`), `sid`, `scp` (`tenant:<uuid>`; `building:<uuid>` when a Staff role is limited to buildings; `lease:<uuid>` and `unit:<uuid>` for residents; `work_order:<uuid>` for technicians). JWKS at `/v1/auth/.well-known/jwks.json`.
+- Access token: JWT (EdDSA), 10–15 min, claims `sub`, `aud` (`operator|resident|technician|prospect|platform|device`), `sid`, `scp` (`tenant:<uuid>`; `building:<uuid>` when a Staff role is limited to buildings; `lease:<uuid>` and `unit:<uuid>` for residents; `work_order:<uuid>` for technicians). JWKS at `/v1/auth/.well-known/jwks.json`.
 - Refresh token: opaque, rotating, single-use, stored hashed in `platform.auth_session`; reuse of a rotated token revokes the whole session family.
-- Login methods: operators — phone OTP (primary) or email + password + optional TOTP (owners who want it); residents and technicians — LINE Login / LIFF id-token exchange (primary) or phone OTP magic link; platform — email + password + TOTP mandatory; devices — mTLS bootstrap (`POST /v1/device/bootstrap` with the provisioning code) → device JWT.
-- `POST /v1/auth/refresh`, `POST /v1/auth/logout`, `GET /v1/{owner|staff|resident|technician|admin}/me` (roles, permissions, menu entitlements, feature flags, scopes, current tenant/building context).
+- Login methods: operators — phone OTP (primary) or email + password + optional TOTP (owners who want it); residents and technicians — LINE Login / LIFF id-token exchange (primary) or phone OTP magic link; prospects — LINE Login / LIFF (`POST /v1/auth/prospect/line`; phone, Google and Apple with the D-255 OAuth clients); platform — email + password + TOTP mandatory; devices — mTLS bootstrap (`POST /v1/device/bootstrap` with the provisioning code) → device JWT.
+- `POST /v1/auth/refresh`, `POST /v1/auth/logout`, `GET /v1/{owner|staff|resident|technician|prospect|admin}/me` (roles, permissions, menu entitlements, feature flags, scopes, current tenant/building context).
 - The web app and the LIFF app store tokens in httpOnly cookies and forward them as `Authorization: Bearer` from their server (BFF). Browsers never hold tokens in JS-readable storage. The LIFF app obtains the LINE id token in the browser and exchanges it through its BFF, which sets the cookie.
 
 ## 5. Documentation requirements (Swagger + Scalar)

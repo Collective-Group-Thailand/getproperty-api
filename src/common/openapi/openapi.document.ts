@@ -53,6 +53,8 @@ const AUDIENCE_DESCRIPTIONS: Record<Audience, string> = {
     'Access token with `aud=technician` — `/v1/technician/*`, external technicians and contractors in LIFF (scopes `work_order:<uuid>`; R2).',
   platform: 'Access token with `aud=platform` — `/v1/admin/*` (Collective Group staff, TOTP mandatory).',
   device: 'Device JWT with `aud=device` minted at mTLS bootstrap — `/v1/device/*` (one gateway).',
+  prospect:
+    'Access token with `aud=prospect` — `/v1/prospect/*`: people enquiring about a listing or booking a viewing (no scopes; their own enquiries only; B7.3, D-252).',
 };
 
 const INFO_DESCRIPTION = `getproperty — ให้เช่าง่าย อยู่สบาย, operated by Collective Group (Thailand) (D-001).
