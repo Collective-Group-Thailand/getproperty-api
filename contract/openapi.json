@@ -89,6 +89,39 @@
           "type": "https://errors.getproperty.co/auth.forbidden"
         }
       },
+      "problem.auth.identity_contact_required": {
+        "summary": "auth.identity_contact_required",
+        "value": {
+          "code": "auth.identity_contact_required",
+          "detail": "การเข้าสู่ระบบนี้ไม่ได้แชร์อีเมล กรุณาสมัครด้วยเบอร์โทรศัพท์แทน",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 422,
+          "title": "ต้องมีเบอร์โทรหรืออีเมล",
+          "type": "https://errors.getproperty.co/auth.identity_contact_required"
+        }
+      },
+      "problem.auth.identity_email_in_use": {
+        "summary": "auth.identity_email_in_use",
+        "value": {
+          "code": "auth.identity_email_in_use",
+          "detail": "อีเมลนี้ใช้กับบัญชี getproperty อยู่แล้ว กรุณาเข้าสู่ระบบด้วยวิธีเดิม แล้วเพิ่ม Google หรือ Apple ในโปรไฟล์",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "อีเมลนี้มีบัญชีแล้ว",
+          "type": "https://errors.getproperty.co/auth.identity_email_in_use"
+        }
+      },
+      "problem.auth.identity_token_invalid": {
+        "summary": "auth.identity_token_invalid",
+        "value": {
+          "code": "auth.identity_token_invalid",
+          "detail": "ตรวจสอบการเข้าสู่ระบบด้วย Google หรือ Apple ไม่ได้ กรุณาลองอีกครั้ง",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 401,
+          "title": "เข้าสู่ระบบไม่สำเร็จ",
+          "type": "https://errors.getproperty.co/auth.identity_token_invalid"
+        }
+      },
       "problem.auth.invalid_credentials": {
         "summary": "auth.invalid_credentials",
         "value": {
@@ -1543,6 +1576,39 @@
           "status": 409,
           "title": "ทำรายการไม่ได้",
           "type": "https://errors.getproperty.co/platform_invoice.invalid_state"
+        }
+      },
+      "problem.portfolio.claimant_invalid": {
+        "summary": "portfolio.claimant_invalid",
+        "value": {
+          "code": "portfolio.claimant_invalid",
+          "detail": "เจ้าของต้องเป็นนิติบุคคลอาคารชุด และผู้ดูแลต้องเป็นนิติบุคคลอาคารชุดหรือบริษัทบริหารอาคาร",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 422,
+          "title": "รับโอนไม่ได้",
+          "type": "https://errors.getproperty.co/portfolio.claimant_invalid"
+        }
+      },
+      "problem.portfolio.not_a_stub": {
+        "summary": "portfolio.not_a_stub",
+        "value": {
+          "code": "portfolio.not_a_stub",
+          "detail": "รับโอนได้เฉพาะอาคารชั่วคราวของคอนโดที่ยังไม่ได้ใช้ getproperty",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ไม่ใช่อาคารชั่วคราว",
+          "type": "https://errors.getproperty.co/portfolio.not_a_stub"
+        }
+      },
+      "problem.portfolio.unit_claimed": {
+        "summary": "portfolio.unit_claimed",
+        "value": {
+          "code": "portfolio.unit_claimed",
+          "detail": "มีเจ้าของอีกรายลงทะเบียนเลขห้องนี้ในโครงการนี้แล้ว หากเป็นห้องของคุณ กรุณาติดต่อทีมงาน getproperty เพื่อยืนยันความเป็นเจ้าของ",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ห้องนี้มีผู้ลงทะเบียนแล้ว",
+          "type": "https://errors.getproperty.co/portfolio.unit_claimed"
         }
       },
       "problem.price_plan.invalid_state": {
@@ -5452,9 +5518,13 @@
             "type": "string"
           },
           "operatorTenantId": {
+            "description": "Null for an external stub (a condo not on getproperty yet, D-251).",
             "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
             "format": "uuid",
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "ownerTenantId": {
             "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
@@ -5626,7 +5696,8 @@
           "apartment",
           "condo",
           "house_cluster",
-          "mixed_use"
+          "mixed_use",
+          "house"
         ],
         "type": "string"
       },
@@ -10937,6 +11008,14 @@
         },
         "type": "object"
       },
+      "Furnishing": {
+        "enum": [
+          "unfurnished",
+          "partly_furnished",
+          "fully_furnished"
+        ],
+        "type": "string"
+      },
       "GatewayConfigVersionDto": {
         "properties": {
           "appliedAt": {
@@ -14591,6 +14670,73 @@
           "90d"
         ],
         "type": "string"
+      },
+      "LandlordSignupDto": {
+        "properties": {
+          "challengeId": {
+            "description": "`phone_otp`: the challenge of `POST …/signup/landlord/otp`.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "code": {
+            "description": "`phone_otp`: the 6-digit SMS code.",
+            "example": "123456",
+            "type": "string"
+          },
+          "displayName": {
+            "description": "The landlord’s name as residents will see it on documents.",
+            "example": "สมชาย ใจดี",
+            "type": "string"
+          },
+          "idToken": {
+            "description": "`line`: the LINE id token; `firebase_google` / `firebase_apple`: the Firebase ID token.",
+            "example": "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJVMDAwMCJ9.c2lnbmF0dXJl",
+            "type": "string"
+          },
+          "language": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Language"
+              }
+            ],
+            "example": "th"
+          },
+          "provider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SignupProvider"
+              }
+            ],
+            "description": "How the landlord proves who they are (D-255): phone OTP, LINE Login / LIFF, Google or Apple (Firebase).",
+            "example": "line"
+          }
+        },
+        "required": [
+          "provider",
+          "displayName"
+        ],
+        "type": "object"
+      },
+      "LandlordSignupResultDto": {
+        "properties": {
+          "created": {
+            "description": "False when this identity already owned a landlord tenant (idempotent).",
+            "example": true,
+            "type": "boolean"
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/SignupTenantDto"
+          },
+          "tokens": {
+            "$ref": "#/components/schemas/TokenPairDto"
+          }
+        },
+        "required": [
+          "created",
+          "tenant",
+          "tokens"
+        ],
+        "type": "object"
       },
       "Language": {
         "description": "Language of the text shown.",
@@ -19754,6 +19900,7 @@
       "OwnerMenuKey": {
         "description": "Menu entitlements of the owner console (keys of the web routes).",
         "enum": [
+          "portfolio",
           "dashboard",
           "buildings",
           "units",
@@ -22429,6 +22576,396 @@
           "lastLoginAt"
         ],
         "type": "object"
+      },
+      "PortfolioAddressDto": {
+        "properties": {
+          "district": {
+            "example": "พญาไท",
+            "type": "string"
+          },
+          "line1": {
+            "example": "99/12 ซอยอารีย์ 4 ถนนพหลโยธิน",
+            "type": "string"
+          },
+          "postcode": {
+            "example": "10400",
+            "type": "string"
+          },
+          "province": {
+            "example": "กรุงเทพมหานคร",
+            "type": "string"
+          },
+          "subdistrict": {
+            "example": "สามเสนใน",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line1",
+          "province",
+          "postcode"
+        ],
+        "type": "object"
+      },
+      "PortfolioBuildingRefDto": {
+        "properties": {
+          "external": {
+            "description": "A stub of a condo whose juristic person is not on getproperty yet.",
+            "example": true,
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "example": "ไอดีโอ โมบิ อารีย์",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "external"
+        ],
+        "type": "object"
+      },
+      "PortfolioDto": {
+        "properties": {
+          "totals": {
+            "$ref": "#/components/schemas/PortfolioTotalsDto"
+          },
+          "units": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioUnitDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "units",
+          "totals"
+        ],
+        "type": "object"
+      },
+      "PortfolioInvoiceRefDto": {
+        "properties": {
+          "balance": {
+            "description": "Still to pay. Unit: THB, decimal string (D-046).",
+            "example": "15000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "example": "issued",
+            "type": "string"
+          },
+          "total": {
+            "description": "Invoice total. Unit: THB, decimal string (D-046).",
+            "example": "15000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "total",
+          "balance"
+        ],
+        "type": "object"
+      },
+      "PortfolioTotalsDto": {
+        "properties": {
+          "collected": {
+            "description": "Paid on this month’s invoices. Unit: THB, decimal string (D-046).",
+            "example": "15000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "expected": {
+            "description": "Invoiced this month (issued, not void). Unit: THB, decimal string (D-046).",
+            "example": "30000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "month": {
+            "example": "2026-10",
+            "type": "string"
+          },
+          "overdue": {
+            "description": "Open balance of overdue invoices, any month. Unit: THB, decimal string (D-046).",
+            "example": "0.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "month",
+          "expected",
+          "collected",
+          "overdue"
+        ],
+        "type": "object"
+      },
+      "PortfolioUnitCreateDto": {
+        "properties": {
+          "address": {
+            "$ref": "#/components/schemas/PortfolioAddressDto"
+          },
+          "areaSqm": {
+            "description": "Area in m². Decimal string.",
+            "example": "28.50",
+            "pattern": "^\\d{1,9}(\\.\\d{1,6})?$",
+            "type": "string"
+          },
+          "bathrooms": {
+            "example": 1,
+            "type": "integer"
+          },
+          "bedrooms": {
+            "example": 1,
+            "type": "integer"
+          },
+          "defaultRent": {
+            "description": "Default monthly rent for new leases and listings. Unit: THB, decimal string (D-046).",
+            "example": "15000.00",
+            "pattern": "^\\d{1,12}(\\.\\d{1,2})?$",
+            "type": "string"
+          },
+          "floorLabel": {
+            "description": "Floor as written by the owner (e.g. 12, G, M).",
+            "example": "12",
+            "type": "string"
+          },
+          "furnishing": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Furnishing"
+              }
+            ],
+            "example": "fully_furnished"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PortfolioUnitKind"
+              }
+            ],
+            "example": "condo_unit"
+          },
+          "lat": {
+            "example": 13.7799,
+            "type": "number"
+          },
+          "lng": {
+            "example": 100.5446,
+            "type": "number"
+          },
+          "projectName": {
+            "description": "Condo project (required for a condo unit: units of one project share one building) or a house name.",
+            "example": "ไอดีโอ โมบิ อารีย์",
+            "type": "string"
+          },
+          "unitNo": {
+            "description": "Unit number (required for a condo unit).",
+            "example": "12/345",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "address"
+        ],
+        "type": "object"
+      },
+      "PortfolioUnitCreatedDto": {
+        "properties": {
+          "buildingId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "propertyId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "stub": {
+            "description": "The unit sits in the stub building of a condo not on getproperty yet.",
+            "example": true,
+            "type": "boolean"
+          },
+          "unitId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unitId",
+          "buildingId",
+          "propertyId",
+          "stub"
+        ],
+        "type": "object"
+      },
+      "PortfolioUnitDto": {
+        "properties": {
+          "address": {
+            "additionalProperties": true,
+            "example": {
+              "province": "กรุงเทพมหานคร"
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "areaSqm": {
+            "example": "28.50",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bathrooms": {
+            "example": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "bedrooms": {
+            "example": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "building": {
+            "$ref": "#/components/schemas/PortfolioBuildingRefDto"
+          },
+          "defaultRent": {
+            "description": "Default monthly rent. Unit: THB, decimal string (D-046).",
+            "example": "15000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "floorLabel": {
+            "example": "12",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "furnishing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Furnishing"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "invoice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PortfolioInvoiceRefDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "This month’s invoice of the unit."
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PortfolioUnitKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "leaseEndDate": {
+            "example": "2027-05-31",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "leaseId": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "openServiceRequests": {
+            "example": 0,
+            "type": "integer"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PortfolioUnitState"
+              }
+            ],
+            "example": "leased"
+          },
+          "unitId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "unitNo": {
+            "example": "12/345",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unitId",
+          "unitNo",
+          "kind",
+          "building",
+          "address",
+          "areaSqm",
+          "bedrooms",
+          "bathrooms",
+          "floorLabel",
+          "furnishing",
+          "defaultRent",
+          "state",
+          "leaseId",
+          "leaseEndDate",
+          "invoice",
+          "openServiceRequests"
+        ],
+        "type": "object"
+      },
+      "PortfolioUnitKind": {
+        "enum": [
+          "condo_unit",
+          "house",
+          "townhouse",
+          "room"
+        ],
+        "type": "string"
+      },
+      "PortfolioUnitState": {
+        "enum": [
+          "vacant",
+          "leased",
+          "notice_given"
+        ],
+        "type": "string"
       },
       "PricePlanDto": {
         "properties": {
@@ -29701,6 +30238,43 @@
         ],
         "type": "string"
       },
+      "SignupProvider": {
+        "description": "How the landlord proves who they are (D-255): phone OTP, LINE Login / LIFF, Google or Apple (Firebase).",
+        "enum": [
+          "phone_otp",
+          "line",
+          "firebase_google",
+          "firebase_apple"
+        ],
+        "type": "string"
+      },
+      "SignupTenantDto": {
+        "properties": {
+          "displayName": {
+            "example": "สมชาย ใจดี",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "slug": {
+            "example": "landlord-0a1b2c3d4e",
+            "type": "string"
+          },
+          "type": {
+            "example": "landlord",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "displayName",
+          "type"
+        ],
+        "type": "object"
+      },
       "SiteSurveyAction": {
         "enum": [
           "schedule",
@@ -30998,6 +31572,26 @@
           "over"
         ],
         "type": "string"
+      },
+      "StubClaimDto": {
+        "properties": {
+          "operatorTenantId": {
+            "description": "The operator: the juristic tenant itself (default) or its PM company.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "ownerTenantId": {
+            "description": "The condo juristic tenant that owns the building.",
+            "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ownerTenantId"
+        ],
+        "type": "object"
       },
       "SubjectDto": {
         "properties": {
@@ -36853,6 +37447,277 @@
           }
         ],
         "summary": "Change the operator of a building",
+        "tags": [
+          "admin.buildings"
+        ],
+        "x-required-permissions": [
+          "admin.building.manage"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/buildings/{buildingId}/actions/claim-stub": {
+      "post": {
+        "description": "A condo whose landlords added units before its juristic person joined lives in a stub building (status `external`, D-251). When the juristic tenant signs up, the platform hands the stub over: owner = the condo juristic tenant, operator = itself or its PM company, status `active`, an operator period `juristic_formed` opens. The landlords keep their units, leases and invoices — nothing is copied or moved (D-280). Audited and evented (`building.operator_changed`).\n\nImplements: D-251, D-280.",
+        "operationId": "admin.buildings.claimStub",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "buildingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "ownerTenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/StubClaimDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "operatorTenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                  "ownerTenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorChangedDto"
+                }
+              }
+            },
+            "description": "Handed over",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.conflict": {
+                    "$ref": "#/components/examples/problem.http.conflict"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "portfolio.not_a_stub": {
+                    "$ref": "#/components/examples/problem.portfolio.not_a_stub"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.conflict`, `idempotency.in_progress`, `portfolio.not_a_stub`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "portfolio.claimant_invalid": {
+                    "$ref": "#/components/examples/problem.portfolio.claimant_invalid"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `portfolio.claimant_invalid`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Hand a condo stub over to its juristic person",
         "tags": [
           "admin.buildings"
         ],
@@ -128309,6 +129174,460 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/portfolio": {
+      "get": {
+        "description": "Every unit of the landlord across projects with its state (vacant / leased / notice given), lease end, this month’s invoice and open repairs, and the month’s totals (expected, collected, overdue) as decimal strings (D-251).\n\nImplements: D-251.",
+        "operationId": "owner.portfolio.get",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "totals": {
+                    "collected": "0.00",
+                    "expected": "15000.00",
+                    "month": "2026-10",
+                    "overdue": "0.00"
+                  },
+                  "units": [
+                    {
+                      "address": {
+                        "postcode": "10400",
+                        "province": "กรุงเทพมหานคร"
+                      },
+                      "areaSqm": "28.50",
+                      "bathrooms": 1,
+                      "bedrooms": 1,
+                      "building": {
+                        "external": true,
+                        "id": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                        "name": "ไอดีโอ โมบิ อารีย์"
+                      },
+                      "defaultRent": "15000.00",
+                      "floorLabel": "12",
+                      "furnishing": "fully_furnished",
+                      "invoice": {
+                        "balance": "15000.00",
+                        "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                        "status": "issued",
+                        "total": "15000.00"
+                      },
+                      "kind": "condo_unit",
+                      "leaseEndDate": "2027-05-31",
+                      "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "openServiceRequests": 0,
+                      "state": "leased",
+                      "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "unitNo": "12/345"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioDto"
+                }
+              }
+            },
+            "description": "Portfolio",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "My portfolio",
+        "tags": [
+          "owner.portfolio"
+        ],
+        "x-required-permissions": [
+          "unit.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/portfolio/units": {
+      "post": {
+        "description": "A house, townhouse or room becomes a one-unit property + building of the landlord; a condo unit joins the shared stub building of its project (found by project name + postcode, created when new) — two landlords in one condo share the stub and each sees only its own units. The landlord is recorded as the owner (`self_declared`, verified later, D-252). `portfolio.unit_claimed` when another owner already registered that unit number in the project (D-251).\n\nImplements: D-251.",
+        "operationId": "owner.portfolio.addUnit",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "address": {
+                      "district": "พญาไท",
+                      "line1": "ถนนพหลโยธิน",
+                      "postcode": "10400",
+                      "province": "กรุงเทพมหานคร"
+                    },
+                    "areaSqm": "28.50",
+                    "bathrooms": 1,
+                    "bedrooms": 1,
+                    "defaultRent": "15000.00",
+                    "floorLabel": "12",
+                    "furnishing": "fully_furnished",
+                    "kind": "condo_unit",
+                    "projectName": "ไอดีโอ โมบิ อารีย์",
+                    "unitNo": "12/345"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/PortfolioUnitCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "stub": true,
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioUnitCreatedDto"
+                }
+              }
+            },
+            "description": "Unit added",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.conflict": {
+                    "$ref": "#/components/examples/problem.http.conflict"
+                  },
+                  "portfolio.unit_claimed": {
+                    "$ref": "#/components/examples/problem.portfolio.unit_claimed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.conflict`, `portfolio.unit_claimed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Add a unit to my portfolio",
+        "tags": [
+          "owner.portfolio"
+        ],
+        "x-required-permissions": [
+          "unit.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/properties": {
       "get": {
         "description": "Properties (groups of buildings) visible to the tenant: its own and those of buildings it operates or holds a grant for (D-151, D-152).\n\nImplements: D-151, D-152.",
@@ -154035,6 +155354,504 @@
         "summary": "Price plans for the pricing page",
         "tags": [
           "public.plans"
+        ],
+        "x-surface": "public"
+      }
+    },
+    "/v1/public/signup/landlord": {
+      "post": {
+        "description": "Verifies the identity (phone OTP, LINE, Google or Apple through Firebase — D-255) and creates a tenant of type `landlord` (active, free per D-250) with its data key, the person as its legal party and an Owner membership; answers operator tokens. Idempotent per identity: the same identity again answers `200` with the landlord tenant it already owns. Identities are never merged by e-mail: a Google / Apple sign-up whose e-mail already has an account answers `auth.identity_email_in_use`, one without a verified e-mail `auth.identity_contact_required`. Company landlords add legal form, tax id and VAT later in settings.\n\nImplements: D-250, D-251, D-255.",
+        "operationId": "public.landlordSignup.create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "displayName": "สมชาย ใจดี",
+                    "idToken": "eyJhbGciOiJSUzI1NiJ9.e30.c2ln",
+                    "provider": "line"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/LandlordSignupDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "created": false,
+                  "tenant": {
+                    "displayName": "สมชาย ใจดี",
+                    "id": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                    "slug": "landlord-0a1b2c3d4e",
+                    "type": "landlord"
+                  },
+                  "tokens": {
+                    "accessToken": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImtpZCI6ImdwLWRldi0xIn0.eyJzdWIiOiIuLi4ifQ.c2ln",
+                    "accessTokenExpiresAt": "2026-11-01T00:30:00+07:00",
+                    "refreshToken": "q2r8XoT1Vb9mJ0yPz4LkWnE6aGs3dHf5Q2r8XoT1Vb9",
+                    "refreshTokenExpiresAt": "2026-12-01T00:15:00+07:00",
+                    "subject": {
+                      "audience": "operator",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "permissions": [
+                        "tenant.read",
+                        "tenant.update"
+                      ],
+                      "roles": [
+                        "owner"
+                      ],
+                      "scopes": [
+                        "tenant:0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11"
+                      ],
+                      "type": "user"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/LandlordSignupResultDto"
+                }
+              }
+            },
+            "description": "Already signed up: the existing landlord tenant",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "created": true,
+                  "tenant": {
+                    "displayName": "สมชาย ใจดี",
+                    "id": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                    "slug": "landlord-0a1b2c3d4e",
+                    "type": "landlord"
+                  },
+                  "tokens": {
+                    "accessToken": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImtpZCI6ImdwLWRldi0xIn0.eyJzdWIiOiIuLi4ifQ.c2ln",
+                    "accessTokenExpiresAt": "2026-11-01T00:30:00+07:00",
+                    "refreshToken": "q2r8XoT1Vb9mJ0yPz4LkWnE6aGs3dHf5Q2r8XoT1Vb9",
+                    "refreshTokenExpiresAt": "2026-12-01T00:15:00+07:00",
+                    "subject": {
+                      "audience": "operator",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "permissions": [
+                        "tenant.read",
+                        "tenant.update"
+                      ],
+                      "roles": [
+                        "owner"
+                      ],
+                      "scopes": [
+                        "tenant:0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11"
+                      ],
+                      "type": "user"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/LandlordSignupResultDto"
+                }
+              }
+            },
+            "description": "Landlord tenant created",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.identity_token_invalid": {
+                    "$ref": "#/components/examples/problem.auth.identity_token_invalid"
+                  },
+                  "auth.line_token_invalid": {
+                    "$ref": "#/components/examples/problem.auth.line_token_invalid"
+                  },
+                  "auth.otp_expired": {
+                    "$ref": "#/components/examples/problem.auth.otp_expired"
+                  },
+                  "auth.otp_invalid": {
+                    "$ref": "#/components/examples/problem.auth.otp_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.identity_token_invalid`, `auth.line_token_invalid`, `auth.otp_expired`, `auth.otp_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.account_disabled": {
+                    "$ref": "#/components/examples/problem.auth.account_disabled"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.account_disabled`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.identity_email_in_use": {
+                    "$ref": "#/components/examples/problem.auth.identity_email_in_use"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.identity_email_in_use`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.identity_contact_required": {
+                    "$ref": "#/components/examples/problem.auth.identity_contact_required"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.identity_contact_required`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.otp_attempts_exceeded": {
+                    "$ref": "#/components/examples/problem.auth.otp_attempts_exceeded"
+                  },
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.otp_attempts_exceeded`, `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "provider.unavailable": {
+                    "$ref": "#/components/examples/problem.provider.unavailable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `provider.unavailable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Sign up as a landlord",
+        "tags": [
+          "public.signup"
+        ],
+        "x-surface": "public"
+      }
+    },
+    "/v1/public/signup/landlord/otp": {
+      "post": {
+        "description": "A 6-digit code for a landlord signing up by phone (any phone: no account or invitation is needed, D-251). Same limits as sign-in codes: one per OTP_RESEND_SECONDS, at most OTP_MAX_PER_HOUR per hour, expiry OTP_TTL_SECONDS.\n\nImplements: D-251, D-255.",
+        "operationId": "public.landlordSignup.otp",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "language": "th",
+                    "phone": "+66810001234"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/OtpRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "challengeId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "expiresAt": "2026-11-01T00:20:00+07:00",
+                  "resendAvailableAt": "2026-11-01T00:16:00+07:00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/OtpChallengeDto"
+                }
+              }
+            },
+            "description": "Code sent",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.otp_rate_limited": {
+                    "$ref": "#/components/examples/problem.auth.otp_rate_limited"
+                  },
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.otp_rate_limited`, `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "provider.unavailable": {
+                    "$ref": "#/components/examples/problem.provider.unavailable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `provider.unavailable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Send a sign-up code by SMS",
+        "tags": [
+          "public.signup"
         ],
         "x-surface": "public"
       }
@@ -194789,6 +196606,10 @@
       "name": "owner.payments"
     },
     {
+      "description": "The landlord portfolio: add a unit in one step, every unit across projects with this month’s rent (D-251).",
+      "name": "owner.portfolio"
+    },
+    {
       "description": "Properties: groups of buildings managed together (D-151).",
       "name": "owner.properties"
     },
@@ -194887,6 +196708,10 @@
     {
       "description": "Price plans of the platform for the public pricing page (D-156; Proposed until the pilot).",
       "name": "public.plans"
+    },
+    {
+      "description": "Self-serve sign-up of landlords by phone, LINE, Google or Apple (D-251, D-255).",
+      "name": "public.signup"
     },
     {
       "description": "Anonymous, cacheable reads for the marketing site of getproperty-web: price plans (D-156) and the published utility tariff ceiling (D-021a). No token, no personal data. System: ping.",

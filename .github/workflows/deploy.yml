@@ -1,5 +1,6 @@
 # Deploy to the Collective platform (D-230, docs/deployment.md) through collective-infra's reusable workflows
-# (examples/product-deploy.yml): main → build arm64 :sha-… + :uat → deploy UAT · tag vX.Y.Z → build :prod → deploy
+# (examples/product-deploy.yml; the image is built by ./build-image.yml, which checks out both private siblings):
+# main → build arm64 :sha-… + :uat → deploy UAT · tag vX.Y.Z → build :prod → deploy
 # production (GitHub Environment `production` approval). The box pulls api/worker/ingest/migrate at IMAGE_TAG, runs
 # the one-shot migrate (asset-core core schema → prisma/migrations → optional TimescaleDB), starts the containers,
 # health-checks them through Caddy and rolls back on failure. getproperty-web / getproperty-liff deploy their own
@@ -20,21 +21,12 @@ permissions:
 jobs:
   build-uat:
     if: github.ref == 'refs/heads/main'
-    uses: Collective-Group-Thailand/collective-infra/.github/workflows/reusable-build-push.yml@v1
+    uses: ./.github/workflows/build-image.yml
     with:
-      image: getproperty/api
       environment: uat
       moving_tag: uat
-      # @collective/asset-core is built from source inside the image (Dockerfile) until it is on GitHub Packages
-      extra_repository: Collective-Group-Thailand/collective-asset-core
-      extra_ref: v0.4.0
-      extra_path: .asset-core
-      build_contexts: |
-        asset-core-src=.asset-core
-      build_args: |
-        GIT_COMMIT=${{ github.sha }}
     secrets:
-      extra_repository_token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
+      sibling_read_token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
 
   deploy-uat:
     needs: build-uat
@@ -47,20 +39,12 @@ jobs:
 
   build-prod:
     if: startsWith(github.ref, 'refs/tags/v')
-    uses: Collective-Group-Thailand/collective-infra/.github/workflows/reusable-build-push.yml@v1
+    uses: ./.github/workflows/build-image.yml
     with:
-      image: getproperty/api
       environment: production
       moving_tag: prod
-      extra_repository: Collective-Group-Thailand/collective-asset-core
-      extra_ref: v0.4.0
-      extra_path: .asset-core
-      build_contexts: |
-        asset-core-src=.asset-core
-      build_args: |
-        GIT_COMMIT=${{ github.sha }}
     secrets:
-      extra_repository_token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
+      sibling_read_token: ${{ secrets.ASSET_CORE_READ_TOKEN }}
 
   deploy-prod:
     needs: build-prod

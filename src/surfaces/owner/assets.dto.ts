@@ -36,6 +36,8 @@ export enum BuildingTypeName {
   Condo = 'condo',
   HouseCluster = 'house_cluster',
   MixedUse = 'mixed_use',
+  /** A one-unit house or townhouse of a landlord (D-251). */
+  House = 'house',
 }
 export enum BuildingAccessName {
   Operator = 'operator',
@@ -234,8 +236,14 @@ export class BuildingDto {
   @ApiProperty({ type: String, format: 'uuid', nullable: true, example: FAKE.tenantId })
   ownerTenantId!: string | null;
 
-  @ApiProperty({ format: 'uuid', example: FAKE.tenantId })
-  operatorTenantId!: string;
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: FAKE.tenantId,
+    description: 'Null for an external stub (a condo not on getproperty yet, D-251).',
+  })
+  operatorTenantId!: string | null;
 
   @ApiProperty({
     enum: BuildingAccessName,
