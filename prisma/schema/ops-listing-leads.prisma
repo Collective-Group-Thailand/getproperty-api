@@ -32,6 +32,7 @@ model ListingLead {
   lease    Lease?               @relation("ListingLeadLease", fields: [leaseId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_lead_lease_id_fkey")
   messages ListingLeadMessage[]
   viewings ListingViewing[]
+  rentRecordShares RentRecordShare[]
 
   @@unique([listingId, userId], map: "listing_lead_listing_id_user_id_open_key", where: raw("(state <> ALL (ARRAY['won'::ops.listing_lead_state, 'lost'::ops.listing_lead_state]))"))
   @@index([tenantId, state, lastProspectAt(sort: Desc)], map: "listing_lead_tenant_id_state_idx")

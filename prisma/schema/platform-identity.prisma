@@ -486,3 +486,35 @@ enum IdentityVerificationState {
   @@map("identity_verification_state")
   @@schema("platform")
 }
+
+/// D-256: what a resident chose to share of their rent record (an enquiry, or a letter with a verification code).
+model RentRecordShare {
+  id        String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId    String               @map("user_id") @db.Uuid
+  kind      RentRecordShareKind
+  leadId    String?              @map("lead_id") @db.Uuid
+  codeHash  Bytes?               @map("code_hash")
+  codeHint  String?              @map("code_hint")
+  expiresAt DateTime?            @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime?            @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user UserAccount  @relation("RentRecordShareUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "rent_record_share_user_id_fkey")
+  lead ListingLead? @relation(fields: [leadId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "rent_record_share_lead_id_fkey")
+
+  @@unique([leadId], map: "rent_record_share_lead_live_key", where: raw("(revoked_at IS NULL)"))
+  @@unique([codeHash], map: "rent_record_share_code_hash_key", where: raw("(code_hash IS NOT NULL)"))
+  @@index([userId, createdAt(sort: Desc)], map: "rent_record_share_user_id_idx")
+  @@map("rent_record_share")
+  @@schema("platform")
+}
+
+/// D-256: where a rent record is shared.
+enum RentRecordShareKind {
+  enquiry
+  letter
+
+  @@map("rent_record_share_kind")
+  @@schema("platform")
+}

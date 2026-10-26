@@ -164,6 +164,7 @@ model Lease {
   noticeBy                       NoticeParty?       @map("notice_by")
   noticeReasonCode               String?            @map("notice_reason_code")
   noticeEffectiveDate            DateTime?          @map("notice_effective_date") @db.Date
+  endRemindedAt                  DateTime?          @map("end_reminded_at") @db.Timestamptz(6)
   noticeEvidenceDocumentIds      String[]           @default([]) @map("notice_evidence_document_ids") @db.Uuid
   endedAt                        DateTime?          @map("ended_at") @db.Timestamptz(6)
   terminatedAt                   DateTime?          @map("terminated_at") @db.Timestamptz(6)

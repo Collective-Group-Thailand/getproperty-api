@@ -2172,6 +2172,17 @@
           "type": "https://errors.getproperty.co/rent_certificate.request_open"
         }
       },
+      "problem.rent_record.empty": {
+        "summary": "rent_record.empty",
+        "value": {
+          "code": "rent_record.empty",
+          "detail": "ยังไม่มีเดือนที่ยืนยันแล้วให้แชร์ เดือนที่จ่ายผ่าน getproperty จะขึ้นที่นี่เมื่อเลยวันครบกำหนด",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ยังไม่มีประวัติการจ่ายค่าเช่า",
+          "type": "https://errors.getproperty.co/rent_record.empty"
+        }
+      },
       "problem.service.unavailable": {
         "summary": "service.unavailable",
         "value": {
@@ -16359,6 +16370,68 @@
         ],
         "type": "object"
       },
+      "LeadRentRecordDto": {
+        "properties": {
+          "firstMonth": {
+            "example": "2025-11",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastMonth": {
+            "example": "2026-10",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "late": {
+            "description": "Months paid in full after the due date.",
+            "example": 1,
+            "type": "number"
+          },
+          "months": {
+            "description": "One row per month, newest first.",
+            "items": {
+              "$ref": "#/components/schemas/RentRecordMonthDto"
+            },
+            "type": "array"
+          },
+          "notConfirmed": {
+            "description": "Months paid in a way getproperty did not confirm (cash, a transfer the owner recorded); not counted.",
+            "example": 0,
+            "type": "number"
+          },
+          "onTime": {
+            "description": "Months paid in full by the due date (D-256).",
+            "example": 11,
+            "type": "number"
+          },
+          "outstanding": {
+            "description": "Months with money still owed past the due date.",
+            "example": 0,
+            "type": "number"
+          },
+          "sharedAt": {
+            "description": "When the prospect shared it with this enquiry.",
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "months",
+          "onTime",
+          "late",
+          "outstanding",
+          "notConfirmed",
+          "firstMonth",
+          "lastMonth",
+          "sharedAt"
+        ],
+        "type": "object"
+      },
       "LeadStateDto": {
         "properties": {
           "lostNote": {
@@ -22125,6 +22198,25 @@
         ],
         "type": "object"
       },
+      "MyRentRecordDto": {
+        "properties": {
+          "record": {
+            "$ref": "#/components/schemas/RentRecordDto"
+          },
+          "shares": {
+            "description": "Everything I shared, newest first.",
+            "items": {
+              "$ref": "#/components/schemas/RentRecordShareDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "record",
+          "shares"
+        ],
+        "type": "object"
+      },
       "NewMeterDto": {
         "properties": {
           "manufacturer": {
@@ -23658,6 +23750,17 @@
           "prospect": {
             "$ref": "#/components/schemas/LeadProspectDto"
           },
+          "rentRecord": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LeadRentRecordDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The prospect’s rent record, when they shared it with this enquiry (D-256); null otherwise."
+          },
           "state": {
             "allOf": [
               {
@@ -23708,6 +23811,7 @@
           "messages",
           "viewings",
           "leaseId",
+          "rentRecord",
           "version"
         ],
         "type": "object"
@@ -26688,6 +26792,47 @@
         ],
         "type": "object"
       },
+      "PortfolioListingRefDto": {
+        "properties": {
+          "availableFrom": {
+            "example": "2026-12-01",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "openLeads": {
+            "description": "Enquiries still open (not won or lost).",
+            "example": 3,
+            "type": "integer"
+          },
+          "slug": {
+            "example": "condo-1br-a1b2c3d4e5",
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingState"
+              }
+            ],
+            "example": "published"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "slug",
+          "availableFrom",
+          "openLeads"
+        ],
+        "type": "object"
+      },
       "PortfolioTotalsDto": {
         "properties": {
           "collected": {
@@ -26918,6 +27063,17 @@
               "null"
             ]
           },
+          "listing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PortfolioListingRefDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The unit’s latest listing and its open enquiries (D-261); null when it was never listed."
+          },
           "openServiceRequests": {
             "example": 0,
             "type": "integer"
@@ -26937,6 +27093,15 @@
           "unitNo": {
             "example": "12/345",
             "type": "string"
+          },
+          "vacantSince": {
+            "description": "A vacant unit: the day its last lease ended (D-261, the vacancy view).",
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -26955,7 +27120,9 @@
           "leaseId",
           "leaseEndDate",
           "invoice",
-          "openServiceRequests"
+          "openServiceRequests",
+          "vacantSince",
+          "listing"
         ],
         "type": "object"
       },
@@ -28906,6 +29073,35 @@
         ],
         "type": "object"
       },
+      "PublicRentRecordDto": {
+        "properties": {
+          "expiresAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "holderName": {
+            "description": "The name the holder uses on getproperty.",
+            "example": "สมศรี ใจดี",
+            "type": "string"
+          },
+          "issuedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "record": {
+            "$ref": "#/components/schemas/RentRecordDto"
+          }
+        },
+        "required": [
+          "holderName",
+          "issuedAt",
+          "expiresAt",
+          "record"
+        ],
+        "type": "object"
+      },
       "PublicShareLinkDto": {
         "properties": {
           "channel": {
@@ -30720,6 +30916,228 @@
           "rent"
         ],
         "type": "object"
+      },
+      "RentRecordDto": {
+        "properties": {
+          "firstMonth": {
+            "example": "2025-11",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastMonth": {
+            "example": "2026-10",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "late": {
+            "description": "Months paid in full after the due date.",
+            "example": 1,
+            "type": "number"
+          },
+          "months": {
+            "description": "One row per month, newest first.",
+            "items": {
+              "$ref": "#/components/schemas/RentRecordMonthDto"
+            },
+            "type": "array"
+          },
+          "notConfirmed": {
+            "description": "Months paid in a way getproperty did not confirm (cash, a transfer the owner recorded); not counted.",
+            "example": 0,
+            "type": "number"
+          },
+          "onTime": {
+            "description": "Months paid in full by the due date (D-256).",
+            "example": 11,
+            "type": "number"
+          },
+          "outstanding": {
+            "description": "Months with money still owed past the due date.",
+            "example": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "months",
+          "onTime",
+          "late",
+          "outstanding",
+          "notConfirmed",
+          "firstMonth",
+          "lastMonth"
+        ],
+        "type": "object"
+      },
+      "RentRecordLetterDto": {
+        "properties": {
+          "code": {
+            "description": "The verification code — shown once; only its hash is kept.",
+            "example": "H4N8R2K7QX",
+            "type": "string"
+          },
+          "share": {
+            "$ref": "#/components/schemas/RentRecordShareDto"
+          },
+          "verifyUrl": {
+            "description": "Where anyone with the code checks it.",
+            "example": "https://getproperty.co/rent-record/H4N8R2K7QX",
+            "type": "string"
+          }
+        },
+        "required": [
+          "share",
+          "code",
+          "verifyUrl"
+        ],
+        "type": "object"
+      },
+      "RentRecordMonthDto": {
+        "properties": {
+          "month": {
+            "description": "Month of the invoice period (Bangkok, YYYY-MM).",
+            "example": "2026-10",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RentRecordMonthStatus"
+              }
+            ],
+            "example": "on_time"
+          }
+        },
+        "required": [
+          "month",
+          "status"
+        ],
+        "type": "object"
+      },
+      "RentRecordMonthStatus": {
+        "enum": [
+          "on_time",
+          "late",
+          "outstanding"
+        ],
+        "type": "string"
+      },
+      "RentRecordShareDto": {
+        "properties": {
+          "codeHint": {
+            "description": "A letter: the last 4 characters of its code.",
+            "example": "K7QX",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RentRecordShareKind"
+              }
+            ],
+            "example": "enquiry"
+          },
+          "lead": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RentRecordShareLeadDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The enquiry it is shared with."
+          },
+          "revokedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RentRecordShareState"
+              }
+            ],
+            "example": "live"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "state",
+          "lead",
+          "codeHint",
+          "expiresAt",
+          "createdAt",
+          "revokedAt"
+        ],
+        "type": "object"
+      },
+      "RentRecordShareKind": {
+        "enum": [
+          "enquiry",
+          "letter"
+        ],
+        "type": "string"
+      },
+      "RentRecordShareLeadDto": {
+        "properties": {
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "listingTitle": {
+            "example": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+            "type": "string"
+          },
+          "ownerName": {
+            "example": "มาลี มีสุข",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "listingTitle",
+          "ownerName"
+        ],
+        "type": "object"
+      },
+      "RentRecordShareState": {
+        "enum": [
+          "live",
+          "revoked",
+          "expired"
+        ],
+        "type": "string"
       },
       "ResendResultDto": {
         "properties": {
@@ -119005,6 +119423,25 @@
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "phone": null
                   },
+                  "rentRecord": {
+                    "firstMonth": "2026-09",
+                    "lastMonth": "2026-10",
+                    "late": 1,
+                    "months": [
+                      {
+                        "month": "2026-10",
+                        "status": "on_time"
+                      },
+                      {
+                        "month": "2026-09",
+                        "status": "late"
+                      }
+                    ],
+                    "notConfirmed": 0,
+                    "onTime": 1,
+                    "outstanding": 0,
+                    "sharedAt": "2026-11-01T09:20:00+07:00"
+                  },
                   "state": "viewing_booked",
                   "termMonths": 12,
                   "version": 2,
@@ -119296,6 +119733,25 @@
                     "name": "สมศรี ใจดี",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "phone": null
+                  },
+                  "rentRecord": {
+                    "firstMonth": "2026-09",
+                    "lastMonth": "2026-10",
+                    "late": 1,
+                    "months": [
+                      {
+                        "month": "2026-10",
+                        "status": "on_time"
+                      },
+                      {
+                        "month": "2026-09",
+                        "status": "late"
+                      }
+                    ],
+                    "notConfirmed": 0,
+                    "onTime": 1,
+                    "outstanding": 0,
+                    "sharedAt": "2026-11-01T09:20:00+07:00"
                   },
                   "state": "viewing_booked",
                   "termMonths": 12,
@@ -119594,6 +120050,25 @@
                     "name": "สมศรี ใจดี",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "phone": null
+                  },
+                  "rentRecord": {
+                    "firstMonth": "2026-09",
+                    "lastMonth": "2026-10",
+                    "late": 1,
+                    "months": [
+                      {
+                        "month": "2026-10",
+                        "status": "on_time"
+                      },
+                      {
+                        "month": "2026-09",
+                        "status": "late"
+                      }
+                    ],
+                    "notConfirmed": 0,
+                    "onTime": 1,
+                    "outstanding": 0,
+                    "sharedAt": "2026-11-01T09:20:00+07:00"
                   },
                   "state": "viewing_booked",
                   "termMonths": 12,
@@ -119913,6 +120388,25 @@
                       "name": "สมศรี ใจดี",
                       "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "phone": null
+                    },
+                    "rentRecord": {
+                      "firstMonth": "2026-09",
+                      "lastMonth": "2026-10",
+                      "late": 1,
+                      "months": [
+                        {
+                          "month": "2026-10",
+                          "status": "on_time"
+                        },
+                        {
+                          "month": "2026-09",
+                          "status": "late"
+                        }
+                      ],
+                      "notConfirmed": 0,
+                      "onTime": 1,
+                      "outstanding": 0,
+                      "sharedAt": "2026-11-01T09:20:00+07:00"
                     },
                     "state": "applied",
                     "termMonths": 12,
@@ -120265,6 +120759,25 @@
                     "name": "สมศรี ใจดี",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "phone": null
+                  },
+                  "rentRecord": {
+                    "firstMonth": "2026-09",
+                    "lastMonth": "2026-10",
+                    "late": 1,
+                    "months": [
+                      {
+                        "month": "2026-10",
+                        "status": "on_time"
+                      },
+                      {
+                        "month": "2026-09",
+                        "status": "late"
+                      }
+                    ],
+                    "notConfirmed": 0,
+                    "onTime": 1,
+                    "outstanding": 0,
+                    "sharedAt": "2026-11-01T09:20:00+07:00"
                   },
                   "state": "viewing_booked",
                   "termMonths": 12,
@@ -128838,6 +129351,25 @@
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "phone": null
                   },
+                  "rentRecord": {
+                    "firstMonth": "2026-09",
+                    "lastMonth": "2026-10",
+                    "late": 1,
+                    "months": [
+                      {
+                        "month": "2026-10",
+                        "status": "on_time"
+                      },
+                      {
+                        "month": "2026-09",
+                        "status": "late"
+                      }
+                    ],
+                    "notConfirmed": 0,
+                    "onTime": 1,
+                    "outstanding": 0,
+                    "sharedAt": "2026-11-01T09:20:00+07:00"
+                  },
                   "state": "viewing_booked",
                   "termMonths": 12,
                   "version": 2,
@@ -129136,6 +129668,25 @@
                     "name": "สมศรี ใจดี",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "phone": null
+                  },
+                  "rentRecord": {
+                    "firstMonth": "2026-09",
+                    "lastMonth": "2026-10",
+                    "late": 1,
+                    "months": [
+                      {
+                        "month": "2026-10",
+                        "status": "on_time"
+                      },
+                      {
+                        "month": "2026-09",
+                        "status": "late"
+                      }
+                    ],
+                    "notConfirmed": 0,
+                    "onTime": 1,
+                    "outstanding": 0,
+                    "sharedAt": "2026-11-01T09:20:00+07:00"
                   },
                   "state": "viewing_booked",
                   "termMonths": 12,
@@ -129450,6 +130001,25 @@
                     "name": "สมศรี ใจดี",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "phone": null
+                  },
+                  "rentRecord": {
+                    "firstMonth": "2026-09",
+                    "lastMonth": "2026-10",
+                    "late": 1,
+                    "months": [
+                      {
+                        "month": "2026-10",
+                        "status": "on_time"
+                      },
+                      {
+                        "month": "2026-09",
+                        "status": "late"
+                      }
+                    ],
+                    "notConfirmed": 0,
+                    "onTime": 1,
+                    "outstanding": 0,
+                    "sharedAt": "2026-11-01T09:20:00+07:00"
                   },
                   "state": "viewing_booked",
                   "termMonths": 12,
@@ -152086,10 +152656,18 @@
                       "kind": "condo_unit",
                       "leaseEndDate": "2027-05-31",
                       "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "listing": {
+                        "availableFrom": null,
+                        "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                        "openLeads": 0,
+                        "slug": "condo-1br-a1b2c3d4e5",
+                        "state": "closed"
+                      },
                       "openServiceRequests": 0,
                       "state": "leased",
                       "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
-                      "unitNo": "12/345"
+                      "unitNo": "12/345",
+                      "vacantSince": null
                     }
                   ]
                 },
@@ -181722,6 +182300,222 @@
         "x-surface": "prospect"
       }
     },
+    "/v1/prospect/enquiries/{leadId}/rent-record": {
+      "post": {
+        "description": "The owner of the listing sees my rent record on this enquiry until I revoke it; the same enquiry again answers the live share. Explicit consent per share (PDPA, D-256); `rent_record.empty` while no month is confirmed.\n\nImplements: D-256.",
+        "operationId": "prospect.rentRecord.shareWithEnquiry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "leadId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "codeHint": null,
+                  "createdAt": "2026-11-01T09:15:00+07:00",
+                  "expiresAt": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "kind": "enquiry",
+                  "lead": {
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "listingTitle": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                    "ownerName": "มาลี มีสุข"
+                  },
+                  "revokedAt": null,
+                  "state": "live"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RentRecordShareDto"
+                }
+              }
+            },
+            "description": "Shared",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "rent_record.empty": {
+                    "$ref": "#/components/examples/problem.rent_record.empty"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `rent_record.empty`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "Share my rent record with this enquiry",
+        "tags": [
+          "prospect.rentRecord"
+        ],
+        "x-surface": "prospect"
+      }
+    },
     "/v1/prospect/listings/{slug}/enquiries": {
       "post": {
         "description": "Sends a message to the owner of a published listing. The first contact with a listing needs `consent: true` (PDPA purpose `prospect.enquiry`, `listing.consent_required` otherwise) and counts against `listing.lead.daily_limit`; later messages go into the same open enquiry. Nationality is optional (D-252).\n\nImplements: D-252, D-025.",
@@ -182865,6 +183659,538 @@
         "summary": "Verify my identity",
         "tags": [
           "prospect.identityVerification"
+        ],
+        "x-surface": "prospect"
+      }
+    },
+    "/v1/prospect/me/rent-record": {
+      "get": {
+        "description": "My rent record (D-256): months paid on time, late or still outstanding, from payments getproperty confirmed (gateway or verified slip) — facts, no score — and everything I shared, with its state.\n\nImplements: D-256.",
+        "operationId": "prospect.rentRecord.get",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "record": {
+                    "firstMonth": "2026-09",
+                    "lastMonth": "2026-10",
+                    "late": 1,
+                    "months": [
+                      {
+                        "month": "2026-10",
+                        "status": "on_time"
+                      },
+                      {
+                        "month": "2026-09",
+                        "status": "late"
+                      }
+                    ],
+                    "notConfirmed": 0,
+                    "onTime": 1,
+                    "outstanding": 0
+                  },
+                  "shares": [
+                    {
+                      "codeHint": null,
+                      "createdAt": "2026-11-01T09:15:00+07:00",
+                      "expiresAt": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "kind": "enquiry",
+                      "lead": {
+                        "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                        "listingTitle": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                        "ownerName": "มาลี มีสุข"
+                      },
+                      "revokedAt": null,
+                      "state": "live"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MyRentRecordDto"
+                }
+              }
+            },
+            "description": "Record and shares",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "My rent record",
+        "tags": [
+          "prospect.rentRecord"
+        ],
+        "x-surface": "prospect"
+      }
+    },
+    "/v1/prospect/me/rent-record/letters": {
+      "post": {
+        "description": "A letter with a verification code a next landlord can check on getproperty (valid `rent_record.letter.valid_days`). The code is shown once; I can revoke the letter at any time. `rent_record.empty` while no month is confirmed (D-256).\n\nImplements: D-256.",
+        "operationId": "prospect.rentRecord.createLetter",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "H4N8R2K7QX",
+                  "share": {
+                    "codeHint": "K7QX",
+                    "createdAt": "2026-11-01T09:15:00+07:00",
+                    "expiresAt": "2027-01-30T09:15:00+07:00",
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "kind": "letter",
+                    "lead": null,
+                    "revokedAt": null,
+                    "state": "live"
+                  },
+                  "verifyUrl": "https://getproperty.co/rent-record/H4N8R2K7QX"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RentRecordLetterDto"
+                }
+              }
+            },
+            "description": "Letter",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "rent_record.empty": {
+                    "$ref": "#/components/examples/problem.rent_record.empty"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `rent_record.empty`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "A letter with a verification code",
+        "tags": [
+          "prospect.rentRecord"
+        ],
+        "x-surface": "prospect"
+      }
+    },
+    "/v1/prospect/me/rent-record/shares/{shareId}/actions/revoke": {
+      "post": {
+        "description": "Stops sharing at once: the owner no longer sees it on the enquiry, the letter code no longer checks (D-256).\n\nImplements: D-256.",
+        "operationId": "prospect.rentRecord.revokeShare",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shareId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "codeHint": null,
+                  "createdAt": "2026-11-01T09:15:00+07:00",
+                  "expiresAt": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "kind": "enquiry",
+                  "lead": {
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "listingTitle": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                    "ownerName": "มาลี มีสุข"
+                  },
+                  "revokedAt": null,
+                  "state": "live"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RentRecordShareDto"
+                }
+              }
+            },
+            "description": "Revoked",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "Stop sharing",
+        "tags": [
+          "prospect.rentRecord"
         ],
         "x-surface": "prospect"
       }
@@ -185104,6 +186430,145 @@
         "summary": "Published prices",
         "tags": [
           "public.pricing"
+        ],
+        "x-surface": "public"
+      }
+    },
+    "/v1/public/rent-records/{code}": {
+      "get": {
+        "description": "The rent record behind a letter’s verification code while the letter is live — the holder’s name, when it was issued and until when it checks, and the facts (D-256). Revoked, expired or unknown codes are a 404.\n\nImplements: D-256.",
+        "operationId": "public.rentRecords.get",
+        "parameters": [
+          {
+            "description": "The letter’s verification code.",
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "example": "H4N8R2K7QX",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "expiresAt": "2027-01-30T09:15:00+07:00",
+                  "holderName": "สมศรี ใจดี",
+                  "issuedAt": "2026-11-01T09:15:00+07:00",
+                  "record": {
+                    "firstMonth": "2026-09",
+                    "lastMonth": "2026-10",
+                    "late": 1,
+                    "months": [
+                      {
+                        "month": "2026-10",
+                        "status": "on_time"
+                      },
+                      {
+                        "month": "2026-09",
+                        "status": "late"
+                      }
+                    ],
+                    "notConfirmed": 0,
+                    "onTime": 1,
+                    "outstanding": 0
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PublicRentRecordDto"
+                }
+              }
+            },
+            "description": "Record",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Check a rent record letter",
+        "tags": [
+          "public.rentRecords"
         ],
         "x-surface": "public"
       }
@@ -199128,6 +200593,538 @@
         "summary": "My personal data and privacy choices",
         "tags": [
           "resident.privacy"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/me/rent-record": {
+      "get": {
+        "description": "My rent record (D-256): months paid on time, late or still outstanding, from payments getproperty confirmed (gateway or verified slip) — facts, no score — and everything I shared, with its state.\n\nImplements: D-256.",
+        "operationId": "resident.rentRecord.get",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "record": {
+                    "firstMonth": "2026-09",
+                    "lastMonth": "2026-10",
+                    "late": 1,
+                    "months": [
+                      {
+                        "month": "2026-10",
+                        "status": "on_time"
+                      },
+                      {
+                        "month": "2026-09",
+                        "status": "late"
+                      }
+                    ],
+                    "notConfirmed": 0,
+                    "onTime": 1,
+                    "outstanding": 0
+                  },
+                  "shares": [
+                    {
+                      "codeHint": null,
+                      "createdAt": "2026-11-01T09:15:00+07:00",
+                      "expiresAt": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "kind": "enquiry",
+                      "lead": {
+                        "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                        "listingTitle": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                        "ownerName": "มาลี มีสุข"
+                      },
+                      "revokedAt": null,
+                      "state": "live"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MyRentRecordDto"
+                }
+              }
+            },
+            "description": "Record and shares",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "My rent record",
+        "tags": [
+          "resident.rentRecord"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/me/rent-record/letters": {
+      "post": {
+        "description": "A letter with a verification code a next landlord can check on getproperty (valid `rent_record.letter.valid_days`). The code is shown once; I can revoke the letter at any time. `rent_record.empty` while no month is confirmed (D-256).\n\nImplements: D-256.",
+        "operationId": "resident.rentRecord.createLetter",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "H4N8R2K7QX",
+                  "share": {
+                    "codeHint": "K7QX",
+                    "createdAt": "2026-11-01T09:15:00+07:00",
+                    "expiresAt": "2027-01-30T09:15:00+07:00",
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "kind": "letter",
+                    "lead": null,
+                    "revokedAt": null,
+                    "state": "live"
+                  },
+                  "verifyUrl": "https://getproperty.co/rent-record/H4N8R2K7QX"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RentRecordLetterDto"
+                }
+              }
+            },
+            "description": "Letter",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "rent_record.empty": {
+                    "$ref": "#/components/examples/problem.rent_record.empty"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `rent_record.empty`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "A letter with a verification code",
+        "tags": [
+          "resident.rentRecord"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/me/rent-record/shares/{shareId}/actions/revoke": {
+      "post": {
+        "description": "Stops sharing at once: the owner no longer sees it on the enquiry, the letter code no longer checks (D-256).\n\nImplements: D-256.",
+        "operationId": "resident.rentRecord.revokeShare",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "shareId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "codeHint": null,
+                  "createdAt": "2026-11-01T09:15:00+07:00",
+                  "expiresAt": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "kind": "enquiry",
+                  "lead": {
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "listingTitle": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                    "ownerName": "มาลี มีสุข"
+                  },
+                  "revokedAt": null,
+                  "state": "live"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RentRecordShareDto"
+                }
+              }
+            },
+            "description": "Revoked",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Stop sharing",
+        "tags": [
+          "resident.rentRecord"
         ],
         "x-surface": "resident"
       }
@@ -230246,6 +232243,10 @@
       "name": "prospect.me"
     },
     {
+      "description": "My rent record, shared with an enquiry or as a letter (D-256).",
+      "name": "prospect.rentRecord"
+    },
+    {
       "description": "Prospects (getproperty-liff and the public listing pages of getproperty-web, B7.3) — people looking for a place to rent: enquiries about a listing, viewings, my enquiries (`prospect` audience, D-252, D-255). System: ping.",
       "name": "prospect.system"
     },
@@ -230264,6 +232265,10 @@
     {
       "description": "Published prices an operator pays getproperty: the shared LINE OA’s messages (D-254).",
       "name": "public.pricing"
+    },
+    {
+      "description": "Check a rent record letter by its verification code (D-256).",
+      "name": "public.rentRecords"
     },
     {
       "description": "Short links of the listing share kit: open one to reach the listing (D-268).",
@@ -230364,6 +232369,10 @@
     {
       "description": "Realtime auth and the server-sent events stream (contract §6).",
       "name": "resident.realtime"
+    },
+    {
+      "description": "My rent record and what I share of it (D-256).",
+      "name": "resident.rentRecord"
     },
     {
       "description": "Reporting a problem of my unit with photos, following it and rating the repair (B5.1, D-072).",

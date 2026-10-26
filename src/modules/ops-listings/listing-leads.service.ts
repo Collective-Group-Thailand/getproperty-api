@@ -1108,7 +1108,7 @@ export class ListingLeadsService {
    * reminded once (both sides); each enquiry still `new` after `listing.lead.nudge_after_hours` reminds the owner
    * once. Returns how many reminders were raised.
    */
-  async remind(): Promise<{ viewings: number; leads: number; relists: number }> {
+  async remind(): Promise<{ viewings: number; leads: number; relists: number; leaseEnds: number }> {
     const now = this.clock.now();
     const [hoursBefore, nudgeHours] = await Promise.all([
       this.settings.valueAt<number>('listing.viewing.reminder_hours_before', now),
@@ -1167,7 +1167,12 @@ export class ListingLeadsService {
           leads += 1;
         }
       }
-      return { viewings, leads, relists: await this.relistReminders(tx, now) };
+      return {
+        viewings,
+        leads,
+        relists: await this.relistReminders(tx, now),
+        leaseEnds: await this.leaseEndReminders(tx, now),
+      };
     });
   }
 
@@ -1205,6 +1210,61 @@ export class ListingLeadsService {
           unitId: listing.unitId,
           leaseId: listing.lease?.id ?? null,
           endDate: listing.lease?.endDate.toISOString().slice(0, 10) ?? null,
+        },
+      });
+      count += 1;
+    }
+    return count;
+  }
+
+  /**
+   * D-261 (no empty months, B7.11): every landlord lease in force that ends within `lease.end.remind_days_before`
+   * reminds the resident once to talk about a renewal — and the owner too, unless the lease came from a listing
+   * (`listing.relist_due` already tells them). A lease with notice given already has its end decided: no reminder.
+   */
+  private async leaseEndReminders(tx: Tx, now: Date): Promise<number> {
+    const days = await this.settings.valueAt<number>('lease.end.remind_days_before', now);
+    if (!days || days <= 0) return 0;
+    const today = bangkokDate(now);
+    const until = new Date(startOfBangkokDay(today).getTime() + days * 86_400_000);
+    const due = await tx.lease.findMany({
+      where: {
+        status: 'active',
+        endRemindedAt: null,
+        noticeEffectiveDate: null,
+        endDate: { gte: new Date(`${today}T00:00:00Z`), lte: until },
+        tenant: { type: 'landlord' },
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        buildingId: true,
+        unitId: true,
+        lesseePartyId: true,
+        endDate: true,
+      },
+      take: 500,
+    });
+    let count = 0;
+    for (const lease of due) {
+      const claimed = await tx.lease.updateMany({
+        where: { id: lease.id, endRemindedAt: null },
+        data: { endRemindedAt: now },
+      });
+      if (!claimed.count) continue;
+      const fromListing = await tx.listing.count({ where: { leaseId: lease.id } });
+      await this.events.record(tx, {
+        type: 'lease.end_approaching',
+        aggregateType: 'lease',
+        aggregateId: lease.id,
+        tenantId: lease.tenantId,
+        buildingId: lease.buildingId,
+        payload: {
+          leaseId: lease.id,
+          unitId: lease.unitId,
+          lesseePartyId: lease.lesseePartyId,
+          endDate: lease.endDate.toISOString().slice(0, 10),
+          fromListing: fromListing > 0,
         },
       });
       count += 1;

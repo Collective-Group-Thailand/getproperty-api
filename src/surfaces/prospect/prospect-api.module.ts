@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ProspectIdentityVerificationController } from '../shared/identity-verification.controllers';
 import { ProspectMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
+import { ProspectRentRecordController } from '../shared/rent-record.controllers';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import { ProspectEnquiriesController } from './prospect.controller';
@@ -14,6 +15,7 @@ import { ProspectEnquiriesController } from './prospect.controller';
     ProspectMeController,
     ProspectEnquiriesController,
     ProspectIdentityVerificationController,
+    ProspectRentRecordController,
   ],
   providers: [MeService],
 })

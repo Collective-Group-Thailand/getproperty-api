@@ -34,6 +34,7 @@ import { LeaseNoticesService } from './ops-leases/lease-notices.service';
 import { LeaseStampDutyService } from './ops-leases/lease-stamp-duty.service';
 import { LeasesService } from './ops-leases/leases.service';
 import { RentCertificatesService } from './ops-leases/rent-certificates.service';
+import { RentRecordService } from './ops-leases/rent-record.service';
 import { ResidentLeasesService } from './ops-leases/resident-leases.service';
 import { ListingNotifications } from './ops-listings/listing.notifications';
 import { ListingLeaseHooks } from './ops-listings/listing.subscribers';
@@ -111,6 +112,7 @@ const SERVICES = [
   LeaseStampDutyService,
   LeaseNoticesService,
   RentCertificatesService,
+  RentRecordService,
   IncomeSummariesService,
   ResidentLeasesService,
   DepositDocuments,

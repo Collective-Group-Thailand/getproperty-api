@@ -1160,5 +1160,11 @@
       "title": "Online identity verification is not available yet",
       "detail": "Identity verification is not open yet. Please try again later."
     }
+  },
+  "rent_record": {
+    "empty": {
+      "title": "No rent record yet",
+      "detail": "There is no confirmed month to share yet: months paid through getproperty appear here once their due date has passed."
+    }
   }
 }

@@ -311,7 +311,7 @@ export class PortfolioService {
         orderBy: [{ createdAt: 'asc' }],
       });
       const ids = units.map((u) => u.id);
-      const [details, leases, invoices, requests, overdue] = await Promise.all([
+      const [details, leases, invoices, requests, overdue, listings, ended] = await Promise.all([
         tx.unitDetail.findMany({ where: { unitId: { in: ids } } }),
         tx.lease.findMany({
           where: { tenantId: ctx.tenantId, unitId: { in: ids }, status: { in: [...OPEN_LEASES] } },
@@ -336,7 +336,33 @@ export class PortfolioService {
           where: { tenantId: ctx.tenantId, status: 'overdue' },
           _sum: { balance: true },
         }),
+        // D-261: the latest listing of each unit and its open enquiries (the vacancy view)
+        tx.listing.findMany({
+          where: { tenantId: ctx.tenantId, unitId: { in: ids } },
+          select: {
+            id: true,
+            unitId: true,
+            state: true,
+            slug: true,
+            availableFrom: true,
+            _count: { select: { leads: { where: { state: { notIn: ['won', 'lost'] } } } } },
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        tx.lease.findMany({
+          where: { tenantId: ctx.tenantId, unitId: { in: ids }, status: { in: ['ended', 'terminated'] } },
+          select: { unitId: true, endDate: true, noticeEffectiveDate: true },
+          orderBy: { endDate: 'desc' },
+        }),
       ]);
+      const listing = new Map<string, (typeof listings)[number]>();
+      for (const row of listings) if (!listing.has(row.unitId)) listing.set(row.unitId, row);
+      const lastEnd = new Map<string, Date>();
+      for (const row of ended) {
+        const end = row.noticeEffectiveDate ?? row.endDate;
+        const before = lastEnd.get(row.unitId);
+        if (!before || end > before) lastEnd.set(row.unitId, end);
+      }
       const detail = new Map(details.map((d) => [d.unitId, d]));
       const lease = new Map<string, (typeof leases)[number]>();
       for (const l of leases) if (!lease.has(l.unitId)) lease.set(l.unitId, l);
@@ -377,6 +403,19 @@ export class PortfolioService {
               ? { id: i.id, status: i.status, total: i.total.toFixed(2), balance: i.balance.toFixed(2) }
               : null,
             openServiceRequests: repairs.get(u.id) ?? 0,
+            vacantSince: !l && lastEnd.has(u.id) ? bangkokDate(lastEnd.get(u.id)!) : null,
+            listing: (() => {
+              const row = listing.get(u.id);
+              return row
+                ? {
+                    id: row.id,
+                    state: row.state,
+                    slug: row.slug,
+                    availableFrom: row.availableFrom ? row.availableFrom.toISOString().slice(0, 10) : null,
+                    openLeads: row._count.leads,
+                  }
+                : null;
+            })(),
           };
         }),
         totals: {
