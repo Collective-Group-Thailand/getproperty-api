@@ -156,6 +156,9 @@ export class LeadProspectDto {
 
   @ApiProperty({ example: true, description: 'Replies reach the prospect in LINE.' })
   lineLinked!: boolean;
+
+  @ApiProperty({ example: false, description: 'The prospect verified their identity (e-KYC, D-267).' })
+  identityVerified!: boolean;
 }
 
 export class OwnerLeadSummaryDto {

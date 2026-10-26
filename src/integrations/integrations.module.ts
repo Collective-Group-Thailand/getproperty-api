@@ -45,6 +45,8 @@ import { Global, Inject, Injectable, Logger, Module, type OnApplicationShutdown 
 
 import { E_STAMP, type EStampPort, EStampUnavailable } from './e-stamp/e-stamp.port';
 import { FakeEStamp } from './e-stamp/fake-e-stamp';
+import { EKYC, type EkycPort, EkycUnavailable } from './ekyc/ekyc.port';
+import { FAKE_EKYC_SECRET, FakeEkyc } from './ekyc/fake-ekyc';
 import { EMAIL, type EmailPort } from './email/email.port';
 import { FakeEmail } from './email/fake-email';
 import { SesEmailAdapter } from './email/ses-email.adapter';
@@ -217,6 +219,18 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
       },
     },
     {
+      // B7.10 / D-267 / O-021: identity verification — off until a provider is chosen
+      provide: EKYC,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig): EkycPort =>
+        config.get('EKYC_MODE') === 'fake'
+          ? new FakeEkyc(
+              config.get('PUBLIC_API_BASE_URL'),
+              config.get('EKYC_WEBHOOK_SECRET') ?? FAKE_EKYC_SECRET,
+            )
+          : new EkycUnavailable(),
+    },
+    {
       // B7.5 / O-019: e-Stamp Duty — off until an adapter is configured
       provide: E_STAMP,
       inject: [AppConfig],
@@ -348,6 +362,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
     SLIP_VERIFIER,
     PDF_RENDERER,
     E_STAMP,
+    EKYC,
     SECRETS_PROVIDER,
     MQTT_CLIENT,
     AI_GATEWAY,

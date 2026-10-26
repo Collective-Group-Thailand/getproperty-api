@@ -819,6 +819,17 @@
           "type": "https://errors.getproperty.co/dsr.tenant_controlled"
         }
       },
+      "problem.ekyc.unavailable": {
+        "summary": "ekyc.unavailable",
+        "value": {
+          "code": "ekyc.unavailable",
+          "detail": "ระบบยืนยันตัวตนยังไม่เปิดให้บริการ โปรดลองใหม่ภายหลัง",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 503,
+          "title": "ยังยืนยันตัวตนออนไลน์ไม่ได้",
+          "type": "https://errors.getproperty.co/ekyc.unavailable"
+        }
+      },
       "problem.etax.invalid_state": {
         "summary": "etax.invalid_state",
         "value": {
@@ -1037,6 +1048,17 @@
           "status": 422,
           "title": "Idempotency-Key ถูกใช้ซ้ำ",
           "type": "https://errors.getproperty.co/idempotency.key_reused"
+        }
+      },
+      "problem.identity.already_verified": {
+        "summary": "identity.already_verified",
+        "value": {
+          "code": "identity.already_verified",
+          "detail": "บัญชีนี้ยืนยันตัวตนแล้ว ไม่ต้องทำซ้ำ",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ยืนยันตัวตนแล้ว",
+          "type": "https://errors.getproperty.co/identity.already_verified"
         }
       },
       "problem.import.file_invalid": {
@@ -10333,6 +10355,28 @@
         ],
         "type": "object"
       },
+      "EkycWebhookAckDto": {
+        "properties": {
+          "handled": {
+            "description": "false when the attempt was already decided (a repeated delivery).",
+            "example": true,
+            "type": "boolean"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IdentityVerificationState"
+              }
+            ],
+            "example": "approved"
+          }
+        },
+        "required": [
+          "handled",
+          "state"
+        ],
+        "type": "object"
+      },
       "EmergencyContactDto": {
         "properties": {
           "name": {
@@ -12697,6 +12741,122 @@
           "line",
           "firebase_google",
           "firebase_apple"
+        ],
+        "type": "string"
+      },
+      "IdentityVerificationAttemptDto": {
+        "properties": {
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "description": "A pending attempt expires then.",
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "failureReason": {
+            "description": "Why the provider did not verify me.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IdentityVerificationState"
+              }
+            ],
+            "example": "pending"
+          },
+          "verificationUrl": {
+            "description": "While pending: the provider’s page where I verify (ID card and selfie); null otherwise.",
+            "example": "https://ekyc.example.com/session/abc",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "verificationUrl",
+          "failureReason",
+          "createdAt",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
+      "IdentityVerificationDto": {
+        "properties": {
+          "available": {
+            "description": "Whether online identity verification is offered now (a provider is configured, O-021).",
+            "example": true,
+            "type": "boolean"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdentityVerificationAttemptDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "My latest attempt."
+          },
+          "verified": {
+            "description": "My identity is verified (D-267): the badge shows.",
+            "example": false,
+            "type": "boolean"
+          },
+          "verifiedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "verified",
+          "verifiedAt",
+          "available",
+          "latest"
+        ],
+        "type": "object"
+      },
+      "IdentityVerificationStartDto": {
+        "properties": {
+          "language": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Language"
+              }
+            ],
+            "description": "Language of the provider’s page.",
+            "example": "th"
+          }
+        },
+        "type": "object"
+      },
+      "IdentityVerificationState": {
+        "enum": [
+          "pending",
+          "approved",
+          "rejected",
+          "expired"
         ],
         "type": "string"
       },
@@ -16008,7 +16168,7 @@
         "type": "object"
       },
       "Language": {
-        "description": "Language of the text shown.",
+        "description": "Language of the provider’s page.",
         "enum": [
           "th",
           "en"
@@ -16161,6 +16321,11 @@
       },
       "LeadProspectDto": {
         "properties": {
+          "identityVerified": {
+            "description": "The prospect verified their identity (e-KYC, D-267).",
+            "example": false,
+            "type": "boolean"
+          },
           "lineLinked": {
             "description": "Replies reach the prospect in LINE.",
             "example": true,
@@ -16189,7 +16354,8 @@
           "partyId",
           "name",
           "phone",
-          "lineLinked"
+          "lineLinked",
+          "identityVerified"
         ],
         "type": "object"
       },
@@ -28096,6 +28262,11 @@
             "example": "มาลี มีสุข",
             "type": "string"
           },
+          "ownerIdentityVerified": {
+            "description": "The owner verified their identity at the e-KYC provider (D-267); a second badge beside the ownership one.",
+            "example": false,
+            "type": "boolean"
+          },
           "ownerProfileSlug": {
             "description": "The owner’s public page `GET /v1/public/owners/{slug}` (D-274) when it is open (verified and not switched off); else null.",
             "example": "landlord-0a1b2c3d4e",
@@ -28196,6 +28367,7 @@
           "nearestTransit",
           "cover",
           "verifiedOwner",
+          "ownerIdentityVerified",
           "publishedAt",
           "description",
           "facilities",
@@ -28318,6 +28490,11 @@
               }
             ]
           },
+          "ownerIdentityVerified": {
+            "description": "The owner verified their identity at the e-KYC provider (D-267); a second badge beside the ownership one.",
+            "example": false,
+            "type": "boolean"
+          },
           "petsAllowed": {
             "type": "boolean"
           },
@@ -28389,6 +28566,7 @@
           "nearestTransit",
           "cover",
           "verifiedOwner",
+          "ownerIdentityVerified",
           "publishedAt"
         ],
         "type": "object"
@@ -28509,6 +28687,11 @@
       },
       "PublicOwnerVerificationDto": {
         "properties": {
+          "identityVerified": {
+            "description": "The owner’s identity is verified too (e-KYC, D-267).",
+            "example": true,
+            "type": "boolean"
+          },
           "level": {
             "allOf": [
               {
@@ -28525,7 +28708,8 @@
         },
         "required": [
           "level",
-          "verifiedUnits"
+          "verifiedUnits",
+          "identityVerified"
         ],
         "type": "object"
       },
@@ -118569,6 +118753,7 @@
                       "state": "requested"
                     },
                     "prospect": {
+                      "identityVerified": true,
                       "lineLinked": true,
                       "name": "สมศรี ใจดี",
                       "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -118814,6 +118999,7 @@
                   "notes": null,
                   "occupants": 2,
                   "prospect": {
+                    "identityVerified": true,
                     "lineLinked": true,
                     "name": "สมศรี ใจดี",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -119105,6 +119291,7 @@
                   "notes": null,
                   "occupants": 2,
                   "prospect": {
+                    "identityVerified": true,
                     "lineLinked": true,
                     "name": "สมศรี ใจดี",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -119402,6 +119589,7 @@
                   "notes": null,
                   "occupants": 2,
                   "prospect": {
+                    "identityVerified": true,
                     "lineLinked": true,
                     "name": "สมศรี ใจดี",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -119720,6 +119908,7 @@
                     "notes": null,
                     "occupants": 2,
                     "prospect": {
+                      "identityVerified": true,
                       "lineLinked": true,
                       "name": "สมศรี ใจดี",
                       "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -120071,6 +120260,7 @@
                   "notes": null,
                   "occupants": 2,
                   "prospect": {
+                    "identityVerified": true,
                     "lineLinked": true,
                     "name": "สมศรี ใจดี",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -128642,6 +128832,7 @@
                   "notes": null,
                   "occupants": 2,
                   "prospect": {
+                    "identityVerified": true,
                     "lineLinked": true,
                     "name": "สมศรี ใจดี",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -128940,6 +129131,7 @@
                   "notes": null,
                   "occupants": 2,
                   "prospect": {
+                    "identityVerified": true,
                     "lineLinked": true,
                     "name": "สมศรี ใจดี",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -129253,6 +129445,7 @@
                   "notes": null,
                   "occupants": 2,
                   "prospect": {
+                    "identityVerified": true,
                     "lineLinked": true,
                     "name": "สมศรี ใจดี",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -138375,6 +138568,435 @@
         "summary": "Remove a Google or Apple sign-in",
         "tags": [
           "owner.identities"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/me/identity-verification": {
+      "get": {
+        "description": "Whether my identity is verified and my latest attempt (D-267). Only the outcome is kept — never my ID number, photos or date of birth.\n\nImplements: D-267.",
+        "operationId": "owner.identityVerification.get",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "available": true,
+                  "latest": {
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "expiresAt": "2026-11-01T00:15:00+07:00",
+                    "failureReason": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "state": "pending",
+                    "verificationUrl": "https://ekyc.example.com/session/abc"
+                  },
+                  "verified": false,
+                  "verifiedAt": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityVerificationDto"
+                }
+              }
+            },
+            "description": "Status",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "My identity verification",
+        "tags": [
+          "owner.identityVerification"
+        ],
+        "x-surface": "owner"
+      },
+      "post": {
+        "description": "Opens a verification at the licensed e-KYC provider (ID card and selfie; O-021) and answers its page to open; a pending attempt is answered again. `identity.already_verified` once verified; `ekyc.unavailable` while no provider is configured. The provider’s signed webhook decides (D-267).\n\nImplements: D-267.",
+        "operationId": "owner.identityVerification.start",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "language": "th"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/IdentityVerificationStartDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "available": true,
+                  "latest": {
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "expiresAt": "2026-11-01T00:15:00+07:00",
+                    "failureReason": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "state": "pending",
+                    "verificationUrl": "https://ekyc.example.com/session/abc"
+                  },
+                  "verified": false,
+                  "verifiedAt": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityVerificationDto"
+                }
+              }
+            },
+            "description": "Started",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.malformed_json": {
+                    "$ref": "#/components/examples/problem.http.malformed_json"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.malformed_json`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "identity.already_verified": {
+                    "$ref": "#/components/examples/problem.identity.already_verified"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `identity.already_verified`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "ekyc.unavailable": {
+                    "$ref": "#/components/examples/problem.ekyc.unavailable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `ekyc.unavailable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Verify my identity",
+        "tags": [
+          "owner.identityVerification"
         ],
         "x-surface": "owner"
       }
@@ -181859,6 +182481,394 @@
         "x-surface": "prospect"
       }
     },
+    "/v1/prospect/me/identity-verification": {
+      "get": {
+        "description": "Whether my identity is verified and my latest attempt (D-267). Only the outcome is kept — never my ID number, photos or date of birth.\n\nImplements: D-267.",
+        "operationId": "prospect.identityVerification.get",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "available": true,
+                  "latest": {
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "expiresAt": "2026-11-01T00:15:00+07:00",
+                    "failureReason": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "state": "pending",
+                    "verificationUrl": "https://ekyc.example.com/session/abc"
+                  },
+                  "verified": false,
+                  "verifiedAt": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityVerificationDto"
+                }
+              }
+            },
+            "description": "Status",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "My identity verification",
+        "tags": [
+          "prospect.identityVerification"
+        ],
+        "x-surface": "prospect"
+      },
+      "post": {
+        "description": "Opens a verification at the licensed e-KYC provider (ID card and selfie; O-021) and answers its page to open; a pending attempt is answered again. `identity.already_verified` once verified; `ekyc.unavailable` while no provider is configured. The provider’s signed webhook decides (D-267).\n\nImplements: D-267.",
+        "operationId": "prospect.identityVerification.start",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "language": "th"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/IdentityVerificationStartDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "available": true,
+                  "latest": {
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "expiresAt": "2026-11-01T00:15:00+07:00",
+                    "failureReason": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "state": "pending",
+                    "verificationUrl": "https://ekyc.example.com/session/abc"
+                  },
+                  "verified": false,
+                  "verifiedAt": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityVerificationDto"
+                }
+              }
+            },
+            "description": "Started",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.malformed_json": {
+                    "$ref": "#/components/examples/problem.http.malformed_json"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.malformed_json`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "identity.already_verified": {
+                    "$ref": "#/components/examples/problem.identity.already_verified"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `identity.already_verified`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "ekyc.unavailable": {
+                    "$ref": "#/components/examples/problem.ekyc.unavailable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `ekyc.unavailable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "Verify my identity",
+        "tags": [
+          "prospect.identityVerification"
+        ],
+        "x-surface": "prospect"
+      }
+    },
     "/v1/prospect/ping": {
       "get": {
         "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `prospect` surface until its real endpoints land. Anonymous or with an `prospect` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`).\n\nImplements: D-002, ADR-0002.",
@@ -182740,6 +183750,7 @@
                         "line": "BTS สายสุขุมวิท",
                         "name": "BTS อารีย์"
                       },
+                      "ownerIdentityVerified": true,
                       "petsAllowed": false,
                       "province": "กรุงเทพมหานคร",
                       "publishedAt": "2026-11-01T10:00:00+07:00",
@@ -183100,6 +184111,7 @@
                     "name": "BTS อารีย์"
                   },
                   "ownerDisplayName": "มาลี มีสุข",
+                  "ownerIdentityVerified": true,
                   "ownerProfileSlug": "landlord-0a1b2c3d4e",
                   "petsAllowed": false,
                   "photos": [
@@ -183660,6 +184672,7 @@
                         "line": "BTS สายสุขุมวิท",
                         "name": "BTS อารีย์"
                       },
+                      "ownerIdentityVerified": true,
                       "petsAllowed": false,
                       "province": "กรุงเทพมหานคร",
                       "publishedAt": "2026-11-01T10:00:00+07:00",
@@ -183675,6 +184688,7 @@
                   "memberSince": "2026-10-25",
                   "slug": "landlord-0a1b2c3d4e",
                   "verification": {
+                    "identityVerified": true,
                     "level": "unit_ownership",
                     "verifiedUnits": 2
                   }
@@ -197140,6 +198154,394 @@
         "summary": "Remove a Google or Apple sign-in",
         "tags": [
           "resident.identities"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/me/identity-verification": {
+      "get": {
+        "description": "Whether my identity is verified and my latest attempt (D-267). Only the outcome is kept — never my ID number, photos or date of birth.\n\nImplements: D-267.",
+        "operationId": "resident.identityVerification.get",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "available": true,
+                  "latest": {
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "expiresAt": "2026-11-01T00:15:00+07:00",
+                    "failureReason": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "state": "pending",
+                    "verificationUrl": "https://ekyc.example.com/session/abc"
+                  },
+                  "verified": false,
+                  "verifiedAt": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityVerificationDto"
+                }
+              }
+            },
+            "description": "Status",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "My identity verification",
+        "tags": [
+          "resident.identityVerification"
+        ],
+        "x-surface": "resident"
+      },
+      "post": {
+        "description": "Opens a verification at the licensed e-KYC provider (ID card and selfie; O-021) and answers its page to open; a pending attempt is answered again. `identity.already_verified` once verified; `ekyc.unavailable` while no provider is configured. The provider’s signed webhook decides (D-267).\n\nImplements: D-267.",
+        "operationId": "resident.identityVerification.start",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "language": "th"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/IdentityVerificationStartDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "available": true,
+                  "latest": {
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "expiresAt": "2026-11-01T00:15:00+07:00",
+                    "failureReason": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "state": "pending",
+                    "verificationUrl": "https://ekyc.example.com/session/abc"
+                  },
+                  "verified": false,
+                  "verifiedAt": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityVerificationDto"
+                }
+              }
+            },
+            "description": "Started",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.malformed_json": {
+                    "$ref": "#/components/examples/problem.http.malformed_json"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.malformed_json`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "identity.already_verified": {
+                    "$ref": "#/components/examples/problem.identity.already_verified"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `identity.already_verified`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "ekyc.unavailable": {
+                    "$ref": "#/components/examples/problem.ekyc.unavailable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `ekyc.unavailable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Verify my identity",
+        "tags": [
+          "resident.identityVerification"
         ],
         "x-surface": "resident"
       }
@@ -227121,6 +228523,214 @@
         "x-surface": "technician"
       }
     },
+    "/webhooks/ekyc/{provider}": {
+      "post": {
+        "description": "The provider tells the outcome of a verification session: `approved` makes the person identity-verified, `rejected` keeps the reason. Signed (401 `webhook.signature_invalid` otherwise); a repeated delivery is answered `handled: false` (D-267).\n\nImplements: D-267.",
+        "operationId": "webhooks.ekyc.callback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Hex HMAC-SHA256 of the raw body with the shared secret (`EKYC_WEBHOOK_SECRET`).",
+            "in": "header",
+            "name": "X-Ekyc-Signature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "approved": {
+                  "summary": "Verified",
+                  "value": {
+                    "outcome": "approved",
+                    "sessionId": "sess_0123456789"
+                  }
+                }
+              },
+              "schema": {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            }
+          },
+          "description": "`sessionId`, `outcome` (approved | rejected), `reason` (optional).",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "handled": true,
+                  "state": "approved"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/EkycWebhookAckDto"
+                }
+              }
+            },
+            "description": "Accepted",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.malformed_json": {
+                    "$ref": "#/components/examples/problem.http.malformed_json"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.malformed_json`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "webhook.signature_invalid": {
+                    "$ref": "#/components/examples/problem.webhook.signature_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `webhook.signature_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "webhook.malformed": {
+                    "$ref": "#/components/examples/problem.webhook.malformed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `webhook.malformed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "e-KYC outcome",
+        "tags": [
+          "webhooks.ekyc"
+        ],
+        "x-surface": "webhooks"
+      }
+    },
     "/webhooks/integration/{platform}": {
       "post": {
         "description": "Cross-product events (D-238, D-153): HMAC-signed over the raw body (401 `webhook.signature_invalid`), stored once per idempotency key, validated against the `@collective/asset-core` contract and applied by its consumer — `warranty.defect.closed` today (B5.1). Answers 200 once stored, including refused and duplicate events. Senders call it over the box’s docker network; only correctly signed requests are accepted wherever it is reached from.\n\nImplements: D-238, D-153.",
@@ -228440,6 +230050,10 @@
       "name": "owner.identities"
     },
     {
+      "description": "Verify my identity at the licensed e-KYC provider for the verified badge (D-267).",
+      "name": "owner.identityVerification"
+    },
+    {
       "description": "My pilot KPIs, operating insights from the analytics rollups and anonymised benchmarks (B6.3, D-083, D-214).",
       "name": "owner.insights"
     },
@@ -228624,6 +230238,10 @@
       "name": "prospect.enquiries"
     },
     {
+      "description": "Verify my identity so owners see it on my enquiries (optional, D-267).",
+      "name": "prospect.identityVerification"
+    },
+    {
       "description": "Who I am as a prospect: open enquiries and upcoming viewings (B7.3, D-252).",
       "name": "prospect.me"
     },
@@ -228690,6 +230308,10 @@
     {
       "description": "My ways to open the resident app outside LINE: phone, Google, Apple (D-255, D-283).",
       "name": "resident.identities"
+    },
+    {
+      "description": "Verify my identity at the licensed e-KYC provider (optional, D-267).",
+      "name": "resident.identityVerification"
     },
     {
       "description": "My move-in and move-out reports: lines, photos, the PDF, my countersignature (L5 5.2, D-253).",
@@ -228848,6 +230470,10 @@
       "name": "technician.workOrders"
     },
     {
+      "description": "Signed outcomes of identity verification sessions from the e-KYC provider (D-267).",
+      "name": "webhooks.ekyc"
+    },
+    {
       "description": "Integration events from other Collective products (getbuild / getpop, getpack) over the box network, HMAC-signed (D-238).",
       "name": "webhooks.integration"
     },
@@ -228865,6 +230491,9 @@
     }
   ],
   "webhooks": {
+    "ekyc.callback": {
+      "$ref": "#/paths/~1webhooks~1ekyc~1%7Bprovider%7D"
+    },
     "integration.receive": {
       "$ref": "#/paths/~1webhooks~1integration~1%7Bplatform%7D"
     },

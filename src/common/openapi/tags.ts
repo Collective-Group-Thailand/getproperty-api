@@ -260,6 +260,11 @@ export const API_TAGS: Record<string, string> = {
     'PLACEHOLDER provider callback shape (payload, signature header, expected response); the real providers (payment QR, slip verification, LINE) arrive in B4.',
   'webhooks.payments':
     'Signed payment confirmations from KBank, SCB and Opn (O-001) for each landlord’s own merchant account (D-042, ADR-0008).',
+  'owner.identityVerification':
+    'Verify my identity at the licensed e-KYC provider for the verified badge (D-267).',
+  'resident.identityVerification': 'Verify my identity at the licensed e-KYC provider (optional, D-267).',
+  'prospect.identityVerification': 'Verify my identity so owners see it on my enquiries (optional, D-267).',
+  'webhooks.ekyc': 'Signed outcomes of identity verification sessions from the e-KYC provider (D-267).',
   'webhooks.line':
     'Signed LINE Messaging API events for an operator’s own LINE Official Account: follow, message, unfollow (D-254).',
   // contract requests before B6 (D-203)

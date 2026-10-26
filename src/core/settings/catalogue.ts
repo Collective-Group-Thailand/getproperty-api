@@ -106,6 +106,16 @@ export const SETTINGS: readonly SettingDef[] = [
     reason: 'seed: D-023 / legal-reference §1',
   },
   {
+    key: 'identity.verification.session_minutes',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-267 (B7.10): minutes an e-KYC session stays open; an attempt not finished by then expires and a new one can start.',
+    editableBy: ADMIN,
+    value: 60,
+    reason: 'seed: B7.10 (an hour to finish the ID card and selfie)',
+  },
+  {
     key: 'deposit.deduction.item_required_for',
     valueType: 'json',
     scopeAllowed: ['platform', 'tenant'],

@@ -137,6 +137,8 @@ export const ERROR_CODES = {
   'invitation.party_mismatch': HttpStatus.CONFLICT,
   'deposit.invalid_state': HttpStatus.CONFLICT,
   'deposit.item_required': HttpStatus.UNPROCESSABLE_ENTITY,
+  'identity.already_verified': HttpStatus.CONFLICT,
+  'ekyc.unavailable': HttpStatus.SERVICE_UNAVAILABLE,
   'deposit.refund_mismatch': HttpStatus.UNPROCESSABLE_ENTITY,
   'inspection.invalid_state': HttpStatus.CONFLICT,
   'inspection.exists': HttpStatus.CONFLICT,
