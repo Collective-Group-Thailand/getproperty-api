@@ -197,6 +197,25 @@ describe('listing share kit (B7.9 part 2, real PostgreSQL)', () => {
       .set(bearer(token))
       .send({ message: 'x', consent: false, channel: 'tiktok' })
       .expect(422);
+
+    // D-267: an account number never travels in the chat, either way; a phone number does
+    const scam = await t.http
+      .post(`/v1/owner/leads/${lead.body.id}/messages`)
+      .set(as())
+      .send({ body: 'โอนมัดจำมาที่ 123-4-56789-0 ก่อนนะคะ' });
+    expect(scam.status).toBe(422);
+    expect(scam.body.code).toBe('listing.bank_account_in_message');
+    const asked = await t.http
+      .post(`/v1/prospect/listings/${listing.slug}/enquiries`)
+      .set(bearer(token))
+      .send({ message: 'บัญชีผม 1234567890 คืนเงินได้ไหม', consent: false })
+      .expect(422);
+    expect(asked.body.code).toBe('listing.bank_account_in_message');
+    await t.http
+      .post(`/v1/prospect/listings/${listing.slug}/enquiries`)
+      .set(bearer(token))
+      .send({ message: 'โทรหาได้ที่ 081-234-5678 ค่ะ', consent: false })
+      .expect(201);
   });
 
   it('refuses a listing that is not public and a link to one; an unknown code is 404', async () => {

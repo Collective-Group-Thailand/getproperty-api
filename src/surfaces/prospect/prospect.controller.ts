@@ -40,6 +40,7 @@ export class ProspectEnquiriesController {
   @ApiJsonBody(EnquiryCreateDto, { ...TERMS, message: 'ห้องยังว่างไหมคะ อยากเข้าดูเสาร์นี้' })
   @ApiSuccess(201, { description: 'Sent', type: ProspectEnquiryDto, example: PROSPECT_ENQUIRY_EXAMPLE })
   @ApiStandardErrors(
+    'listing.bank_account_in_message',
     'validation.failed',
     'http.bad_request',
     'http.not_found',
@@ -63,6 +64,7 @@ export class ProspectEnquiriesController {
   @ApiJsonBody(ViewingRequestDto, { ...TERMS, startsAt: '2026-11-07T10:00:00+07:00', note: 'จะมากับแฟนค่ะ' })
   @ApiSuccess(201, { description: 'Requested', type: ProspectEnquiryDto, example: PROSPECT_ENQUIRY_EXAMPLE })
   @ApiStandardErrors(
+    'listing.bank_account_in_message',
     'validation.failed',
     'http.bad_request',
     'http.not_found',
@@ -123,7 +125,13 @@ export class ProspectEnquiriesController {
   })
   @ApiJsonBody(LeadMessageCreateDto, { body: 'ขอบคุณค่ะ เจอกันเสาร์นี้นะคะ' })
   @ApiSuccess(201, { description: 'Sent', type: ProspectEnquiryDto, example: PROSPECT_ENQUIRY_EXAMPLE })
-  @ApiStandardErrors('validation.failed', 'http.bad_request', 'http.not_found', 'listing.lead_invalid_state')
+  @ApiStandardErrors(
+    'listing.bank_account_in_message',
+    'validation.failed',
+    'http.bad_request',
+    'http.not_found',
+    'listing.lead_invalid_state',
+  )
   async write(
     @Param('leadId', ParseUUIDPipe) id: string,
     @Body() body: LeadMessageCreateDto,

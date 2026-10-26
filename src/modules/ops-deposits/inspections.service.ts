@@ -460,7 +460,13 @@ export class InspectionsService extends TenantScopedRepository {
    * and move-out reports are often signed apart): the signature is stored beside the report, the inspection becomes
    * `signed`, the owner hears it. The report PDF itself is not re-issued (its number and content stay as completed).
    */
-  async countersign(ctx: TenantContext, id: string, partyId: string, png: Buffer): Promise<InspectionRow> {
+  async countersign(
+    ctx: TenantContext,
+    id: string,
+    partyId: string,
+    png: Buffer,
+    note: { note: string | null; photoDocumentIds: string[] } = { note: null, photoDocumentIds: [] },
+  ): Promise<InspectionRow> {
     return this.db.tenant(ctx, async (tx) => {
       const inspection = await this.load(tx, ctx, id);
       if (inspection.status !== 'completed' || inspection.residentSignatureDocumentId)
@@ -480,6 +486,8 @@ export class InspectionsService extends TenantScopedRepository {
         data: {
           status: 'signed',
           residentSignatureDocumentId: signature.id,
+          residentNote: note.note,
+          residentPhotoDocumentIds: note.photoDocumentIds,
           updatedBy: by(),
           version: { increment: 1 },
         },
@@ -490,7 +498,13 @@ export class InspectionsService extends TenantScopedRepository {
         buildingId: inspection.buildingId,
         subjectType: 'ops.inspection',
         subjectId: id,
-        metadata: { number: inspection.reportNumber, type: inspection.type, partyId },
+        metadata: {
+          number: inspection.reportNumber,
+          type: inspection.type,
+          partyId,
+          note: Boolean(note.note),
+          photos: note.photoDocumentIds.length,
+        },
       });
       await this.domainEvents.record(tx, {
         type: 'inspection.countersigned',

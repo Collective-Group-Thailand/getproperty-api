@@ -11,6 +11,7 @@ import { ComplianceGate } from '@core/compliance/compliance-gate.service';
 import { DocumentsService } from '@core/documents/documents.service';
 import { DocumentNumbering } from '@core/documents/numbering.service';
 import { DomainEvents } from '@core/events/domain-events';
+import { SettingsService } from '@core/settings/settings.service';
 import { WorkflowService } from '@core/workflow/workflow.service';
 import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
@@ -116,6 +117,7 @@ export class DepositsService extends TenantScopedRepository implements OnModuleI
     private readonly leases: LeasesService,
     private readonly inspections: InspectionsService,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly settings: SettingsService,
   ) {
     super();
   }
@@ -482,6 +484,21 @@ export class DepositsService extends TenantScopedRepository implements OnModuleI
           })
         : null;
       if (input.inspectionItemId && !item) throw new DomainException('http.not_found');
+      // D-266: for the tenant types in `deposit.deduction.item_required_for`, every deduction but an unpaid invoice
+      // points at a move-out item with photos (its own or attached here)
+      if (input.kind !== 'unpaid_invoice') {
+        const tenant = await tx.tenant.findUnique({ where: { id: ctx.tenantId }, select: { type: true } });
+        const types = await this.settings.valueAt<string[]>(
+          'deposit.deduction.item_required_for',
+          this.clock.now(),
+          {
+            tenantId: ctx.tenantId,
+          },
+        );
+        const required = Array.isArray(types) && !!tenant && types.includes(tenant.type);
+        if (required && (!item || (!item.photoDocumentIds.length && !unique.length)))
+          throw new DomainException('deposit.item_required');
+      }
       return { unique, item };
     });
     const deduction = {
@@ -595,6 +612,7 @@ export class DepositsService extends TenantScopedRepository implements OnModuleI
           residentResponse: null,
           residentRespondedAt: null,
           disputeReason: null,
+          residentNote: null,
           updatedBy: by(),
           version: { increment: 1 },
         },
@@ -668,6 +686,7 @@ export class DepositsService extends TenantScopedRepository implements OnModuleI
           residentResponse: input.accept ? 'accepted' : 'disputed',
           residentRespondedAt: now,
           disputeReason: input.accept ? null : (input.reason ?? null),
+          residentNote: input.accept ? input.reason?.trim() || null : null,
           disputeDocumentIds: input.accept ? [] : (input.documentIds ?? []),
           agreedRefund: input.accept ? s.proposedRefund : null,
           version: { increment: 1 },

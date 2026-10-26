@@ -130,6 +130,8 @@ model Inspection {
   reportNumber                String?          @map("report_number") @db.Citext
   reportDocumentId            String?          @map("report_document_id") @db.Uuid
   notes                       String?
+  residentNote                String?          @map("resident_note")
+  residentPhotoDocumentIds    String[]         @default([]) @map("resident_photo_document_ids") @db.Uuid
   createdAt                   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy                   String?          @map("created_by") @db.Uuid
   updatedAt                   DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -257,6 +259,7 @@ model DepositSettlement {
   disputeReason            String?           @map("dispute_reason")
   /// LIFF #9: photos attached to a dispute (≤ 6, uploads of the resident).
   disputeDocumentIds       String[]          @default([]) @map("dispute_document_ids") @db.Uuid
+  residentNote             String?           @map("resident_note")
   refundedAt               DateTime?         @map("refunded_at") @db.Timestamptz(6)
   refundAmount             Decimal?          @map("refund_amount") @db.Decimal(14, 2)
   refundMethod             RefundMethod?     @map("refund_method")

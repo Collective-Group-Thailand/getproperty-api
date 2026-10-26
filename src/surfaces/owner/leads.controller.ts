@@ -289,6 +289,7 @@ export class OwnerLeadsController {
   @ApiJsonBody(LeadMessageCreateDto, { body: 'ยังว่างค่ะ เสาร์นี้ 10 โมงสะดวกไหมคะ' })
   @ApiSuccess(201, { description: 'Sent', type: OwnerLeadDto, example: OWNER_LEAD_EXAMPLE })
   @ApiStandardErrors(
+    'listing.bank_account_in_message',
     'validation.failed',
     'http.bad_request',
     'http.not_found',

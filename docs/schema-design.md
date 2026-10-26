@@ -1622,6 +1622,8 @@ verified in B3.2, owner-stamped rows via `acts_for`, platform-only `user_account
 | 134 | `ops.listing_share_link` (0053) | enum `ops.listing_channel` (line, facebook_group, facebook_marketplace, qr, link); tenant, listing, channel, unique 8-character `code`, `clicks`, `last_clicked_at`; unique listing × channel (RLS tenant) | D-268: the short link `<web>/s/<code>` of a listing per share-kit channel; opening it counts a click and leads to the listing with `utm_source` = channel. |
 | 135 | `ops.listing.share_card_th_document_id`, `share_card_en_document_id`, `share_card_hash` (0053) | FKs to `core.document` (SET NULL) | D-268: the 1080 × 1080 share cards (PNG, document kind `other`, unit scope); rendered again only when the sha256 of what they show changes. |
 | 136 | `ops.listing_lead.channel` (0053) | `ops.listing_channel`, nullable | D-268: the channel a prospect came from (the `ch` of the short link), kept on a new enquiry. |
+| 137 | `ops.inspection.resident_note`, `resident_photo_document_ids` (0054) | text ≤ 1000; uuid[] ≤ 6 | D-266: what the resident adds (note and own photos, uploads purpose `inspection_note`) when countersigning a move-in / move-out report in LINE. |
+| 138 | `ops.deposit_settlement.resident_note` (0054) | text ≤ 1000 | D-266: the resident's note with an accepted settlement (a dispute keeps `dispute_reason`). |
 
 ---
 

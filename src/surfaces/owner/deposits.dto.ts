@@ -172,6 +172,14 @@ export class SettlementDto {
   disputeReason!: string | null;
 
   @ApiProperty({
+    type: String,
+    nullable: true,
+    example: null,
+    description: 'The resident’s note with an accepted settlement (D-266).',
+  })
+  residentNote!: string | null;
+
+  @ApiProperty({
     type: [String],
     format: 'uuid',
     example: [],
@@ -539,6 +547,22 @@ export class InspectionDto {
   @ApiProperty({ type: String, nullable: true, example: null })
   notes!: string | null;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: null,
+    description: 'What the resident added when countersigning in LINE (D-266).',
+  })
+  residentNote!: string | null;
+
+  @ApiProperty({
+    type: [String],
+    format: 'uuid',
+    example: [],
+    description: 'Photos the resident added when countersigning (core.document ids, up to 6; D-266).',
+  })
+  residentPhotoDocumentIds!: string[];
+
   @ApiProperty({ type: () => [InspectionItemDto] })
   items!: InspectionItemDto[];
 
@@ -790,9 +814,24 @@ export class ResidentDisputeDto {
   photoDocumentIds?: string[];
 }
 
+export class ResidentAcceptDto {
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    maxLength: 1000,
+    example: 'รับทราบค่าทำความสะอาดครับ ขอบคุณที่คืนเงินเร็ว',
+    description: 'An optional note kept with my acceptance (D-266).',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string | null;
+}
+
 export enum ResidentUploadPurposeName {
   DepositDispute = 'deposit_dispute',
   ServiceRequest = 'service_request',
+  InspectionNote = 'inspection_note',
 }
 
 export enum ResidentUploadContentTypeName {
@@ -828,6 +867,15 @@ export class ResidentUploadDto {
   @ValidateIf((o: ResidentUploadDto) => o.purpose === ResidentUploadPurposeName.ServiceRequest)
   @IsUUID()
   unitId?: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    example: FAKE.uuid,
+    description: 'The report I am about to countersign (`inspection_note`, required; D-266).',
+  })
+  @ValidateIf((o: ResidentUploadDto) => o.purpose === ResidentUploadPurposeName.InspectionNote)
+  @IsUUID()
+  inspectionId?: string;
 
   @ApiProperty({
     enum: ResidentUploadContentTypeName,

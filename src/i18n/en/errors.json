@@ -609,6 +609,10 @@
     "refund_mismatch": {
       "title": "Refund does not match the settlement",
       "detail": "The refund must pay back at least the proposed (or agreed) amount: only itemised deductions with evidence may be kept."
+    },
+    "item_required": {
+      "title": "A deposit deduction must point at a move-out report item",
+      "detail": "Choose the move-out report item with its photos, so the resident sees the evidence beside the move-in report."
     }
   },
   "inspection": {
@@ -1091,6 +1095,10 @@
     "lease_exists": {
       "title": "Lease already drafted",
       "detail": "A lease was already drafted from this enquiry. Open it from Leases."
+    },
+    "bank_account_in_message": {
+      "title": "Bank account numbers cannot be sent in messages",
+      "detail": "To stop rental scams, account numbers are not allowed in listing chats; bookings and move-in money are paid through getproperty only. Remove the number and send again."
     }
   },
   "rent_certificate": {
