@@ -706,6 +706,46 @@ export const SETTINGS: readonly SettingDef[] = [
     reason: 'seed: B7.4 (D-253: default 60)',
   },
   {
+    key: 'listing.utility_history.min_bills',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-265 (B7.9): confirmed utility bills a unit needs before its listing shows their average (the rates are shown without history).',
+    editableBy: ['admin.listing.moderate'],
+    value: 3,
+    reason: 'seed: B7.9 (D-265: three bills)',
+  },
+  {
+    key: 'listing.comparables.min',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-269 (B7.9): comparable listings needed before the rent band and median days-to-let are shown (to the owner, and on area pages); below it nothing is shown.',
+    editableBy: ['admin.listing.moderate'],
+    value: 8,
+    reason: 'seed: B7.9 (D-269: default 8)',
+  },
+  {
+    key: 'listing.area.index_min',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-272 (B7.9): published listings an area or station page needs to be indexable by search engines.',
+    editableBy: ['admin.listing.moderate'],
+    value: 3,
+    reason: 'seed: B7.9 (D-272: default 3)',
+  },
+  {
+    key: 'listing.public_profile.enabled',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-274 (B7.9): the public owner page `/owners/{slug}` of a verified owner (display name, verification, member since, median reply time, published listings). On by default; the owner switches it off for their organisation.',
+    editableBy: OWNER_SETTINGS,
+    value: true,
+    reason: 'seed: B7.9 (D-274: default on when verified)',
+  },
+  {
     key: 'lease.stamp_duty.baht_per_thousand',
     valueType: 'decimal',
     scopeAllowed: ['platform'],

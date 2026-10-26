@@ -1,6 +1,7 @@
 import { Public } from '@common/auth/auth.decorators';
 import { ApiEndpoint, ApiJsonBody, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { toBangkokIso } from '@common/time/bangkok';
+import { ListingInsightsService } from '@modules/ops-listings/listing-insights.service';
 import { ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
 import { ListingModerationService } from '@modules/ops-listings/listing-moderation.service';
 import { PublicListingsService } from '@modules/ops-listings/public-listings.service';
@@ -24,6 +25,7 @@ import { type Request } from 'express';
 import { ViewingSlotsDto } from '../owner/leads.dto';
 import { FurnishingName, PortfolioUnitKindName } from '../owner/portfolio.controller';
 import { MoneyOutput } from '../shared/fields';
+import { ListingUtilityDto, PublicAreasDto } from '../shared/listing-insights.dto';
 import { ApiSurface, SURFACES } from '../surfaces';
 
 const CACHE = 'public, max-age=300, stale-while-revalidate=600';
@@ -72,6 +74,15 @@ export class PublicListingQueryDto {
   @IsString()
   @MaxLength(100)
   district?: string;
+
+  @ApiPropertyOptional({
+    example: 'ari',
+    pattern: '^[a-z0-9-]{1,80}$',
+    description: 'An area or station slug from `GET /v1/public/listings/areas` (D-272).',
+  })
+  @IsOptional()
+  @Matches(/^[a-z0-9-]{1,80}$/)
+  area?: string;
 
   @ApiPropertyOptional({ example: '8000', description: 'THB per month, decimal string.' })
   @IsOptional()
@@ -270,8 +281,24 @@ export class PublicListingDetailDto extends PublicListingSummaryDto {
   @ApiProperty({ example: 'มาลี มีสุข' })
   ownerDisplayName!: string;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'landlord-0a1b2c3d4e',
+    description:
+      'The owner’s public page `GET /v1/public/owners/{slug}` (D-274) when it is open (verified and not switched off); else null.',
+  })
+  ownerProfileSlug!: string | null;
+
   @ApiProperty()
   smokingAllowed!: boolean;
+
+  @ApiProperty({
+    type: ListingUtilityDto,
+    nullable: true,
+    description: 'The unit’s real utility cost (D-265).',
+  })
+  utility!: ListingUtilityDto | null;
 }
 
 export class PublicSitemapEntryDto {
@@ -347,6 +374,7 @@ export class PublicListingsController {
     private readonly listings: PublicListingsService,
     private readonly moderation: ListingModerationService,
     private readonly leads: ListingLeadsService,
+    private readonly insights: ListingInsightsService,
   ) {}
 
   @Get()
@@ -393,6 +421,41 @@ export class PublicListingsController {
     return (await this.listings.sitemap()) as unknown as PublicSitemapDto;
   }
 
+  @Get('areas')
+  @Public()
+  @Header('Cache-Control', CACHE)
+  @ApiEndpoint({
+    id: 'public.listings.areas',
+    summary: 'Areas and stations with listings',
+    description:
+      'Every district and transit station with published listings (D-272): count, the rent band of their listings once there are `listing.comparables.min` of them (D-269), and whether the page may be indexed (`listing.area.index_min`). Filter the search with `?area=<slug>`.',
+    implements: ['D-272', 'D-269'],
+  })
+  @ApiSuccess(200, {
+    description: 'Areas',
+    type: PublicAreasDto,
+    example: {
+      data: [
+        {
+          slug: 'phaya-thai',
+          name: 'พญาไท',
+          nameEn: 'Phaya Thai',
+          kind: 'district',
+          province: 'กรุงเทพมหานคร',
+          provinceEn: 'Bangkok',
+          line: null,
+          count: 14,
+          band: { p25: '12500.00', p50: '14000.00', p75: '16000.00' },
+          indexable: true,
+        },
+      ],
+    },
+  })
+  @ApiStandardErrors()
+  async areas(): Promise<PublicAreasDto> {
+    return { data: await this.insights.areas() };
+  }
+
   @Get(':slug')
   @Public()
   @Throttle(SEARCH_LIMIT)
@@ -415,7 +478,15 @@ export class PublicListingsController {
       floor: '12',
       geo: { lat: 13.7799, lng: 100.5446 },
       ownerDisplayName: 'มาลี มีสุข',
+      ownerProfileSlug: 'landlord-0a1b2c3d4e',
       smokingAllowed: false,
+      utility: {
+        electricity: { kind: 'flat', pricePerUnit: '7.0000', tiers: [], minimumCharge: null },
+        water: { kind: 'flat', pricePerUnit: '18.0000', tiers: [], minimumCharge: '100.00' },
+        fixedCharges: [{ kind: 'common_fee', name: 'ค่าส่วนกลาง', amount: '500.00' }],
+        averageBill3m: '1240.50',
+        basedOnBills: 3,
+      },
     },
   })
   @ApiStandardErrors('validation.failed', 'http.not_found', 'http.too_many_requests')
@@ -486,5 +557,90 @@ export class PublicListingsController {
   async report(@Param('slug') slug: string, @Body() body: ListingReportDto): Promise<ListingReportedDto> {
     await this.moderation.report(slug.slice(0, 80), body);
     return { received: true };
+  }
+}
+
+export class PublicOwnerVerificationDto {
+  @ApiProperty({
+    enum: ['unit_ownership'],
+    enumName: 'PublicOwnerVerificationLevel',
+    example: 'unit_ownership',
+    description:
+      'What the platform verified: ownership of the listed units (D-252); identity follows with D-267.',
+  })
+  level!: 'unit_ownership';
+
+  @ApiProperty({ type: 'integer', example: 2 })
+  verifiedUnits!: number;
+}
+
+/** The public page of a verified owner (D-274): no contact details. */
+export class PublicOwnerDto {
+  @ApiProperty({ example: 'landlord-0a1b2c3d4e' })
+  slug!: string;
+
+  @ApiProperty({ example: 'มาลี มีสุข' })
+  displayName!: string;
+
+  @ApiProperty({ type: PublicOwnerVerificationDto })
+  verification!: PublicOwnerVerificationDto;
+
+  @ApiProperty({ format: 'date', example: '2026-10-25' })
+  memberSince!: string;
+
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    example: 42,
+    description: 'Median minutes to the first answer on an enquiry (12 months; null with fewer than 3).',
+  })
+  medianReplyMinutes!: number | null;
+
+  @ApiProperty({
+    type: [PublicListingSummaryDto],
+    description: 'Published listings, newest first (up to 50).',
+  })
+  listings!: PublicListingSummaryDto[];
+
+  @ApiProperty({ type: 'integer', example: 3 })
+  listingCount!: number;
+}
+
+@ApiTags('public.owners')
+@ApiSurface(SURFACES.public)
+@Controller('public/owners')
+export class PublicOwnersController {
+  constructor(private readonly listings: PublicListingsService) {}
+
+  @Get(':slug')
+  @Public()
+  @Throttle(SEARCH_LIMIT)
+  @Header('Cache-Control', CACHE)
+  @ApiEndpoint({
+    id: 'public.owners.get',
+    summary: 'A verified owner’s page',
+    description:
+      'Display name, what the platform verified, member since, median reply time to enquiries and the published listings of an owner with at least one approved ownership verification (D-274, D-252). `404` when there is none or the owner switched the page off (`listing.public_profile.enabled`). No phone, e-mail or address of the owner.',
+    implements: ['D-274', 'D-252'],
+  })
+  @ApiSuccess(200, {
+    description: 'Owner',
+    type: PublicOwnerDto,
+    example: {
+      slug: 'landlord-0a1b2c3d4e',
+      displayName: 'มาลี มีสุข',
+      verification: { level: 'unit_ownership', verifiedUnits: 2 },
+      memberSince: '2026-10-25',
+      medianReplyMinutes: 42,
+      listings: [SUMMARY_EXAMPLE],
+      listingCount: 1,
+    },
+  })
+  @ApiStandardErrors('validation.failed', 'http.not_found', 'http.too_many_requests')
+  async get(@Param('slug') slug: string, @Req() req: Request): Promise<PublicOwnerDto> {
+    return (await this.listings.ownerProfile(
+      slug.slice(0, 80),
+      lang(req.headers['accept-language']),
+    )) as unknown as PublicOwnerDto;
   }
 }
