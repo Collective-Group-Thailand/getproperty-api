@@ -32,6 +32,10 @@ export interface PlanVersionInput {
 
 const by = () => userIdOf(RequestContext.actor());
 
+/** The terms of a version that describe a product add-on (`terms.product`), else null. */
+const productTerms = (terms: unknown): Record<string, unknown> | null =>
+  terms && typeof terms === 'object' && 'product' in terms ? terms : null;
+
 /**
  * Price plans and their effective-dated versions (D-156; ADR-0004): the platform admin / Finance adds a draft version
  * and publishes it from a date that is not in the past; publishing closes the version in force the day before
@@ -85,7 +89,13 @@ export class PricePlansService {
           setupFee: input.setupFee ?? '0',
           includedAllowances: (input.includedAllowances ?? {}) as Prisma.InputJsonValue,
           vatRate: input.vatRate ?? '0.07',
-          terms: (input.terms ?? { status: 'proposed', decision: 'D-156' }) as Prisma.InputJsonValue,
+          // a product add-on (G1 storage package: size / period / visibility in its terms) keeps its terms unless
+          // the new version states them
+          terms: (input.terms ??
+            productTerms(plan.versions[0]?.terms) ?? {
+              status: 'proposed',
+              decision: 'D-156',
+            }) as Prisma.InputJsonValue,
           state: 'draft',
           createdBy: by(),
         },

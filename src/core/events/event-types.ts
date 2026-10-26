@@ -81,6 +81,17 @@ export const DOMAIN_EVENT_TYPES = {
   'messaging.channel_failing': 'The health check found an own LINE OA LINE no longer accepts (D-254).',
   'storage.threshold_crossed':
     'A tenant reached a storage notice threshold of its allowance (D-276: 80 % / 100 %, once per crossing).',
+  'storage.files_deleted':
+    'The owner deleted optional files to reclaim space (D-285); they count and can be restored until the purge.',
+  'storage.files_restored': 'The owner restored files deleted for reclaim before their purge (D-285).',
+  'storage.file_purged': 'The objects of a file deleted for reclaim were removed; the quota dropped (D-285).',
+  'storage.drift_detected':
+    'The nightly reconciliation found object storage and the counters apart (orphans, missing keys, bytes; D-286).',
+  'storage.package_ordered': 'A tenant ordered a storage package; its purchase invoice was issued (D-285).',
+  'storage.package_activated':
+    'A storage package became active (its invoice was paid) and raised the quota (D-285).',
+  'storage.package_expired':
+    'A storage package ended; nothing is deleted, uploads over the quota are held (D-285).',
   'document.uploaded': 'A file finished uploading; scan and thumbnail follow.',
   'document.scanned': 'A file was scanned (clean or infected).',
   'consent.changed': 'A consent was granted or withdrawn (D-025).',

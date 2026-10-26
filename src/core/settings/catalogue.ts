@@ -551,7 +551,7 @@ export const SETTINGS: readonly SettingDef[] = [
     valueType: 'json',
     scopeAllowed: ['platform'],
     description:
-      'D-276 / D-279: add-on storage packs a tenant can buy ([{"key": "plus-20", "gb": "20", "monthlyPrice": "49.00"}]); defined by the platform admin, empty until then.',
+      'D-276 / D-279: add-on storage packs ([{"key": "plus-20", "gb": "20", "monthlyPrice": "49.00"}]), kept for the B7 overage maths; since D-285 the packages a tenant buys are price-plan add-ons (admin → storage packages), so this stays empty.',
     editableBy: ADMIN,
     value: [],
     reason: 'seed: D-276 (no packs yet)',
@@ -578,6 +578,47 @@ export const SETTINGS: readonly SettingDef[] = [
     value: [80, 100],
     reason: 'seed: D-276',
     check: noticeProblems,
+  },
+  // --- storage quota, reclaim, packages (G1: D-285, D-286) --------------------------------------------------
+  {
+    key: 'storage.images.max_edge_px',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-285 (G1): longer edge in pixels of a stored listing photo after it is re-encoded without metadata, before it counts to the quota (WebP renditions as D-252). Evidence photos and slips are never re-encoded.',
+    editableBy: ADMIN,
+    value: 2560,
+    reason: 'seed: D-285 (G1 recommendation)',
+  },
+  {
+    key: 'storage.reclaim.purge_after_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-285 (G1): days a file the owner deleted to reclaim space can still be restored; then its objects are removed and the quota drops (pack G default 7).',
+    editableBy: ADMIN,
+    value: 7,
+    reason: 'seed: D-285 (pack G1: 7 days)',
+  },
+  {
+    key: 'storage.package.renew_days_before',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-285 (G1): days before a storage package with auto-renew ends that the next period is invoiced; the package expires (nothing deleted) when that invoice is not paid in time.',
+    editableBy: ADMIN,
+    value: 7,
+    reason: 'seed: D-285 (G1 recommendation)',
+  },
+  {
+    key: 'storage.reconciliation.auto_correct',
+    valueType: 'bool',
+    scopeAllowed: ['platform'],
+    description:
+      "D-286 (G1): whether the nightly reconciliation against object storage corrects a tenant's counters to what is stored (true) or only reports the drift (false).",
+    editableBy: ADMIN,
+    value: true,
+    reason: 'seed: D-286 (G1)',
   },
   // --- listings (D-252, B7.2) — rules of the review queue are data, not code ------------------------------
   {

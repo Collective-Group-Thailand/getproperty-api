@@ -406,6 +406,8 @@ export class EtaxService extends TenantScopedRepository implements EventSubscrib
         title: `${s.number} (e-Tax).xml`,
         mimeType: 'application/xml',
         body: artefacts.xml,
+        holdPolicyKey: 'pdf_tax_invoice', // D-286: the signed e-Tax XML is the legal document
+
         versionOfDocumentId: s.sourceDocumentId,
         versionNo: 2,
       });

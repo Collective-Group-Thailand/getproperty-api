@@ -34,6 +34,25 @@ export interface ProblemExtensions {
   /** `compliance.acknowledgement_required` only: the warning text to show and acknowledge (key + version). */
   legalTextKey?: string;
   legalTextVersion?: number;
+  /** `storage.allowance_exceeded` only (G1, D-285): usage, quota and where to buy more space. */
+  storage?: { usedBytes: string; allowanceBytes: string; packagesUrl: string };
+  /** `storage.legal_hold` only (D-286): the requested documents that are held until their retention date. */
+  heldDocumentIds?: string[];
+}
+
+/** The storage position sent with `storage.allowance_exceeded` (G1). */
+export class ProblemStoragePosition {
+  @ApiProperty({ example: '5368709120', description: 'Counted bytes now (decimal string).' })
+  usedBytes!: string;
+
+  @ApiProperty({ example: '5368709120', description: 'Quota: free allowance + active packages (bytes).' })
+  allowanceBytes!: string;
+
+  @ApiProperty({
+    example: '/v1/owner/storage/packages',
+    description: 'Where the owner sees storage packages.',
+  })
+  packagesUrl!: string;
 }
 
 /** RFC 9457 problem details, served as `application/problem+json` (contract §3). */
@@ -124,6 +143,20 @@ export class ProblemDetails {
     description: '`compliance.acknowledgement_required` only: version of that warning text',
   })
   legalTextVersion?: number;
+
+  @ApiPropertyOptional({
+    type: () => ProblemStoragePosition,
+    description:
+      '`storage.allowance_exceeded` only (G1, D-285): what is stored, the quota (free + packages) and where to buy more space',
+  })
+  storage?: ProblemStoragePosition;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['3b241101-e2bb-4255-8caf-4136c566a962'],
+    description: '`storage.legal_hold` only (D-286): the requested documents held until their retention date',
+  })
+  heldDocumentIds?: string[];
 
   @ApiProperty({ example: '6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e' })
   requestId!: string;

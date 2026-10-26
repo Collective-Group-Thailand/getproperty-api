@@ -12,6 +12,7 @@ import { PlatformBillingService } from './platform-subscriptions/platform-billin
 import { PlatformDocuments } from './platform-subscriptions/platform-documents';
 import { PlatformPaymentGateway } from './platform-subscriptions/platform-payment-gateway';
 import { PricePlansService } from './platform-subscriptions/price-plans.service';
+import { StoragePackagesService } from './platform-subscriptions/storage-packages.service';
 import { SubscriptionsService } from './platform-subscriptions/subscriptions.service';
 import { TenantHealthService } from './platform-subscriptions/tenant-health.service';
 
@@ -29,6 +30,7 @@ const SERVICES = [
   InsightsService,
   CsatSurveyService,
   GuidesService,
+  StoragePackagesService,
 ];
 
 /**
