@@ -426,6 +426,11 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     surfaces: ['admin'],
   },
   {
+    key: 'admin.guide.manage',
+    description: 'Write, edit, review and publish the guides of the public site (D-271)',
+    surfaces: ['admin'],
+  },
+  {
     key: 'admin.building.manage',
     description: 'Change the operator of a building between tenants (schema-design §4.6)',
     surfaces: ['admin'],
@@ -501,6 +506,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'admin.integration_event.read',
     'admin.listing.moderate',
     'admin.listing.verify',
+    'admin.guide.manage',
   ],
   field_engineer: ['admin.tenant.read', 'admin.device.manage'],
   finance: [

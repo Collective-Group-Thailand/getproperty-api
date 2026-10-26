@@ -267,6 +267,8 @@ export const API_TAGS: Record<string, string> = {
   'resident.rentRecord': 'My rent record and what I share of it (D-256).',
   'prospect.rentRecord': 'My rent record, shared with an enquiry or as a letter (D-256).',
   'public.rentRecords': 'Check a rent record letter by its verification code (D-256).',
+  'admin.guides': 'Guides of the public site: write, edit, review and publish (D-271).',
+  'public.guides': 'Published guides of the public site per language (D-271).',
   'webhooks.ekyc': 'Signed outcomes of identity verification sessions from the e-KYC provider (D-267).',
   'webhooks.line':
     'Signed LINE Messaging API events for an operator’s own LINE Official Account: follow, message, unfollow (D-254).',

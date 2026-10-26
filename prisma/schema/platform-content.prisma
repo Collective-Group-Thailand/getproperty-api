@@ -1,0 +1,62 @@
+/// D-271: public guides per slug and locale (the shared article shape, D-277); draft or published with its reviewer.
+model Guide {
+  id          String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  slug        String
+  locale      String        @db.Char(2)
+  category    GuideCategory
+  audience    GuideAudience
+  title       String
+  summary     String
+  answer      String
+  sections    Json
+  faq         Json          @default("[]")
+  sources     Json          @default("[]")
+  readMinutes Int           @map("read_minutes") @db.SmallInt
+  general     Boolean       @default(false)
+  reviewedOn  DateTime      @map("reviewed_on") @db.Date
+  publishedOn DateTime      @map("published_on") @db.Date
+  state       GuideState    @default(draft)
+  reviewedBy  String?       @map("reviewed_by") @db.Uuid
+  publishedAt DateTime?     @map("published_at") @db.Timestamptz(6)
+  createdBy   String?       @map("created_by") @db.Uuid
+  updatedBy   String?       @map("updated_by") @db.Uuid
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  version     Int           @default(1)
+
+  reviewer UserAccount? @relation("GuideReviewedBy", fields: [reviewedBy], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "guide_reviewed_by_fkey")
+
+  @@unique([slug, locale], map: "guide_slug_locale_key")
+  @@index([state, locale, publishedOn(sort: Desc)], map: "guide_state_locale_idx")
+  @@map("guide")
+  @@schema("platform")
+}
+
+/// D-271: draft or published.
+enum GuideState {
+  draft
+  published
+
+  @@map("guide_state")
+  @@schema("platform")
+}
+
+/// D-271: the categories of the guides index.
+enum GuideCategory {
+  tax
+  law
+  landlord
+  operations
+
+  @@map("guide_category")
+  @@schema("platform")
+}
+
+/// D-271: who the closing call to action speaks to.
+enum GuideAudience {
+  landlord
+  apartment
+
+  @@map("guide_audience")
+  @@schema("platform")
+}
