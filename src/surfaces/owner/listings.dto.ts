@@ -21,6 +21,7 @@ import {
 } from 'class-validator';
 
 import { MoneyInput, MoneyOutput } from '../shared/fields';
+import { ListingUtilityDto } from '../shared/listing-insights.dto';
 import { FurnishingName, PortfolioUnitKindName } from './portfolio.controller';
 
 export enum ListingStateName {
@@ -147,6 +148,15 @@ class ListingFieldsDto {
   @IsOptional()
   @IsBoolean()
   showUnitNo?: boolean;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'D-265: show the average of the unit’s last confirmed utility bills (only with at least `listing.utility_history.min_bills` of them; the rates are always shown).',
+  })
+  @IsOptional()
+  @IsBoolean()
+  showUtilityHistory?: boolean;
 
   @ApiPropertyOptional({ type: ListingTransitDto, nullable: true })
   @IsOptional()
@@ -356,6 +366,19 @@ export class ListingDto {
   @ApiProperty()
   showUnitNo!: boolean;
 
+  @ApiProperty({
+    example: true,
+    description: 'D-265: the average of the last confirmed utility bills is shown.',
+  })
+  showUtilityHistory!: boolean;
+
+  @ApiProperty({
+    type: ListingUtilityDto,
+    nullable: true,
+    description: 'What the public listing shows of the unit’s utility cost (D-265).',
+  })
+  utility!: ListingUtilityDto | null;
+
   @ApiProperty({ type: ListingTransitDto, nullable: true })
   transit!: ListingTransitDto | null;
 
@@ -502,6 +525,8 @@ export const LISTING_EXAMPLE = {
   smokingAllowed: false,
   facilities: ['pool', 'fitness'],
   showUnitNo: false,
+  showUtilityHistory: true,
+  utility: null,
   transit: { name: 'BTS อารีย์', line: 'BTS สายสุขุมวิท', distanceM: 350 },
   unitKind: 'condo_unit',
   sizeSqm: '28.50',

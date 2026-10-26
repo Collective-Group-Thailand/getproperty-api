@@ -42,6 +42,8 @@ export interface ListingFields {
   smokingAllowed?: boolean;
   facilities?: string[];
   showUnitNo?: boolean;
+  /** D-265: the average of the last confirmed utility bills on the public listing. */
+  showUtilityHistory?: boolean;
   transit?: ListingTransit | null;
 }
 
@@ -198,6 +200,7 @@ export class ListingsService {
     if (input.facilities !== undefined)
       data.facilities = [...new Set(input.facilities.map((f) => f.trim()).filter(Boolean))].slice(0, 40);
     if (input.showUnitNo !== undefined) data.showUnitNo = input.showUnitNo;
+    if (input.showUtilityHistory !== undefined) data.showUtilityHistory = input.showUtilityHistory;
     if (input.transit !== undefined) {
       data.transitName = input.transit?.name.trim() || null;
       data.transitLine = input.transit?.line?.trim() || null;
@@ -675,6 +678,7 @@ export class ListingsService {
           smokingAllowed: from.smokingAllowed,
           facilities: from.facilities,
           showUnitNo: from.showUnitNo,
+          showUtilityHistory: from.showUtilityHistory,
           transitName: from.transitName,
           transitLine: from.transitLine,
           transitDistanceM: from.transitDistanceM,

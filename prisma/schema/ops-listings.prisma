@@ -22,6 +22,7 @@ model Listing {
   smokingAllowed   Boolean             @default(false) @map("smoking_allowed")
   facilities       String[]            @default([])
   showUnitNo       Boolean             @default(false) @map("show_unit_no")
+  showUtilityHistory Boolean           @default(true) @map("show_utility_history")
   transitName      String?             @map("transit_name")
   transitLine      String?             @map("transit_line")
   transitDistanceM Int?                @map("transit_distance_m")

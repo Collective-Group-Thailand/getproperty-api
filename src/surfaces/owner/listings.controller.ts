@@ -5,6 +5,7 @@ import { ApiEndpoint, ApiJsonBody, ApiStandardErrors, ApiSuccess } from '@common
 import { FAKE } from '@common/openapi/examples';
 import { TenantTx } from '@database/tenant-tx';
 import { type ListingVerification } from '@generated/prisma/client';
+import { ListingInsightsService } from '@modules/ops-listings/listing-insights.service';
 import { ListingsService, type ListingWithParts } from '@modules/ops-listings/listings.service';
 import { PublicListingsService } from '@modules/ops-listings/public-listings.service';
 import {
@@ -22,6 +23,7 @@ import {
 } from '@nestjs/common';
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { ListingComparablesDto } from '../shared/listing-insights.dto';
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
   LISTING_EXAMPLE,
@@ -76,6 +78,7 @@ export class OwnerListingsController {
     private readonly listings: ListingsService,
     private readonly photos: PublicListingsService,
     private readonly db: TenantTx,
+    private readonly insights: ListingInsightsService,
   ) {}
 
   private async dto(ctx: TenantContext, l: ListingWithParts): Promise<ListingDto> {
@@ -109,6 +112,8 @@ export class OwnerListingsController {
       smokingAllowed: l.smokingAllowed,
       facilities: l.facilities,
       showUnitNo: l.showUnitNo,
+      showUtilityHistory: l.showUtilityHistory,
+      utility: await this.db.tenant(ctx, (tx) => this.insights.utility(tx, l)),
       transit:
         l.transitName && l.transitDistanceM !== null
           ? { name: l.transitName, line: l.transitLine, distanceM: l.transitDistanceM }
@@ -207,6 +212,34 @@ export class OwnerListingsController {
     @Param('listingId', ParseUUIDPipe) id: string,
   ): Promise<ListingDto> {
     return this.dto(ctx, await this.listings.get(ctx, id));
+  }
+
+  @Get('listings/:listingId/comparables')
+  @TenantScoped()
+  @Can('listing.read')
+  @ApiEndpoint({
+    id: 'owner.listings.comparables',
+    summary: 'Rent band of comparable listings',
+    description:
+      'Comparable listings — same kind and bedrooms, size within ±20 %, same district or within 1 km of the same station, published now or let in the last 12 months — their rent band (25th / 50th / 75th percentile) and median days to let (D-269). Nothing below `listing.comparables.min`; never per competitor, never public.',
+    implements: ['D-269'],
+  })
+  @ApiSuccess(200, {
+    description: 'Comparables',
+    type: ListingComparablesDto,
+    example: {
+      band: { p25: '12500.00', p50: '14000.00', p75: '16000.00' },
+      medianDaysToLet: 21,
+      sampleSize: 12,
+      minimum: 8,
+    },
+  })
+  @ApiStandardErrors('validation.failed', 'http.not_found', ...T)
+  async comparables(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('listingId', ParseUUIDPipe) id: string,
+  ): Promise<ListingComparablesDto> {
+    return this.insights.comparables(ctx, id);
   }
 
   @Patch('listings/:listingId')

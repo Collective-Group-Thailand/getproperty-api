@@ -18108,6 +18108,46 @@
         ],
         "type": "string"
       },
+      "ListingComparablesDto": {
+        "properties": {
+          "band": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingRentBandDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below `minimum` comparables."
+          },
+          "medianDaysToLet": {
+            "description": "Median days from publishing to let.",
+            "example": 21,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "minimum": {
+            "description": "`listing.comparables.min`.",
+            "example": 8,
+            "type": "integer"
+          },
+          "sampleSize": {
+            "description": "Comparable listings found.",
+            "example": 12,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "band",
+          "medianDaysToLet",
+          "sampleSize",
+          "minimum"
+        ],
+        "type": "object"
+      },
       "ListingCreateDto": {
         "properties": {
           "advanceMonths": {
@@ -18177,6 +18217,11 @@
           "showUnitNo": {
             "description": "Show the unit number in the public address (D-252: the rest of the address is always public).",
             "example": false,
+            "type": "boolean"
+          },
+          "showUtilityHistory": {
+            "description": "D-265: show the average of the unit’s last confirmed utility bills (only with at least `listing.utility_history.min_bills` of them; the rates are always shown).",
+            "example": true,
             "type": "boolean"
           },
           "smokingAllowed": {
@@ -18369,6 +18414,11 @@
           "showUnitNo": {
             "type": "boolean"
           },
+          "showUtilityHistory": {
+            "description": "D-265: the average of the last confirmed utility bills is shown.",
+            "example": true,
+            "type": "boolean"
+          },
           "sizeSqm": {
             "example": "28.50",
             "type": [
@@ -18426,6 +18476,17 @@
               }
             ]
           },
+          "utility": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingUtilityDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the public listing shows of the unit’s utility cost (D-265)."
+          },
           "verifiedOwner": {
             "description": "The unit’s owner is verified (badge \"เจ้าของตัวจริง\").",
             "type": "boolean"
@@ -18455,6 +18516,8 @@
           "smokingAllowed",
           "facilities",
           "showUnitNo",
+          "showUtilityHistory",
+          "utility",
           "transit",
           "unitKind",
           "sizeSqm",
@@ -18476,6 +18539,41 @@
           "version"
         ],
         "type": "object"
+      },
+      "ListingFixedChargeDto": {
+        "properties": {
+          "amount": {
+            "description": "THB per month.",
+            "example": "500.00",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingFixedChargeKind"
+              }
+            ],
+            "example": "service"
+          },
+          "name": {
+            "example": "ค่าส่วนกลาง",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "amount"
+        ],
+        "type": "object"
+      },
+      "ListingFixedChargeKind": {
+        "enum": [
+          "common_fee",
+          "service",
+          "fund"
+        ],
+        "type": "string"
       },
       "ListingLeadAuthor": {
         "enum": [
@@ -18594,6 +18692,28 @@
         },
         "required": [
           "photos"
+        ],
+        "type": "object"
+      },
+      "ListingRentBandDto": {
+        "properties": {
+          "p25": {
+            "example": "12500.00",
+            "type": "string"
+          },
+          "p50": {
+            "example": "14000.00",
+            "type": "string"
+          },
+          "p75": {
+            "example": "16000.00",
+            "type": "string"
+          }
+        },
+        "required": [
+          "p25",
+          "p50",
+          "p75"
         ],
         "type": "object"
       },
@@ -18767,6 +18887,11 @@
             "example": false,
             "type": "boolean"
           },
+          "showUtilityHistory": {
+            "description": "D-265: show the average of the unit’s last confirmed utility bills (only with at least `listing.utility_history.min_bills` of them; the rates are always shown).",
+            "example": true,
+            "type": "boolean"
+          },
           "smokingAllowed": {
             "example": false,
             "type": "boolean"
@@ -18793,6 +18918,135 @@
             ]
           }
         },
+        "type": "object"
+      },
+      "ListingUtilityDto": {
+        "properties": {
+          "averageBill3m": {
+            "description": "Average electricity + water of the last three confirmed bills, THB; null below `listing.utility_history.min_bills` or switched off.",
+            "example": "1240.50",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "basedOnBills": {
+            "description": "Bills behind the average (0 when not shown).",
+            "example": 3,
+            "type": "integer"
+          },
+          "electricity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingUtilityRateDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fixedCharges": {
+            "description": "Fixed monthly charges of the unit.",
+            "items": {
+              "$ref": "#/components/schemas/ListingFixedChargeDto"
+            },
+            "type": "array"
+          },
+          "water": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingUtilityRateDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "electricity",
+          "water",
+          "fixedCharges",
+          "averageBill3m",
+          "basedOnBills"
+        ],
+        "type": "object"
+      },
+      "ListingUtilityRateDto": {
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingUtilityRateKind"
+              }
+            ],
+            "example": "flat"
+          },
+          "minimumCharge": {
+            "description": "Minimum charge per bill, THB.",
+            "example": "100.00",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pricePerUnit": {
+            "description": "Flat: THB per unit.",
+            "example": "7.0000",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tiers": {
+            "description": "Tiered: the blocks in order.",
+            "items": {
+              "$ref": "#/components/schemas/ListingUtilityTierDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "pricePerUnit",
+          "tiers",
+          "minimumCharge"
+        ],
+        "type": "object"
+      },
+      "ListingUtilityRateKind": {
+        "enum": [
+          "flat",
+          "tiered"
+        ],
+        "type": "string"
+      },
+      "ListingUtilityTierDto": {
+        "properties": {
+          "fromUnits": {
+            "description": "Units from (inclusive), decimal string.",
+            "example": "0",
+            "type": "string"
+          },
+          "pricePerUnit": {
+            "description": "THB per unit (kWh or m³).",
+            "example": "7.0000",
+            "type": "string"
+          },
+          "toUnits": {
+            "description": "Units up to; null = no upper end.",
+            "example": "150",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "fromUnits",
+          "toUnits",
+          "pricePerUnit"
+        ],
         "type": "object"
       },
       "ListingVerificationState": {
@@ -27533,6 +27787,111 @@
         ],
         "type": "object"
       },
+      "PublicAreaDto": {
+        "properties": {
+          "band": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingRentBandDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "count": {
+            "description": "Published listings.",
+            "example": 14,
+            "type": "integer"
+          },
+          "indexable": {
+            "description": "At least `listing.area.index_min` listings (else the page is noindex).",
+            "example": true,
+            "type": "boolean"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PublicAreaKind"
+              }
+            ],
+            "example": "district"
+          },
+          "line": {
+            "description": "A station’s line as owners name it, else its system (BTS, MRT, ARL); null for a district.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "description": "Thai name.",
+            "example": "พญาไท",
+            "type": "string"
+          },
+          "nameEn": {
+            "description": "English name (the Thai name when the platform has no English name for it yet).",
+            "example": "Phaya Thai",
+            "type": "string"
+          },
+          "province": {
+            "description": "The province (of most of a station’s listings).",
+            "example": "กรุงเทพมหานคร",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provinceEn": {
+            "example": "Bangkok",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "slug": {
+            "description": "ASCII slug of the area page (`/rent/area/{slug}`); stable for a given name.",
+            "example": "phaya-thai",
+            "pattern": "^[a-z0-9-]{1,80}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "nameEn",
+          "kind",
+          "province",
+          "provinceEn",
+          "line",
+          "count",
+          "band",
+          "indexable"
+        ],
+        "type": "object"
+      },
+      "PublicAreaKind": {
+        "enum": [
+          "district",
+          "station"
+        ],
+        "type": "string"
+      },
+      "PublicAreasDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/PublicAreaDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
       "PublicGeoDto": {
         "properties": {
           "lat": {
@@ -27659,6 +28018,14 @@
             "example": "มาลี มีสุข",
             "type": "string"
           },
+          "ownerProfileSlug": {
+            "description": "The owner’s public page `GET /v1/public/owners/{slug}` (D-274) when it is open (verified and not switched off); else null.",
+            "example": "landlord-0a1b2c3d4e",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "petsAllowed": {
             "type": "boolean"
           },
@@ -27715,6 +28082,17 @@
               }
             ]
           },
+          "utility": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingUtilityDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The unit’s real utility cost (D-265)."
+          },
           "verifiedOwner": {
             "description": "The unit’s owner is verified (badge \"เจ้าของตัวจริง\").",
             "type": "boolean"
@@ -27747,7 +28125,9 @@
           "floor",
           "geo",
           "ownerDisplayName",
-          "smokingAllowed"
+          "ownerProfileSlug",
+          "smokingAllowed",
+          "utility"
         ],
         "type": "object"
       },
@@ -27999,6 +28379,84 @@
           "repliesFree"
         ],
         "type": "object"
+      },
+      "PublicOwnerDto": {
+        "properties": {
+          "displayName": {
+            "example": "มาลี มีสุข",
+            "type": "string"
+          },
+          "listingCount": {
+            "example": 3,
+            "type": "integer"
+          },
+          "listings": {
+            "description": "Published listings, newest first (up to 50).",
+            "items": {
+              "$ref": "#/components/schemas/PublicListingSummaryDto"
+            },
+            "type": "array"
+          },
+          "medianReplyMinutes": {
+            "description": "Median minutes to the first answer on an enquiry (12 months; null with fewer than 3).",
+            "example": 42,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "memberSince": {
+            "example": "2026-10-25",
+            "format": "date",
+            "type": "string"
+          },
+          "slug": {
+            "example": "landlord-0a1b2c3d4e",
+            "type": "string"
+          },
+          "verification": {
+            "$ref": "#/components/schemas/PublicOwnerVerificationDto"
+          }
+        },
+        "required": [
+          "slug",
+          "displayName",
+          "verification",
+          "memberSince",
+          "medianReplyMinutes",
+          "listings",
+          "listingCount"
+        ],
+        "type": "object"
+      },
+      "PublicOwnerVerificationDto": {
+        "properties": {
+          "level": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PublicOwnerVerificationLevel"
+              }
+            ],
+            "description": "What the platform verified: ownership of the listed units (D-252); identity follows with D-267.",
+            "example": "unit_ownership"
+          },
+          "verifiedUnits": {
+            "example": 2,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "level",
+          "verifiedUnits"
+        ],
+        "type": "object"
+      },
+      "PublicOwnerVerificationLevel": {
+        "description": "What the platform verified: ownership of the listed units (D-252); identity follows with D-267.",
+        "enum": [
+          "unit_ownership"
+        ],
+        "type": "string"
       },
       "PublicPlanDto": {
         "properties": {
@@ -128739,6 +129197,7 @@
                     "reportCount": 0,
                     "reviewReasons": [],
                     "showUnitNo": false,
+                    "showUtilityHistory": true,
                     "sizeSqm": "28.50",
                     "slug": "condo-1br-0a1b2c3d4e",
                     "smokingAllowed": false,
@@ -128752,6 +129211,7 @@
                     },
                     "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "unitKind": "condo_unit",
+                    "utility": null,
                     "verifiedOwner": true,
                     "version": 3
                   }
@@ -129019,6 +129479,7 @@
                   "reportCount": 0,
                   "reviewReasons": [],
                   "showUnitNo": false,
+                  "showUtilityHistory": true,
                   "sizeSqm": "28.50",
                   "slug": "condo-1br-0a1b2c3d4e",
                   "smokingAllowed": false,
@@ -129032,6 +129493,7 @@
                   },
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitKind": "condo_unit",
+                  "utility": null,
                   "verifiedOwner": true,
                   "version": 3
                 },
@@ -129300,6 +129762,7 @@
                   "reportCount": 0,
                   "reviewReasons": [],
                   "showUnitNo": false,
+                  "showUtilityHistory": true,
                   "sizeSqm": "28.50",
                   "slug": "condo-1br-0a1b2c3d4e",
                   "smokingAllowed": false,
@@ -129313,6 +129776,7 @@
                   },
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitKind": "condo_unit",
+                  "utility": null,
                   "verifiedOwner": true,
                   "version": 3
                 },
@@ -129595,6 +130059,7 @@
                   "reportCount": 0,
                   "reviewReasons": [],
                   "showUnitNo": false,
+                  "showUtilityHistory": true,
                   "sizeSqm": "28.50",
                   "slug": "condo-1br-0a1b2c3d4e",
                   "smokingAllowed": false,
@@ -129608,6 +130073,7 @@
                   },
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitKind": "condo_unit",
+                  "utility": null,
                   "verifiedOwner": true,
                   "version": 3
                 },
@@ -129899,6 +130365,7 @@
                   "reportCount": 0,
                   "reviewReasons": [],
                   "showUnitNo": false,
+                  "showUtilityHistory": true,
                   "sizeSqm": "28.50",
                   "slug": "condo-1br-0a1b2c3d4e",
                   "smokingAllowed": false,
@@ -129912,6 +130379,7 @@
                   },
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitKind": "condo_unit",
+                  "utility": null,
                   "verifiedOwner": true,
                   "version": 3
                 },
@@ -130200,6 +130668,7 @@
                   "reportCount": 0,
                   "reviewReasons": [],
                   "showUnitNo": false,
+                  "showUtilityHistory": true,
                   "sizeSqm": "28.50",
                   "slug": "condo-1br-0a1b2c3d4e",
                   "smokingAllowed": false,
@@ -130213,6 +130682,7 @@
                   },
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitKind": "condo_unit",
+                  "utility": null,
                   "verifiedOwner": true,
                   "version": 3
                 },
@@ -130501,6 +130971,7 @@
                   "reportCount": 0,
                   "reviewReasons": [],
                   "showUnitNo": false,
+                  "showUtilityHistory": true,
                   "sizeSqm": "28.50",
                   "slug": "condo-1br-0a1b2c3d4e",
                   "smokingAllowed": false,
@@ -130514,6 +130985,7 @@
                   },
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitKind": "condo_unit",
+                  "utility": null,
                   "verifiedOwner": true,
                   "version": 3
                 },
@@ -130802,6 +131274,7 @@
                   "reportCount": 0,
                   "reviewReasons": [],
                   "showUnitNo": false,
+                  "showUtilityHistory": true,
                   "sizeSqm": "28.50",
                   "slug": "condo-1br-0a1b2c3d4e",
                   "smokingAllowed": false,
@@ -130815,6 +131288,7 @@
                   },
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitKind": "condo_unit",
+                  "utility": null,
                   "verifiedOwner": true,
                   "version": 3
                 },
@@ -131106,6 +131580,7 @@
                   "reportCount": 0,
                   "reviewReasons": [],
                   "showUnitNo": false,
+                  "showUtilityHistory": true,
                   "sizeSqm": "28.50",
                   "slug": "condo-1br-0a1b2c3d4e",
                   "smokingAllowed": false,
@@ -131119,6 +131594,7 @@
                   },
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitKind": "condo_unit",
+                  "utility": null,
                   "verifiedOwner": true,
                   "version": 3
                 },
@@ -131439,6 +131915,7 @@
                   "reportCount": 0,
                   "reviewReasons": [],
                   "showUnitNo": false,
+                  "showUtilityHistory": true,
                   "sizeSqm": "28.50",
                   "slug": "condo-1br-0a1b2c3d4e",
                   "smokingAllowed": false,
@@ -131452,6 +131929,7 @@
                   },
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitKind": "condo_unit",
+                  "utility": null,
                   "verifiedOwner": true,
                   "version": 3
                 },
@@ -131667,6 +132145,229 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/listings/{listingId}/comparables": {
+      "get": {
+        "description": "Comparable listings — same kind and bedrooms, size within ±20 %, same district or within 1 km of the same station, published now or let in the last 12 months — their rent band (25th / 50th / 75th percentile) and median days to let (D-269). Nothing below `listing.comparables.min`; never per competitor, never public.\n\nImplements: D-269.",
+        "operationId": "owner.listings.comparables",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "band": {
+                    "p25": "12500.00",
+                    "p50": "14000.00",
+                    "p75": "16000.00"
+                  },
+                  "medianDaysToLet": 21,
+                  "minimum": 8,
+                  "sampleSize": 12
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListingComparablesDto"
+                }
+              }
+            },
+            "description": "Comparables",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Rent band of comparable listings",
+        "tags": [
+          "owner.listings"
+        ],
+        "x-required-permissions": [
+          "listing.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/listings/{listingId}/photos": {
       "post": {
         "description": "Appends an uploaded, scanned document of kind `listing_photo` (EXIF and location already removed, WebP renditions made). At most `listing.photos.max` photos (D-252).\n\nImplements: D-252.",
@@ -131759,6 +132460,7 @@
                   "reportCount": 0,
                   "reviewReasons": [],
                   "showUnitNo": false,
+                  "showUtilityHistory": true,
                   "sizeSqm": "28.50",
                   "slug": "condo-1br-0a1b2c3d4e",
                   "smokingAllowed": false,
@@ -131772,6 +132474,7 @@
                   },
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitKind": "condo_unit",
+                  "utility": null,
                   "verifiedOwner": true,
                   "version": 3
                 },
@@ -132087,6 +132790,7 @@
                   "reportCount": 0,
                   "reviewReasons": [],
                   "showUnitNo": false,
+                  "showUtilityHistory": true,
                   "sizeSqm": "28.50",
                   "slug": "condo-1br-0a1b2c3d4e",
                   "smokingAllowed": false,
@@ -132100,6 +132804,7 @@
                   },
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitKind": "condo_unit",
+                  "utility": null,
                   "verifiedOwner": true,
                   "version": 3
                 },
@@ -132396,6 +133101,7 @@
                   "reportCount": 0,
                   "reviewReasons": [],
                   "showUnitNo": false,
+                  "showUtilityHistory": true,
                   "sizeSqm": "28.50",
                   "slug": "condo-1br-0a1b2c3d4e",
                   "smokingAllowed": false,
@@ -132409,6 +133115,7 @@
                   },
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitKind": "condo_unit",
+                  "utility": null,
                   "verifiedOwner": true,
                   "version": 3
                 },
@@ -181255,6 +181962,17 @@
             }
           },
           {
+            "description": "An area or station slug from `GET /v1/public/listings/areas` (D-272).",
+            "in": "query",
+            "name": "area",
+            "required": false,
+            "schema": {
+              "example": "ari",
+              "pattern": "^[a-z0-9-]{1,80}$",
+              "type": "string"
+            }
+          },
+          {
             "description": "THB per month, decimal string.",
             "in": "query",
             "name": "minRent",
@@ -181487,6 +182205,112 @@
         "x-surface": "public"
       }
     },
+    "/v1/public/listings/areas": {
+      "get": {
+        "description": "Every district and transit station with published listings (D-272): count, the rent band of their listings once there are `listing.comparables.min` of them (D-269), and whether the page may be indexed (`listing.area.index_min`). Filter the search with `?area=<slug>`.\n\nImplements: D-272, D-269.",
+        "operationId": "public.listings.areas",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "band": {
+                        "p25": "12500.00",
+                        "p50": "14000.00",
+                        "p75": "16000.00"
+                      },
+                      "count": 14,
+                      "indexable": true,
+                      "kind": "district",
+                      "line": null,
+                      "name": "พญาไท",
+                      "nameEn": "Phaya Thai",
+                      "province": "กรุงเทพมหานคร",
+                      "provinceEn": "Bangkok",
+                      "slug": "phaya-thai"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PublicAreasDto"
+                }
+              }
+            },
+            "description": "Areas",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Areas and stations with listings",
+        "tags": [
+          "public.listings"
+        ],
+        "x-surface": "public"
+      }
+    },
     "/v1/public/listings/sitemap": {
       "get": {
         "description": "Slug and last change of every public listing, newest first (D-252), for the web sitemap and llms.txt.\n\nImplements: D-252.",
@@ -181634,6 +182458,7 @@
                     "name": "BTS อารีย์"
                   },
                   "ownerDisplayName": "มาลี มีสุข",
+                  "ownerProfileSlug": "landlord-0a1b2c3d4e",
                   "petsAllowed": false,
                   "photos": [
                     {
@@ -181651,6 +182476,29 @@
                   "smokingAllowed": false,
                   "title": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
                   "unitKind": "condo_unit",
+                  "utility": {
+                    "averageBill3m": "1240.50",
+                    "basedOnBills": 3,
+                    "electricity": {
+                      "kind": "flat",
+                      "minimumCharge": null,
+                      "pricePerUnit": "7.0000",
+                      "tiers": []
+                    },
+                    "fixedCharges": [
+                      {
+                        "amount": "500.00",
+                        "kind": "common_fee",
+                        "name": "ค่าส่วนกลาง"
+                      }
+                    ],
+                    "water": {
+                      "kind": "flat",
+                      "minimumCharge": "100.00",
+                      "pricePerUnit": "18.0000",
+                      "tiers": []
+                    }
+                  },
                   "verifiedOwner": true
                 },
                 "schema": {
@@ -182120,6 +182968,184 @@
         "summary": "Free viewing times",
         "tags": [
           "public.listings"
+        ],
+        "x-surface": "public"
+      }
+    },
+    "/v1/public/owners/{slug}": {
+      "get": {
+        "description": "Display name, what the platform verified, member since, median reply time to enquiries and the published listings of an owner with at least one approved ownership verification (D-274, D-252). `404` when there is none or the owner switched the page off (`listing.public_profile.enabled`). No phone, e-mail or address of the owner.\n\nImplements: D-274, D-252.",
+        "operationId": "public.owners.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "displayName": "มาลี มีสุข",
+                  "listingCount": 1,
+                  "listings": [
+                    {
+                      "address": "ถนนพหลโยธิน, พญาไท, กรุงเทพมหานคร 10400",
+                      "advanceMonths": 1,
+                      "availableFrom": "2026-12-01",
+                      "bathrooms": 1,
+                      "bedrooms": 1,
+                      "cover": {
+                        "caption": null,
+                        "height": 720,
+                        "url": "https://storage.invalid/p.w960.webp",
+                        "width": 960
+                      },
+                      "depositMonths": 2,
+                      "district": "พญาไท",
+                      "furnishing": "fully_furnished",
+                      "minTermMonths": 12,
+                      "nearestTransit": {
+                        "distanceM": 350,
+                        "line": "BTS สายสุขุมวิท",
+                        "name": "BTS อารีย์"
+                      },
+                      "petsAllowed": false,
+                      "province": "กรุงเทพมหานคร",
+                      "publishedAt": "2026-11-01T10:00:00+07:00",
+                      "rent": "15000.00",
+                      "sizeSqm": "28.50",
+                      "slug": "condo-1br-0a1b2c3d4e",
+                      "title": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                      "unitKind": "condo_unit",
+                      "verifiedOwner": true
+                    }
+                  ],
+                  "medianReplyMinutes": 42,
+                  "memberSince": "2026-10-25",
+                  "slug": "landlord-0a1b2c3d4e",
+                  "verification": {
+                    "level": "unit_ownership",
+                    "verifiedUnits": 2
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PublicOwnerDto"
+                }
+              }
+            },
+            "description": "Owner",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "A verified owner’s page",
+        "tags": [
+          "public.owners"
         ],
         "x-surface": "public"
       }
@@ -226796,6 +227822,10 @@
     {
       "description": "Public rental listings: search, detail, sitemap, viewers’ reports (D-252).",
       "name": "public.listings"
+    },
+    {
+      "description": "The public page of a verified owner: verification, member since, reply time, listings (D-274).",
+      "name": "public.owners"
     },
     {
       "description": "Price plans of the platform for the public pricing page (D-156; Proposed until the pilot).",

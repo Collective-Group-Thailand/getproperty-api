@@ -37,6 +37,7 @@ import { RentCertificatesService } from './ops-leases/rent-certificates.service'
 import { ResidentLeasesService } from './ops-leases/resident-leases.service';
 import { ListingNotifications } from './ops-listings/listing.notifications';
 import { ListingLeaseHooks } from './ops-listings/listing.subscribers';
+import { ListingInsightsService } from './ops-listings/listing-insights.service';
 import { ListingLeadsService } from './ops-listings/listing-leads.service';
 import { ListingModerationService } from './ops-listings/listing-moderation.service';
 import { ListingsService } from './ops-listings/listings.service';
@@ -91,6 +92,7 @@ const SERVICES = [
   ListingNotifications,
   ListingLeaseHooks,
   PublicListingsService,
+  ListingInsightsService,
   UnitProfilesService,
   UtilityAccountsService,
   MetersService,
