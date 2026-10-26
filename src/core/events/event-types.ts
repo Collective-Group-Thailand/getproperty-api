@@ -39,6 +39,8 @@ export const DOMAIN_EVENT_TYPES = {
   'listing.paused': 'The owner paused a published listing (D-252).',
   'lease.end_approaching':
     'A landlord’s lease in force ends within lease.end.remind_days_before; resident (and owner) reminded once (D-261).',
+  'guide.published': 'A guide was published on the public site, reviewed by a second platform user (D-271).',
+  'guide.unpublished': 'A guide was taken off the public site (D-271).',
   'rent_record.shared': 'A resident shared their rent record with an enquiry or as a letter (D-256).',
   'rent_record.share_revoked': 'A resident revoked a rent record share (D-256).',
   'identity.verified': 'A person passed identity verification at the e-KYC provider (D-267).',

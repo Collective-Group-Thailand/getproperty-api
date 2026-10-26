@@ -14,7 +14,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (90)
+## Permissions (91)
 | Permission | Surfaces | owner | manager | staff | accountant | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View the tenant profile and company data |
@@ -106,4 +106,5 @@
 | `admin.feature_flag.manage` | admin |  |  |  |  | ✓ |  |  |  | Change feature flag defaults and per-tenant overrides |
 | `admin.listing.moderate` | admin |  |  |  |  | ✓ | ✓ |  |  | Review queue of listings: approve, reject, hide, restore; decide reports (D-252) |
 | `admin.listing.verify` | admin |  |  |  |  | ✓ | ✓ |  |  | Decide owner verifications from ownership evidence (D-252) |
+| `admin.guide.manage` | admin |  |  |  |  | ✓ | ✓ |  |  | Write, edit, review and publish the guides of the public site (D-271) |
 | `admin.building.manage` | admin |  |  |  |  | ✓ |  |  |  | Change the operator of a building between tenants (schema-design §4.6) |

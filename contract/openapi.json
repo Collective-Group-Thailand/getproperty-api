@@ -907,6 +907,28 @@
           "type": "https://errors.getproperty.co/grant.not_allowed"
         }
       },
+      "problem.guide.same_reviewer": {
+        "summary": "guide.same_reviewer",
+        "value": {
+          "code": "guide.same_reviewer",
+          "detail": "คู่มือต้องให้ผู้ใช้แพลตฟอร์มคนอื่นที่ไม่ใช่ผู้แก้ไขล่าสุดตรวจและเผยแพร่",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ต้องให้ผู้อื่นเผยแพร่",
+          "type": "https://errors.getproperty.co/guide.same_reviewer"
+        }
+      },
+      "problem.guide.slug_taken": {
+        "summary": "guide.slug_taken",
+        "value": {
+          "code": "guide.slug_taken",
+          "detail": "มีคู่มือที่ใช้ slug และภาษานี้อยู่แล้ว แก้ไขฉบับเดิมแทน",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "มีคู่มือนี้อยู่แล้ว",
+          "type": "https://errors.getproperty.co/guide.slug_taken"
+        }
+      },
       "problem.haas.invalid_transition": {
         "summary": "haas.invalid_transition",
         "value": {
@@ -3331,6 +3353,174 @@
         ],
         "type": "object"
       },
+      "AdminGuideDto": {
+        "properties": {
+          "answer": {
+            "description": "The short answer first (AEO).",
+            "example": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5",
+            "type": "string"
+          },
+          "audience": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuideAudience"
+              }
+            ],
+            "example": "landlord"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuideCategory"
+              }
+            ],
+            "example": "tax"
+          },
+          "faq": {
+            "items": {
+              "$ref": "#/components/schemas/GuideFaqDto"
+            },
+            "type": "array"
+          },
+          "general": {
+            "description": "Legal or tax content: the page shows \"general information, not advice\".",
+            "example": true,
+            "type": "boolean"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "locale": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Language"
+              }
+            ],
+            "example": "th"
+          },
+          "published": {
+            "example": "2026-10-24",
+            "format": "date",
+            "type": "string"
+          },
+          "publishedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "readMinutes": {
+            "example": 6,
+            "type": "number"
+          },
+          "reviewed": {
+            "description": "The facts were last checked on this day.",
+            "example": "2026-10-24",
+            "format": "date",
+            "type": "string"
+          },
+          "reviewedBy": {
+            "description": "Who reviewed and published it.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sections": {
+            "description": "Sections `{ id, heading, blocks }`; a block is one of `{ p }`, `{ ul: [] }`, `{ ol: [] }`, `{ note, tone? (info | warning | product) }`, `{ affiliate: { name, url, merchant, why, imageUrl? } }` (the shared article of D-277).",
+            "example": [
+              {
+                "blocks": [
+                  {
+                    "p": "เงินที่ได้จากการให้เช่าบ้าน คอนโด ห้องพัก เป็นเงินได้ตามมาตรา 40(5)"
+                  }
+                ],
+                "heading": "ค่าเช่าเป็นเงินได้ประเภทไหน",
+                "id": "type"
+              }
+            ],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "slug": {
+            "example": "rental-income-tax",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/GuideSourceDto"
+            },
+            "type": "array"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuideState"
+              }
+            ],
+            "example": "published"
+          },
+          "summary": {
+            "example": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5) หักค่าใช้จ่ายเหมา 30% หรือตามจริง",
+            "type": "string"
+          },
+          "title": {
+            "example": "ภาษีค่าเช่าบ้านและคอนโด: ยื่นเมื่อไร หักค่าใช้จ่ายได้เท่าไร",
+            "type": "string"
+          },
+          "updatedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedBy": {
+            "description": "The last editor.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "example": 3,
+            "type": "number"
+          }
+        },
+        "required": [
+          "slug",
+          "locale",
+          "category",
+          "audience",
+          "title",
+          "summary",
+          "answer",
+          "readMinutes",
+          "general",
+          "reviewed",
+          "published",
+          "sections",
+          "faq",
+          "sources",
+          "id",
+          "state",
+          "reviewedBy",
+          "updatedBy",
+          "publishedAt",
+          "updatedAt",
+          "version"
+        ],
+        "type": "object"
+      },
       "AdminListingDto": {
         "properties": {
           "descriptionTh": {
@@ -3524,6 +3714,7 @@
         "enum": [
           "tenants",
           "listings",
+          "guides",
           "platform_users",
           "utility_tariffs",
           "settings",
@@ -12298,6 +12489,458 @@
           "unit"
         ],
         "type": "string"
+      },
+      "GuideAudience": {
+        "enum": [
+          "landlord",
+          "apartment"
+        ],
+        "type": "string"
+      },
+      "GuideCategory": {
+        "enum": [
+          "tax",
+          "law",
+          "landlord",
+          "operations"
+        ],
+        "type": "string"
+      },
+      "GuideCreateDto": {
+        "properties": {
+          "answer": {
+            "example": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5",
+            "maxLength": 600,
+            "type": "string"
+          },
+          "audience": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuideAudience"
+              }
+            ],
+            "example": "landlord"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuideCategory"
+              }
+            ],
+            "example": "tax"
+          },
+          "faq": {
+            "items": {
+              "$ref": "#/components/schemas/GuideFaqDto"
+            },
+            "type": "array"
+          },
+          "general": {
+            "example": true,
+            "type": "boolean"
+          },
+          "locale": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Language"
+              }
+            ],
+            "example": "th"
+          },
+          "published": {
+            "example": "2026-10-24",
+            "format": "date",
+            "type": "string"
+          },
+          "readMinutes": {
+            "example": 6,
+            "maximum": 60,
+            "minimum": 1,
+            "type": "number"
+          },
+          "reviewed": {
+            "example": "2026-10-24",
+            "format": "date",
+            "type": "string"
+          },
+          "sections": {
+            "description": "Sections `{ id, heading, blocks }`; a block is one of `{ p }`, `{ ul: [] }`, `{ ol: [] }`, `{ note, tone? (info | warning | product) }`, `{ affiliate: { name, url, merchant, why, imageUrl? } }` (the shared article of D-277).",
+            "example": [
+              {
+                "blocks": [
+                  {
+                    "p": "เงินที่ได้จากการให้เช่าบ้าน คอนโด ห้องพัก เป็นเงินได้ตามมาตรา 40(5)"
+                  }
+                ],
+                "heading": "ค่าเช่าเป็นเงินได้ประเภทไหน",
+                "id": "type"
+              }
+            ],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "slug": {
+            "example": "rental-income-tax",
+            "pattern": "^[a-z0-9-]{1,80}$",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/GuideSourceDto"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "example": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5)",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "title": {
+            "example": "ภาษีค่าเช่าบ้านและคอนโด",
+            "maxLength": 120,
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "locale",
+          "category",
+          "audience",
+          "title",
+          "summary",
+          "answer",
+          "readMinutes",
+          "general",
+          "reviewed",
+          "published",
+          "sections",
+          "faq",
+          "sources"
+        ],
+        "type": "object"
+      },
+      "GuideDetailDto": {
+        "properties": {
+          "answer": {
+            "description": "The short answer first (AEO).",
+            "example": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5",
+            "type": "string"
+          },
+          "audience": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuideAudience"
+              }
+            ],
+            "example": "landlord"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuideCategory"
+              }
+            ],
+            "example": "tax"
+          },
+          "faq": {
+            "items": {
+              "$ref": "#/components/schemas/GuideFaqDto"
+            },
+            "type": "array"
+          },
+          "general": {
+            "description": "Legal or tax content: the page shows \"general information, not advice\".",
+            "example": true,
+            "type": "boolean"
+          },
+          "locale": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Language"
+              }
+            ],
+            "example": "th"
+          },
+          "published": {
+            "example": "2026-10-24",
+            "format": "date",
+            "type": "string"
+          },
+          "readMinutes": {
+            "example": 6,
+            "type": "number"
+          },
+          "reviewed": {
+            "description": "The facts were last checked on this day.",
+            "example": "2026-10-24",
+            "format": "date",
+            "type": "string"
+          },
+          "sections": {
+            "description": "Sections `{ id, heading, blocks }`; a block is one of `{ p }`, `{ ul: [] }`, `{ ol: [] }`, `{ note, tone? (info | warning | product) }`, `{ affiliate: { name, url, merchant, why, imageUrl? } }` (the shared article of D-277).",
+            "example": [
+              {
+                "blocks": [
+                  {
+                    "p": "เงินที่ได้จากการให้เช่าบ้าน คอนโด ห้องพัก เป็นเงินได้ตามมาตรา 40(5)"
+                  }
+                ],
+                "heading": "ค่าเช่าเป็นเงินได้ประเภทไหน",
+                "id": "type"
+              }
+            ],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "slug": {
+            "example": "rental-income-tax",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/GuideSourceDto"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "example": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5) หักค่าใช้จ่ายเหมา 30% หรือตามจริง",
+            "type": "string"
+          },
+          "title": {
+            "example": "ภาษีค่าเช่าบ้านและคอนโด: ยื่นเมื่อไร หักค่าใช้จ่ายได้เท่าไร",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "locale",
+          "category",
+          "audience",
+          "title",
+          "summary",
+          "answer",
+          "readMinutes",
+          "general",
+          "reviewed",
+          "published",
+          "sections",
+          "faq",
+          "sources"
+        ],
+        "type": "object"
+      },
+      "GuideFaqDto": {
+        "properties": {
+          "a": {
+            "example": "ต้องนำค่าเช่าไปรวมเป็นเงินได้ตามมาตรา 40(5) ทุกกรณี",
+            "type": "string"
+          },
+          "q": {
+            "example": "ปล่อยเช่าคอนโดห้องเดียวต้องยื่นภาษีไหม",
+            "type": "string"
+          }
+        },
+        "required": [
+          "q",
+          "a"
+        ],
+        "type": "object"
+      },
+      "GuideSourceDto": {
+        "properties": {
+          "label": {
+            "example": "กรมสรรพากร",
+            "type": "string"
+          },
+          "url": {
+            "example": "https://www.rd.go.th/",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ],
+        "type": "object"
+      },
+      "GuideState": {
+        "enum": [
+          "draft",
+          "published"
+        ],
+        "type": "string"
+      },
+      "GuideSummaryDto": {
+        "properties": {
+          "answer": {
+            "description": "The short answer first (AEO).",
+            "example": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5",
+            "type": "string"
+          },
+          "audience": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuideAudience"
+              }
+            ],
+            "example": "landlord"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuideCategory"
+              }
+            ],
+            "example": "tax"
+          },
+          "general": {
+            "description": "Legal or tax content: the page shows \"general information, not advice\".",
+            "example": true,
+            "type": "boolean"
+          },
+          "locale": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Language"
+              }
+            ],
+            "example": "th"
+          },
+          "published": {
+            "example": "2026-10-24",
+            "format": "date",
+            "type": "string"
+          },
+          "readMinutes": {
+            "example": 6,
+            "type": "number"
+          },
+          "reviewed": {
+            "description": "The facts were last checked on this day.",
+            "example": "2026-10-24",
+            "format": "date",
+            "type": "string"
+          },
+          "slug": {
+            "example": "rental-income-tax",
+            "type": "string"
+          },
+          "summary": {
+            "example": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5) หักค่าใช้จ่ายเหมา 30% หรือตามจริง",
+            "type": "string"
+          },
+          "title": {
+            "example": "ภาษีค่าเช่าบ้านและคอนโด: ยื่นเมื่อไร หักค่าใช้จ่ายได้เท่าไร",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "locale",
+          "category",
+          "audience",
+          "title",
+          "summary",
+          "answer",
+          "readMinutes",
+          "general",
+          "reviewed",
+          "published"
+        ],
+        "type": "object"
+      },
+      "GuideUpdateDto": {
+        "properties": {
+          "answer": {
+            "example": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5",
+            "maxLength": 600,
+            "type": "string"
+          },
+          "audience": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuideAudience"
+              }
+            ],
+            "example": "landlord"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuideCategory"
+              }
+            ],
+            "example": "tax"
+          },
+          "faq": {
+            "items": {
+              "$ref": "#/components/schemas/GuideFaqDto"
+            },
+            "type": "array"
+          },
+          "general": {
+            "example": true,
+            "type": "boolean"
+          },
+          "published": {
+            "example": "2026-10-24",
+            "format": "date",
+            "type": "string"
+          },
+          "readMinutes": {
+            "example": 6,
+            "maximum": 60,
+            "minimum": 1,
+            "type": "number"
+          },
+          "reviewed": {
+            "example": "2026-10-24",
+            "format": "date",
+            "type": "string"
+          },
+          "sections": {
+            "description": "Sections `{ id, heading, blocks }`; a block is one of `{ p }`, `{ ul: [] }`, `{ ol: [] }`, `{ note, tone? (info | warning | product) }`, `{ affiliate: { name, url, merchant, why, imageUrl? } }` (the shared article of D-277).",
+            "example": [
+              {
+                "blocks": [
+                  {
+                    "p": "เงินที่ได้จากการให้เช่าบ้าน คอนโด ห้องพัก เป็นเงินได้ตามมาตรา 40(5)"
+                  }
+                ],
+                "heading": "ค่าเช่าเป็นเงินได้ประเภทไหน",
+                "id": "type"
+              }
+            ],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/GuideSourceDto"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "example": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5)",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "title": {
+            "example": "ภาษีค่าเช่าบ้านและคอนโด",
+            "maxLength": 120,
+            "type": "string"
+          }
+        },
+        "type": "object"
       },
       "HaasAction": {
         "enum": [
@@ -28317,6 +28960,20 @@
         "required": [
           "lat",
           "lng"
+        ],
+        "type": "object"
+      },
+      "PublicGuidesDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/GuideSummaryDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
         ],
         "type": "object"
       },
@@ -50014,6 +50671,1527 @@
         ],
         "x-required-permissions": [
           "admin.utility_tariff.enter"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/guides": {
+      "get": {
+        "description": "Every guide in both languages, draft or published (D-271).\n\nImplements: D-271.",
+        "operationId": "admin.guides.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "locale",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Language"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/GuideState"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "answer": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5 (มาตรา 40(5))",
+                    "audience": "landlord",
+                    "category": "tax",
+                    "faq": [
+                      {
+                        "a": "ต้องนำค่าเช่าไปรวมเป็นเงินได้ตามมาตรา 40(5)",
+                        "q": "ปล่อยเช่าคอนโดห้องเดียวต้องยื่นภาษีไหม"
+                      }
+                    ],
+                    "general": true,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "locale": "th",
+                    "published": "2026-10-24",
+                    "publishedAt": "2026-11-01T00:15:00+07:00",
+                    "readMinutes": 6,
+                    "reviewed": "2026-10-24",
+                    "reviewedBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "sections": [
+                      {
+                        "blocks": [
+                          {
+                            "p": "เงินที่ได้จากการให้เช่าบ้าน คอนโด ห้องพัก เป็นเงินได้ตามมาตรา 40(5)"
+                          }
+                        ],
+                        "heading": "ค่าเช่าเป็นเงินได้ประเภทไหน",
+                        "id": "type"
+                      }
+                    ],
+                    "slug": "rental-income-tax",
+                    "sources": [
+                      {
+                        "label": "กรมสรรพากร",
+                        "url": "https://www.rd.go.th/"
+                      }
+                    ],
+                    "state": "published",
+                    "summary": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5) หักค่าใช้จ่ายเหมา 30% หรือตามจริง",
+                    "title": "ภาษีค่าเช่าบ้านและคอนโด: ยื่นเมื่อไร หักค่าใช้จ่ายได้เท่าไร",
+                    "updatedAt": "2026-11-01T00:15:00+07:00",
+                    "updatedBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "version": 2
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminGuideDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Guides",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Guides",
+        "tags": [
+          "admin.guides"
+        ],
+        "x-required-permissions": [
+          "admin.guide.manage"
+        ],
+        "x-surface": "admin"
+      },
+      "post": {
+        "description": "A new guide as a draft (one per slug and language, `guide.slug_taken`). The body must be the shared article shape — sections of p / ul / ol / note / affiliate blocks, FAQ, https sources (D-271, D-277).\n\nImplements: D-271.",
+        "operationId": "admin.guides.create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "answer": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5 (มาตรา 40(5))",
+                    "audience": "landlord",
+                    "category": "tax",
+                    "faq": [
+                      {
+                        "a": "ต้องนำค่าเช่าไปรวมเป็นเงินได้ตามมาตรา 40(5)",
+                        "q": "ปล่อยเช่าคอนโดห้องเดียวต้องยื่นภาษีไหม"
+                      }
+                    ],
+                    "general": true,
+                    "locale": "th",
+                    "published": "2026-10-24",
+                    "readMinutes": 6,
+                    "reviewed": "2026-10-24",
+                    "sections": [
+                      {
+                        "blocks": [
+                          {
+                            "p": "เงินที่ได้จากการให้เช่าบ้าน คอนโด ห้องพัก เป็นเงินได้ตามมาตรา 40(5)"
+                          }
+                        ],
+                        "heading": "ค่าเช่าเป็นเงินได้ประเภทไหน",
+                        "id": "type"
+                      }
+                    ],
+                    "slug": "rental-income-tax",
+                    "sources": [
+                      {
+                        "label": "กรมสรรพากร",
+                        "url": "https://www.rd.go.th/"
+                      }
+                    ],
+                    "summary": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5) หักค่าใช้จ่ายเหมา 30% หรือตามจริง",
+                    "title": "ภาษีค่าเช่าบ้านและคอนโด: ยื่นเมื่อไร หักค่าใช้จ่ายได้เท่าไร"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/GuideCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "answer": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5 (มาตรา 40(5))",
+                  "audience": "landlord",
+                  "category": "tax",
+                  "faq": [
+                    {
+                      "a": "ต้องนำค่าเช่าไปรวมเป็นเงินได้ตามมาตรา 40(5)",
+                      "q": "ปล่อยเช่าคอนโดห้องเดียวต้องยื่นภาษีไหม"
+                    }
+                  ],
+                  "general": true,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "locale": "th",
+                  "published": "2026-10-24",
+                  "publishedAt": null,
+                  "readMinutes": 6,
+                  "reviewed": "2026-10-24",
+                  "reviewedBy": null,
+                  "sections": [
+                    {
+                      "blocks": [
+                        {
+                          "p": "เงินที่ได้จากการให้เช่าบ้าน คอนโด ห้องพัก เป็นเงินได้ตามมาตรา 40(5)"
+                        }
+                      ],
+                      "heading": "ค่าเช่าเป็นเงินได้ประเภทไหน",
+                      "id": "type"
+                    }
+                  ],
+                  "slug": "rental-income-tax",
+                  "sources": [
+                    {
+                      "label": "กรมสรรพากร",
+                      "url": "https://www.rd.go.th/"
+                    }
+                  ],
+                  "state": "draft",
+                  "summary": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5) หักค่าใช้จ่ายเหมา 30% หรือตามจริง",
+                  "title": "ภาษีค่าเช่าบ้านและคอนโด: ยื่นเมื่อไร หักค่าใช้จ่ายได้เท่าไร",
+                  "updatedAt": "2026-11-01T00:15:00+07:00",
+                  "updatedBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "version": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGuideDto"
+                }
+              }
+            },
+            "description": "Draft",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.malformed_json": {
+                    "$ref": "#/components/examples/problem.http.malformed_json"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.malformed_json`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "guide.slug_taken": {
+                    "$ref": "#/components/examples/problem.guide.slug_taken"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `guide.slug_taken`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Write a guide",
+        "tags": [
+          "admin.guides"
+        ],
+        "x-required-permissions": [
+          "admin.guide.manage"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/guides/{guideId}": {
+      "get": {
+        "description": "A guide with its body (D-271).\n\nImplements: D-271.",
+        "operationId": "admin.guides.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "guideId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "answer": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5 (มาตรา 40(5))",
+                  "audience": "landlord",
+                  "category": "tax",
+                  "faq": [
+                    {
+                      "a": "ต้องนำค่าเช่าไปรวมเป็นเงินได้ตามมาตรา 40(5)",
+                      "q": "ปล่อยเช่าคอนโดห้องเดียวต้องยื่นภาษีไหม"
+                    }
+                  ],
+                  "general": true,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "locale": "th",
+                  "published": "2026-10-24",
+                  "publishedAt": "2026-11-01T00:15:00+07:00",
+                  "readMinutes": 6,
+                  "reviewed": "2026-10-24",
+                  "reviewedBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "sections": [
+                    {
+                      "blocks": [
+                        {
+                          "p": "เงินที่ได้จากการให้เช่าบ้าน คอนโด ห้องพัก เป็นเงินได้ตามมาตรา 40(5)"
+                        }
+                      ],
+                      "heading": "ค่าเช่าเป็นเงินได้ประเภทไหน",
+                      "id": "type"
+                    }
+                  ],
+                  "slug": "rental-income-tax",
+                  "sources": [
+                    {
+                      "label": "กรมสรรพากร",
+                      "url": "https://www.rd.go.th/"
+                    }
+                  ],
+                  "state": "published",
+                  "summary": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5) หักค่าใช้จ่ายเหมา 30% หรือตามจริง",
+                  "title": "ภาษีค่าเช่าบ้านและคอนโด: ยื่นเมื่อไร หักค่าใช้จ่ายได้เท่าไร",
+                  "updatedAt": "2026-11-01T00:15:00+07:00",
+                  "updatedBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "version": 2
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGuideDto"
+                }
+              }
+            },
+            "description": "Guide",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "One guide",
+        "tags": [
+          "admin.guides"
+        ],
+        "x-required-permissions": [
+          "admin.guide.manage"
+        ],
+        "x-surface": "admin"
+      },
+      "patch": {
+        "description": "Changes any field but slug and language; requires `If-Match`. A published guide shows the change at once (D-271).\n\nImplements: D-271.",
+        "operationId": "admin.guides.update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "guideId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "reviewed": "2026-11-01"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/GuideUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "answer": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5 (มาตรา 40(5))",
+                  "audience": "landlord",
+                  "category": "tax",
+                  "faq": [
+                    {
+                      "a": "ต้องนำค่าเช่าไปรวมเป็นเงินได้ตามมาตรา 40(5)",
+                      "q": "ปล่อยเช่าคอนโดห้องเดียวต้องยื่นภาษีไหม"
+                    }
+                  ],
+                  "general": true,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "locale": "th",
+                  "published": "2026-10-24",
+                  "publishedAt": "2026-11-01T00:15:00+07:00",
+                  "readMinutes": 6,
+                  "reviewed": "2026-10-24",
+                  "reviewedBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "sections": [
+                    {
+                      "blocks": [
+                        {
+                          "p": "เงินที่ได้จากการให้เช่าบ้าน คอนโด ห้องพัก เป็นเงินได้ตามมาตรา 40(5)"
+                        }
+                      ],
+                      "heading": "ค่าเช่าเป็นเงินได้ประเภทไหน",
+                      "id": "type"
+                    }
+                  ],
+                  "slug": "rental-income-tax",
+                  "sources": [
+                    {
+                      "label": "กรมสรรพากร",
+                      "url": "https://www.rd.go.th/"
+                    }
+                  ],
+                  "state": "published",
+                  "summary": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5) หักค่าใช้จ่ายเหมา 30% หรือตามจริง",
+                  "title": "ภาษีค่าเช่าบ้านและคอนโด: ยื่นเมื่อไร หักค่าใช้จ่ายได้เท่าไร",
+                  "updatedAt": "2026-11-01T00:15:00+07:00",
+                  "updatedBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "version": 2
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGuideDto"
+                }
+              }
+            },
+            "description": "Updated",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.malformed_json": {
+                    "$ref": "#/components/examples/problem.http.malformed_json"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.malformed_json`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "412": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "concurrency.stale": {
+                    "$ref": "#/components/examples/problem.concurrency.stale"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `concurrency.stale`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "concurrency.precondition_required": {
+                    "$ref": "#/components/examples/problem.concurrency.precondition_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `concurrency.precondition_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Edit a guide",
+        "tags": [
+          "admin.guides"
+        ],
+        "x-required-permissions": [
+          "admin.guide.manage"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/guides/{guideId}/actions/publish": {
+      "post": {
+        "description": "A platform user other than the last editor (`guide.same_reviewer`) publishes the guide and is recorded as its reviewer; it is public at once (D-271, D-091).\n\nImplements: D-271, D-091.",
+        "operationId": "admin.guides.publish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "guideId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "answer": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5 (มาตรา 40(5))",
+                  "audience": "landlord",
+                  "category": "tax",
+                  "faq": [
+                    {
+                      "a": "ต้องนำค่าเช่าไปรวมเป็นเงินได้ตามมาตรา 40(5)",
+                      "q": "ปล่อยเช่าคอนโดห้องเดียวต้องยื่นภาษีไหม"
+                    }
+                  ],
+                  "general": true,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "locale": "th",
+                  "published": "2026-10-24",
+                  "publishedAt": "2026-11-01T00:15:00+07:00",
+                  "readMinutes": 6,
+                  "reviewed": "2026-10-24",
+                  "reviewedBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "sections": [
+                    {
+                      "blocks": [
+                        {
+                          "p": "เงินที่ได้จากการให้เช่าบ้าน คอนโด ห้องพัก เป็นเงินได้ตามมาตรา 40(5)"
+                        }
+                      ],
+                      "heading": "ค่าเช่าเป็นเงินได้ประเภทไหน",
+                      "id": "type"
+                    }
+                  ],
+                  "slug": "rental-income-tax",
+                  "sources": [
+                    {
+                      "label": "กรมสรรพากร",
+                      "url": "https://www.rd.go.th/"
+                    }
+                  ],
+                  "state": "published",
+                  "summary": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5) หักค่าใช้จ่ายเหมา 30% หรือตามจริง",
+                  "title": "ภาษีค่าเช่าบ้านและคอนโด: ยื่นเมื่อไร หักค่าใช้จ่ายได้เท่าไร",
+                  "updatedAt": "2026-11-01T00:15:00+07:00",
+                  "updatedBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "version": 2
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGuideDto"
+                }
+              }
+            },
+            "description": "Published",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "guide.same_reviewer": {
+                    "$ref": "#/components/examples/problem.guide.same_reviewer"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `guide.same_reviewer`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Review and publish",
+        "tags": [
+          "admin.guides"
+        ],
+        "x-required-permissions": [
+          "admin.guide.manage"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/guides/{guideId}/actions/unpublish": {
+      "post": {
+        "description": "Back to draft; the public page is gone at once (D-271).\n\nImplements: D-271.",
+        "operationId": "admin.guides.unpublish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "guideId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "answer": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5 (มาตรา 40(5))",
+                  "audience": "landlord",
+                  "category": "tax",
+                  "faq": [
+                    {
+                      "a": "ต้องนำค่าเช่าไปรวมเป็นเงินได้ตามมาตรา 40(5)",
+                      "q": "ปล่อยเช่าคอนโดห้องเดียวต้องยื่นภาษีไหม"
+                    }
+                  ],
+                  "general": true,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "locale": "th",
+                  "published": "2026-10-24",
+                  "publishedAt": null,
+                  "readMinutes": 6,
+                  "reviewed": "2026-10-24",
+                  "reviewedBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "sections": [
+                    {
+                      "blocks": [
+                        {
+                          "p": "เงินที่ได้จากการให้เช่าบ้าน คอนโด ห้องพัก เป็นเงินได้ตามมาตรา 40(5)"
+                        }
+                      ],
+                      "heading": "ค่าเช่าเป็นเงินได้ประเภทไหน",
+                      "id": "type"
+                    }
+                  ],
+                  "slug": "rental-income-tax",
+                  "sources": [
+                    {
+                      "label": "กรมสรรพากร",
+                      "url": "https://www.rd.go.th/"
+                    }
+                  ],
+                  "state": "draft",
+                  "summary": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5) หักค่าใช้จ่ายเหมา 30% หรือตามจริง",
+                  "title": "ภาษีค่าเช่าบ้านและคอนโด: ยื่นเมื่อไร หักค่าใช้จ่ายได้เท่าไร",
+                  "updatedAt": "2026-11-01T00:15:00+07:00",
+                  "updatedBy": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "version": 2
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGuideDto"
+                }
+              }
+            },
+            "description": "Draft",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Take off the site",
+        "tags": [
+          "admin.guides"
+        ],
+        "x-required-permissions": [
+          "admin.guide.manage"
         ],
         "x-surface": "admin"
       }
@@ -184898,6 +187076,318 @@
         "x-surface": "prospect"
       }
     },
+    "/v1/public/guides": {
+      "get": {
+        "description": "Published guides of one language, newest first (D-271).\n\nImplements: D-271.",
+        "operationId": "public.guides.list",
+        "parameters": [
+          {
+            "description": "Default th.",
+            "in": "query",
+            "name": "locale",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Language"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "answer": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5 (มาตรา 40(5))",
+                      "audience": "landlord",
+                      "category": "tax",
+                      "general": true,
+                      "locale": "th",
+                      "published": "2026-10-24",
+                      "readMinutes": 6,
+                      "reviewed": "2026-10-24",
+                      "slug": "rental-income-tax",
+                      "summary": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5) หักค่าใช้จ่ายเหมา 30% หรือตามจริง",
+                      "title": "ภาษีค่าเช่าบ้านและคอนโด: ยื่นเมื่อไร หักค่าใช้จ่ายได้เท่าไร"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PublicGuidesDto"
+                }
+              }
+            },
+            "description": "Guides",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Guides",
+        "tags": [
+          "public.guides"
+        ],
+        "x-surface": "public"
+      }
+    },
+    "/v1/public/guides/{slug}": {
+      "get": {
+        "description": "A published guide in one language with its sections, FAQ and sources (D-271); unpublished or unknown = 404.\n\nImplements: D-271.",
+        "operationId": "public.guides.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "example": "rental-income-tax",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Default th.",
+            "in": "query",
+            "name": "locale",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Language"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "answer": "ค่าเช่าบ้านและคอนโดเป็นเงินได้ประเภทที่ 5 (มาตรา 40(5))",
+                  "audience": "landlord",
+                  "category": "tax",
+                  "faq": [
+                    {
+                      "a": "ต้องนำค่าเช่าไปรวมเป็นเงินได้ตามมาตรา 40(5)",
+                      "q": "ปล่อยเช่าคอนโดห้องเดียวต้องยื่นภาษีไหม"
+                    }
+                  ],
+                  "general": true,
+                  "locale": "th",
+                  "published": "2026-10-24",
+                  "readMinutes": 6,
+                  "reviewed": "2026-10-24",
+                  "sections": [
+                    {
+                      "blocks": [
+                        {
+                          "p": "เงินที่ได้จากการให้เช่าบ้าน คอนโด ห้องพัก เป็นเงินได้ตามมาตรา 40(5)"
+                        }
+                      ],
+                      "heading": "ค่าเช่าเป็นเงินได้ประเภทไหน",
+                      "id": "type"
+                    }
+                  ],
+                  "slug": "rental-income-tax",
+                  "sources": [
+                    {
+                      "label": "กรมสรรพากร",
+                      "url": "https://www.rd.go.th/"
+                    }
+                  ],
+                  "summary": "รายได้ค่าเช่าเป็นเงินได้ตามมาตรา 40(5) หักค่าใช้จ่ายเหมา 30% หรือตามจริง",
+                  "title": "ภาษีค่าเช่าบ้านและคอนโด: ยื่นเมื่อไร หักค่าใช้จ่ายได้เท่าไร"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/GuideDetailDto"
+                }
+              }
+            },
+            "description": "Guide",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "One guide",
+        "tags": [
+          "public.guides"
+        ],
+        "x-surface": "public"
+      }
+    },
     "/v1/public/listings": {
       "get": {
         "description": "Published listings of active tenants (D-252): words, kind, province / district, rent range, size, bedrooms (at least), furnishing, pets, available-by, sort; cursor pages of up to 50 with the total. Each card has the full address (the unit number only when the owner shows it), the cover photo and the verified-owner flag. Anonymous, cacheable (5 min), rate-limited.\n\nImplements: D-252.",
@@ -231791,6 +234281,10 @@
       "name": "admin.files"
     },
     {
+      "description": "Guides of the public site: write, edit, review and publish (D-271).",
+      "name": "admin.guides"
+    },
+    {
       "description": "The HaaS register (D-081): platform-owned gateways and rented meters at tenants with term, monthly value, book value and history.",
       "name": "admin.haas"
     },
@@ -232249,6 +234743,10 @@
     {
       "description": "Prospects (getproperty-liff and the public listing pages of getproperty-web, B7.3) — people looking for a place to rent: enquiries about a listing, viewings, my enquiries (`prospect` audience, D-252, D-255). System: ping.",
       "name": "prospect.system"
+    },
+    {
+      "description": "Published guides of the public site per language (D-271).",
+      "name": "public.guides"
     },
     {
       "description": "Public rental listings: search, detail, sitemap, viewers’ reports (D-252).",

@@ -1166,5 +1166,15 @@
       "title": "No rent record yet",
       "detail": "There is no confirmed month to share yet: months paid through getproperty appear here once their due date has passed."
     }
+  },
+  "guide": {
+    "slug_taken": {
+      "title": "This guide already exists",
+      "detail": "A guide with this slug and language exists; edit it instead."
+    },
+    "same_reviewer": {
+      "title": "Another user must publish",
+      "detail": "The guide must be reviewed and published by a different platform user than the last one who edited it."
+    }
   }
 }

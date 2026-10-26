@@ -38,6 +38,7 @@ import {
   landlordTemplates,
 } from '../../src/modules/ops-leases/landlord-templates';
 import { DEFAULT_SERVICE_CATEGORIES } from '../../src/modules/ops-service/service-rules';
+import { GUIDES } from './data/guides';
 import { HOLIDAYS } from './data/holidays';
 import { NOTIFICATION_ROUTES, NOTIFICATION_TEMPLATES } from './data/notifications';
 import { PRICE_PLAN_EFFECTIVE_FROM, PRICE_PLANS } from './data/price-plans';
@@ -115,6 +116,7 @@ export async function runSeed(
   await tx(db, () => seedInspectionTemplates(db));
   await tx(db, () => seedPricePlans(db));
   await tx(db, () => seedServiceCategories(db));
+  await tx(db, () => seedGuides(db));
   if (mode === 'dev') await tx(db, () => seedDev(db));
 
   const counts = await countRows(db);
@@ -406,6 +408,34 @@ async function seedPricePlans(db: ClientBase): Promise<void> {
 }
 
 /** B5.1 (D-072): the platform default repair categories with their default SLA hours (tenants override per key). */
+/** B7.13 (D-271): the guides once, published; later edits in admin are never overwritten. */
+async function seedGuides(db: ClientBase): Promise<void> {
+  for (const g of GUIDES) {
+    await db.query(
+      `INSERT INTO platform.guide (slug, locale, category, audience, title, summary, answer, sections, faq, sources,
+         read_minutes, general, reviewed_on, published_on, state, published_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10::jsonb, $11, $12, $13::date, $14::date, 'published', now())
+       ON CONFLICT (slug, locale) DO NOTHING`,
+      [
+        g.slug,
+        g.locale,
+        g.category,
+        g.audience,
+        g.title,
+        g.summary,
+        g.answer,
+        JSON.stringify(g.sections),
+        JSON.stringify(g.faq),
+        JSON.stringify(g.sources),
+        g.readMinutes,
+        g.general,
+        g.reviewed,
+        g.published,
+      ],
+    );
+  }
+}
+
 async function seedServiceCategories(db: ClientBase): Promise<void> {
   for (const [i, c] of DEFAULT_SERVICE_CATEGORIES.entries()) {
     await db.query(
@@ -758,6 +788,7 @@ async function seedDevDeposit(db: ClientBase): Promise<void> {
 
 const COUNTED_TABLES = [
   'ops.service_category',
+  'platform.guide',
   'platform.role',
   'platform.permission',
   'platform.role_permission',

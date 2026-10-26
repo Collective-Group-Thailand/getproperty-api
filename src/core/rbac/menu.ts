@@ -69,6 +69,7 @@ export const STAFF_MENU: readonly MenuEntry[] = [
 export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'tenants', anyOf: ['admin.tenant.read'] },
   { key: 'listings', anyOf: ['admin.listing.moderate', 'admin.listing.verify'] },
+  { key: 'guides', anyOf: ['admin.guide.manage'] },
   { key: 'platform_users', anyOf: ['admin.user.manage'] },
   { key: 'utility_tariffs', anyOf: ['admin.utility_tariff.enter', 'admin.utility_tariff.verify'] },
   { key: 'settings', anyOf: ['admin.setting.manage', 'admin.compliance.manage'] },

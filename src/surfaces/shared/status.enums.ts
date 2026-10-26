@@ -126,6 +126,7 @@ export enum StaffMenuKey {
 export enum AdminMenuKey {
   Tenants = 'tenants',
   Listings = 'listings',
+  Guides = 'guides',
   PlatformUsers = 'platform_users',
   UtilityTariffs = 'utility_tariffs',
   Settings = 'settings',

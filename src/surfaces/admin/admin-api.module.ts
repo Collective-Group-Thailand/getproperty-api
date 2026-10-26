@@ -15,6 +15,7 @@ import { systemPingController } from '../system-ping.controller';
 import { AdminFilesController, AdminIntegrationEventsController } from './admin-backlog.controller';
 import { ADMIN_BUSINESS_CONTROLLERS } from './admin-business.controller';
 import { AdminProviderCredentialsController } from './admin-credentials.controller';
+import { AdminGuidesController } from './admin-guides.controller';
 import { AdminListingsController } from './admin-listings.controller';
 import { AdminMessagingRatesController } from './admin-messaging.controller';
 import {
@@ -50,6 +51,7 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
     AdminSettingsController,
     AdminStorageController,
     AdminMessagingRatesController,
+    AdminGuidesController,
     AdminListingsController,
     AdminComplianceController,
     AdminDocumentTemplatesController,
