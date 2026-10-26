@@ -19,6 +19,7 @@ import { DepositsService } from './ops-deposits/deposits.service';
 import { DepositDeadlineSubscriber } from './ops-deposits/deposits.subscriber';
 import { InspectionsService } from './ops-deposits/inspections.service';
 import { ResidentDepositsService } from './ops-deposits/resident-deposits.service';
+import { ResidentInspectionsService } from './ops-deposits/resident-inspections.service';
 import { BillingDocuments } from './ops-documents/billing-documents.service';
 import { BillingNotifications } from './ops-documents/billing-notifications';
 import { DocumentArchiveBuilder } from './ops-documents/document-archive.builder';
@@ -113,6 +114,7 @@ const SERVICES = [
   DepositsService,
   DepositDeadlineSubscriber,
   ResidentDepositsService,
+  ResidentInspectionsService,
   RatePlansService,
   BillingInputs,
   InvoicesService,

@@ -108,6 +108,8 @@ export const API_TAGS: Record<string, string> = {
   'staff.pushSubscriptions': 'Web push (VAPID) subscriptions of the staff PWA.',
   'staff.realtime': 'Realtime auth and the server-sent events stream (contract §6).',
   'resident.me': 'Who I am in the LINE Mini App: leases, units, language, consent state (D-060, D-154).',
+  'resident.inspections':
+    'My move-in and move-out reports: lines, photos, the PDF, my countersignature (L5 5.2, D-253).',
   'resident.messagingLinks': 'Link an operator’s own LINE OA to me (D-254).',
   'resident.identities':
     'My ways to open the resident app outside LINE: phone, Google, Apple (D-255, D-283).',

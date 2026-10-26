@@ -54,6 +54,18 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     ],
   },
   {
+    key: 'inspection.countersigned',
+    description: 'Owner: the resident countersigned the move-in / move-out report in LINE (L5 5.2, D-253)',
+    th: [
+      'ผู้เช่าลงนามบันทึกตรวจสภาพห้องแล้ว',
+      'ผู้เช่าห้อง {{inspection.unitNo}} ลงนามบันทึกการตรวจสภาพห้องเลขที่ {{inspection.number}} ผ่าน LINE แล้ว',
+    ],
+    en: [
+      'The resident signed the inspection report',
+      'The resident of unit {{inspection.unitNo}} signed inspection report {{inspection.number}} in LINE.',
+    ],
+  },
+  {
     key: 'messaging.allowance_threshold',
     description: 'Owner: the shared LINE OA reached 80 % / 100 % of the free messages this month (D-254)',
     th: [
@@ -542,6 +554,7 @@ export const NOTIFICATION_ROUTES: {
     'lease.notice_issued',
     'lease.rent_certificate_issued',
     'lease.rent_certificate_declined',
+    'inspection.completed',
     'service_request.decided',
     'service_request.cost_settled',
   ].map((eventType) => ({
@@ -671,6 +684,25 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         language: 'en',
         subject: null,
         body: 'Repair {{request.ref}}: {{settlement.en}} of THB {{settlement.amount}} will be on your next bill.\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'inspection.completed',
+    channel: 'line',
+    audience: 'resident',
+    description:
+      'The landlord completed the move-in / move-out report: check it and countersign (L5 5.2, D-253)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}} บันทึกการตรวจสภาพห้องตอน{{inspection.typeTh}}แล้ว (เลขที่ {{inspection.number}}) แตะเพื่อดูรูปและลงนาม\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}} completed the {{inspection.typeEn}} inspection report {{inspection.number}}. Tap to see the photos and sign it.\n{{link}}',
       },
     ],
   },

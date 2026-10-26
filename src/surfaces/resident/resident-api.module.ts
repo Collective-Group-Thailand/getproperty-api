@@ -24,6 +24,7 @@ import {
 } from '../shared/surface.controllers';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
+import { ResidentInspectionsController } from './resident-inspections.controller';
 import {
   ResidentDocumentsController,
   ResidentNotificationPreferencesController,
@@ -47,6 +48,7 @@ import { ResidentCsatSurveyController } from './resident-survey.controller';
     ResidentRentCertificatesController,
     ResidentInvitationsController,
     ResidentDepositsController,
+    ResidentInspectionsController,
     ResidentUploadsController,
     ResidentServiceRequestsController,
     ResidentAccessController,

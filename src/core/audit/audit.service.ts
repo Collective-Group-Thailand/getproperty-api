@@ -167,6 +167,7 @@ export const AUDIT_ACTIONS = [
   'inspection.created',
   'inspection.updated',
   'inspection.completed',
+  'inspection.countersigned',
   // B4 billing & payments
   'rate_plan.changed',
   'rate_plan.version_saved',

@@ -131,6 +131,8 @@ export const DOMAIN_EVENT_TYPES = {
   'deposit.settlement_late': 'The refund deadline passed before the refund (compliance.deposit_deadline).',
   'inspection.created': 'A move-in / move-out inspection was created.',
   'inspection.completed': 'An inspection was completed and signed; report numbered.',
+  'inspection.countersigned':
+    'The resident countersigned in the LIFF a report the owner completed without their signature (L5 5.2, D-253).',
   // B3.1 devices
   'device.assigned': 'A device left the platform inventory for a tenant building (D-033).',
   'device.retired': 'A device was retired; certificates and broker ACL revoked (D-033).',

@@ -292,7 +292,7 @@ export class InspectionsService extends TenantScopedRepository {
     });
   }
 
-  private signature(base64: string | undefined): Buffer | null {
+  signature(base64: string | undefined): Buffer | null {
     if (!base64) return null;
     const body = Buffer.from(base64, 'base64');
     if (!body.subarray(0, 8).equals(PNG) || body.length > 200_000)
@@ -453,5 +453,61 @@ export class InspectionsService extends TenantScopedRepository {
         };
       }),
     };
+  }
+
+  /**
+   * The resident countersigns a report the owner completed without their signature (L5 5.2, D-253: landlords' move-in
+   * and move-out reports are often signed apart): the signature is stored beside the report, the inspection becomes
+   * `signed`, the owner hears it. The report PDF itself is not re-issued (its number and content stay as completed).
+   */
+  async countersign(ctx: TenantContext, id: string, partyId: string, png: Buffer): Promise<InspectionRow> {
+    return this.db.tenant(ctx, async (tx) => {
+      const inspection = await this.load(tx, ctx, id);
+      if (inspection.status !== 'completed' || inspection.residentSignatureDocumentId)
+        throw new DomainException('inspection.invalid_state', { params: { status: inspection.status } });
+      const signature = await this.documents.storeGenerated(tx, {
+        tenantId: inspection.tenantId,
+        kind: 'signature',
+        scopeType: 'unit',
+        scopeId: inspection.unitId,
+        buildingId: inspection.buildingId,
+        title: `ลายมือชื่อผู้เช่า ${inspection.reportNumber ?? id}.png`,
+        mimeType: 'image/png',
+        body: png,
+      });
+      await tx.inspection.update({
+        where: { id },
+        data: {
+          status: 'signed',
+          residentSignatureDocumentId: signature.id,
+          updatedBy: by(),
+          version: { increment: 1 },
+        },
+      });
+      await this.audit.record(tx, {
+        action: 'inspection.countersigned',
+        tenantId: inspection.tenantId,
+        buildingId: inspection.buildingId,
+        subjectType: 'ops.inspection',
+        subjectId: id,
+        metadata: { number: inspection.reportNumber, type: inspection.type, partyId },
+      });
+      await this.domainEvents.record(tx, {
+        type: 'inspection.countersigned',
+        aggregateType: 'inspection',
+        aggregateId: id,
+        tenantId: inspection.tenantId,
+        buildingId: inspection.buildingId,
+        payload: {
+          inspectionId: id,
+          leaseId: inspection.leaseId,
+          type: inspection.type,
+          number: inspection.reportNumber,
+          unitNo: inspection.unit.unitNo,
+          partyId,
+        },
+      });
+      return this.load(tx, ctx, id);
+    });
   }
 }
