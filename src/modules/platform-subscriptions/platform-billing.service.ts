@@ -80,11 +80,16 @@ export class PlatformBillingService {
 
   // ------------------------------------------------------------------------------------------- issue
 
-  /** Writes and numbers an invoice inside the caller's platform transaction; the QR and PDF follow (subscriber). */
+  /**
+   * Writes and numbers an invoice inside the caller's platform transaction; the QR and PDF follow (subscriber). A
+   * `purchase` (G1: storage packages; later boosts and fees) has no subscription (D-250: subscriptions are off) —
+   * pass `null` and the tenant; an unpaid purchase is simply not activated, it never suspends anyone.
+   */
   async issue(
     tx: Tx,
-    sub: Subscription,
+    sub: Subscription | null,
     input: {
+      tenantId?: string;
       kind: PlatformInvoiceKind;
       periodStart: string;
       periodEnd: string;
@@ -93,14 +98,17 @@ export class PlatformBillingService {
       snapshot: Record<string, unknown>;
     },
   ): Promise<PlatformInvoice> {
+    const tenantId = sub?.tenantId ?? input.tenantId;
+    if (!tenantId || (!sub && input.kind !== 'purchase'))
+      throw new Error('platform invoice: only a purchase is issued without a subscription');
     const now = this.clock.now();
     const dueDays = await this.settings.valueAt<number>('subscription.invoice_due_days', now);
     const company = await this.settings.valueAt<Record<string, unknown>>('platform.company', now);
     const number = await this.numbering.nextPlatform(tx, 'platform_invoice', now);
     const invoice = await tx.platformInvoice.create({
       data: {
-        tenantId: sub.tenantId,
-        subscriptionId: sub.id,
+        tenantId,
+        subscriptionId: sub?.id ?? null,
         usageId: input.usageId ?? null,
         kind: input.kind,
         number,
@@ -126,7 +134,7 @@ export class PlatformBillingService {
     for (const l of input.charges.lines)
       await tx.platformInvoiceLine.create({
         data: {
-          tenantId: sub.tenantId,
+          tenantId,
           invoiceId: invoice.id,
           lineNo: (lineNo += 1),
           kind: l.kind,
@@ -138,7 +146,7 @@ export class PlatformBillingService {
       });
     await this.audit.record(tx, {
       action: 'platform_invoice.issued',
-      tenantId: sub.tenantId,
+      tenantId,
       subjectType: 'platform.platform_invoice',
       subjectId: invoice.id,
       after: {
@@ -152,10 +160,11 @@ export class PlatformBillingService {
       type: 'platform_invoice.issued',
       aggregateType: 'platform_invoice',
       aggregateId: invoice.id,
-      tenantId: sub.tenantId,
+      tenantId,
       payload: {
         platformInvoiceId: invoice.id,
-        subscriptionId: sub.id,
+        subscriptionId: sub?.id ?? null,
+        kind: input.kind,
         number,
         total: input.charges.total,
         dueAt: invoice.dueAt.toISOString(),
@@ -351,8 +360,11 @@ export class PlatformBillingService {
         settled,
       },
     });
-    const sub = await tx.subscription.findUniqueOrThrow({ where: { id: invoice.subscriptionId } });
-    await this.reconcile(tx, sub);
+    // a purchase (no subscription) has nothing to reinstate
+    if (invoice.subscriptionId) {
+      const sub = await tx.subscription.findUniqueOrThrow({ where: { id: invoice.subscriptionId } });
+      await this.reconcile(tx, sub);
+    }
     return { payment, duplicate: false };
   }
 
@@ -528,8 +540,10 @@ export class PlatformBillingService {
         tenantId: note.tenantId,
         payload: { platformInvoiceId: invoice.id, platformCreditNoteId: noteId, number },
       });
-      const sub = await tx.subscription.findUniqueOrThrow({ where: { id: invoice.subscriptionId } });
-      await this.reconcile(tx, sub);
+      if (invoice.subscriptionId) {
+        const sub = await tx.subscription.findUniqueOrThrow({ where: { id: invoice.subscriptionId } });
+        await this.reconcile(tx, sub);
+      }
       return issued;
     });
   }

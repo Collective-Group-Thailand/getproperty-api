@@ -9,6 +9,8 @@ import { RetentionService } from '@core/privacy/retention.service';
 import { FakeQueue } from '@core/queue/fake-queue';
 import { QUEUE, QUEUE_NAMES, type QueueJob, type QueuePort } from '@core/queue/queue.port';
 import { StorageMeteringService } from '@core/storage/storage-metering.service';
+import { StorageReclaimService } from '@core/storage/storage-reclaim.service';
+import { StorageReconciliationService } from '@core/storage/storage-reconciliation.service';
 import { SupportGrantService } from '@core/tenancy/support-grant.service';
 import { WorkflowTimers } from '@core/workflow/workflow-timers.service';
 import { BULLMQ_REDIS, type RedisClient } from '@database/redis.module';
@@ -23,6 +25,7 @@ import { ReceivablesService } from '@modules/ops-receivables/receivables.service
 import { MaintenancePlansService } from '@modules/ops-service/maintenance-plans.service';
 import { Tm30Service } from '@modules/ops-tm30/tm30.service';
 import { AnalyticsService } from '@modules/platform-analytics/analytics.service';
+import { StoragePackagesService } from '@modules/platform-subscriptions/storage-packages.service';
 import { SubscriptionsService } from '@modules/platform-subscriptions/subscriptions.service';
 import { AccessCredentialsService } from '@modules/smart-access/access-credentials.service';
 import { LocksService } from '@modules/smart-access/locks.service';
@@ -79,6 +82,9 @@ export const MAINTENANCE_JOBS = {
   'integration-delivery': 30_000,
   // D-276: daily storage snapshot per tenant (idempotent per Bangkok day) and its notices
   'storage-metering': 3_600_000,
+  // G1 (D-285, D-286): object storage vs counters per tenant prefix; package expiry / renewal, reclaim purge, holds
+  'storage-reconcile': 86_400_000,
+  'storage-maintenance': 3_600_000,
   // D-254: own LINE OAs re-checked every messaging.health_check.hours (the job only picks the due ones)
   'messaging-health': 900_000,
   // D-252 / O-018: ownership evidence deleted after its retention
@@ -130,6 +136,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly loss: UtilityLossService,
     private readonly integrations: IntegrationDeliveryService,
     private readonly storageMetering: StorageMeteringService,
+    private readonly storageReconciliation: StorageReconciliationService,
+    private readonly storageReclaim: StorageReclaimService,
+    private readonly storagePackages: StoragePackagesService,
     private readonly messagingChannels: MessagingChannelsService,
     private readonly listingModeration: ListingModerationService,
     private readonly listingLeads: ListingLeadsService,
@@ -250,6 +259,13 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'storage-metering':
         await this.storageMetering.sweep();
+        break;
+      case 'storage-reconcile':
+        await this.storageReconciliation.run();
+        break;
+      case 'storage-maintenance':
+        await this.storagePackages.maintain();
+        await this.storageReclaim.purge();
         break;
       case 'messaging-health':
         await this.messagingChannels.healthCheck();

@@ -21,6 +21,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CLOCK, type Clock } from '../clock/clock';
 import { DomainEvents } from '../events/domain-events';
 import { SettingsService } from '../settings/settings.service';
+import { StorageLedger, sumTotals } from './storage-ledger';
 import {
   COUNTED_RECORDS,
   type CountedRecordType,
@@ -37,6 +38,7 @@ export const STORAGE_RETENTION: Record<DocumentKind, RetentionClass> = {
   contract: 'legal',
   utility_invoice: 'legal',
   id_document: 'legal',
+  signature: 'legal',
   meter_photo: 'operational',
   inspection_photo: 'operational',
   service_photo: 'operational',
@@ -49,6 +51,8 @@ export const STORAGE_RETENTION: Record<DocumentKind, RetentionClass> = {
   warranty: 'optional',
   tariff_source: 'optional',
   other: 'optional',
+  // D-286: listing media are the operator's optional uploads — refused at the quota
+  listing_photo: 'optional',
 } as Record<DocumentKind, RetentionClass>;
 
 export interface TenantStoragePolicy {
@@ -68,7 +72,21 @@ export interface StorageStatus {
   state: QuotaState | null;
   freeGb: string | null;
   pricePerGbMonth: string | null;
+  /** Bytes added by the tenant's active storage packages today (D-285). */
+  packageBytes: bigint;
 }
+
+/** Where the tenant stands, sent with `storage.allowance_exceeded` (problem extension `storage`). */
+export interface StoragePosition {
+  usedBytes: string;
+  allowanceBytes: string;
+  packagesUrl: string;
+}
+
+export type UploadAdmission = Admission & { position?: StoragePosition };
+
+/** Where the owner buys more space (owner console route of the packages list). */
+export const STORAGE_PACKAGES_PATH = '/v1/owner/storage/packages';
 
 /**
  * Storage metering per tenant (D-276) on `@collective/documents`: usage = live files at their size + records at the
@@ -86,7 +104,22 @@ export class StorageMeteringService {
     private readonly settings: SettingsService,
     private readonly events: DomainEvents,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly ledger: StorageLedger,
   ) {}
+
+  /** Bytes of the tenant's storage packages active on Bangkok day `day` (D-285: paid packages raise the quota). */
+  async packageBytes(tx: Tx, tenantId: string, day: string): Promise<bigint> {
+    const rows = await tx.$queryRaw<{ bytes: bigint | null }[]>`
+      SELECT sum(size_bytes)::bigint AS bytes FROM platform.storage_package
+       WHERE tenant_id = ${tenantId}::uuid AND state = 'active'
+         AND starts_on <= ${day}::date AND ends_on >= ${day}::date`;
+    return rows[0]?.bytes ?? 0n;
+  }
+
+  /** The policy with the active packages added to the free allowance (effective quota = free + packages). */
+  private withPackages(policy: StoragePolicy | null, packageBytes: bigint): StoragePolicy | null {
+    return policy && packageBytes > 0n ? { ...policy, freeBytes: policy.freeBytes + packageBytes } : policy;
+  }
 
   /** The policy of a tenant at `at` from the `storage.*` settings (tenant overrides first). */
   async policyFor(tenantId: string, tenantType: string, at: Date): Promise<TenantStoragePolicy> {
@@ -119,13 +152,12 @@ export class StorageMeteringService {
     return { policy, version, recordBytes: bytes, freeGb, pricePerGbMonth };
   }
 
-  /** What a tenant stores now: live files (uploaded, not deleted) and its counted records. */
+  /**
+   * What a tenant stores now: the objects it occupies in object storage (files + thumbnails / renditions, the live
+   * counters of G1 — a file deleted for reclaim counts until it is purged) and its counted records.
+   */
   async usage(tx: Tx, tenantId: string): Promise<StorageUsage> {
-    const files = await tx.$queryRawUnsafe<{ bytes: bigint | null }[]>(
-      `SELECT sum(size_bytes)::bigint AS bytes FROM core.document
-        WHERE tenant_id = $1::uuid AND deleted_at IS NULL AND upload_state IN ('uploaded', 'verified')`,
-      tenantId,
-    );
+    const files = sumTotals(await this.ledger.totals(tx, tenantId));
     const records: Record<string, number> = {};
     for (const [type, table] of Object.entries(COUNTED_RECORDS) as [CountedRecordType, string][]) {
       const rows = await tx.$queryRawUnsafe<{ n: number }[]>(
@@ -134,7 +166,7 @@ export class StorageMeteringService {
       );
       records[type] = rows[0]?.n ?? 0;
     }
-    return { fileBytes: files[0]?.bytes ?? 0n, records };
+    return { fileBytes: files.bytes, records };
   }
 
   /** Counted bytes with only the record sizes (also when metering is not active for the tenant type). */
@@ -185,7 +217,8 @@ export class StorageMeteringService {
     await this.db.platform(
       async (tx) => {
         const usage = await this.usage(tx, tenantId);
-        const state = p.policy ? quotaState(usage, p.policy) : null;
+        const policy = this.withPackages(p.policy, await this.packageBytes(tx, tenantId, day));
+        const state = policy ? quotaState(usage, policy) : null;
         const counted = state?.usedBytes ?? this.counted(usage, p.recordBytes);
         const inserted = await tx.$executeRawUnsafe(
           `INSERT INTO platform.storage_usage_daily
@@ -201,8 +234,8 @@ export class StorageMeteringService {
           p.version,
           now,
         );
-        if (!inserted || !state || !p.policy) return;
-        await this.notices(tx, tenantId, day, state, p.policy);
+        if (!inserted || !state || !policy) return;
+        await this.notices(tx, tenantId, day, state, policy);
       },
       { tenantId },
     );
@@ -256,7 +289,9 @@ export class StorageMeteringService {
     const now = this.clock.now();
     const p = await this.policyFor(tenantId, tenantType, now);
     const usage = await this.usage(tx, tenantId);
-    const state = p.policy ? quotaState(usage, p.policy) : null;
+    const packageBytes = await this.packageBytes(tx, tenantId, bangkokDate(now));
+    const policy = this.withPackages(p.policy, packageBytes);
+    const state = policy ? quotaState(usage, policy) : null;
     return {
       asOf: now.toISOString(),
       usage,
@@ -264,23 +299,42 @@ export class StorageMeteringService {
       state,
       freeGb: p.freeGb,
       pricePerGbMonth: p.pricePerGbMonth,
+      packageBytes,
     };
   }
 
   /**
-   * Upload admission (D-276): never refuses legal or operational files; an optional upload is refused only when it
-   * would put the tenant over its allowance while overage is not sold. Metering not active → always accepted.
+   * Upload admission (D-276, D-286): never refuses legal or operational files (residents' slips, signatures, meter
+   * evidence); an optional upload (listing media, attachments) is refused only when it would put the tenant over its
+   * quota (free or override + active packages) while overage is not sold. Metering not active → always accepted.
    */
-  async admitUpload(tx: Tx, tenantId: string, kind: DocumentKind, sizeBytes: number): Promise<Admission> {
+  async admitUpload(
+    tx: Tx,
+    tenantId: string,
+    kind: DocumentKind,
+    sizeBytes: number,
+  ): Promise<UploadAdmission> {
     const retention = STORAGE_RETENTION[kind] ?? 'optional';
     // legal and operational files are always stored: no usage query on their (frequent) uploads
     if (retention !== 'optional') return { accepted: true, overage: false };
     const tenant = await tx.tenant.findUnique({ where: { id: tenantId }, select: { type: true } });
     if (!tenant) return { accepted: true, overage: false };
-    const p = await this.policyFor(tenantId, tenant.type, this.clock.now());
-    if (!p.policy) return { accepted: true, overage: false };
-    const state = quotaState(await this.usage(tx, tenantId), p.policy);
-    return admit({ retention, bytes: BigInt(sizeBytes) }, state, p.policy);
+    const now = this.clock.now();
+    const p = await this.policyFor(tenantId, tenant.type, now);
+    const policy = this.withPackages(p.policy, await this.packageBytes(tx, tenantId, bangkokDate(now)));
+    if (!policy) return { accepted: true, overage: false };
+    const state = quotaState(await this.usage(tx, tenantId), policy);
+    const admission = admit({ retention, bytes: BigInt(sizeBytes) }, state, policy);
+    return admission.accepted
+      ? admission
+      : {
+          ...admission,
+          position: {
+            usedBytes: state.usedBytes.toString(),
+            allowanceBytes: state.allowanceBytes.toString(),
+            packagesUrl: STORAGE_PACKAGES_PATH,
+          },
+        };
   }
 
   /**

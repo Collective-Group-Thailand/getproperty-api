@@ -285,6 +285,7 @@ export class Tm30Service extends TenantScopedRepository implements EventSubscrib
         mimeType: XLSX,
         body,
         retentionClass: 'export',
+        holdPolicyKey: 'tm30_export', // D-286: kept as a legal document
       });
       const actor = userIdOf(RequestContext.actor());
       for (const r of rows) {

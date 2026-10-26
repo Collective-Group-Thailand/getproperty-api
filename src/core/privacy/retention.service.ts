@@ -6,6 +6,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { AuditService } from '../audit/audit.service';
 import { CLOCK, type Clock } from '../clock/clock';
+import { StorageLedger } from '../storage/storage-ledger';
 
 interface PolicyRow {
   target: 'document_class' | 'table';
@@ -59,6 +60,7 @@ export class RetentionService {
     private readonly audit: AuditService,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly ledger: StorageLedger,
   ) {}
 
   async run(): Promise<RetentionReport[]> {
@@ -112,7 +114,17 @@ export class RetentionService {
         } else {
           const docs = await this.db.platform((tx) =>
             tx.document.findMany({
-              where: { retentionClass: p.target_key, deletedAt: null, createdAt: { lt: new Date(cutoff) } },
+              where: {
+                retentionClass: p.target_key,
+                deletedAt: null,
+                createdAt: { lt: new Date(cutoff) },
+                // D-286: a document under a legal hold is never deleted before its retention date
+                OR: [
+                  { documentLegalHoldDocument: null },
+                  { documentLegalHoldDocument: { releasedAt: { not: null } } },
+                  { documentLegalHoldDocument: { retainUntil: { lte: now } } },
+                ],
+              },
               select: { id: true, storageKey: true, thumbnailKey: true },
               take: 1000,
             }),
@@ -129,14 +141,20 @@ export class RetentionService {
             continue;
           }
           for (const d of docs) {
-            await this.storage.delete(d.storageKey).catch(() => undefined);
-            if (d.thumbnailKey) await this.storage.delete(d.thumbnailKey).catch(() => undefined);
-            await this.db.platform((tx) =>
-              tx.document.update({
+            await this.db.platform(async (tx) => {
+              // G1: the quota drops by the file and its derivatives
+              const derivatives = await this.ledger.uncount(tx, d.id);
+              for (const key of new Set([
+                d.storageKey,
+                ...(d.thumbnailKey ? [d.thumbnailKey] : []),
+                ...derivatives,
+              ]))
+                await this.storage.delete(key).catch(() => undefined);
+              await tx.document.update({
                 where: { id: d.id },
                 data: { deletedAt: now, deleteReason: 'retention', uploadState: 'deleted' },
-              }),
-            );
+              });
+            });
           }
           report.push({
             target: p.target,

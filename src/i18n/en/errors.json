@@ -1015,6 +1015,26 @@
     "allowance_exceeded": {
       "title": "Storage allowance reached",
       "detail": "This optional file would put the account over its storage allowance. Remove files you no longer need or ask getproperty about more space; documents the law requires are always stored."
+    },
+    "legal_hold": {
+      "title": "Document under legal hold",
+      "detail": "This document must be kept by law until its retention date and cannot be deleted. It still counts to your storage; free space by deleting optional files or buy a storage package."
+    },
+    "not_deletable": {
+      "title": "File cannot be deleted here",
+      "detail": "Only optional uploads you no longer use (listing photos of closed listings, attachments) can be deleted to free space. Evidence, identity and system documents follow their retention rules."
+    },
+    "not_restorable": {
+      "title": "File cannot be restored",
+      "detail": "Only files you deleted to free space can be restored, and only before they are removed for good."
+    },
+    "package_not_on_sale": {
+      "title": "Storage package not on sale",
+      "detail": "This storage package has no price yet or is no longer offered. Choose another package or delete files you no longer need."
+    },
+    "package_pending": {
+      "title": "Purchase already waiting for payment",
+      "detail": "You already ordered this storage package; pay its invoice to activate it."
     }
   },
   "portfolio": {

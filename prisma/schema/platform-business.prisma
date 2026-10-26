@@ -17,6 +17,11 @@ enum PlanBillingUnit {
   per_building
   per_tenant
   per_report
+  per_package
+  per_listing
+  per_recipient
+  per_deal
+  percent_of_amount
 
   @@map("plan_billing_unit")
   @@schema("platform")
@@ -58,6 +63,7 @@ enum PlatformInvoiceKind {
   first
   monthly
   adjustment
+  purchase
 
   @@map("platform_invoice_kind")
   @@schema("platform")
@@ -74,6 +80,12 @@ enum PlatformLineKind {
   discount
   adjustment
   storage
+  boost
+  success_fee
+  co_broke_fee
+  media_service
+  messaging_addon
+  sponsored_broadcast
 
   @@map("platform_line_kind")
   @@schema("platform")
@@ -197,8 +209,9 @@ model PricePlanVersion {
   updatedBy          String?              @map("updated_by") @db.Uuid
 
   plan          PricePlan           @relation(fields: [planId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "price_plan_version_plan_id_fkey")
-  subscriptions Subscription[]
-  usages        SubscriptionUsage[]
+  subscriptions   Subscription[]
+  usages          SubscriptionUsage[]
+  storagePackages StoragePackage[]
 
   @@unique([planId, version], map: "price_plan_version_plan_id_version_key")
   @@map("price_plan_version")
@@ -409,7 +422,7 @@ model SubscriptionUsage {
 model PlatformInvoice {
   id             String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId       String                @map("tenant_id") @db.Uuid
-  subscriptionId String                @map("subscription_id") @db.Uuid
+  subscriptionId String?               @map("subscription_id") @db.Uuid
   usageId        String?               @map("usage_id") @db.Uuid
   kind           PlatformInvoiceKind
   number         String                @unique(map: "platform_invoice_number_key") @db.Citext
@@ -438,13 +451,14 @@ model PlatformInvoice {
   version        Int                   @default(1)
 
   tenant       Tenant                @relation("PlatformInvoiceTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_invoice_tenant_id_fkey")
-  subscription Subscription          @relation(fields: [subscriptionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_invoice_subscription_id_fkey")
+  subscription Subscription?         @relation(fields: [subscriptionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_invoice_subscription_id_fkey")
   usage        SubscriptionUsage?    @relation(fields: [usageId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_invoice_usage_id_fkey")
   document     Document?             @relation("PlatformInvoiceDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_invoice_document_id_fkey")
   lines        PlatformInvoiceLine[]
   payments     PlatformPayment[]
   receipts     PlatformReceipt[]
   creditNotes  PlatformCreditNote[]
+  storagePackages StoragePackage[]
 
   @@index([tenantId, state], map: "platform_invoice_tenant_id_state_idx")
   @@index([subscriptionId], map: "platform_invoice_subscription_id_idx")
@@ -739,5 +753,150 @@ model StorageNotice {
   @@unique([tenantId, thresholdPct], map: "storage_notice_open_key", where: raw("(cleared_at IS NULL)"))
   @@index([tenantId, thresholdPct], map: "storage_notice_tenant_id_threshold_pct_idx")
   @@map("storage_notice")
+  @@schema("platform")
+}
+
+enum StorageCategory {
+  listing_media
+  attachment
+  system_legal
+  system_other
+
+  @@map("storage_category")
+  @@schema("platform")
+}
+
+enum StoragePackageState {
+  pending_payment
+  active
+  expired
+  cancelled
+
+  @@map("storage_package_state")
+  @@schema("platform")
+}
+
+enum StoragePackagePeriod {
+  month
+  year
+
+  @@map("storage_package_period")
+  @@schema("platform")
+}
+
+/// G1 / D-286: current stored bytes and objects per tenant and category (updated with each document write).
+model StorageUsage {
+  id        String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String          @map("tenant_id") @db.Uuid
+  category  StorageCategory
+  bytes     BigInt          @default(0)
+  objects   Int             @default(0)
+  updatedAt DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation("StorageUsageTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "storage_usage_tenant_id_fkey")
+
+  @@unique([tenantId, category], map: "storage_usage_tenant_id_category_key")
+  @@map("storage_usage")
+  @@schema("platform")
+}
+
+/// G1: what one document occupies in object storage (file + derivatives) and its quota category; the ledger behind storage_usage.
+model DocumentStorage {
+  documentId     String          @id @map("document_id") @db.Uuid
+  tenantId       String          @map("tenant_id") @db.Uuid
+  category       StorageCategory
+  bytes          BigInt
+  objects        Int
+  derivativeKeys String[]        @default([]) @map("derivative_keys")
+  counted        Boolean         @default(true)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  document Document @relation("DocumentStorageDocument", fields: [documentId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "document_storage_document_id_fkey")
+  tenant   Tenant   @relation("DocumentStorageTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "document_storage_tenant_id_fkey")
+
+  @@index([tenantId, category], map: "document_storage_tenant_id_category_idx", where: raw("counted"))
+  @@index([tenantId, bytes(sort: Desc)], map: "document_storage_tenant_id_bytes_idx", where: raw("counted"))
+  @@map("document_storage")
+  @@schema("platform")
+}
+
+/// G1: nightly comparison of a tenant's object-storage prefix with its counters (append-only).
+model StorageReconciliation {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  ranAt      DateTime @default(now()) @map("ran_at") @db.Timestamptz(6)
+  s3Bytes    BigInt   @map("s3_bytes")
+  s3Objects  BigInt   @map("s3_objects")
+  dbBytes    BigInt   @map("db_bytes")
+  dbObjects  BigInt   @map("db_objects")
+  driftBytes BigInt   @map("drift_bytes")
+  corrected  Boolean
+  details    Json     @default("{}")
+
+  tenant Tenant @relation("StorageReconciliationTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "storage_reconciliation_tenant_id_fkey")
+
+  @@index([tenantId, ranAt(sort: Desc)], map: "storage_reconciliation_tenant_id_ran_at_idx")
+  @@map("storage_reconciliation")
+  @@schema("platform")
+}
+
+/// D-286: a document the law requires to keep — counted, never deletable before retain_until (null = until its basis event).
+model DocumentLegalHold {
+  id                String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  documentId        String    @unique(map: "document_legal_hold_document_id_key") @map("document_id") @db.Uuid
+  documentKind      String    @map("document_kind")
+  retentionPolicyId String?   @map("retention_policy_id") @db.Uuid
+  retainUntil       DateTime? @map("retain_until") @db.Date
+  sourceType        String?   @map("source_type")
+  sourceId          String?   @map("source_id") @db.Uuid
+  releasedAt        DateTime? @map("released_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant          Tenant           @relation("DocumentLegalHoldTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "document_legal_hold_tenant_id_fkey")
+  document        Document         @relation("DocumentLegalHoldDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "document_legal_hold_document_id_fkey")
+  retentionPolicy RetentionPolicy? @relation(fields: [retentionPolicyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "document_legal_hold_retention_policy_id_fkey")
+
+  @@index([tenantId, retainUntil], map: "document_legal_hold_tenant_id_retain_until_idx")
+  @@map("document_legal_hold")
+  @@schema("platform")
+}
+
+/// D-285: a purchased storage package (size and price snapshotted from the price-plan add-on version).
+model StoragePackage {
+  id                 String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String               @map("tenant_id") @db.Uuid
+  pricePlanVersionId String               @map("price_plan_version_id") @db.Uuid
+  sizeBytes          BigInt               @map("size_bytes")
+  price              Decimal              @db.Decimal(14, 2)
+  period             StoragePackagePeriod
+  state              StoragePackageState  @default(pending_payment)
+  platformInvoiceId  String?              @map("platform_invoice_id") @db.Uuid
+  startsOn           DateTime?            @map("starts_on") @db.Date
+  endsOn             DateTime?            @map("ends_on") @db.Date
+  autoRenew          Boolean              @default(false) @map("auto_renew")
+  renewalOfId        String?              @map("renewal_of_id") @db.Uuid
+  renewalIssuedAt    DateTime?            @map("renewal_issued_at") @db.Timestamptz(6)
+  activatedAt        DateTime?            @map("activated_at") @db.Timestamptz(6)
+  cancelledAt        DateTime?            @map("cancelled_at") @db.Timestamptz(6)
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          String?              @map("created_by") @db.Uuid
+  updatedAt          DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy          String?              @map("updated_by") @db.Uuid
+
+  tenant           Tenant           @relation("StoragePackageTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "storage_package_tenant_id_fkey")
+  pricePlanVersion PricePlanVersion @relation(fields: [pricePlanVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "storage_package_price_plan_version_id_fkey")
+  platformInvoice  PlatformInvoice? @relation(fields: [platformInvoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "storage_package_platform_invoice_id_fkey")
+  renewalOf        StoragePackage?  @relation("StoragePackageRenewal", fields: [renewalOfId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "storage_package_renewal_of_id_fkey")
+  renewals         StoragePackage[] @relation("StoragePackageRenewal")
+
+  @@index([tenantId, state, endsOn], map: "storage_package_tenant_id_state_ends_on_idx")
+  @@index([endsOn], map: "storage_package_active_idx", where: raw("(state = 'active'::platform.storage_package_state)"))
+  @@index([platformInvoiceId], map: "storage_package_platform_invoice_id_idx")
+  @@index([pricePlanVersionId], map: "storage_package_price_plan_version_id_idx")
+  @@unique([renewalOfId], map: "storage_package_renewal_of_id_key", where: raw("((renewal_of_id IS NOT NULL) AND (state <> 'cancelled'::platform.storage_package_state))"))
+  @@map("storage_package")
   @@schema("platform")
 }

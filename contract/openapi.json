@@ -2381,6 +2381,61 @@
           "type": "https://errors.getproperty.co/staff_task.not_completable"
         }
       },
+      "problem.storage.legal_hold": {
+        "summary": "storage.legal_hold",
+        "value": {
+          "code": "storage.legal_hold",
+          "detail": "เอกสารนี้กฎหมายกำหนดให้เก็บไว้จนครบระยะเวลา จึงลบไม่ได้ และยังนับรวมในพื้นที่จัดเก็บ คืนพื้นที่ได้โดยลบไฟล์เสริมที่ไม่ใช้แล้ว หรือซื้อแพ็กเกจพื้นที่เพิ่ม",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "เอกสารนี้ต้องเก็บตามกฎหมาย",
+          "type": "https://errors.getproperty.co/storage.legal_hold"
+        }
+      },
+      "problem.storage.not_deletable": {
+        "summary": "storage.not_deletable",
+        "value": {
+          "code": "storage.not_deletable",
+          "detail": "ลบเพื่อคืนพื้นที่ได้เฉพาะไฟล์ที่อัปโหลดเองและไม่ใช้แล้ว (รูปของประกาศที่ปิดแล้ว ไฟล์แนบ) หลักฐาน เอกสารยืนยันตัวตน และเอกสารที่ระบบออกให้เป็นไปตามระยะเวลาจัดเก็บ",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ลบไฟล์นี้ที่นี่ไม่ได้",
+          "type": "https://errors.getproperty.co/storage.not_deletable"
+        }
+      },
+      "problem.storage.not_restorable": {
+        "summary": "storage.not_restorable",
+        "value": {
+          "code": "storage.not_restorable",
+          "detail": "กู้คืนได้เฉพาะไฟล์ที่ลบเพื่อคืนพื้นที่ และต้องก่อนที่ไฟล์จะถูกลบถาวร",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "กู้คืนไฟล์นี้ไม่ได้",
+          "type": "https://errors.getproperty.co/storage.not_restorable"
+        }
+      },
+      "problem.storage.package_not_on_sale": {
+        "summary": "storage.package_not_on_sale",
+        "value": {
+          "code": "storage.package_not_on_sale",
+          "detail": "แพ็กเกจนี้ยังไม่ได้กำหนดราคาหรือไม่ได้เปิดขายแล้ว กรุณาเลือกแพ็กเกจอื่น หรือลบไฟล์ที่ไม่ใช้แล้ว",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "แพ็กเกจพื้นที่นี้ยังไม่เปิดขาย",
+          "type": "https://errors.getproperty.co/storage.package_not_on_sale"
+        }
+      },
+      "problem.storage.package_pending": {
+        "summary": "storage.package_pending",
+        "value": {
+          "code": "storage.package_pending",
+          "detail": "คุณสั่งซื้อแพ็กเกจนี้ไว้แล้ว กรุณาชำระใบแจ้งหนี้เพื่อเปิดใช้งาน",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "มีรายการสั่งซื้อรอชำระอยู่แล้ว",
+          "type": "https://errors.getproperty.co/storage.package_pending"
+        }
+      },
       "problem.subscription.confirmation_mismatch": {
         "summary": "subscription.confirmation_mismatch",
         "value": {
@@ -7940,6 +7995,83 @@
         },
         "required": [
           "signaturePng"
+        ],
+        "type": "object"
+      },
+      "CreateStoragePackageDto": {
+        "properties": {
+          "effectiveFrom": {
+            "description": "Today or later (never backdated).",
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "key": {
+            "description": "Unique price-plan key (`^[a-z][a-z0-9_]{1,40}$`).",
+            "example": "storage_plus_20",
+            "type": "string"
+          },
+          "nameEn": {
+            "example": "Extra 20 GB",
+            "type": "string"
+          },
+          "nameTh": {
+            "example": "พื้นที่เพิ่ม 20 GB",
+            "type": "string"
+          },
+          "period": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StoragePackagePeriod"
+              }
+            ],
+            "example": "month"
+          },
+          "sizeGb": {
+            "description": "Size in GiB (decimal string).",
+            "example": "20",
+            "type": "string"
+          },
+          "tenantType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TenantType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null = every type"
+          },
+          "unitPrice": {
+            "description": "Price per period before VAT; leave empty until the founder sets it (O-022).",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vatRate": {
+            "example": "0.07",
+            "type": "string"
+          },
+          "visibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StoragePackageVisibility"
+              }
+            ],
+            "example": "public"
+          }
+        },
+        "required": [
+          "key",
+          "nameTh",
+          "nameEn",
+          "sizeGb",
+          "period",
+          "visibility",
+          "effectiveFrom"
         ],
         "type": "object"
       },
@@ -24621,10 +24753,25 @@
             "format": "date-time",
             "type": "string"
           },
+          "categories": {
+            "description": "Where the space goes (G1 counters).",
+            "items": {
+              "$ref": "#/components/schemas/StorageCategoryUsageDto"
+            },
+            "type": "array"
+          },
           "fileBytes": {
             "description": "Bytes of the stored files (decimal string).",
             "example": "650000000",
             "type": "string"
+          },
+          "freeBytes": {
+            "description": "Free allowance in bytes (tenant override first, D-285); null = not metered.",
+            "example": "5368709120",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "freeGb": {
             "description": "Free allowance in GB (setting).",
@@ -24639,6 +24786,11 @@
               "$ref": "#/components/schemas/StorageDayDto"
             },
             "type": "array"
+          },
+          "legalHoldBytes": {
+            "description": "Bytes of documents under a legal hold — counted, never deletable before their date (D-286).",
+            "example": "52428800",
+            "type": "string"
           },
           "level": {
             "anyOf": [
@@ -24655,6 +24807,16 @@
             "description": "False while the platform has not set a free allowance for this tenant type: usage is shown, nothing is held.",
             "example": false,
             "type": "boolean"
+          },
+          "packageBytes": {
+            "description": "Bytes added by active storage packages (D-285).",
+            "example": "0",
+            "type": "string"
+          },
+          "pendingPurgeBytes": {
+            "description": "Bytes of files deleted to reclaim space that still count until their purge (D-285).",
+            "example": "0",
+            "type": "string"
           },
           "pricePerGbMonth": {
             "description": "THB per GB-month above the allowance (setting); null = overage not sold.",
@@ -24701,7 +24863,140 @@
           "level",
           "freeGb",
           "pricePerGbMonth",
-          "history"
+          "history",
+          "freeBytes",
+          "packageBytes",
+          "categories",
+          "legalHoldBytes",
+          "pendingPurgeBytes"
+        ],
+        "type": "object"
+      },
+      "OwnerStoragePackageDto": {
+        "properties": {
+          "autoRenew": {
+            "example": false,
+            "type": "boolean"
+          },
+          "createdAt": {
+            "example": "2026-11-01T10:00:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "currency": {
+            "example": "THB",
+            "type": "string"
+          },
+          "endsOn": {
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "0199f2a0-0000-7000-8000-0000000000dd",
+            "format": "uuid",
+            "type": "string"
+          },
+          "invoice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoragePackageInvoiceDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "example": "พื้นที่เพิ่ม 20 GB",
+            "type": "string"
+          },
+          "packageId": {
+            "example": "0199f2a0-0000-7000-8000-0000000000bb",
+            "format": "uuid",
+            "type": "string"
+          },
+          "period": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StoragePackagePeriod"
+              }
+            ],
+            "example": "month"
+          },
+          "price": {
+            "description": "Price paid per period incl. VAT (snapshot).",
+            "example": "107.00",
+            "type": "string"
+          },
+          "renewalOfId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sizeBytes": {
+            "example": "21474836480",
+            "type": "string"
+          },
+          "startsOn": {
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StoragePackageState"
+              }
+            ],
+            "example": "pending_payment"
+          }
+        },
+        "required": [
+          "id",
+          "packageId",
+          "name",
+          "sizeBytes",
+          "price",
+          "currency",
+          "period",
+          "state",
+          "startsOn",
+          "endsOn",
+          "autoRenew",
+          "renewalOfId",
+          "invoice",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "OwnerStoragePackagesDto": {
+        "properties": {
+          "offers": {
+            "items": {
+              "$ref": "#/components/schemas/StoragePackageOfferDto"
+            },
+            "type": "array"
+          },
+          "packages": {
+            "items": {
+              "$ref": "#/components/schemas/OwnerStoragePackageDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "offers",
+          "packages"
         ],
         "type": "object"
       },
@@ -26596,7 +26891,12 @@
           "per_meter_point",
           "per_building",
           "per_tenant",
-          "per_report"
+          "per_report",
+          "per_package",
+          "per_listing",
+          "per_recipient",
+          "per_deal",
+          "percent_of_amount"
         ],
         "type": "string"
       },
@@ -26921,9 +27221,13 @@
             "example": "issued"
           },
           "subscriptionId": {
+            "description": "null for a purchase (storage package, G1) — subscriptions are off (D-250).",
             "example": "3b241101-e2bb-4255-8caf-4136c566a962",
             "format": "uuid",
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "subtotal": {
             "description": "Before discount and VAT. Unit: THB, decimal string (D-046).",
@@ -26986,7 +27290,8 @@
         "enum": [
           "first",
           "monthly",
-          "adjustment"
+          "adjustment",
+          "purchase"
         ],
         "type": "string"
       },
@@ -27055,7 +27360,14 @@
           "ai_overage",
           "inspection",
           "discount",
-          "adjustment"
+          "adjustment",
+          "storage",
+          "boost",
+          "success_fee",
+          "co_broke_fee",
+          "media_service",
+          "messaging_addon",
+          "sponsored_broadcast"
         ],
         "type": "string"
       },
@@ -28302,6 +28614,16 @@
             "format": "uuid",
             "type": "string"
           },
+          "heldDocumentIds": {
+            "description": "`storage.legal_hold` only (D-286): the requested documents held until their retention date",
+            "example": [
+              "3b241101-e2bb-4255-8caf-4136c566a962"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "legalRef": {
             "description": "`compliance.*` only: the legal reference of the refused rule (D-020)",
             "example": "ประกาศคณะกรรมการว่าด้วยสัญญา เรื่อง ให้ธุรกิจการให้เช่าอาคารเพื่ออยู่อาศัยเป็นธุรกิจที่ควบคุมสัญญา พ.ศ. 2568 ข้อ 4",
@@ -28341,6 +28663,14 @@
           "status": {
             "example": 422,
             "type": "integer"
+          },
+          "storage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProblemStoragePosition"
+              }
+            ],
+            "description": "`storage.allowance_exceeded` only (G1, D-285): what is stored, the quota (free + packages) and where to buy more space"
           },
           "title": {
             "example": "Bill line above the utility tariff cap",
@@ -28382,6 +28712,31 @@
           "path",
           "code",
           "message"
+        ],
+        "type": "object"
+      },
+      "ProblemStoragePosition": {
+        "properties": {
+          "allowanceBytes": {
+            "description": "Quota: free allowance + active packages (bytes).",
+            "example": "5368709120",
+            "type": "string"
+          },
+          "packagesUrl": {
+            "description": "Where the owner sees storage packages.",
+            "example": "/v1/owner/storage/packages",
+            "type": "string"
+          },
+          "usedBytes": {
+            "description": "Counted bytes now (decimal string).",
+            "example": "5368709120",
+            "type": "string"
+          }
+        },
+        "required": [
+          "usedBytes",
+          "allowanceBytes",
+          "packagesUrl"
         ],
         "type": "object"
       },
@@ -30993,6 +31348,16 @@
           "aging"
         ],
         "type": "object"
+      },
+      "ReclaimRefusal": {
+        "description": "Why the file cannot be deleted here (null when deletable or already deleted).",
+        "enum": [
+          "legal_hold",
+          "system_file",
+          "evidence",
+          "listing_in_use"
+        ],
+        "type": "string"
       },
       "RecordNoticeDto": {
         "properties": {
@@ -38811,6 +39176,55 @@
         },
         "type": "object"
       },
+      "StorageAutoRenewDto": {
+        "properties": {
+          "autoRenew": {
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "autoRenew"
+        ],
+        "type": "object"
+      },
+      "StorageCategory": {
+        "enum": [
+          "listing_media",
+          "attachment",
+          "system_legal",
+          "system_other"
+        ],
+        "type": "string"
+      },
+      "StorageCategoryUsageDto": {
+        "properties": {
+          "bytes": {
+            "description": "Bytes stored (files + thumbnails / renditions), decimal string.",
+            "example": "52428800",
+            "type": "string"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StorageCategory"
+              }
+            ],
+            "example": "system_legal"
+          },
+          "objects": {
+            "description": "Objects in object storage.",
+            "example": 310,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "category",
+          "bytes",
+          "objects"
+        ],
+        "type": "object"
+      },
       "StorageDayDto": {
         "properties": {
           "countedBytes": {
@@ -38830,6 +39244,26 @@
         ],
         "type": "object"
       },
+      "StorageFilesActionDto": {
+        "properties": {
+          "documentIds": {
+            "example": [
+              "0199f2a0-0000-7000-8000-0000000000aa"
+            ],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "documentIds"
+        ],
+        "type": "object"
+      },
       "StorageLevel": {
         "enum": [
           "ok",
@@ -38838,6 +39272,604 @@
           "over"
         ],
         "type": "string"
+      },
+      "StoragePackageDefinitionDto": {
+        "properties": {
+          "effectiveFrom": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "effectiveTo": {
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "0199f2a0-0000-7000-8000-0000000000bb",
+            "format": "uuid",
+            "type": "string"
+          },
+          "isActive": {
+            "description": "false = not offered (active window off).",
+            "example": true,
+            "type": "boolean"
+          },
+          "key": {
+            "description": "Price-plan key (kind addon).",
+            "example": "storage_plus_20",
+            "type": "string"
+          },
+          "nameEn": {
+            "example": "Extra 20 GB",
+            "type": "string"
+          },
+          "nameTh": {
+            "example": "พื้นที่เพิ่ม 20 GB",
+            "type": "string"
+          },
+          "onSale": {
+            "description": "A published version with a price is in force today (O-022).",
+            "example": false,
+            "type": "boolean"
+          },
+          "period": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StoragePackagePeriod"
+              }
+            ],
+            "example": "month"
+          },
+          "sizeBytes": {
+            "example": "21474836480",
+            "type": "string"
+          },
+          "tenantType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TenantType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "example": null
+          },
+          "unitPrice": {
+            "description": "Price per period before VAT; null = no price.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vatRate": {
+            "example": "0.0700",
+            "type": "string"
+          },
+          "versionId": {
+            "example": "0199f2a0-0000-7000-8000-0000000000ee",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "versionState": {
+            "description": "TemplateVersionState of that version.",
+            "example": "draft",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "visibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StoragePackageVisibility"
+              }
+            ],
+            "example": "public"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "nameTh",
+          "nameEn",
+          "tenantType",
+          "isActive",
+          "sizeBytes",
+          "period",
+          "visibility",
+          "onSale",
+          "versionId",
+          "versionState",
+          "unitPrice",
+          "vatRate",
+          "effectiveFrom",
+          "effectiveTo"
+        ],
+        "type": "object"
+      },
+      "StoragePackageDefinitionsDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/StoragePackageDefinitionDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "StoragePackageInvoiceDto": {
+        "properties": {
+          "dueAt": {
+            "example": "2026-11-08T10:00:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "example": "0199f2a0-0000-7000-8000-0000000000cc",
+            "format": "uuid",
+            "type": "string"
+          },
+          "number": {
+            "example": "PIV-2026-00012",
+            "type": "string"
+          },
+          "qrAvailable": {
+            "description": "A Thai QR exists (the platform merchant is configured, O-008).",
+            "example": false,
+            "type": "boolean"
+          },
+          "state": {
+            "description": "Platform invoice status (PlatformInvoiceStatus values).",
+            "example": "issued",
+            "type": "string"
+          },
+          "total": {
+            "example": "107.00",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "total",
+          "state",
+          "dueAt",
+          "qrAvailable"
+        ],
+        "type": "object"
+      },
+      "StoragePackageOfferDto": {
+        "properties": {
+          "currency": {
+            "example": "THB",
+            "type": "string"
+          },
+          "id": {
+            "description": "Package id.",
+            "example": "0199f2a0-0000-7000-8000-0000000000bb",
+            "format": "uuid",
+            "type": "string"
+          },
+          "key": {
+            "example": "storage_plus_20",
+            "type": "string"
+          },
+          "nameEn": {
+            "example": "Extra 20 GB",
+            "type": "string"
+          },
+          "nameTh": {
+            "example": "พื้นที่เพิ่ม 20 GB",
+            "type": "string"
+          },
+          "onSale": {
+            "description": "false = shown as \"ยังไม่เปิดขาย\" (no published price yet, D-285).",
+            "example": false,
+            "type": "boolean"
+          },
+          "period": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StoragePackagePeriod"
+              }
+            ],
+            "example": "month"
+          },
+          "price": {
+            "description": "Price per period before VAT; null = not on sale yet (O-022).",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sizeBytes": {
+            "example": "21474836480",
+            "type": "string"
+          },
+          "total": {
+            "description": "Price incl. VAT (what the invoice asks).",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vatRate": {
+            "example": "0.0700",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "nameTh",
+          "nameEn",
+          "sizeBytes",
+          "period",
+          "price",
+          "total",
+          "vatRate",
+          "currency",
+          "onSale"
+        ],
+        "type": "object"
+      },
+      "StoragePackagePeriod": {
+        "enum": [
+          "month",
+          "year"
+        ],
+        "type": "string"
+      },
+      "StoragePackageState": {
+        "enum": [
+          "pending_payment",
+          "active",
+          "expired",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "StoragePackageVisibility": {
+        "enum": [
+          "public",
+          "hidden"
+        ],
+        "type": "string"
+      },
+      "StoragePurchaseDto": {
+        "properties": {
+          "autoRenew": {
+            "default": false,
+            "description": "Invoice the next period before this one ends.",
+            "type": "boolean"
+          },
+          "packageId": {
+            "description": "Package id (offer).",
+            "example": "0199f2a0-0000-7000-8000-0000000000bb",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "packageId"
+        ],
+        "type": "object"
+      },
+      "StorageQuotaDto": {
+        "properties": {
+          "effectiveFrom": {
+            "example": "2026-12-01T00:00:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "freeGb": {
+            "example": "20",
+            "type": "string"
+          },
+          "tenantId": {
+            "example": "0199f2a0-0000-7000-8000-000000000001",
+            "format": "uuid",
+            "type": "string"
+          },
+          "versionId": {
+            "description": "Setting version.",
+            "example": "0199f2a0-0000-7000-8000-0000000000ff",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId",
+          "freeGb",
+          "versionId",
+          "effectiveFrom"
+        ],
+        "type": "object"
+      },
+      "StorageQuotaOverrideDto": {
+        "properties": {
+          "effectiveFrom": {
+            "description": "Now or future.",
+            "example": "2026-12-01T00:00:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "freeGb": {
+            "description": "Free allowance of this tenant in GB (decimal string, D-285).",
+            "example": "20",
+            "type": "string"
+          },
+          "reason": {
+            "example": "ลูกค้าพิเศษ: พื้นที่ฟรี 20 GB ตามสัญญา",
+            "type": "string"
+          }
+        },
+        "required": [
+          "freeGb",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "StorageReconciliationDto": {
+        "properties": {
+          "corrected": {
+            "example": true,
+            "type": "boolean"
+          },
+          "dbBytes": {
+            "description": "Counters before the run.",
+            "example": "650000000",
+            "type": "string"
+          },
+          "dbObjects": {
+            "example": "1200",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Orphan and missing keys (at most 100 each) and how many documents were resized.",
+            "example": {
+              "countedAfter": "650100000",
+              "missing": [],
+              "missingCount": 0,
+              "orphanCount": 0,
+              "orphans": [],
+              "resizedDocuments": 1
+            },
+            "type": "object"
+          },
+          "driftBytes": {
+            "description": "s3Bytes − dbBytes.",
+            "example": "100000",
+            "type": "string"
+          },
+          "id": {
+            "example": "0199f2a0-0000-7000-8000-000000000101",
+            "format": "uuid",
+            "type": "string"
+          },
+          "ranAt": {
+            "example": "2026-11-02T02:00:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "s3Bytes": {
+            "description": "Bytes object storage holds under the tenant prefix.",
+            "example": "650100000",
+            "type": "string"
+          },
+          "s3Objects": {
+            "example": "1201",
+            "type": "string"
+          },
+          "tenantId": {
+            "example": "0199f2a0-0000-7000-8000-000000000001",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "ranAt",
+          "s3Bytes",
+          "s3Objects",
+          "dbBytes",
+          "dbObjects",
+          "driftBytes",
+          "corrected",
+          "details"
+        ],
+        "type": "object"
+      },
+      "StorageReconciliationPageDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/StorageReconciliationDto"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "StoredFileDto": {
+        "properties": {
+          "bytes": {
+            "description": "Bytes incl. thumbnails / renditions (decimal string).",
+            "example": "1843200",
+            "type": "string"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StorageCategory"
+              }
+            ],
+            "example": "listing_media"
+          },
+          "createdAt": {
+            "example": "2026-10-01T10:00:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "deletable": {
+            "example": true,
+            "type": "boolean"
+          },
+          "deletedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "held": {
+            "description": "Under a legal hold (D-286): counted, never deletable before its date.",
+            "example": false,
+            "type": "boolean"
+          },
+          "id": {
+            "example": "0199f2a0-0000-7000-8000-0000000000aa",
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DocumentKind"
+              }
+            ],
+            "example": "listing_photo"
+          },
+          "mimeType": {
+            "example": "image/jpeg",
+            "type": "string"
+          },
+          "notDeletableReason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReclaimRefusal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the file cannot be deleted here (null when deletable or already deleted).",
+            "example": null
+          },
+          "objects": {
+            "example": 5,
+            "type": "integer"
+          },
+          "purgeAfter": {
+            "description": "When a deleted file is removed for good (restorable until then).",
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "retainUntil": {
+            "description": "End of the legal hold; null with `held` = until its basis event (e.g. lease end).",
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "example": "ห้อง 301 มุมนั่งเล่น.jpg",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "mimeType",
+          "category",
+          "bytes",
+          "objects",
+          "createdAt",
+          "deletedAt",
+          "purgeAfter",
+          "held",
+          "retainUntil",
+          "deletable",
+          "notDeletableReason"
+        ],
+        "type": "object"
+      },
+      "StoredFilePageDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/StoredFileDto"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "StoredFileState": {
+        "enum": [
+          "active",
+          "deleted"
+        ],
+        "type": "string"
+      },
+      "StoredFilesResultDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/StoredFileDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
       },
       "StubClaimDto": {
         "properties": {
@@ -42305,6 +43337,24 @@
         "required": [
           "unlinkReason"
         ],
+        "type": "object"
+      },
+      "UpdateStoragePackageDto": {
+        "properties": {
+          "isActive": {
+            "description": "false = no longer offered (bought packages keep running).",
+            "example": false,
+            "type": "boolean"
+          },
+          "nameEn": {
+            "example": "Extra 20 GB",
+            "type": "string"
+          },
+          "nameTh": {
+            "example": "พื้นที่เพิ่ม 20 GB",
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "UpgradeRequestDto": {
@@ -68384,6 +69434,905 @@
         "x-surface": "admin"
       }
     },
+    "/v1/admin/storage/packages": {
+      "get": {
+        "description": "Every storage package definition (D-285): a price-plan add-on with size, period and visibility; `onSale` once a published version with a price is in force (prices O-022). Prices change only through new price-plan versions (`POST /v1/admin/price-plans/{planId}/versions`, then publish — never backdated, D-204 / D-291).\n\nImplements: D-285, D-291.",
+        "operationId": "admin.storage.packages",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "effectiveFrom": "2026-11-01",
+                      "effectiveTo": null,
+                      "id": "0199f2a0-0000-7000-8000-0000000000bb",
+                      "isActive": true,
+                      "key": "storage_plus_20",
+                      "nameEn": "Extra 20 GB",
+                      "nameTh": "พื้นที่เพิ่ม 20 GB",
+                      "onSale": false,
+                      "period": "month",
+                      "sizeBytes": "21474836480",
+                      "tenantType": null,
+                      "unitPrice": null,
+                      "vatRate": "0.0700",
+                      "versionId": "0199f2a0-0000-7000-8000-0000000000ee",
+                      "versionState": "draft",
+                      "visibility": "public"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/StoragePackageDefinitionsDto"
+                }
+              }
+            },
+            "description": "Definitions",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Storage package definitions",
+        "tags": [
+          "admin.storage"
+        ],
+        "x-required-permissions": [
+          "admin.tenant.read"
+        ],
+        "x-surface": "admin"
+      },
+      "post": {
+        "description": "Creates a storage package definition (D-285) as an add-on price plan (billing unit `per_package`) with a draft version from `effectiveFrom` (today or later). Leave `unitPrice` empty until the founder sets it (O-022): the package is shown to owners as not on sale. Publish the version with the price-plan publish action.\n\nImplements: D-285, D-291.",
+        "operationId": "admin.storage.createPackage",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "effectiveFrom": "2026-11-01",
+                    "key": "storage_plus_20",
+                    "nameEn": "Extra 20 GB",
+                    "nameTh": "พื้นที่เพิ่ม 20 GB",
+                    "period": "month",
+                    "sizeGb": "20",
+                    "unitPrice": null,
+                    "visibility": "public"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateStoragePackageDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "effectiveFrom": "2026-11-01",
+                  "effectiveTo": null,
+                  "id": "0199f2a0-0000-7000-8000-0000000000bb",
+                  "isActive": true,
+                  "key": "storage_plus_20",
+                  "nameEn": "Extra 20 GB",
+                  "nameTh": "พื้นที่เพิ่ม 20 GB",
+                  "onSale": false,
+                  "period": "month",
+                  "sizeBytes": "21474836480",
+                  "tenantType": null,
+                  "unitPrice": null,
+                  "vatRate": "0.0700",
+                  "versionId": "0199f2a0-0000-7000-8000-0000000000ee",
+                  "versionState": "draft",
+                  "visibility": "public"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/StoragePackageDefinitionDto"
+                }
+              }
+            },
+            "description": "Defined",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "settings.backdated": {
+                    "$ref": "#/components/examples/problem.settings.backdated"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `settings.backdated`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Define a storage package",
+        "tags": [
+          "admin.storage"
+        ],
+        "x-required-permissions": [
+          "admin.subscription.manage"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/storage/packages/{packageId}": {
+      "patch": {
+        "description": "Names and the active switch of a definition (D-285); switching off stops new purchases, bought packages keep running to their end. Size, period and price change through a new price-plan version.\n\nImplements: D-285.",
+        "operationId": "admin.storage.updatePackage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "packageId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "isActive": false
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStoragePackageDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "effectiveFrom": "2026-11-01",
+                  "effectiveTo": null,
+                  "id": "0199f2a0-0000-7000-8000-0000000000bb",
+                  "isActive": false,
+                  "key": "storage_plus_20",
+                  "nameEn": "Extra 20 GB",
+                  "nameTh": "พื้นที่เพิ่ม 20 GB",
+                  "onSale": false,
+                  "period": "month",
+                  "sizeBytes": "21474836480",
+                  "tenantType": null,
+                  "unitPrice": null,
+                  "vatRate": "0.0700",
+                  "versionId": "0199f2a0-0000-7000-8000-0000000000ee",
+                  "versionState": "draft",
+                  "visibility": "public"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/StoragePackageDefinitionDto"
+                }
+              }
+            },
+            "description": "Updated",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Rename or switch off a storage package",
+        "tags": [
+          "admin.storage"
+        ],
+        "x-required-permissions": [
+          "admin.subscription.manage"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/storage/reconciliations": {
+      "get": {
+        "description": "The nightly comparison of each tenant's object-storage prefix with its counters (D-286): bytes and objects on both sides, the drift, whether the counters were corrected (`storage.reconciliation.auto_correct`), orphan and missing keys. Newest first; filter by tenant.\n\nImplements: D-286.",
+        "operationId": "admin.storage.reconciliations",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sort field; each endpoint validates it against its own allow-list.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "example": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "description": "Free-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tenantId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "corrected": true,
+                      "dbBytes": "650000000",
+                      "dbObjects": "1200",
+                      "details": {
+                        "countedAfter": "650100000",
+                        "missing": [],
+                        "missingCount": 0,
+                        "orphanCount": 0,
+                        "orphans": [],
+                        "resizedDocuments": 1
+                      },
+                      "driftBytes": "100000",
+                      "id": "0199f2a0-0000-7000-8000-000000000101",
+                      "ranAt": "2026-11-02T02:00:00+07:00",
+                      "s3Bytes": "650100000",
+                      "s3Objects": "1201",
+                      "tenantId": "0199f2a0-0000-7000-8000-000000000001"
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "perPage": 25,
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/StorageReconciliationPageDto"
+                }
+              }
+            },
+            "description": "Reports",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Storage reconciliation reports",
+        "tags": [
+          "admin.storage"
+        ],
+        "x-required-permissions": [
+          "admin.tenant.read"
+        ],
+        "x-surface": "admin"
+      }
+    },
     "/v1/admin/storage/tenants": {
       "get": {
         "description": "The latest daily storage snapshot of each tenant (counted bytes, files, allowance, percent, level) and totals (D-276, D-279). Tenants without a snapshot yet are not listed.\n\nImplements: D-276, D-279.",
@@ -68556,6 +70505,209 @@
         ],
         "x-required-permissions": [
           "admin.tenant.read"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/storage/tenants/{tenantId}/actions/reconcile": {
+      "post": {
+        "description": "Runs the nightly reconciliation for one tenant at once (support, D-286) and returns its report; idempotent (each run appends a report).\n\nImplements: D-286.",
+        "operationId": "admin.storage.reconcile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "corrected": true,
+                  "dbBytes": "650000000",
+                  "dbObjects": "1200",
+                  "details": {
+                    "countedAfter": "650100000",
+                    "missing": [],
+                    "missingCount": 0,
+                    "orphanCount": 0,
+                    "orphans": [],
+                    "resizedDocuments": 1
+                  },
+                  "driftBytes": "100000",
+                  "id": "0199f2a0-0000-7000-8000-000000000101",
+                  "ranAt": "2026-11-02T02:00:00+07:00",
+                  "s3Bytes": "650100000",
+                  "s3Objects": "1201",
+                  "tenantId": "0199f2a0-0000-7000-8000-000000000001"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/StorageReconciliationDto"
+                }
+              }
+            },
+            "description": "Report",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Reconcile one tenant's storage now",
+        "tags": [
+          "admin.storage"
+        ],
+        "x-required-permissions": [
+          "admin.setting.manage"
         ],
         "x-surface": "admin"
       }
@@ -74796,6 +76948,241 @@
         "summary": "Set a tenant value of a setting as the platform",
         "tags": [
           "admin.tenants"
+        ],
+        "x-required-permissions": [
+          "admin.setting.manage"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/tenants/{tenantId}/storage-quota": {
+      "put": {
+        "description": "Overrides the free storage allowance of one tenant (custom deal, D-285 / D-279): an effective-dated tenant version of `storage.free_gb` for the tenant's type, audited and never backdated. The effective quota stays free (this value) + active storage packages.\n\nImplements: D-285, D-279, D-291.",
+        "operationId": "admin.storage.setQuota",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "freeGb": "20",
+                    "reason": "ลูกค้าพิเศษ: พื้นที่ฟรี 20 GB ตามสัญญา"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/StorageQuotaOverrideDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "effectiveFrom": "2026-12-01T00:00:00+07:00",
+                  "freeGb": "20",
+                  "tenantId": "0199f2a0-0000-7000-8000-000000000001",
+                  "versionId": "0199f2a0-0000-7000-8000-0000000000ff"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/StorageQuotaDto"
+                }
+              }
+            },
+            "description": "Override set",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "settings.backdated": {
+                    "$ref": "#/components/examples/problem.settings.backdated"
+                  },
+                  "settings.invalid_value": {
+                    "$ref": "#/components/examples/problem.settings.invalid_value"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `settings.backdated`, `settings.invalid_value`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Set a tenant's free storage",
+        "tags": [
+          "admin.storage"
         ],
         "x-required-permissions": [
           "admin.setting.manage"
@@ -169076,7 +171463,7 @@
     },
     "/v1/owner/storage": {
       "get": {
-        "description": "What the tenant stores (files + records at their counted size), the allowance and its level (ok / warning / full / over), the price per GB-month above it and the last 30 daily snapshots (D-276). `metered: false` while the platform has not set a free allowance for the tenant type.\n\nImplements: D-276.",
+        "description": "What the tenant stores (files incl. thumbnails / renditions + records at their counted size), the quota = free allowance (tenant override first) + active storage packages, its level (ok / warning / full / over), the price per GB-month above it, where the space goes (categories), the bytes under legal hold (counted, never deletable — D-286), the bytes deleted for reclaim that count until their purge, and the last 30 daily snapshots (D-276, D-285). `metered: false` while the platform has not set a free allowance for the tenant type.\n\nImplements: D-276, D-285, D-286.",
         "operationId": "owner.storage.get",
         "parameters": [
           {
@@ -169093,7 +171480,30 @@
                 "example": {
                   "allowanceBytes": "5368709120",
                   "asOf": "2026-10-25T09:00:00+07:00",
+                  "categories": [
+                    {
+                      "bytes": "420000000",
+                      "category": "listing_media",
+                      "objects": 900
+                    },
+                    {
+                      "bytes": "150000000",
+                      "category": "attachment",
+                      "objects": 300
+                    },
+                    {
+                      "bytes": "70000000",
+                      "category": "system_legal",
+                      "objects": 2300
+                    },
+                    {
+                      "bytes": "10000000",
+                      "category": "system_other",
+                      "objects": 40
+                    }
+                  ],
                   "fileBytes": "650000000",
+                  "freeBytes": "5368709120",
                   "freeGb": "5",
                   "history": [
                     {
@@ -169101,8 +171511,11 @@
                       "day": "2026-10-24"
                     }
                   ],
+                  "legalHoldBytes": "70000000",
                   "level": "ok",
                   "metered": true,
+                  "packageBytes": "0",
+                  "pendingPurgeBytes": "0",
                   "pricePerGbMonth": null,
                   "records": {
                     "invoice": 1203,
@@ -169260,6 +171673,1818 @@
         ],
         "x-required-permissions": [
           "tenant.subscription.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/storage/files": {
+      "get": {
+        "description": "The tenant's stored files with what each occupies (file + thumbnails / renditions), its category, whether it is under a legal hold (D-286) and whether the owner may delete it to reclaim space (D-285) — with the reason when not. `sort=size` (default) or `createdAt`; `state=deleted` lists files deleted for reclaim that can still be restored until `purgeAfter`.\n\nImplements: D-285, D-286.",
+        "operationId": "owner.storage.files",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sort field; each endpoint validates it against its own allow-list.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "example": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "description": "Free-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StorageCategory"
+            }
+          },
+          {
+            "description": "`active` = stored files; `deleted` = deleted to reclaim space, restorable until the purge.",
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StoredFileState"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "bytes": "1843200",
+                      "category": "listing_media",
+                      "createdAt": "2026-10-01T10:00:00+07:00",
+                      "deletable": true,
+                      "deletedAt": null,
+                      "held": false,
+                      "id": "0199f2a0-0000-7000-8000-0000000000aa",
+                      "kind": "listing_photo",
+                      "mimeType": "image/jpeg",
+                      "notDeletableReason": null,
+                      "objects": 5,
+                      "purgeAfter": null,
+                      "retainUntil": null,
+                      "title": "ห้อง 301 มุมนั่งเล่น.jpg"
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "perPage": 25,
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/StoredFilePageDto"
+                }
+              }
+            },
+            "description": "Files",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Stored files, largest first",
+        "tags": [
+          "owner.storage"
+        ],
+        "x-required-permissions": [
+          "tenant.subscription.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/storage/files/actions/delete": {
+      "post": {
+        "description": "Soft-deletes optional files the owner no longer needs (listing photos of closed listings, attachments) — all or nothing (D-285). They still count and can be restored until `storage.reclaim.purge_after_days` (7) have passed; then their objects are removed and the quota drops. A document under a legal hold is refused with `storage.legal_hold` and its id in `heldDocumentIds` (D-286); evidence, identity and system files and photos of a live listing with `storage.not_deletable`.\n\nImplements: D-285, D-286.",
+        "operationId": "owner.storage.deleteFiles",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "documentIds": [
+                      "0199f2a0-0000-7000-8000-0000000000aa"
+                    ]
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/StorageFilesActionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "bytes": "1843200",
+                      "category": "listing_media",
+                      "createdAt": "2026-10-01T10:00:00+07:00",
+                      "deletable": false,
+                      "deletedAt": "2026-11-01T10:00:00+07:00",
+                      "held": false,
+                      "id": "0199f2a0-0000-7000-8000-0000000000aa",
+                      "kind": "listing_photo",
+                      "mimeType": "image/jpeg",
+                      "notDeletableReason": null,
+                      "objects": 5,
+                      "purgeAfter": "2026-11-08T10:00:00+07:00",
+                      "retainUntil": null,
+                      "title": "ห้อง 301 มุมนั่งเล่น.jpg"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/StoredFilesResultDto"
+                }
+              }
+            },
+            "description": "Deleted (restorable until purgeAfter)",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "storage.legal_hold": {
+                    "$ref": "#/components/examples/problem.storage.legal_hold"
+                  },
+                  "storage.not_deletable": {
+                    "$ref": "#/components/examples/problem.storage.not_deletable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `storage.legal_hold`, `storage.not_deletable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Delete files to reclaim space",
+        "tags": [
+          "owner.storage"
+        ],
+        "x-required-permissions": [
+          "tenant.subscription.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/storage/files/actions/restore": {
+      "post": {
+        "description": "Restores files deleted for reclaim that are not purged yet (D-285); files that are not deleted are left as they are. Files deleted otherwise (retention, erasure) or already purged: `storage.not_restorable`.\n\nImplements: D-285.",
+        "operationId": "owner.storage.restoreFiles",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "documentIds": [
+                      "0199f2a0-0000-7000-8000-0000000000aa"
+                    ]
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/StorageFilesActionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "bytes": "1843200",
+                      "category": "listing_media",
+                      "createdAt": "2026-10-01T10:00:00+07:00",
+                      "deletable": true,
+                      "deletedAt": null,
+                      "held": false,
+                      "id": "0199f2a0-0000-7000-8000-0000000000aa",
+                      "kind": "listing_photo",
+                      "mimeType": "image/jpeg",
+                      "notDeletableReason": null,
+                      "objects": 5,
+                      "purgeAfter": null,
+                      "retainUntil": null,
+                      "title": "ห้อง 301 มุมนั่งเล่น.jpg"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/StoredFilesResultDto"
+                }
+              }
+            },
+            "description": "Restored",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "storage.not_restorable": {
+                    "$ref": "#/components/examples/problem.storage.not_restorable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `storage.not_restorable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Restore files deleted to reclaim space",
+        "tags": [
+          "owner.storage"
+        ],
+        "x-required-permissions": [
+          "tenant.subscription.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/storage/packages": {
+      "get": {
+        "description": "The storage packages the platform offers to this tenant type (size, period, price before and incl. VAT; `onSale: false` = no price yet, shown \"ยังไม่เปิดขาย\" — O-022) and the tenant's own packages with their purchase invoice (D-285).\n\nImplements: D-285.",
+        "operationId": "owner.storage.packages",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "offers": [
+                    {
+                      "currency": "THB",
+                      "id": "0199f2a0-0000-7000-8000-0000000000bb",
+                      "key": "storage_plus_20",
+                      "nameEn": "Extra 20 GB",
+                      "nameTh": "พื้นที่เพิ่ม 20 GB",
+                      "onSale": false,
+                      "period": "month",
+                      "price": null,
+                      "sizeBytes": "21474836480",
+                      "total": null,
+                      "vatRate": "0.0700"
+                    }
+                  ],
+                  "packages": [
+                    {
+                      "autoRenew": false,
+                      "createdAt": "2026-11-01T10:00:00+07:00",
+                      "currency": "THB",
+                      "endsOn": null,
+                      "id": "0199f2a0-0000-7000-8000-0000000000dd",
+                      "invoice": {
+                        "dueAt": "2026-11-08T10:00:00+07:00",
+                        "id": "0199f2a0-0000-7000-8000-0000000000cc",
+                        "number": "PIV-2026-00012",
+                        "qrAvailable": false,
+                        "state": "issued",
+                        "total": "107.00"
+                      },
+                      "name": "พื้นที่เพิ่ม 20 GB",
+                      "packageId": "0199f2a0-0000-7000-8000-0000000000bb",
+                      "period": "month",
+                      "price": "107.00",
+                      "renewalOfId": null,
+                      "sizeBytes": "21474836480",
+                      "startsOn": null,
+                      "state": "pending_payment"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerStoragePackagesDto"
+                }
+              }
+            },
+            "description": "Offers and my packages",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Storage packages",
+        "tags": [
+          "owner.storage"
+        ],
+        "x-required-permissions": [
+          "tenant.subscription.read"
+        ],
+        "x-surface": "owner"
+      },
+      "post": {
+        "description": "Orders a storage package (D-285): a pending package and a `purchase` platform invoice issued by Collective (O-008; Thai QR once the platform merchant exists, else bank transfer recorded by Finance). The package becomes active on the day its invoice is paid and raises the quota until it ends; an unpaid purchase is simply not activated — nothing is suspended. Not on sale: `storage.package_not_on_sale`; the same package already waiting for payment: `storage.package_pending`.\n\nImplements: D-285, D-250.",
+        "operationId": "owner.storage.purchasePackage",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "autoRenew": false,
+                    "packageId": "0199f2a0-0000-7000-8000-0000000000bb"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/StoragePurchaseDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "autoRenew": false,
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "currency": "THB",
+                  "endsOn": null,
+                  "id": "0199f2a0-0000-7000-8000-0000000000dd",
+                  "invoice": {
+                    "dueAt": "2026-11-08T10:00:00+07:00",
+                    "id": "0199f2a0-0000-7000-8000-0000000000cc",
+                    "number": "PIV-2026-00012",
+                    "qrAvailable": false,
+                    "state": "issued",
+                    "total": "107.00"
+                  },
+                  "name": "พื้นที่เพิ่ม 20 GB",
+                  "packageId": "0199f2a0-0000-7000-8000-0000000000bb",
+                  "period": "month",
+                  "price": "107.00",
+                  "renewalOfId": null,
+                  "sizeBytes": "21474836480",
+                  "startsOn": null,
+                  "state": "pending_payment"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerStoragePackageDto"
+                }
+              }
+            },
+            "description": "Ordered",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "storage.package_not_on_sale": {
+                    "$ref": "#/components/examples/problem.storage.package_not_on_sale"
+                  },
+                  "storage.package_pending": {
+                    "$ref": "#/components/examples/problem.storage.package_pending"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `storage.package_not_on_sale`, `storage.package_pending`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Buy a storage package",
+        "tags": [
+          "owner.storage"
+        ],
+        "x-required-permissions": [
+          "tenant.subscription.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/storage/packages/{storagePackageId}": {
+      "get": {
+        "description": "A storage package of the tenant with its state and purchase invoice (D-285). Another tenant's: 404.\n\nImplements: D-285.",
+        "operationId": "owner.storage.package",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storagePackageId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "autoRenew": false,
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "currency": "THB",
+                  "endsOn": null,
+                  "id": "0199f2a0-0000-7000-8000-0000000000dd",
+                  "invoice": {
+                    "dueAt": "2026-11-08T10:00:00+07:00",
+                    "id": "0199f2a0-0000-7000-8000-0000000000cc",
+                    "number": "PIV-2026-00012",
+                    "qrAvailable": false,
+                    "state": "issued",
+                    "total": "107.00"
+                  },
+                  "name": "พื้นที่เพิ่ม 20 GB",
+                  "packageId": "0199f2a0-0000-7000-8000-0000000000bb",
+                  "period": "month",
+                  "price": "107.00",
+                  "renewalOfId": null,
+                  "sizeBytes": "21474836480",
+                  "startsOn": null,
+                  "state": "pending_payment"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerStoragePackageDto"
+                }
+              }
+            },
+            "description": "Package",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "One of my storage packages",
+        "tags": [
+          "owner.storage"
+        ],
+        "x-required-permissions": [
+          "tenant.subscription.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/storage/packages/{storagePackageId}/actions/auto-renew": {
+      "post": {
+        "description": "With auto-renew the next period is invoiced `storage.package.renew_days_before` days before the package ends (D-285); without it the package ends and nothing is deleted (uploads over the quota are then held, D-286).\n\nImplements: D-285.",
+        "operationId": "owner.storage.setAutoRenew",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storagePackageId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "autoRenew": true
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/StorageAutoRenewDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "autoRenew": true,
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "currency": "THB",
+                  "endsOn": null,
+                  "id": "0199f2a0-0000-7000-8000-0000000000dd",
+                  "invoice": {
+                    "dueAt": "2026-11-08T10:00:00+07:00",
+                    "id": "0199f2a0-0000-7000-8000-0000000000cc",
+                    "number": "PIV-2026-00012",
+                    "qrAvailable": false,
+                    "state": "issued",
+                    "total": "107.00"
+                  },
+                  "name": "พื้นที่เพิ่ม 20 GB",
+                  "packageId": "0199f2a0-0000-7000-8000-0000000000bb",
+                  "period": "month",
+                  "price": "107.00",
+                  "renewalOfId": null,
+                  "sizeBytes": "21474836480",
+                  "startsOn": null,
+                  "state": "pending_payment"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerStoragePackageDto"
+                }
+              }
+            },
+            "description": "Package",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Switch auto-renew of a storage package",
+        "tags": [
+          "owner.storage"
+        ],
+        "x-required-permissions": [
+          "tenant.subscription.manage"
         ],
         "x-surface": "owner"
       }

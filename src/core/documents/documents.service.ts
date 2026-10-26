@@ -18,6 +18,10 @@ import sharp from 'sharp';
 import { AuditService } from '../audit/audit.service';
 import { CLOCK, type Clock } from '../clock/clock';
 import { DomainEvents } from '../events/domain-events';
+import { SettingsService } from '../settings/settings.service';
+import { LegalHoldService } from '../storage/legal-hold.service';
+import { HELD_UPLOAD_KINDS, storageCategory } from '../storage/storage-categories';
+import { StorageLedger } from '../storage/storage-ledger';
 import { StorageMeteringService } from '../storage/storage-metering.service';
 import {
   AUDITED_DOWNLOADS,
@@ -46,6 +50,12 @@ export interface GeneratedInput {
   /** 2 for the provider-signed version of a document (e-Tax, B6.2), … */
   versionNo?: number;
   sourceRef?: string | null;
+  /**
+   * Retention-policy key of a legal hold when the kind alone does not say it (TM30 export → `tm30_export`, e-Tax XML →
+   * `pdf_tax_invoice`); legal kinds (receipts, invoices, notes, contracts, slips, deposit statements) are held anyway
+   * (D-286).
+   */
+  holdPolicyKey?: string | null;
 }
 
 /** A generated file already in object storage, waiting for its row (`recordGenerated`). */
@@ -100,6 +110,9 @@ export class DocumentsService extends TenantScopedRepository {
     @Inject(VIRUS_SCAN) private readonly scanner: VirusScanPort,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly storageMetering: StorageMeteringService,
+    private readonly ledger: StorageLedger,
+    private readonly legalHolds: LegalHoldService,
+    private readonly settings: SettingsService,
   ) {
     super();
   }
@@ -166,7 +179,10 @@ export class DocumentsService extends TenantScopedRepository {
         throw new DomainException('http.not_found');
       // D-276: only an optional upload over the allowance (overage not sold) is held — never legal/operational files
       const admission = await this.storageMetering.admitUpload(tx, ctx.tenantId, input.kind, input.sizeBytes);
-      if (!admission.accepted) throw new DomainException('storage.allowance_exceeded');
+      if (!admission.accepted)
+        throw new DomainException('storage.allowance_exceeded', {
+          extensions: { storage: admission.position },
+        });
       return tx.document.create({
         data: {
           id,
@@ -254,6 +270,22 @@ export class DocumentsService extends TenantScopedRepository {
           updatedBy: userIdOf(RequestContext.actor()),
         },
       });
+      // G1: the file counts from now on (same transaction); residents' slips are held as legal documents (D-286)
+      const held = HELD_UPLOAD_KINDS.includes(doc.kind);
+      await this.ledger.count(tx, {
+        documentId: doc.id,
+        tenantId: ctx.tenantId,
+        category: storageCategory({ kind: doc.kind, generated: false, held }),
+        bytes: doc.sizeBytes,
+      });
+      if (held)
+        await this.legalHolds.hold(tx, {
+          tenantId: ctx.tenantId,
+          documentId: doc.id,
+          kind: doc.kind,
+          issuedAt: updated.uploadedAt ?? this.clock.now(),
+          sourceType: 'upload',
+        });
       await this.events.record(tx, {
         type: 'document.uploaded',
         aggregateType: 'document',
@@ -376,10 +408,13 @@ export class DocumentsService extends TenantScopedRepository {
     return { ...input, id, storageKey, uploadedAt: now };
   }
 
-  /** The `core.document` row of an uploaded generated file (inside the caller's transaction). */
-  recordGenerated(tx: Tx, input: UploadedGenerated): Promise<Document> {
+  /**
+   * The `core.document` row of an uploaded generated file (inside the caller's transaction). It counts to the tenant's
+   * quota at once and a legal document is held (D-286) — written whatever the quota: issuing is never refused.
+   */
+  async recordGenerated(tx: Tx, input: UploadedGenerated): Promise<Document> {
     const { id, storageKey, uploadedAt: now } = input;
-    return tx.document.create({
+    const document = await tx.document.create({
       data: {
         id,
         tenantId: input.tenantId,
@@ -402,6 +437,46 @@ export class DocumentsService extends TenantScopedRepository {
         versionNo: input.versionNo ?? 1,
         sourceRef: input.sourceRef ?? null,
         createdBy: userIdOf(RequestContext.actor()),
+      },
+    });
+    const holdKey = this.legalHolds.policyKeyOf(input.kind, input.holdPolicyKey);
+    await this.ledger.count(tx, {
+      documentId: id,
+      tenantId: input.tenantId,
+      category: storageCategory({ kind: input.kind, generated: true, held: holdKey !== null }),
+      bytes: document.sizeBytes,
+    });
+    if (holdKey && input.tenantId)
+      await this.legalHolds.hold(tx, {
+        tenantId: input.tenantId,
+        documentId: id,
+        kind: input.kind,
+        policyKey: holdKey,
+        issuedAt: now,
+        sourceType: input.sourceRef ? input.sourceRef.split(':')[0]! : 'generated',
+      });
+    return document;
+  }
+
+  /**
+   * Removes a document's objects (file, thumbnail, renditions) and marks the row deleted, inside the caller's
+   * transaction; the quota drops by what it occupied (G1). Callers check legal holds first (D-286).
+   */
+  async purgeStored(
+    tx: Tx,
+    doc: Pick<Document, 'id' | 'storageKey' | 'thumbnailKey' | 'deletedAt'>,
+    data: { at: Date; reason: string; by?: string | null },
+  ): Promise<void> {
+    const derivatives = await this.ledger.uncount(tx, doc.id);
+    const keys = new Set([doc.storageKey, ...(doc.thumbnailKey ? [doc.thumbnailKey] : []), ...derivatives]);
+    for (const key of keys) await this.storage.delete(key).catch(() => undefined);
+    await tx.document.update({
+      where: { id: doc.id },
+      data: {
+        uploadState: 'deleted',
+        deletedAt: doc.deletedAt ?? data.at,
+        deleteReason: data.reason,
+        ...(data.by ? { deletedBy: data.by } : {}),
       },
     });
   }
@@ -592,18 +667,30 @@ export class DocumentsService extends TenantScopedRepository {
     let width: number | null = null;
     let height: number | null = null;
     let stripped: { body: Buffer; sha256: Uint8Array<ArrayBuffer> } | null = null;
+    const derivatives: { key: string; bytes: bigint; previous: bigint }[] = [];
+    const putDerivative = async (key: string, bytes: Buffer, contentType: string) => {
+      const previous = BigInt((await this.storage.head(key))?.sizeBytes ?? 0);
+      await this.storage.put(key, bytes, contentType);
+      derivatives.push({ key, bytes: BigInt(bytes.length), previous });
+    };
     if (scanStatus === 'clean' && doc.kind === 'listing_photo') {
       // D-252: a public photo must not carry the owner's location — the original is replaced by a JPEG without
       // metadata (sharp drops EXIF/XMP/ICC unless asked to keep them), and three WebP renditions are stored.
+      // G1: the stored JPEG is at most `storage.images.max_edge_px` on its longer edge before it is counted.
       try {
-        const clean = await sharp(body).rotate().jpeg({ quality: 88, mozjpeg: true }).toBuffer();
+        const maxEdge = await this.settings.valueAt<number>('storage.images.max_edge_px', now);
+        const clean = await sharp(body)
+          .rotate()
+          .resize({ width: maxEdge, height: maxEdge, fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 88, mozjpeg: true })
+          .toBuffer();
         await this.storage.put(doc.storageKey, clean, 'image/jpeg');
         for (const w of LISTING_PHOTO_WIDTHS) {
           const rendition = await sharp(clean)
             .resize({ width: w, withoutEnlargement: true })
             .webp({ quality: 80 })
             .toBuffer();
-          await this.storage.put(renditionKey(doc.storageKey, w), rendition, 'image/webp');
+          await putDerivative(renditionKey(doc.storageKey, w), rendition, 'image/webp');
         }
         stripped = { body: clean, sha256: new Uint8Array(createHash('sha256').update(clean).digest()) };
       } catch {
@@ -622,7 +709,7 @@ export class DocumentsService extends TenantScopedRepository {
           .webp({ quality: 80 })
           .toBuffer();
         thumbnailKey = `${doc.storageKey}.thumb.webp`;
-        await this.storage.put(thumbnailKey, thumb, 'image/webp');
+        await putDerivative(thumbnailKey, thumb, 'image/webp');
       } catch {
         thumbnailKey = null;
       }
@@ -641,6 +728,9 @@ export class DocumentsService extends TenantScopedRepository {
           : {}),
       },
     });
+    // G1: usage follows the re-encoded size and every derivative object (same transaction as the row)
+    if (stripped) await this.ledger.resize(tx, doc.id, doc.sizeBytes, BigInt(stripped.body.length));
+    for (const d of derivatives) await this.ledger.addDerivative(tx, doc.id, d.key, d.bytes, d.previous);
     await this.events.record(tx, {
       type: 'document.scanned',
       aggregateType: 'document',

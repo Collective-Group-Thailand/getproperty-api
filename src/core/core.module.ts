@@ -60,7 +60,11 @@ import { FakeQueue } from './queue/fake-queue';
 import { QUEUE, type QueuePort } from './queue/queue.port';
 import { RealtimeHub } from './realtime/realtime.hub';
 import { SettingsService } from './settings/settings.service';
+import { LegalHoldService } from './storage/legal-hold.service';
+import { StorageLedger } from './storage/storage-ledger';
 import { StorageMeteringService } from './storage/storage-metering.service';
+import { StorageReclaimService } from './storage/storage-reclaim.service';
+import { StorageReconciliationService } from './storage/storage-reconciliation.service';
 import { SUBSCRIBERS } from './subscribers/subscribers';
 import { AccessService } from './tenancy/access.service';
 import { BankAccountService } from './tenancy/bank-account.service';
@@ -139,6 +143,10 @@ const SERVICES = [
   ProviderCredentialsService,
   DocumentsService,
   StorageMeteringService,
+  StorageLedger,
+  LegalHoldService,
+  StorageReclaimService,
+  StorageReconciliationService,
   LandlordSignupService,
   NotificationService,
   NotificationRoutesService,

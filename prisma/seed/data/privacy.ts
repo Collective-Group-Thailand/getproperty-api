@@ -184,4 +184,37 @@ export const RETENTION_POLICIES: RetentionSeed[] = [
     action: 'archive',
     legalRef: 'D-020 ⚖',
   },
+  // G1 / D-286: legal holds of the classes the seed lacked — periods ⚖ until counsel confirms them (O-025)
+  {
+    target: 'document_class',
+    targetKey: 'pdf_tax_invoice',
+    retainFor: '5 years',
+    basis: 'issued_at; ⚖ Revenue Code retention to confirm',
+    action: 'archive',
+    legalRef: 'ประมวลรัษฎากร ม.87/3 ⚖',
+  },
+  {
+    target: 'document_class',
+    targetKey: 'pdf_note',
+    retainFor: '5 years',
+    basis: 'issued_at; ⚖ accounting retention to confirm',
+    action: 'archive',
+    legalRef: 'พ.ร.บ.การบัญชี 2543 ม.14 ⚖',
+  },
+  {
+    target: 'document_class',
+    targetKey: 'deposit_settlement',
+    retainFor: '5 years',
+    basis: 'issued_at; ⚖ accounting retention to confirm',
+    action: 'archive',
+    legalRef: 'พ.ร.บ.การบัญชี 2543 ม.14; D-023 ⚖',
+  },
+  {
+    target: 'document_class',
+    targetKey: 'tm30_export',
+    retainFor: '5 years',
+    basis: 'generated_at; ⚖ immigration (TM30) retention to confirm',
+    action: 'archive',
+    legalRef: 'พ.ร.บ.คนเข้าเมือง 2522 ม.38 ⚖',
+  },
 ];

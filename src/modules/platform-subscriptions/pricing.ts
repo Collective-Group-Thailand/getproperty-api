@@ -5,7 +5,18 @@ export interface PriceVersion {
   planKey: string;
   nameTh: string;
   kind: 'software' | 'addon' | 'hardware_rental' | 'hardware_sale' | 'service';
-  billingUnit: 'per_unit' | 'per_meter_point' | 'per_building' | 'per_tenant' | 'per_report';
+  billingUnit:
+    | 'per_unit'
+    | 'per_meter_point'
+    | 'per_building'
+    | 'per_tenant'
+    | 'per_report'
+    // pack G add-ons: purchased one by one (G1 storage packages; G5 boosts / fees) — never a subscription line
+    | 'per_package'
+    | 'per_listing'
+    | 'per_recipient'
+    | 'per_deal'
+    | 'percent_of_amount';
   unitPrice: string | null;
   /** Volume tiers (`fromUnits`/`toUnits` inclusive, `pricePerUnit`) or flat steps (`upToUnits`, `monthly`). */
   tiers: PriceTier[];
@@ -31,7 +42,7 @@ export interface UsageCounts {
 }
 
 export interface ChargeLine {
-  kind: 'subscription' | 'addon' | 'hardware_rental' | 'ai_overage' | 'discount' | 'adjustment';
+  kind: 'subscription' | 'addon' | 'hardware_rental' | 'ai_overage' | 'discount' | 'adjustment' | 'storage';
   description: string;
   quantity: string;
   unitPrice: string;
@@ -118,6 +129,12 @@ export function planCharge(
     }
     case 'per_report':
       throw new PricingError('price_plan.not_billable', `${v.planKey} is billed per report`);
+    case 'per_package':
+    case 'per_listing':
+    case 'per_recipient':
+    case 'per_deal':
+    case 'percent_of_amount':
+      throw new PricingError('price_plan.not_billable', `${v.planKey} is bought as a purchase (pack G)`);
   }
 }
 

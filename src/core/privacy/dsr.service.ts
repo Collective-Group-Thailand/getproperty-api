@@ -17,6 +17,7 @@ import { AuditService } from '../audit/audit.service';
 import { CLOCK, type Clock } from '../clock/clock';
 import { DomainEvents } from '../events/domain-events';
 import { SettingsService } from '../settings/settings.service';
+import { StorageLedger } from '../storage/storage-ledger';
 import { TenantDataKeys } from '../tenancy/data-keys.service';
 import { workflowDefinition } from '../workflow/definitions';
 import { WorkflowService } from '../workflow/workflow.service';
@@ -45,6 +46,7 @@ export class DsrService extends TenantScopedRepository {
     private readonly config: AppConfig,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly ledger: StorageLedger,
   ) {
     super();
   }
@@ -460,6 +462,13 @@ export class DsrService extends TenantScopedRepository {
         createdBy: userIdOf(RequestContext.actor()),
       },
     });
+    // G1: the export counts to the tenant's storage until it is removed
+    await this.ledger.count(tx, {
+      documentId: id,
+      tenantId: ctx.tenantId,
+      category: 'system_other',
+      bytes: BigInt(body.length),
+    });
     await this.audit.record(tx, {
       action: 'export.created',
       tenantId: ctx.tenantId,
@@ -508,7 +517,13 @@ export class DsrService extends TenantScopedRepository {
         },
       });
       for (const d of docs) {
-        await this.storage.delete(d.storageKey).catch(() => undefined);
+        const derivatives = await this.ledger.uncount(tx, d.id);
+        for (const key of new Set([
+          d.storageKey,
+          ...(d.thumbnailKey ? [d.thumbnailKey] : []),
+          ...derivatives,
+        ]))
+          await this.storage.delete(key).catch(() => undefined);
         await tx.document.update({
           where: { id: d.id },
           data: { deletedAt: now, deleteReason: `dsr erasure ${dsr.id}`, uploadState: 'deleted' },

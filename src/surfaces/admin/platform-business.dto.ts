@@ -44,6 +44,11 @@ export enum PlanBillingUnitName {
   PerBuilding = 'per_building',
   PerTenant = 'per_tenant',
   PerReport = 'per_report',
+  PerPackage = 'per_package',
+  PerListing = 'per_listing',
+  PerRecipient = 'per_recipient',
+  PerDeal = 'per_deal',
+  PercentOfAmount = 'percent_of_amount',
 }
 /** The same values as `TemplateVersionState` (one named enum in the contract). */
 export const PlanVersionStateName = TemplateVersionStateName;
@@ -68,6 +73,7 @@ export enum PlatformInvoiceKindName {
   First = 'first',
   Monthly = 'monthly',
   Adjustment = 'adjustment',
+  Purchase = 'purchase',
 }
 export enum PlatformLineKindName {
   Subscription = 'subscription',
@@ -79,6 +85,13 @@ export enum PlatformLineKindName {
   Inspection = 'inspection',
   Discount = 'discount',
   Adjustment = 'adjustment',
+  Storage = 'storage',
+  Boost = 'boost',
+  SuccessFee = 'success_fee',
+  CoBrokeFee = 'co_broke_fee',
+  MediaService = 'media_service',
+  MessagingAddon = 'messaging_addon',
+  SponsoredBroadcast = 'sponsored_broadcast',
 }
 export enum PlatformPaymentMethodName {
   Qr = 'qr',
@@ -759,8 +772,14 @@ export class PlatformInvoiceDto {
   @ApiProperty({ example: FAKE.propertyName })
   tenantName!: string;
 
-  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
-  subscriptionId!: string;
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: FAKE.uuid,
+    description: 'null for a purchase (storage package, G1) — subscriptions are off (D-250).',
+  })
+  subscriptionId!: string | null;
 
   @ApiProperty({ example: 'PIV-2026-00001' })
   number!: string;

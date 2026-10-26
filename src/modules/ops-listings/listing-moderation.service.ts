@@ -374,10 +374,13 @@ export class ListingModerationService {
     for (const row of due) {
       try {
         await this.db.platform(async (tx) => {
-          await tx.document.updateMany({
+          // G1: objects removed and the quota drops (the rows were only marked before)
+          const docs = await tx.document.findMany({
             where: { id: { in: row.evidenceDocumentIds }, deletedAt: null },
-            data: { deletedAt: now, uploadState: 'deleted' },
+            select: { id: true, storageKey: true, thumbnailKey: true, deletedAt: true },
           });
+          for (const doc of docs)
+            await this.documents.purgeStored(tx, doc, { at: now, reason: 'listing_evidence_retention' });
           await tx.listingVerification.update({ where: { id: row.id }, data: { evidencePurgedAt: now } });
           await this.audit.record(tx, {
             action: 'listing.verification_evidence_purged',

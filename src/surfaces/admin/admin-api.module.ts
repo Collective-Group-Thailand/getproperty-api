@@ -34,7 +34,7 @@ import {
   AdminWorkflowDefinitionsController,
 } from './admin-platform.controller';
 import { AdminFleetController, AdminIngestController, AdminOtaController } from './admin-smart.controller';
-import { AdminStorageController } from './admin-storage.controller';
+import { AdminStorageController, AdminTenantStorageQuotaController } from './admin-storage.controller';
 import { AdminSystemController } from './admin-system.controller';
 import { AdminSupportGrantsController, AdminTenantsController } from './admin-tenants.controller';
 
@@ -50,6 +50,7 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
     AdminPlatformUsersController,
     AdminSettingsController,
     AdminStorageController,
+    AdminTenantStorageQuotaController,
     AdminMessagingRatesController,
     AdminGuidesController,
     AdminListingsController,

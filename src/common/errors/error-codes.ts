@@ -195,6 +195,12 @@ export const ERROR_CODES = {
   'subscription.exists': HttpStatus.CONFLICT,
   'subscription.disabled': HttpStatus.CONFLICT,
   'storage.allowance_exceeded': HttpStatus.CONFLICT,
+  // G1 (D-285, D-286): legal holds, reclaim and storage packages
+  'storage.legal_hold': HttpStatus.CONFLICT,
+  'storage.not_deletable': HttpStatus.CONFLICT,
+  'storage.not_restorable': HttpStatus.CONFLICT,
+  'storage.package_not_on_sale': HttpStatus.CONFLICT,
+  'storage.package_pending': HttpStatus.CONFLICT,
   'portfolio.unit_claimed': HttpStatus.CONFLICT,
   'portfolio.not_a_stub': HttpStatus.CONFLICT,
   'portfolio.claimant_invalid': HttpStatus.UNPROCESSABLE_ENTITY,

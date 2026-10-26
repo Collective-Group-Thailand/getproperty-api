@@ -68,6 +68,12 @@ import { BullmqPdfRenderTransport, QueuePdfRenderer } from './pdf/queue-pdf-rend
 import { FakeSms } from './sms/fake-sms';
 import { SMS, type SmsPort } from './sms/sms.port';
 import { ThaiBulkSmsAdapter } from './sms/thaibulksms.adapter';
+import {
+  FakeStorageInventory,
+  S3StorageInventory,
+  STORAGE_INVENTORY,
+  type StorageInventoryPort,
+} from './storage-inventory/storage-inventory.port';
 import { ClamAvAdapter } from './virus-scan/clamav.adapter';
 import { FakeVirusScan } from './virus-scan/fake-virus-scan';
 import { VIRUS_SCAN, type VirusScanPort } from './virus-scan/virus-scan.port';
@@ -118,6 +124,21 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
         config.useFakeObjectStorage
           ? new FakeObjectStorage()
           : new S3ObjectStorage({
+              region: config.get('AWS_REGION'),
+              bucket: config.get('S3_BUCKET'),
+              endpoint: config.get('AWS_ENDPOINT_URL'),
+              forcePathStyle: config.get('S3_FORCE_PATH_STYLE'),
+              keyPrefix: config.get('S3_KEY_PREFIX') ?? '',
+            }),
+    },
+    {
+      // G1: what object storage holds per tenant prefix (nightly reconciliation); the fake lists the fake storage
+      provide: STORAGE_INVENTORY,
+      inject: [AppConfig, OBJECT_STORAGE],
+      useFactory: (config: AppConfig, storage: ObjectStorage): StorageInventoryPort =>
+        storage instanceof FakeObjectStorage
+          ? new FakeStorageInventory(storage)
+          : new S3StorageInventory({
               region: config.get('AWS_REGION'),
               bucket: config.get('S3_BUCKET'),
               endpoint: config.get('AWS_ENDPOINT_URL'),
@@ -356,6 +377,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
   ],
   exports: [
     OBJECT_STORAGE,
+    STORAGE_INVENTORY,
     PAYMENT_PROVIDERS,
     LOCK_VENDORS,
     ETAX_PROVIDERS,

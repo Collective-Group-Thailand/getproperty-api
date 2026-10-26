@@ -164,6 +164,8 @@ model RetentionPolicy {
   updatedAt     DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
   updatedBy     String?                  @map("updated_by") @db.Uuid
 
+  legalHolds DocumentLegalHold[]
+
   @@unique([target, targetKey, effectiveFrom], map: "retention_policy_target_target_key_effective_from_key")
   @@map("retention_policy")
   @@schema("platform")

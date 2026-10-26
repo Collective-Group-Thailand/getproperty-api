@@ -364,3 +364,15 @@ Unchanged: `pnpm dev` with fakes, or `docker compose up -d` (PostgreSQL + Timesc
 users/ACL, **LocalStack** S3 + SES + Secrets Manager like getpack, Mailpit) and `DATA_STORES_MODE=real`,
 `INTEGRATIONS_MODE=real`, `AWS_ENDPOINT_URL=http://localhost:4566`, `S3_FORCE_PATH_STYLE=true`. The migrate command
 runs locally too: `pnpm build && pnpm db:migrate:deploy`.
+
+## 9. Pack G (Listing & Growth) — platform needs per step
+
+Requests for collective-infra (not edited here); each step adds its row.
+
+| Step | Containers | Env / secrets | Buckets / IAM | Scheduled jobs (worker, BullMQ schedulers) |
+|---|---|---|---|---|
+| G1 storage quota, legal hold, packages, reclaim (D-285, D-286) | none new | none new (settings `storage.images.max_edge_px`, `storage.reclaim.purge_after_days`, `storage.package.renew_days_before`, `storage.reconciliation.auto_correct` are seeded `platform.setting`s) | the api/worker instance role needs **`s3:ListBucket` on the getproperty bucket restricted to the prefix `${S3_KEY_PREFIX}t/*`** (nightly ListObjectsV2 per tenant prefix); `s3:DeleteObject` on `t/*` is already used by retention and now also by the reclaim purge | `storage-reconcile` every 24 h (object storage vs counters, report rows), `storage-maintenance` every hour (package expiry / renewal invoices, purge of files deleted for reclaim after 7 days, legal holds of documents stored before G1); both run in the existing `worker` container |
+
+Purchase invoices of storage packages are issued by Collective (`platform.company`) and paid to the platform merchant
+(`platform.payments.merchant`, O-008); until that merchant exists the Thai QR stays off and Finance records bank
+transfers (`POST /v1/admin/platform-invoices/{id}/payments`).
