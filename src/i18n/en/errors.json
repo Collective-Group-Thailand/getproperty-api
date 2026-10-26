@@ -1148,5 +1148,17 @@
       "title": "Another user must publish",
       "detail": "The rate must be published by a different platform user than the one who entered it"
     }
+  },
+  "identity": {
+    "already_verified": {
+      "title": "Identity already verified",
+      "detail": "This account is already verified; there is nothing more to do."
+    }
+  },
+  "ekyc": {
+    "unavailable": {
+      "title": "Online identity verification is not available yet",
+      "detail": "Identity verification is not open yet. Please try again later."
+    }
   }
 }

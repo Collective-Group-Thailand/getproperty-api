@@ -14,6 +14,7 @@ import { ResidentRentCertificatesController } from '../owner/rent-certificates.c
 import { ResidentServiceRequestsController } from '../owner/service.controller';
 import { ResidentUsageController } from '../owner/smart.controller';
 import { ResidentIdentitiesController } from '../shared/identities.controllers';
+import { ResidentIdentityVerificationController } from '../shared/identity-verification.controllers';
 import { ResidentLinkController, ResidentMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
 import { ResidentConsentsController, ResidentDsrController } from '../shared/privacy.controllers';
@@ -38,6 +39,7 @@ import { ResidentCsatSurveyController } from './resident-survey.controller';
     systemPingController(SURFACES.resident),
     ResidentMeController,
     ResidentIdentitiesController,
+    ResidentIdentityVerificationController,
     ResidentMessagingLinksController,
     ResidentLinkController,
     ResidentConsentsController,

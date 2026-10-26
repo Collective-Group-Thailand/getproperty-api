@@ -39,6 +39,7 @@ import { EventSubscriberRegistry } from './events/subscribers';
 import { FeatureFlagsService } from './feature-flags/feature-flags.service';
 import { AuthService } from './identity/auth.service';
 import { IdentitySignInService } from './identity/identity-sign-in.service';
+import { IdentityVerificationService } from './identity/identity-verification.service';
 import { OtpService } from './identity/otp.service';
 import { SessionService } from './identity/session.service';
 import { SigningKeys } from './identity/signing-keys';
@@ -107,6 +108,7 @@ const SERVICES = [
   OtpService,
   AuthService,
   IdentitySignInService,
+  IdentityVerificationService,
   MessagingChannelsService,
   MessagingUsageService,
   AccessService,

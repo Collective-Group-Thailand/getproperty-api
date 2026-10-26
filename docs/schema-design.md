@@ -1624,6 +1624,7 @@ verified in B3.2, owner-stamped rows via `acts_for`, platform-only `user_account
 | 136 | `ops.listing_lead.channel` (0053) | `ops.listing_channel`, nullable | D-268: the channel a prospect came from (the `ch` of the short link), kept on a new enquiry. |
 | 137 | `ops.inspection.resident_note`, `resident_photo_document_ids` (0054) | text ≤ 1000; uuid[] ≤ 6 | D-266: what the resident adds (note and own photos, uploads purpose `inspection_note`) when countersigning a move-in / move-out report in LINE. |
 | 138 | `ops.deposit_settlement.resident_note` (0054) | text ≤ 1000 | D-266: the resident's note with an accepted settlement (a dispute keeps `dispute_reason`). |
+| 139 | `platform.identity_verification` + enum `platform.identity_verification_state` (0055) | new table: `user_id` → `core.user_account`, `audience`, `provider`, `provider_session_id` (unique per provider), `state` pending / approved / rejected / expired, `verification_url`, `failure_reason` ≤ 500, `decided_at`, `expires_at`; one pending attempt per person | D-267 / O-021: identity verification of a person at a licensed e-KYC provider; only the outcome is kept (no ID number, photo or date of birth). Approved once = the identity badge (public listing, owner page, owner leads). |
 
 ---
 

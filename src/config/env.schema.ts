@@ -12,6 +12,7 @@ import {
   Matches,
   Max,
   Min,
+  MinLength,
   Validate,
   ValidatorConstraint,
   type ValidatorConstraintInterface,
@@ -112,6 +113,21 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsIn(['off', 'fake'])
   E_STAMP_MODE: 'off' | 'fake' = 'off';
+
+  /**
+   * Identity verification of people (B7.10, D-267, O-021): `off` (default — no provider chosen; starting one answers
+   * `ekyc.unavailable`) or `fake` (tests and demos: a page on this API approves or rejects). A licensed provider's
+   * adapter is added behind the same port and switched on here.
+   */
+  @IsOptional()
+  @IsIn(['off', 'fake'])
+  EKYC_MODE: 'off' | 'fake' = 'off';
+
+  /** Shared secret of the e-KYC webhook signature (`X-Ekyc-Signature`, hex HMAC-SHA256 of the raw body). */
+  @IsOptional()
+  @IsString()
+  @MinLength(16)
+  EKYC_WEBHOOK_SECRET?: string;
 
   @IsEnum(DataStoresMode)
   DATA_STORES_MODE: DataStoresMode = DataStoresMode.Fake;

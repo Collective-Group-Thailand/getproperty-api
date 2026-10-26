@@ -241,6 +241,13 @@ export class PublicListingSummaryDto {
   @ApiProperty({ description: 'The unit’s owner is verified (badge "เจ้าของตัวจริง").' })
   verifiedOwner!: boolean;
 
+  @ApiProperty({
+    example: false,
+    description:
+      'The owner verified their identity at the e-KYC provider (D-267); a second badge beside the ownership one.',
+  })
+  ownerIdentityVerified!: boolean;
+
   @ApiProperty({ type: String, format: 'date-time' })
   publishedAt!: string;
 }
@@ -358,6 +365,7 @@ const SUMMARY_EXAMPLE = {
   nearestTransit: { name: 'BTS อารีย์', line: 'BTS สายสุขุมวิท', distanceM: 350 },
   cover: { url: 'https://storage.invalid/p.w960.webp', width: 960, height: 720, caption: null },
   verifiedOwner: true,
+  ownerIdentityVerified: true,
   publishedAt: '2026-11-01T10:00:00+07:00',
 };
 
@@ -574,6 +582,9 @@ export class PublicOwnerVerificationDto {
 
   @ApiProperty({ type: 'integer', example: 2 })
   verifiedUnits!: number;
+
+  @ApiProperty({ example: true, description: 'The owner’s identity is verified too (e-KYC, D-267).' })
+  identityVerified!: boolean;
 }
 
 /** The public page of a verified owner (D-274): no contact details. */
@@ -631,7 +642,7 @@ export class PublicOwnersController {
     example: {
       slug: 'landlord-0a1b2c3d4e',
       displayName: 'มาลี มีสุข',
-      verification: { level: 'unit_ownership', verifiedUnits: 2 },
+      verification: { level: 'unit_ownership', verifiedUnits: 2, identityVerified: true },
       memberSince: '2026-10-25',
       medianReplyMinutes: 42,
       listings: [SUMMARY_EXAMPLE],

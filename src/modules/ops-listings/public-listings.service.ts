@@ -2,6 +2,7 @@ import { OBJECT_STORAGE, type ObjectStorage } from '@collective/integrations/sto
 import { DomainException } from '@common/errors/domain.exception';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { renditionKey } from '@core/documents/document-policy';
+import { IdentityVerificationService } from '@core/identity/identity-verification.service';
 import { SettingsService } from '@core/settings/settings.service';
 import { TenantTx } from '@database/tenant-tx';
 import { type Furnishing, type PortfolioUnitKind, Prisma } from '@generated/prisma/client';
@@ -67,6 +68,7 @@ type Row = {
   published_at: Date;
   updated_at: Date;
   verified: boolean;
+  identity_verified: boolean;
 };
 
 const ISO_DAY = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
@@ -98,6 +100,7 @@ export class PublicListingsService {
     private readonly insights: ListingInsightsService,
     private readonly settings: SettingsService,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly identity: IdentityVerificationService,
   ) {}
 
   async photo(
@@ -156,6 +159,7 @@ export class PublicListingsService {
           : null,
       cover,
       verifiedOwner: row.verified,
+      ownerIdentityVerified: row.identity_verified,
       publishedAt: row.published_at,
     };
   }
@@ -166,7 +170,10 @@ export class PublicListingsService {
            l.province, l.district, l.address_text, l.transit_name, l.transit_line, l.transit_distance_m,
            l.published_at, l.updated_at,
            EXISTS (SELECT 1 FROM platform.listing_verification v
-                    WHERE v.unit_id = l.unit_id AND v.tenant_id = l.tenant_id AND v.state = 'approved') AS verified
+                    WHERE v.unit_id = l.unit_id AND v.tenant_id = l.tenant_id AND v.state = 'approved') AS verified,
+           EXISTS (SELECT 1 FROM core.membership m
+                     JOIN platform.identity_verification iv ON iv.user_id = m.user_id AND iv.state = 'approved'
+                    WHERE m.tenant_id = l.tenant_id AND m.role = 'owner' AND m.status = 'active') AS identity_verified
       FROM ops.listing l JOIN core.tenant t ON t.id = l.tenant_id`;
 
   async search(query: PublicListingQuery, lang: 'th' | 'en') {
@@ -307,7 +314,11 @@ export class PublicListingsService {
     return {
       slug: tenant.slug,
       displayName: tenant.displayName,
-      verification: { level: 'unit_ownership' as const, verifiedUnits },
+      verification: {
+        level: 'unit_ownership' as const,
+        verifiedUnits,
+        identityVerified: (await this.identity.verifiedOwnerTenants([tenant.id])).has(tenant.id),
+      },
       memberSince: tenant.createdAt.toISOString().slice(0, 10),
       medianReplyMinutes: replyMinutes,
       listings: listings.data,

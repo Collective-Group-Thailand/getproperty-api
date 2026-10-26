@@ -5,6 +5,7 @@ import { DomainException } from '@common/errors/domain.exception';
 import { ApiEndpoint, ApiJsonBody, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { FAKE } from '@common/openapi/examples';
 import { toBangkokIso } from '@common/time/bangkok';
+import { IdentityVerificationService } from '@core/identity/identity-verification.service';
 import { type ListingLeadMessage, type ListingViewing } from '@generated/prisma/client';
 import { type LeadWithParts, ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
@@ -66,7 +67,10 @@ function nextViewing(lead: LeadWithParts): LeadViewingDto | null {
   return next ? leadViewingDto(next) : null;
 }
 
-export function ownerLeadSummaryDto(lead: LeadWithParts): OwnerLeadSummaryDto {
+export function ownerLeadSummaryDto(
+  lead: LeadWithParts,
+  verified: ReadonlySet<string> = new Set(),
+): OwnerLeadSummaryDto {
   const last = lead.messages.at(-1) ?? null;
   const open = !['won', 'lost'].includes(lead.state);
   return {
@@ -82,6 +86,7 @@ export function ownerLeadSummaryDto(lead: LeadWithParts): OwnerLeadSummaryDto {
       name: lead.party.displayName,
       phone: lead.party.phoneE164,
       lineLinked: Boolean(lead.party.lineUserId),
+      identityVerified: verified.has(lead.userId),
     },
     state: lead.state as ListingLeadStateName,
     lastMessage: last?.body.slice(0, 200) ?? null,
@@ -95,9 +100,9 @@ export function ownerLeadSummaryDto(lead: LeadWithParts): OwnerLeadSummaryDto {
   };
 }
 
-export function ownerLeadDto(lead: LeadWithParts): OwnerLeadDto {
+export function ownerLeadDto(lead: LeadWithParts, verified: ReadonlySet<string> = new Set()): OwnerLeadDto {
   return {
-    ...ownerLeadSummaryDto(lead),
+    ...ownerLeadSummaryDto(lead, verified),
     moveInDate: day(lead.moveInDate),
     termMonths: lead.termMonths,
     occupants: lead.occupants,
@@ -156,7 +161,7 @@ export const OWNER_LEAD_SUMMARY_EXAMPLE: OwnerLeadSummaryDto = {
     title: 'คอนโด 1 ห้องนอน ใกล้ BTS อารีย์',
     unitId: FAKE.uuid,
   },
-  prospect: { partyId: FAKE.uuid, name: 'สมศรี ใจดี', phone: null, lineLinked: true },
+  prospect: { partyId: FAKE.uuid, name: 'สมศรี ใจดี', phone: null, lineLinked: true, identityVerified: true },
   state: ListingLeadStateName.ViewingBooked,
   lastMessage: 'ห้องยังว่างไหมคะ อยากเข้าดูเสาร์นี้',
   channel: ListingChannelName.FacebookGroup,
@@ -222,7 +227,15 @@ export const PROSPECT_ENQUIRY_EXAMPLE: ProspectEnquiryDto = {
 @ApiSurface(SURFACES.owner)
 @Controller('owner')
 export class OwnerLeadsController {
-  constructor(private readonly leads: ListingLeadsService) {}
+  constructor(
+    private readonly leads: ListingLeadsService,
+    private readonly identity: IdentityVerificationService,
+  ) {}
+
+  /** One lead with whether its prospect verified their identity (D-267). */
+  private async one(lead: LeadWithParts): Promise<OwnerLeadDto> {
+    return ownerLeadDto(lead, await this.identity.verifiedUsers([lead.userId]));
+  }
 
   @Get('leads')
   @TenantScoped()
@@ -254,7 +267,8 @@ export class OwnerLeadsController {
         errors: [{ path: 'state', code: 'enum', message: 'unknown state' }],
       });
     const rows = await this.leads.list(ctx, { state: state as never, listingId, open: open === 'true' });
-    return rows.map(ownerLeadSummaryDto);
+    const verified = await this.identity.verifiedUsers([...new Set(rows.map((r) => r.userId))]);
+    return rows.map((row) => ownerLeadSummaryDto(row, verified));
   }
 
   @Get('leads/:leadId')
@@ -273,7 +287,7 @@ export class OwnerLeadsController {
     @CurrentTenant() ctx: TenantContext,
     @Param('leadId', ParseUUIDPipe) id: string,
   ): Promise<OwnerLeadDto> {
-    return ownerLeadDto(await this.leads.get(ctx, id));
+    return this.one(await this.leads.get(ctx, id));
   }
 
   @Post('leads/:leadId/messages')
@@ -301,7 +315,7 @@ export class OwnerLeadsController {
     @Param('leadId', ParseUUIDPipe) id: string,
     @Body() body: LeadMessageCreateDto,
   ): Promise<OwnerLeadDto> {
-    return ownerLeadDto(await this.leads.reply(ctx, id, body.body));
+    return this.one(await this.leads.reply(ctx, id, body.body));
   }
 
   @Patch('leads/:leadId')
@@ -321,7 +335,7 @@ export class OwnerLeadsController {
     @Param('leadId', ParseUUIDPipe) id: string,
     @Body() body: LeadNotesDto,
   ): Promise<OwnerLeadDto> {
-    return ownerLeadDto(await this.leads.updateNotes(ctx, id, body.notes ?? null));
+    return this.one(await this.leads.updateNotes(ctx, id, body.notes ?? null));
   }
 
   @Post('leads/:leadId/actions/set-state')
@@ -349,7 +363,7 @@ export class OwnerLeadsController {
     @Param('leadId', ParseUUIDPipe) id: string,
     @Body() body: LeadStateDto,
   ): Promise<OwnerLeadDto> {
-    return ownerLeadDto(
+    return this.one(
       await this.leads.setState(ctx, id, {
         state: body.state,
         lostReason: body.lostReason ?? null,
@@ -401,7 +415,7 @@ export class OwnerLeadsController {
     @Body() body: LeadLeaseDraftCreateDto,
   ): Promise<LeadLeaseDraftDto> {
     const result = await this.leads.leaseDraft(ctx, id, body);
-    return { leaseId: result.leaseId, lead: ownerLeadDto(result.lead) };
+    return { leaseId: result.leaseId, lead: await this.one(result.lead) };
   }
 
   @Get('listing-viewings')
@@ -477,7 +491,7 @@ export class OwnerLeadsController {
     @CurrentTenant() ctx: TenantContext,
     @Param('viewingId', ParseUUIDPipe) id: string,
   ): Promise<OwnerLeadDto> {
-    return ownerLeadDto(await this.leads.decideViewing(ctx, id, { action: 'confirm' }));
+    return this.one(await this.leads.decideViewing(ctx, id, { action: 'confirm' }));
   }
 
   @Post('listing-viewings/:viewingId/actions/decline')
@@ -505,7 +519,7 @@ export class OwnerLeadsController {
     @Param('viewingId', ParseUUIDPipe) id: string,
     @Body() body: ViewingDeclineDto,
   ): Promise<OwnerLeadDto> {
-    return ownerLeadDto(await this.leads.decideViewing(ctx, id, { action: 'decline', reason: body.reason }));
+    return this.one(await this.leads.decideViewing(ctx, id, { action: 'decline', reason: body.reason }));
   }
 
   @Post('listing-viewings/:viewingId/actions/complete')
@@ -533,6 +547,6 @@ export class OwnerLeadsController {
     @Param('viewingId', ParseUUIDPipe) id: string,
     @Body() body: ViewingCompleteDto,
   ): Promise<OwnerLeadDto> {
-    return ownerLeadDto(await this.leads.completeViewing(ctx, id, body.outcome));
+    return this.one(await this.leads.completeViewing(ctx, id, body.outcome));
   }
 }
