@@ -30104,6 +30104,20 @@
         ],
         "type": "object"
       },
+      "ResidentCountersignDto": {
+        "properties": {
+          "signaturePng": {
+            "description": "My drawn signature (PNG ≤ 200 KB, base64).",
+            "example": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+            "maxLength": 275000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "signaturePng"
+        ],
+        "type": "object"
+      },
       "ResidentDeductionDto": {
         "properties": {
           "amount": {
@@ -30395,6 +30409,178 @@
           "access"
         ],
         "type": "string"
+      },
+      "ResidentInspectionDto": {
+        "properties": {
+          "canCountersign": {
+            "description": "I may countersign now (lessee or co-tenant, not signed yet).",
+            "example": true,
+            "type": "boolean"
+          },
+          "completedAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ResidentInspectionItemDto"
+            },
+            "type": "array"
+          },
+          "leaseId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "notes": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ownerSigned": {
+            "example": true,
+            "type": "boolean"
+          },
+          "reportNumber": {
+            "example": "INS-2569-00012",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportUrl": {
+            "description": "5-minute link to the report PDF.",
+            "example": "https://storage.example.com/report.pdf?X-Amz-Signature=abc",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "residentSigned": {
+            "example": false,
+            "type": "boolean"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InspectionStatus"
+              }
+            ],
+            "description": "`completed` = the owner signed; `signed` = I signed too.",
+            "example": "completed"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InspectionType"
+              }
+            ],
+            "example": "move_in"
+          },
+          "unitNo": {
+            "example": "A-201",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "leaseId",
+          "type",
+          "status",
+          "unitNo",
+          "reportNumber",
+          "completedAt",
+          "ownerSigned",
+          "residentSigned",
+          "canCountersign",
+          "notes",
+          "reportUrl",
+          "items",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "ResidentInspectionItemDto": {
+        "properties": {
+          "area": {
+            "example": "ห้องนอน",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ItemCondition"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "example": "good"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "label": {
+            "example": "ผนังห้องนอน",
+            "type": "string"
+          },
+          "meterRegister": {
+            "description": "Meter register read at the inspection.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "example": "มีรอยขีดข่วนเล็กน้อยมุมขวา",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photoUrls": {
+            "description": "5-minute links to the line’s photos.",
+            "example": [
+              "https://storage.example.com/inspection.jpg?X-Amz-Signature=abc"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "area",
+          "condition",
+          "notes",
+          "photoUrls",
+          "meterRegister"
+        ],
+        "type": "object"
       },
       "ResidentInvoiceDto": {
         "properties": {
@@ -187904,6 +188090,696 @@
         "x-surface": "resident"
       }
     },
+    "/v1/resident/inspections": {
+      "get": {
+        "description": "Completed reports, newest first (lines without photo links — open one for them). `completed` waits for my countersignature when the owner signed apart (L5 5.2, D-253).\n\nImplements: D-253, D-023.",
+        "operationId": "resident.inspections.list",
+        "parameters": [
+          {
+            "description": "Only this lease.",
+            "in": "query",
+            "name": "leaseId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "canCountersign": true,
+                    "completedAt": "2026-11-01T00:15:00+07:00",
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "items": [
+                      {
+                        "area": "ห้องนอน",
+                        "condition": "good",
+                        "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                        "label": "ผนังห้องนอน",
+                        "meterRegister": null,
+                        "notes": null,
+                        "photoUrls": [
+                          "https://storage.example.com/inspection.jpg?X-Amz-Signature=abc"
+                        ]
+                      }
+                    ],
+                    "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "notes": null,
+                    "ownerSigned": true,
+                    "reportNumber": "INS-2569-00012",
+                    "reportUrl": "https://storage.example.com/report.pdf?X-Amz-Signature=abc",
+                    "residentSigned": false,
+                    "status": "completed",
+                    "type": "move_in",
+                    "unitNo": "A-201"
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ResidentInspectionDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Reports",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Move-in and move-out reports of my leases",
+        "tags": [
+          "resident.inspections"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/inspections/{inspectionId}": {
+      "get": {
+        "description": "Every line with its condition, notes and 5-minute photo links, and the report PDF; 404 outside my lease scopes (D-253, D-023).\n\nImplements: D-253, D-023.",
+        "operationId": "resident.inspections.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "inspectionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "canCountersign": true,
+                  "completedAt": "2026-11-01T00:15:00+07:00",
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "items": [
+                    {
+                      "area": "ห้องนอน",
+                      "condition": "good",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "label": "ผนังห้องนอน",
+                      "meterRegister": null,
+                      "notes": null,
+                      "photoUrls": [
+                        "https://storage.example.com/inspection.jpg?X-Amz-Signature=abc"
+                      ]
+                    }
+                  ],
+                  "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "notes": null,
+                  "ownerSigned": true,
+                  "reportNumber": "INS-2569-00012",
+                  "reportUrl": "https://storage.example.com/report.pdf?X-Amz-Signature=abc",
+                  "residentSigned": false,
+                  "status": "completed",
+                  "type": "move_in",
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ResidentInspectionDto"
+                }
+              }
+            },
+            "description": "The report",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "One of my move-in / move-out reports",
+        "tags": [
+          "resident.inspections"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/inspections/{inspectionId}/actions/countersign": {
+      "post": {
+        "description": "I sign a report the owner completed without my signature (lessee or co-tenant, once): it becomes `signed` and the owner hears it in LINE. The report PDF keeps its number and content (L5 5.2, D-253).\n\nImplements: D-253, D-023.",
+        "operationId": "resident.inspections.countersign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "inspectionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "signaturePng": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ResidentCountersignDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "canCountersign": false,
+                  "completedAt": "2026-11-01T00:15:00+07:00",
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "items": [
+                    {
+                      "area": "ห้องนอน",
+                      "condition": "good",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "label": "ผนังห้องนอน",
+                      "meterRegister": null,
+                      "notes": null,
+                      "photoUrls": [
+                        "https://storage.example.com/inspection.jpg?X-Amz-Signature=abc"
+                      ]
+                    }
+                  ],
+                  "leaseId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "notes": null,
+                  "ownerSigned": true,
+                  "reportNumber": "INS-2569-00012",
+                  "reportUrl": "https://storage.example.com/report.pdf?X-Amz-Signature=abc",
+                  "residentSigned": true,
+                  "status": "signed",
+                  "type": "move_in",
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ResidentInspectionDto"
+                }
+              }
+            },
+            "description": "Countersigned",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "lease.not_signer": {
+                    "$ref": "#/components/examples/problem.lease.not_signer"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `lease.not_signer`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "inspection.invalid_state": {
+                    "$ref": "#/components/examples/problem.inspection.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `inspection.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "lease.signature_invalid": {
+                    "$ref": "#/components/examples/problem.lease.signature_invalid"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `lease.signature_invalid`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Countersign the report",
+        "tags": [
+          "resident.inspections"
+        ],
+        "x-surface": "resident"
+      }
+    },
     "/v1/resident/invitations/{code}": {
       "get": {
         "description": "The property, unit and a masked name before I accept (D-061); 404 for an unknown code, 409 when used or expired.\n\nImplements: D-061.",
@@ -225968,6 +226844,10 @@
     {
       "description": "My ways to open the resident app outside LINE: phone, Google, Apple (D-255, D-283).",
       "name": "resident.identities"
+    },
+    {
+      "description": "My move-in and move-out reports: lines, photos, the PDF, my countersignature (L5 5.2, D-253).",
+      "name": "resident.inspections"
     },
     {
       "description": "Lease invitations: preview and accept after the PDPA consents (D-025, D-061).",
