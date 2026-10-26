@@ -463,6 +463,18 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     ],
   },
   {
+    key: 'lease.end_approaching',
+    description: 'Owner: a lease ends soon — offer a renewal or list the unit again (B7.11, D-261)',
+    th: [
+      'สัญญาห้อง {{unit.unitNo}} จะหมด {{lease.endDate}}',
+      'สัญญาเช่าห้อง {{unit.unitNo}} จะหมด {{lease.endDate}} เสนอต่อสัญญาให้ผู้เช่าได้จากหน้าสัญญา หรือลงประกาศไว้ล่วงหน้าเพื่อไม่ให้ห้องว่าง',
+    ],
+    en: [
+      'Lease of {{unit.unitNo}} ends {{lease.endDateEn}}',
+      'The lease of {{unit.unitNo}} ends {{lease.endDateEn}}. Offer a renewal from the lease page, or list the unit early so it is not left empty.',
+    ],
+  },
+  {
     key: 'listing.viewing_reminder',
     description: 'Owner: a confirmed viewing is near (B7.3)',
     th: ['ใกล้ถึงเวลานัดดูห้อง', 'อย่าลืมนัดดู "{{listing.title}}" กับ {{lead.name}} {{viewing.at}} น.'],
@@ -557,6 +569,7 @@ export const NOTIFICATION_ROUTES: {
     'inspection.completed',
     'service_request.decided',
     'service_request.cost_settled',
+    'lease.end_approaching',
   ].map((eventType) => ({
     eventType,
     audience: 'resident',
@@ -739,6 +752,24 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         language: 'en',
         subject: null,
         body: '{{tenant.name}} could not issue your rent payment certificate: {{certificate.reason}}\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'lease.end_approaching',
+    channel: 'line',
+    audience: 'resident',
+    description: 'My lease ends soon: talk to the landlord about a renewal (B7.11, D-261)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'สัญญาเช่าห้อง {{unit.unitNo}} กับ {{tenant.name}} จะหมด {{lease.endDate}} ถ้าอยากอยู่ต่อ บอกเจ้าของได้เลย หรือรอข้อเสนอต่อสัญญาทาง LINE นี้\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'Your lease of unit {{unit.unitNo}} with {{tenant.name}} ends {{lease.endDateEn}}. If you would like to stay, tell your landlord, or watch for a renewal offer here.\n{{link}}',
       },
     ],
   },

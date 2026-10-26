@@ -18,6 +18,7 @@ import { ResidentIdentityVerificationController } from '../shared/identity-verif
 import { ResidentLinkController, ResidentMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
 import { ResidentConsentsController, ResidentDsrController } from '../shared/privacy.controllers';
+import { ResidentRentRecordController } from '../shared/rent-record.controllers';
 import {
   notificationsController,
   pushSubscriptionsController,
@@ -40,6 +41,7 @@ import { ResidentCsatSurveyController } from './resident-survey.controller';
     ResidentMeController,
     ResidentIdentitiesController,
     ResidentIdentityVerificationController,
+    ResidentRentRecordController,
     ResidentMessagingLinksController,
     ResidentLinkController,
     ResidentConsentsController,

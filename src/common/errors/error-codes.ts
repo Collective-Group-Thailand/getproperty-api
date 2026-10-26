@@ -138,6 +138,7 @@ export const ERROR_CODES = {
   'deposit.invalid_state': HttpStatus.CONFLICT,
   'deposit.item_required': HttpStatus.UNPROCESSABLE_ENTITY,
   'identity.already_verified': HttpStatus.CONFLICT,
+  'rent_record.empty': HttpStatus.CONFLICT,
   'ekyc.unavailable': HttpStatus.SERVICE_UNAVAILABLE,
   'deposit.refund_mismatch': HttpStatus.UNPROCESSABLE_ENTITY,
   'inspection.invalid_state': HttpStatus.CONFLICT,

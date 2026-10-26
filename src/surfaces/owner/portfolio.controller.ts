@@ -196,6 +196,33 @@ export class PortfolioInvoiceRefDto {
   balance!: string;
 }
 
+/** `ListingState` (the listings DTOs import this file, so the enum is repeated here; same values, same component). */
+export enum PortfolioListingStateName {
+  Draft = 'draft',
+  PendingReview = 'pending_review',
+  Published = 'published',
+  Paused = 'paused',
+  Closed = 'closed',
+  Rejected = 'rejected',
+}
+
+export class PortfolioListingRefDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ enum: PortfolioListingStateName, enumName: 'ListingState', example: 'published' })
+  state!: PortfolioListingStateName;
+
+  @ApiProperty({ example: 'condo-1br-a1b2c3d4e5' })
+  slug!: string;
+
+  @ApiProperty({ type: String, format: 'date', nullable: true, example: '2026-12-01' })
+  availableFrom!: string | null;
+
+  @ApiProperty({ type: 'integer', example: 3, description: 'Enquiries still open (not won or lost).' })
+  openLeads!: number;
+}
+
 export class PortfolioUnitDto {
   @ApiProperty({ format: 'uuid' })
   unitId!: string;
@@ -257,6 +284,22 @@ export class PortfolioUnitDto {
 
   @ApiProperty({ type: 'integer', example: 0 })
   openServiceRequests!: number;
+
+  @ApiProperty({
+    type: String,
+    format: 'date',
+    nullable: true,
+    example: null,
+    description: 'A vacant unit: the day its last lease ended (D-261, the vacancy view).',
+  })
+  vacantSince!: string | null;
+
+  @ApiProperty({
+    type: PortfolioListingRefDto,
+    nullable: true,
+    description: 'The unit’s latest listing and its open enquiries (D-261); null when it was never listed.',
+  })
+  listing!: PortfolioListingRefDto | null;
 }
 
 export class PortfolioTotalsDto {
@@ -323,6 +366,14 @@ export class OwnerPortfolioController {
           leaseEndDate: '2027-05-31',
           invoice: { id: FAKE.uuid, status: 'issued', total: '15000.00', balance: '15000.00' },
           openServiceRequests: 0,
+          vacantSince: null,
+          listing: {
+            id: FAKE.uuid,
+            state: PortfolioListingStateName.Closed,
+            slug: 'condo-1br-a1b2c3d4e5',
+            availableFrom: null,
+            openLeads: 0,
+          },
         },
       ],
       totals: { month: '2026-10', expected: '15000.00', collected: '0.00', overdue: '0.00' },

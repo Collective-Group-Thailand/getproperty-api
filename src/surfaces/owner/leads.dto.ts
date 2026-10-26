@@ -17,6 +17,7 @@ import {
 
 import { LanguageName } from '../shared/common.dto';
 import { MoneyOutput } from '../shared/fields';
+import { LeadRentRecordDto } from '../shared/rent-record.dto';
 
 /** D-268: where a listing is shared and where an enquiry came from. */
 export enum ListingChannelName {
@@ -259,6 +260,13 @@ export class OwnerLeadDto extends OwnerLeadSummaryDto {
     description: 'The lease drafted from this enquiry (B7.4), when there is one.',
   })
   leaseId!: string | null;
+
+  @ApiProperty({
+    type: LeadRentRecordDto,
+    nullable: true,
+    description: 'The prospect’s rent record, when they shared it with this enquiry (D-256); null otherwise.',
+  })
+  rentRecord!: LeadRentRecordDto | null;
 
   @ApiProperty({ example: 1 })
   version!: number;

@@ -7,10 +7,13 @@ import { FAKE } from '@common/openapi/examples';
 import { toBangkokIso } from '@common/time/bangkok';
 import { IdentityVerificationService } from '@core/identity/identity-verification.service';
 import { type ListingLeadMessage, type ListingViewing } from '@generated/prisma/client';
+import { type RentRecordFacts } from '@modules/ops-leases/rent-record';
+import { RentRecordService } from '@modules/ops-leases/rent-record.service';
 import { type LeadWithParts, ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { RENT_RECORD_EXAMPLE, rentRecordDto } from '../shared/rent-record.dto';
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
   LeadLeaseDraftCreateDto,
@@ -100,7 +103,11 @@ export function ownerLeadSummaryDto(
   };
 }
 
-export function ownerLeadDto(lead: LeadWithParts, verified: ReadonlySet<string> = new Set()): OwnerLeadDto {
+export function ownerLeadDto(
+  lead: LeadWithParts,
+  verified: ReadonlySet<string> = new Set(),
+  record: (RentRecordFacts & { sharedAt: Date }) | null = null,
+): OwnerLeadDto {
   return {
     ...ownerLeadSummaryDto(lead, verified),
     moveInDate: day(lead.moveInDate),
@@ -113,6 +120,7 @@ export function ownerLeadDto(lead: LeadWithParts, verified: ReadonlySet<string> 
     messages: lead.messages.map(leadMessageDto),
     viewings: lead.viewings.map(leadViewingDto),
     leaseId: lead.leaseId,
+    rentRecord: record ? { ...rentRecordDto(record), sharedAt: toBangkokIso(record.sharedAt) } : null,
     version: lead.version,
   };
 }
@@ -192,6 +200,7 @@ export const OWNER_LEAD_EXAMPLE: OwnerLeadDto = {
   ],
   viewings: [VIEWING_EXAMPLE],
   leaseId: null,
+  rentRecord: { ...RENT_RECORD_EXAMPLE, sharedAt: '2026-11-01T09:20:00+07:00' },
   version: 2,
 };
 
@@ -230,11 +239,16 @@ export class OwnerLeadsController {
   constructor(
     private readonly leads: ListingLeadsService,
     private readonly identity: IdentityVerificationService,
+    private readonly records: RentRecordService,
   ) {}
 
   /** One lead with whether its prospect verified their identity (D-267). */
   private async one(lead: LeadWithParts): Promise<OwnerLeadDto> {
-    return ownerLeadDto(lead, await this.identity.verifiedUsers([lead.userId]));
+    const [verified, records] = await Promise.all([
+      this.identity.verifiedUsers([lead.userId]),
+      this.records.forLeads([lead.id]),
+    ]);
+    return ownerLeadDto(lead, verified, records.get(lead.id) ?? null);
   }
 
   @Get('leads')

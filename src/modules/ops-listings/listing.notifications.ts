@@ -226,6 +226,29 @@ export class ListingNotifications implements OnModuleInit {
       };
     });
 
+    // --- D-261: a landlord's lease ends soon — the resident (and the owner when B7.4 does not already remind them)
+    registerNotifiable('lease.end_approaching', async (tx, e) => {
+      if (!e.tenantId || typeof e.payload.lesseePartyId !== 'string') return null;
+      const unit =
+        typeof e.payload.unitId === 'string'
+          ? await tx.unit.findUnique({ where: { id: e.payload.unitId }, select: { unitNo: true } })
+          : null;
+      const end = businessDay(e.payload.endDate);
+      const residents = await billedParty(tx, e.payload.lesseePartyId);
+      const owners = e.payload.fromListing ? [] : await operators(tx, e.tenantId, ['owner'], 'owner');
+      if (!residents.length && !owners.length) return null;
+      return {
+        recipients: [...residents, ...owners],
+        data: {
+          tenant: { name: await tenantName(tx, e.tenantId) },
+          unit: { unitNo: unit?.unitNo ?? '' },
+          lease: { endDate: end.th, endDateEn: end.en },
+          link: `${this.config.get('PUBLIC_RESIDENT_APP_URL')}/lease/${String(e.payload.leaseId)}`,
+        },
+        consentPurpose: 'resident.service',
+      };
+    });
+
     // --- both sides
     const toOwner = this.toOwner(viewing);
     const toProspect = this.toProspect(viewing);

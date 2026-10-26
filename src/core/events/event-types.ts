@@ -37,6 +37,10 @@ export const DOMAIN_EVENT_TYPES = {
     'A listing became public (directly for a verified owner, or approved from review) (D-252).',
   'listing.review_requested': 'A submitted listing went to the moderation queue with its reasons (D-252).',
   'listing.paused': 'The owner paused a published listing (D-252).',
+  'lease.end_approaching':
+    'A landlord’s lease in force ends within lease.end.remind_days_before; resident (and owner) reminded once (D-261).',
+  'rent_record.shared': 'A resident shared their rent record with an enquiry or as a letter (D-256).',
+  'rent_record.share_revoked': 'A resident revoked a rent record share (D-256).',
   'identity.verified': 'A person passed identity verification at the e-KYC provider (D-267).',
   'identity.verification_rejected': 'The e-KYC provider did not verify a person (D-267).',
   'listing.share_kit_generated':

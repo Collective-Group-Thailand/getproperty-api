@@ -113,6 +113,8 @@ export const AUDIT_ACTIONS = [
   'listing.paused',
   'listing.share_kit_generated',
   'identity.verification_started',
+  'rent_record.shared',
+  'rent_record.share_revoked',
   'identity.verified',
   'identity.verification_rejected',
   'listing.closed',

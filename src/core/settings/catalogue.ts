@@ -106,6 +106,16 @@ export const SETTINGS: readonly SettingDef[] = [
     reason: 'seed: D-023 / legal-reference §1',
   },
   {
+    key: 'rent_record.letter.valid_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-256 (B7.11): days a rent record letter (verification code) can be checked; the resident can revoke it sooner.',
+    editableBy: ADMIN,
+    value: 90,
+    reason: 'seed: B7.11 (a rental search rarely lasts longer than three months)',
+  },
+  {
     key: 'identity.verification.session_minutes',
     valueType: 'int',
     scopeAllowed: ['platform'],
@@ -719,6 +729,16 @@ export const SETTINGS: readonly SettingDef[] = [
     editableBy: ['admin.listing.moderate'],
     value: 3,
     reason: 'seed: B7.3',
+  },
+  {
+    key: 'lease.end.remind_days_before',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-261 (B7.11): days before a landlord’s lease in force ends when the resident (and the owner, unless B7.4 already reminds them) is reminded once to talk about a renewal. 0 = off.',
+    editableBy: ['admin.listing.moderate'],
+    value: 60,
+    reason: 'seed: B7.11 (D-261: same lead time as the re-list reminder)',
   },
   {
     key: 'listing.relist.remind_days_before',
