@@ -40,6 +40,7 @@ import { ListingLeaseHooks } from './ops-listings/listing.subscribers';
 import { ListingInsightsService } from './ops-listings/listing-insights.service';
 import { ListingLeadsService } from './ops-listings/listing-leads.service';
 import { ListingModerationService } from './ops-listings/listing-moderation.service';
+import { ListingShareService } from './ops-listings/listing-share.service';
 import { ListingsService } from './ops-listings/listings.service';
 import { PublicListingsService } from './ops-listings/public-listings.service';
 import { PartiesService } from './ops-parties/parties.service';
@@ -93,6 +94,7 @@ const SERVICES = [
   ListingLeaseHooks,
   PublicListingsService,
   ListingInsightsService,
+  ListingShareService,
   UnitProfilesService,
   UtilityAccountsService,
   MetersService,

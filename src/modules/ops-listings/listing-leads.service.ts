@@ -15,6 +15,7 @@ import { type Tx } from '@database/prisma.service';
 import { TenantTx } from '@database/tenant-tx';
 import {
   type Listing,
+  type ListingChannel,
   type ListingLeadLostReason,
   type ListingLeadState,
   type ListingViewingState,
@@ -37,6 +38,8 @@ export interface EnquiryInput {
   occupants?: number | null;
   /** ISO 3166-1 alpha-2, optional (D-252). */
   nationality?: string | null;
+  /** D-268: the share-kit channel the prospect came from; kept on a new enquiry only. */
+  channel?: ListingChannel | null;
   /** The prospect agrees to purpose `prospect.enquiry` (PDPA, D-025). */
   consent: boolean;
 }
@@ -136,7 +139,7 @@ export class ListingLeadsService {
     };
   }
 
-  private enquiryFields(input: Omit<EnquiryInput, 'consent' | 'message'>) {
+  private enquiryFields(input: Omit<EnquiryInput, 'consent' | 'message' | 'channel'>) {
     const data: Prisma.ListingLeadUncheckedUpdateInput = {};
     if (input.moveInDate !== undefined) {
       if (input.moveInDate && !DAY.test(input.moveInDate))
@@ -335,6 +338,7 @@ export class ListingLeadsService {
           listingId: listing.id,
           partyId,
           userId,
+          channel: input.channel ?? null,
           lastProspectAt: now,
         },
       });
