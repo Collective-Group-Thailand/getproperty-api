@@ -1,4 +1,9 @@
+import { createHash } from 'node:crypto';
+
 import { fakeLineIdToken } from '@collective/integrations/line';
+import { type FakeObjectStorage, OBJECT_STORAGE } from '@collective/integrations/storage';
+import { TenantTx } from '@database/tenant-tx';
+import { DepositsService } from '@modules/ops-deposits/deposits.service';
 
 import { createIntApp, type IntApp } from '../support/int-app';
 import { bearer, idem } from '../support/int-auth';
@@ -170,12 +175,40 @@ describe('resident countersigns the move-in report (D-253, real PostgreSQL)', ()
       .send({ signaturePng: Buffer.from('not a png').toString('base64') });
     expect(bad.body.code).toBe('lease.signature_invalid');
 
+    // D-266: a photo of my own and a note with my signature
+    const presigned = await t.http
+      .post('/v1/resident/uploads')
+      .set(bearer(resident))
+      .send({
+        purpose: 'inspection_note',
+        inspectionId,
+        contentType: 'image/png',
+        sizeBytes: PNG.length,
+        sha256: createHash('sha256').update(PNG).digest('hex'),
+      })
+      .expect(201);
+    const key = (
+      await db.admin.query<{ storage_key: string }>('SELECT storage_key FROM core.document WHERE id = $1', [
+        presigned.body.fileId,
+      ])
+    ).rows[0]!.storage_key;
+    t.app.get<FakeObjectStorage>(OBJECT_STORAGE).putDirect(key, PNG, 'image/png');
     const signed = await t.http
       .post(`/v1/resident/inspections/${inspectionId}/actions/countersign`)
       .set(bearer(resident))
-      .send({ signaturePng: PNG.toString('base64') })
+      .send({
+        signaturePng: PNG.toString('base64'),
+        note: 'ผนังห้องนอนมีรอยขีดอยู่ก่อนแล้ว',
+        photoDocumentIds: [presigned.body.fileId],
+      })
       .expect(200);
-    expect(signed.body).toMatchObject({ status: 'signed', residentSigned: true, canCountersign: false });
+    expect(signed.body).toMatchObject({
+      status: 'signed',
+      residentSigned: true,
+      canCountersign: false,
+      residentNote: 'ผนังห้องนอนมีรอยขีดอยู่ก่อนแล้ว',
+    });
+    expect(signed.body.residentPhotoUrls).toHaveLength(1);
     const again = await t.http
       .post(`/v1/resident/inspections/${inspectionId}/actions/countersign`)
       .set(bearer(resident))
@@ -184,13 +217,77 @@ describe('resident countersigns the move-in report (D-253, real PostgreSQL)', ()
     expect(again.body.code).toBe('inspection.invalid_state');
 
     const owners = await t.http.get(`/v1/owner/inspections/${inspectionId}`).set(as()).expect(200);
-    expect(owners.body).toMatchObject({ status: 'signed', residentSigned: true });
+    expect(owners.body).toMatchObject({
+      status: 'signed',
+      residentSigned: true,
+      residentNote: 'ผนังห้องนอนมีรอยขีดอยู่ก่อนแล้ว',
+      residentPhotoDocumentIds: [presigned.body.fileId],
+    });
+    const late = await t.http
+      .post('/v1/resident/uploads')
+      .set(bearer(resident))
+      .send({
+        purpose: 'inspection_note',
+        inspectionId,
+        contentType: 'image/png',
+        sizeBytes: PNG.length,
+        sha256: createHash('sha256').update(PNG).digest('hex'),
+      });
+    expect(late.status).toBe(409);
     await drain();
     const told = await db.admin.query<{ n: number }>(
       `SELECT count(*)::int AS n FROM platform.notification n JOIN platform.domain_event e ON e.id = n.event_id
         WHERE e.type = 'inspection.countersigned' AND n.channel = 'in_app'`,
     );
     expect(told.rows[0]!.n).toBeGreaterThan(0);
+  });
+
+  it("a landlord's deduction must point at a move-out item; the resident accepts with a note (D-266)", async () => {
+    await t.app
+      .get(TenantTx)
+      .platform(async (tx) =>
+        t.app
+          .get(DepositsService)
+          .openDeposit(tx, await tx.lease.findUniqueOrThrow({ where: { id: leaseId } })),
+      );
+    const list = await t.http.get(`/v1/owner/deposits?leaseId=${leaseId}`).set(as()).expect(200);
+    const depositId = (list.body.data as { id: string }[])[0]!.id;
+    await t.http
+      .post(`/v1/owner/deposits/${depositId}/actions/record-receipt`)
+      .set(as())
+      .set(idem())
+      .send({})
+      .expect(200);
+    await t.http.post(`/v1/owner/leases/${leaseId}/actions/begin-move-out`).set(as()).expect(200);
+    await t.http
+      .post(`/v1/owner/leases/${leaseId}/actions/complete-move-out`)
+      .set(as())
+      .set(idem())
+      .send({})
+      .expect(200);
+    const refused = await t.http
+      .post(`/v1/owner/deposits/${depositId}/settlement/items`)
+      .set(as())
+      .send({ kind: 'cleaning', description: 'ทำความสะอาดใหญ่', amount: '800.00' })
+      .expect(422);
+    expect(refused.body.code).toBe('deposit.item_required');
+
+    await t.http
+      .post(`/v1/owner/deposits/${depositId}/settlement/actions/propose`)
+      .set(as())
+      .send({})
+      .expect(200);
+    const accepted = await t.http
+      .post(`/v1/resident/deposits/${depositId}/actions/accept`)
+      .set(bearer(resident))
+      .send({ note: 'ขอบคุณที่คืนเงินครบครับ' })
+      .expect(200);
+    expect(accepted.body.settlement).toMatchObject({
+      residentResponse: 'accepted',
+      residentNote: 'ขอบคุณที่คืนเงินครบครับ',
+    });
+    const owners = await t.http.get(`/v1/owner/deposits/${depositId}`).set(as()).expect(200);
+    expect(owners.body.settlement.residentNote).toBe('ขอบคุณที่คืนเงินครบครับ');
   });
 
   it('is invisible outside my lease scopes', async () => {

@@ -19,6 +19,7 @@ import { type Page } from '@common/pagination/pagination.dto';
 import { depositNextActions, type DepositRow, DepositsService } from '@modules/ops-deposits/deposits.service';
 import { type InspectionRow, InspectionsService } from '@modules/ops-deposits/inspections.service';
 import { ResidentDepositsService } from '@modules/ops-deposits/resident-deposits.service';
+import { ResidentInspectionsService } from '@modules/ops-deposits/resident-inspections.service';
 import { ResidentServiceRequestsService } from '@modules/ops-service/field-access.service';
 import {
   Body,
@@ -62,6 +63,7 @@ import {
   RecordReceiptDto,
   RecordRefundDto,
   type RefundMethodName,
+  ResidentAcceptDto,
   ResidentDepositDto,
   ResidentDisputeDto,
   type ResidentResponseName,
@@ -111,6 +113,7 @@ function settlementDto(s: NonNullable<DepositRow['settlement']>): SettlementDto 
     agreedRefund: money(s.agreedRefund),
     residentResponse: s.residentResponse as ResidentResponseName | null,
     disputeReason: s.disputeReason,
+    residentNote: s.residentNote,
     disputeDocumentIds: s.disputeDocumentIds,
     refundedAt: isoOrNull(s.refundedAt),
     refundAmount: money(s.refundAmount),
@@ -156,6 +159,7 @@ const SETTLEMENT_EXAMPLE: SettlementDto = {
   agreedRefund: null,
   residentResponse: null,
   disputeReason: null,
+  residentNote: null,
   disputeDocumentIds: [],
   refundedAt: null,
   refundAmount: null,
@@ -620,6 +624,8 @@ export function inspectionDto(i: InspectionRow): InspectionDto {
     staffSigned: Boolean(i.staffSignatureDocumentId),
     residentSigned: Boolean(i.residentSignatureDocumentId),
     notes: i.notes,
+    residentNote: i.residentNote,
+    residentPhotoDocumentIds: i.residentPhotoDocumentIds,
     items: i.items.map((x) => ({
       id: x.id,
       itemKey: x.itemKey,
@@ -649,6 +655,8 @@ const INSPECTION_EXAMPLE: InspectionDto = {
   staffSigned: false,
   residentSigned: false,
   notes: null,
+  residentNote: null,
+  residentPhotoDocumentIds: [],
   items: [
     {
       id: FAKE.uuid,
@@ -943,9 +951,10 @@ export class ResidentDepositsController {
     id: 'resident.deposits.accept',
     summary: 'Accept the proposed settlement',
     description:
-      'The agreed refund is the proposed one; the owner then pays it before the deadline (D-023). Lessee or co-tenant.',
-    implements: ['D-023'],
+      'The agreed refund is the proposed one; the owner then pays it before the deadline (D-023). An optional note is kept with the acceptance and shown to the owner (D-266). Lessee or co-tenant.',
+    implements: ['D-023', 'D-266'],
   })
+  @ApiJsonBody(ResidentAcceptDto, { note: 'รับทราบค่าทำความสะอาดครับ' })
   @ApiSuccess(200, {
     description: 'Accepted',
     type: ResidentDepositDto,
@@ -955,6 +964,7 @@ export class ResidentDepositsController {
         ...SETTLEMENT_EXAMPLE,
         status: 'agreed',
         residentResponse: 'accepted',
+        residentNote: 'รับทราบค่าทำความสะอาดครับ',
         agreedRefund: '3349.50',
       },
       nextActions: [],
@@ -967,8 +977,11 @@ export class ResidentDepositsController {
     'lease.not_signer',
     'workflow.invalid_transition',
   )
-  async accept(@Param('depositId', ParseUUIDPipe) id: string): Promise<ResidentDepositDto> {
-    const r = await this.deposits.respond(id, { accept: true });
+  async accept(
+    @Param('depositId', ParseUUIDPipe) id: string,
+    @Body() body: ResidentAcceptDto,
+  ): Promise<ResidentDepositDto> {
+    const r = await this.deposits.respond(id, { accept: true, reason: body?.note ?? null });
     return residentDepositDto(r.deposit, r.evidence, r.before);
   }
 
@@ -1030,6 +1043,7 @@ export class ResidentUploadsController {
   constructor(
     private readonly deposits: ResidentDepositsService,
     private readonly serviceRequests: ResidentServiceRequestsService,
+    private readonly inspections: ResidentInspectionsService,
   ) {}
 
   @Post()
@@ -1037,8 +1051,8 @@ export class ResidentUploadsController {
     id: 'resident.uploads.presign',
     summary: 'Upload a photo',
     description:
-      'Purpose `deposit_dispute` (with `depositId`): a photo for my dispute of a proposed deposit settlement — 409 `deposit.invalid_state` when the settlement is not waiting for my answer (D-023, D-203). Purpose `service_request` (with `unitId`, a unit I occupy): a photo of a problem I am about to report (B5.1, D-072). JPEG / PNG / WebP ≤ 10 MB with its SHA-256. Answers a 15-minute PUT URL; upload the bytes there, then send the `fileId` in `photoDocumentIds` of the dispute / request. The file is a photo of my unit, scanned like every upload.',
-    implements: ['D-023', 'D-072', 'D-203'],
+      'Purpose `deposit_dispute` (with `depositId`): a photo for my dispute of a proposed deposit settlement — 409 `deposit.invalid_state` when the settlement is not waiting for my answer (D-023, D-203). Purpose `service_request` (with `unitId`, a unit I occupy): a photo of a problem I am about to report (B5.1, D-072). Purpose `inspection_note` (with `inspectionId`): a photo I add to a move-in / move-out report I am about to countersign — 409 `inspection.invalid_state` once signed (D-266). JPEG / PNG / WebP ≤ 10 MB with its SHA-256. Answers a 15-minute PUT URL; upload the bytes there, then send the `fileId` in `photoDocumentIds` of the dispute / request. The file is a photo of my unit, scanned like every upload.',
+    implements: ['D-023', 'D-072', 'D-203', 'D-266'],
   })
   @ApiJsonBody(ResidentUploadDto, {
     purpose: 'deposit_dispute',
@@ -1064,6 +1078,7 @@ export class ResidentUploadsController {
     'http.bad_request',
     'validation.failed',
     'deposit.invalid_state',
+    'inspection.invalid_state',
     'lease.not_signer',
     'document.type_not_allowed',
   )
@@ -1071,7 +1086,9 @@ export class ResidentUploadsController {
     const r =
       body.purpose === ResidentUploadPurposeName.ServiceRequest
         ? await this.serviceRequests.presignPhoto(body.unitId!, body)
-        : await this.deposits.presignDisputePhoto(body.depositId!, body);
+        : body.purpose === ResidentUploadPurposeName.InspectionNote
+          ? await this.inspections.presignNotePhoto(body.inspectionId!, body)
+          : await this.deposits.presignDisputePhoto(body.depositId!, body);
     return {
       fileId: r.document.id,
       purpose: body.purpose,

@@ -57,6 +57,8 @@ const OPEN: ListingLeadState[] = ['new', 'contacted', 'viewing_booked', 'viewed'
 const LIVE_VIEWING: ListingViewingState[] = ['requested', 'confirmed'];
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
+import { bankAccountIn } from './message-safety';
+
 const invalid = (path: string, message: string, code = 'invalid') =>
   new DomainException('validation.failed', { errors: [{ path, code, message }] });
 
@@ -362,6 +364,7 @@ export class ListingLeadsService {
     const now = this.clock.now();
     const text = body.trim();
     if (!text) throw invalid('message', 'the message is empty', 'required');
+    if (bankAccountIn(text)) throw new DomainException('listing.bank_account_in_message');
     await tx.listingLeadMessage.create({
       data: { tenantId, leadId, author: 'prospect', authorUserId: userId, body: text, createdAt: now },
     });
@@ -689,6 +692,7 @@ export class ListingLeadsService {
       if (!OPEN.includes(lead.state)) throw new DomainException('listing.lead_invalid_state');
       const text = body.trim();
       if (!text) throw invalid('body', 'the message is empty', 'required');
+      if (bankAccountIn(text)) throw new DomainException('listing.bank_account_in_message');
       const now = this.clock.now();
       await tx.listingLeadMessage.create({
         data: {

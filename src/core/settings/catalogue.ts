@@ -14,6 +14,7 @@ import {
   packsProblems,
   perTenantTypeProblems,
   recordBytesProblems,
+  TENANT_TYPES,
 } from '../storage/storage-settings';
 
 export type SettingValueType =
@@ -103,6 +104,20 @@ export const SETTINGS: readonly SettingDef[] = [
     editableBy: ADMIN_COMPLIANCE,
     value: 7,
     reason: 'seed: D-023 / legal-reference §1',
+  },
+  {
+    key: 'deposit.deduction.item_required_for',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-266 (B7.10): tenant types whose deposit deductions (all but unpaid invoices) must point at a move-out report item with photos — the condition-report evidence that ends the deposit argument. Damage and missing items always need it (D-023, compliance.deposit_evidence).',
+    editableBy: ADMIN,
+    value: ['landlord', 'pm_company'],
+    reason: 'seed: D-266 (landlords and PM companies)',
+    check: (value: unknown) =>
+      Array.isArray(value) && value.every((v) => (TENANT_TYPES as readonly unknown[]).includes(v))
+        ? []
+        : ['an array of tenant types'],
   },
   {
     key: 'invoice.min_lead_days',

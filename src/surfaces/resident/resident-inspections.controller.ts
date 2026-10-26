@@ -7,7 +7,7 @@ import {
 } from '@modules/ops-deposits/resident-inspections.service';
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
-import { IsBase64, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBase64, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 import { InspectionStatusName, InspectionTypeName, ItemConditionName } from '../owner/deposits.dto';
 import { iso, isoOrNull } from '../shared/mappers';
@@ -91,6 +91,21 @@ export class ResidentInspectionDto {
   @ApiProperty({
     type: String,
     nullable: true,
+    example: null,
+    description: 'What I added when countersigning (D-266).',
+  })
+  residentNote!: string | null;
+
+  @ApiProperty({
+    type: [String],
+    example: [],
+    description: '5-minute links to the photos I added when countersigning (D-266).',
+  })
+  residentPhotoUrls!: string[];
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
     example: 'https://storage.example.com/report.pdf?X-Amz-Signature=abc',
     description: '5-minute link to the report PDF.',
   })
@@ -120,6 +135,31 @@ export class ResidentCountersignDto {
   @IsBase64()
   @MaxLength(275_000)
   signaturePng!: string;
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    maxLength: 1000,
+    example: 'ผนังห้องนอนมีรอยขีดอยู่ก่อนแล้ว (ดูรูป)',
+    description: 'What I see differently, kept with the report (D-266).',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string | null;
+
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    example: [FAKE.uuid],
+    description:
+      'Up to 6 photos I uploaded for this report (`POST /v1/resident/uploads`, purpose `inspection_note`).',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @IsUUID('all', { each: true })
+  photoDocumentIds?: string[];
 }
 
 function inspectionDto(
@@ -138,6 +178,8 @@ function inspectionDto(
     residentSigned: Boolean(i.residentSignatureDocumentId),
     canCountersign: view.canCountersign ?? false,
     notes: i.notes,
+    residentNote: i.residentNote,
+    residentPhotoUrls: view.residentPhotos ?? [],
     reportUrl: view.reportUrl ?? null,
     items: i.items.map((item) => ({
       id: item.id,
@@ -164,6 +206,8 @@ const EXAMPLE: ResidentInspectionDto = {
   residentSigned: false,
   canCountersign: true,
   notes: null,
+  residentNote: null,
+  residentPhotoUrls: [],
   reportUrl: 'https://storage.example.com/report.pdf?X-Amz-Signature=abc',
   items: [
     {
@@ -220,10 +264,14 @@ export class ResidentInspectionsController {
     id: 'resident.inspections.countersign',
     summary: 'Countersign the report',
     description:
-      'I sign a report the owner completed without my signature (lessee or co-tenant, once): it becomes `signed` and the owner hears it in LINE. The report PDF keeps its number and content (L5 5.2, D-253).',
-    implements: ['D-253', 'D-023'],
+      'I sign a report the owner completed without my signature (lessee or co-tenant, once): it becomes `signed` and the owner hears it in LINE. I may add a note and up to 6 photos of my own (uploads with purpose `inspection_note`), kept with the report and shown to the owner and beside it at move-out (D-266). The report PDF keeps its number and content (L5 5.2, D-253).',
+    implements: ['D-253', 'D-023', 'D-266'],
   })
-  @ApiJsonBody(ResidentCountersignDto, { signaturePng: PNG_EXAMPLE })
+  @ApiJsonBody(ResidentCountersignDto, {
+    signaturePng: PNG_EXAMPLE,
+    note: 'ผนังห้องนอนมีรอยขีดอยู่ก่อนแล้ว (ดูรูป)',
+    photoDocumentIds: [FAKE.uuid],
+  })
   @ApiSuccess(200, {
     description: 'Countersigned',
     type: ResidentInspectionDto,
@@ -232,6 +280,8 @@ export class ResidentInspectionsController {
       status: 'signed' as InspectionStatusName,
       residentSigned: true,
       canCountersign: false,
+      residentNote: 'ผนังห้องนอนมีรอยขีดอยู่ก่อนแล้ว (ดูรูป)',
+      residentPhotoUrls: ['https://storage.example.com/note.jpg?X-Amz-Signature=abc'],
     },
   })
   @ApiStandardErrors(
@@ -245,6 +295,11 @@ export class ResidentInspectionsController {
     @Param('inspectionId', ParseUUIDPipe) id: string,
     @Body() body: ResidentCountersignDto,
   ): Promise<ResidentInspectionDto> {
-    return inspectionDto(await this.inspections.countersign(id, body.signaturePng));
+    return inspectionDto(
+      await this.inspections.countersign(id, body.signaturePng, {
+        note: body.note ?? null,
+        photoDocumentIds: body.photoDocumentIds ?? [],
+      }),
+    );
   }
 }
