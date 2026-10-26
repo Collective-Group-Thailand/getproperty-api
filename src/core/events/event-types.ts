@@ -37,6 +37,8 @@ export const DOMAIN_EVENT_TYPES = {
     'A listing became public (directly for a verified owner, or approved from review) (D-252).',
   'listing.review_requested': 'A submitted listing went to the moderation queue with its reasons (D-252).',
   'listing.paused': 'The owner paused a published listing (D-252).',
+  'listing.share_kit_generated':
+    'The share cards of a listing were rendered (again) for its share kit (D-268).',
   'listing.closed':
     'A listing was closed — leased, withdrawn by the owner, or hidden for good by moderation (D-252).',
   'listing.rejected': 'Moderation rejected a listing with a reason; the owner is told (D-252).',

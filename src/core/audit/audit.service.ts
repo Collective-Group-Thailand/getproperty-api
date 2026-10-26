@@ -111,6 +111,7 @@ export const AUDIT_ACTIONS = [
   'listing.submitted',
   'listing.published',
   'listing.paused',
+  'listing.share_kit_generated',
   'listing.closed',
   'listing.approved',
   'listing.rejected',

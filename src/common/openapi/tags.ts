@@ -154,6 +154,7 @@ export const API_TAGS: Record<string, string> = {
   'public.pricing': 'Published prices an operator pays getproperty: the shared LINE OA’s messages (D-254).',
   'public.owners':
     'The public page of a verified owner: verification, member since, reply time, listings (D-274).',
+  'public.shareLinks': 'Short links of the listing share kit: open one to reach the listing (D-268).',
   'public.signup': 'Self-serve sign-up of landlords by phone, LINE, Google or Apple (D-251, D-255).',
   'owner.storage':
     "The owner's storage: files and records counted against the free allowance of the tenant type, the level and the daily snapshots (D-276).",

@@ -6,6 +6,7 @@ import { FAKE } from '@common/openapi/examples';
 import { TenantTx } from '@database/tenant-tx';
 import { type ListingVerification } from '@generated/prisma/client';
 import { ListingInsightsService } from '@modules/ops-listings/listing-insights.service';
+import { ListingShareService } from '@modules/ops-listings/listing-share.service';
 import { ListingsService, type ListingWithParts } from '@modules/ops-listings/listings.service';
 import { PublicListingsService } from '@modules/ops-listings/public-listings.service';
 import {
@@ -24,6 +25,7 @@ import {
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { ListingComparablesDto } from '../shared/listing-insights.dto';
+import { ShareKitDto } from '../shared/listing-share.dto';
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
   LISTING_EXAMPLE,
@@ -79,6 +81,7 @@ export class OwnerListingsController {
     private readonly photos: PublicListingsService,
     private readonly db: TenantTx,
     private readonly insights: ListingInsightsService,
+    private readonly share: ListingShareService,
   ) {}
 
   private async dto(ctx: TenantContext, l: ListingWithParts): Promise<ListingDto> {
@@ -240,6 +243,59 @@ export class OwnerListingsController {
     @Param('listingId', ParseUUIDPipe) id: string,
   ): Promise<ListingComparablesDto> {
     return this.insights.comparables(ctx, id);
+  }
+
+  @Post('listings/:listingId/share-kit')
+  @HttpCode(200)
+  @TenantScoped()
+  @Can('listing.manage')
+  @ApiEndpoint({
+    id: 'owner.listings.shareKit',
+    summary: 'Share kit of a listing',
+    description:
+      'For a published listing: a short link per channel (LINE, Facebook group, Marketplace, QR, plain link — `<web>/s/{code}` → the listing with UTM; made on first use, then the same), captions in Thai and English per channel, clicks and enquiries per channel, and the 1080 × 1080 photo cards (th / en, PNG: cover photo, rent, title, area, facts, QR of the link, getproperty logo) — rendered again only when what they show changes (D-268). Nothing is posted anywhere (Facebook forbids automated posting): the owner copies and downloads; LINE opens its share picker. `listing.invalid_state` unless published.',
+    implements: ['D-268'],
+  })
+  @ApiSuccess(200, {
+    description: 'Share kit',
+    type: ShareKitDto,
+    example: {
+      listingId: FAKE.uuid,
+      links: [
+        {
+          channel: 'facebook_group',
+          url: 'https://app.getproperty.co/s/ab12cd34',
+          clicks: 37,
+          enquiries: 3,
+          captionTh:
+            'คอนโด 1 ห้องนอน ใกล้ BTS อารีย์\nค่าเช่า ฿15,000/เดือน · มัดจำ 2 เดือน · ล่วงหน้า 1 เดือน · สัญญาขั้นต่ำ 12 เดือน',
+          captionEn:
+            'Sunny 1-bedroom condo near BTS Ari\nRent ฿15,000/month · deposit 2 mo · advance 1 mo · minimum 12 months',
+          shareUrl: null,
+        },
+      ],
+      cards: {
+        th: {
+          documentId: FAKE.uuid,
+          url: 'https://storage.getproperty.test/share-card-th.png',
+          width: 1080,
+          height: 1080,
+        },
+        en: {
+          documentId: FAKE.uuid,
+          url: 'https://storage.getproperty.test/share-card-en.png',
+          width: 1080,
+          height: 1080,
+        },
+      },
+    },
+  })
+  @ApiStandardErrors('validation.failed', 'http.not_found', 'listing.invalid_state', ...T)
+  async shareKit(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('listingId', ParseUUIDPipe) id: string,
+  ): Promise<ShareKitDto> {
+    return (await this.share.kit(ctx, id)) as ShareKitDto;
   }
 
   @Patch('listings/:listingId')

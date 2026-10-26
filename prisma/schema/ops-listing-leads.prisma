@@ -19,6 +19,7 @@ model ListingLead {
   lastOwnerAt    DateTime?               @map("last_owner_at") @db.Timestamptz(6)
   nudgedAt       DateTime?               @map("nudged_at") @db.Timestamptz(6)
   leaseId        String?                 @map("lease_id") @db.Uuid
+  channel        ListingChannel?
   version        Int                     @default(1)
   createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)

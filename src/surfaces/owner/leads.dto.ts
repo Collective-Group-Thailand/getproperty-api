@@ -18,6 +18,14 @@ import {
 import { LanguageName } from '../shared/common.dto';
 import { MoneyOutput } from '../shared/fields';
 
+/** D-268: where a listing is shared and where an enquiry came from. */
+export enum ListingChannelName {
+  Line = 'line',
+  FacebookGroup = 'facebook_group',
+  FacebookMarketplace = 'facebook_marketplace',
+  Qr = 'qr',
+  Link = 'link',
+}
 export enum ListingLeadStateName {
   New = 'new',
   Contacted = 'contacted',
@@ -165,6 +173,15 @@ export class OwnerLeadSummaryDto {
 
   @ApiProperty({ type: String, nullable: true, example: 'ห้องยังว่างไหมคะ อยากเข้าดูเสาร์นี้' })
   lastMessage!: string | null;
+
+  @ApiProperty({
+    enum: ListingChannelName,
+    enumName: 'ListingChannel',
+    nullable: true,
+    example: 'facebook_group',
+    description: 'The share-kit channel the prospect came from (D-268); null when not through a share link.',
+  })
+  channel!: ListingChannelName | null;
 
   @ApiProperty({
     enum: ListingLeadAuthorName,
@@ -404,6 +421,18 @@ export class EnquiryTermsDto {
   @IsOptional()
   @Matches(/^[A-Za-z]{2}$/)
   nationality?: string | null;
+
+  @ApiPropertyOptional({
+    enum: ListingChannelName,
+    enumName: 'ListingChannel',
+    nullable: true,
+    example: 'facebook_group',
+    description:
+      'D-268: the share-kit channel the prospect came from (the `ch` of the short link). Kept on a new enquiry only.',
+  })
+  @IsOptional()
+  @IsEnum(ListingChannelName)
+  channel?: ListingChannelName | null;
 
   @ApiProperty({
     example: true,

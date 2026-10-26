@@ -49,6 +49,9 @@ model Listing {
   closedReason     ListingCloseReason? @map("closed_reason")
   leaseId          String?             @map("lease_id") @db.Uuid
   relistRemindedAt DateTime?           @map("relist_reminded_at") @db.Timestamptz(6)
+  shareCardThDocumentId String?        @map("share_card_th_document_id") @db.Uuid
+  shareCardEnDocumentId String?        @map("share_card_en_document_id") @db.Uuid
+  shareCardHash    String?             @map("share_card_hash")
   version          Int                 @default(1)
   createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy        String?             @map("created_by") @db.Uuid
@@ -59,6 +62,9 @@ model Listing {
   unit         Unit                 @relation("ListingUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_unit_id_fkey")
   lease        Lease?               @relation("ListingLease", fields: [leaseId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_lease_id_fkey")
   building     Building             @relation("ListingBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_building_id_fkey")
+  shareCardTh  Document?            @relation("ListingShareCardTh", fields: [shareCardThDocumentId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_share_card_th_document_id_fkey")
+  shareCardEn  Document?            @relation("ListingShareCardEn", fields: [shareCardEnDocumentId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_share_card_en_document_id_fkey")
+  shareLinks   ListingShareLink[]
   photos       ListingPhoto[]
   availability ListingAvailability?
   reports      ListingReport[]
@@ -71,6 +77,8 @@ model Listing {
   @@index([publishedAt(sort: Desc)], map: "listing_public_published_at_idx", where: raw("((state = 'published'::ops.listing_state) AND (hidden_at IS NULL))"))
   @@index([buildingId], map: "listing_building_id_idx")
   @@index([leaseId], map: "listing_lease_id_idx")
+  @@index([shareCardThDocumentId], map: "listing_share_card_th_document_id_idx")
+  @@index([shareCardEnDocumentId], map: "listing_share_card_en_document_id_idx")
   @@map("listing")
   @@schema("ops")
 }
@@ -229,4 +237,37 @@ enum ListingReportState {
 
   @@map("listing_report_state")
   @@schema("platform")
+}
+
+/// D-268: the short link of a listing for one share-kit channel; clicks counted when opened.
+model ListingShareLink {
+  id            String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  listingId     String         @map("listing_id") @db.Uuid
+  channel       ListingChannel
+  code          String         @unique(map: "listing_share_link_code_key")
+  clicks        Int            @default(0)
+  lastClickedAt DateTime?      @map("last_clicked_at") @db.Timestamptz(6)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?        @map("created_by") @db.Uuid
+
+  tenant  Tenant  @relation("ListingShareLinkTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_share_link_tenant_id_fkey")
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_share_link_listing_id_fkey")
+
+  @@unique([listingId, channel], map: "listing_share_link_listing_id_channel_key")
+  @@index([tenantId], map: "listing_share_link_tenant_id_idx")
+  @@map("listing_share_link")
+  @@schema("ops")
+}
+
+/// D-268: where a listing is shared (and where an enquiry came from).
+enum ListingChannel {
+  line
+  facebook_group
+  facebook_marketplace
+  qr
+  link
+
+  @@map("listing_channel")
+  @@schema("ops")
 }

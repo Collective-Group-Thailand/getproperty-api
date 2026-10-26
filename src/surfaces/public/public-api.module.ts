@@ -2,7 +2,11 @@ import { Module } from '@nestjs/common';
 
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
-import { PublicListingsController, PublicOwnersController } from './listings.controller';
+import {
+  PublicListingsController,
+  PublicOwnersController,
+  PublicShareLinksController,
+} from './listings.controller';
 import {
   PublicPlansController,
   PublicPricingController,
@@ -20,6 +24,7 @@ import { PublicSignupController } from './signup.controller';
     PublicSignupController,
     PublicListingsController,
     PublicOwnersController,
+    PublicShareLinksController,
   ],
 })
 export class PublicApiModule {}

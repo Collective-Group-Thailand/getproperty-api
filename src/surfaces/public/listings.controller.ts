@@ -4,8 +4,9 @@ import { toBangkokIso } from '@common/time/bangkok';
 import { ListingInsightsService } from '@modules/ops-listings/listing-insights.service';
 import { ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
 import { ListingModerationService } from '@modules/ops-listings/listing-moderation.service';
+import { ListingShareService } from '@modules/ops-listings/listing-share.service';
 import { PublicListingsService } from '@modules/ops-listings/public-listings.service';
-import { Body, Controller, Get, Header, Param, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, Header, HttpCode, Param, Post, Query, Req } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { seconds, Throttle } from '@nestjs/throttler';
 import { Type } from 'class-transformer';
@@ -22,10 +23,11 @@ import {
 } from 'class-validator';
 import { type Request } from 'express';
 
-import { ViewingSlotsDto } from '../owner/leads.dto';
+import { ListingChannelName, ViewingSlotsDto } from '../owner/leads.dto';
 import { FurnishingName, PortfolioUnitKindName } from '../owner/portfolio.controller';
 import { MoneyOutput } from '../shared/fields';
 import { ListingUtilityDto, PublicAreasDto } from '../shared/listing-insights.dto';
+import { PublicShareLinkDto } from '../shared/listing-share.dto';
 import { ApiSurface, SURFACES } from '../surfaces';
 
 const CACHE = 'public, max-age=300, stale-while-revalidate=600';
@@ -642,5 +644,42 @@ export class PublicOwnersController {
       slug.slice(0, 80),
       lang(req.headers['accept-language']),
     )) as unknown as PublicOwnerDto;
+  }
+}
+
+@ApiTags('public.shareLinks')
+@ApiSurface(SURFACES.public)
+@Controller('public/share-links')
+export class PublicShareLinksController {
+  constructor(private readonly share: ListingShareService) {}
+
+  @Post(':code/open')
+  @HttpCode(200)
+  @Public()
+  @Throttle(SEARCH_LIMIT)
+  @ApiEndpoint({
+    id: 'public.shareLinks.open',
+    summary: 'Open a share link',
+    description:
+      'A short link of a listing’s share kit was opened (`<web>/s/{code}`, D-268): counts the click and answers the listing to show and the UTM of its channel. `404` when the code is unknown or the listing is no longer public (the web then shows the search).',
+    implements: ['D-268'],
+  })
+  @ApiSuccess(200, {
+    description: 'Where to go',
+    type: PublicShareLinkDto,
+    example: {
+      slug: 'condo-1br-0193f2a4b1',
+      channel: 'facebook_group',
+      utm: { source: 'facebook_group', medium: 'share', campaign: 'listing' },
+    },
+  })
+  @ApiStandardErrors('http.not_found', 'http.too_many_requests')
+  async open(@Param('code') code: string): Promise<PublicShareLinkDto> {
+    const { slug, channel } = await this.share.open(code.slice(0, 16));
+    return {
+      slug,
+      channel: channel as ListingChannelName,
+      utm: { source: channel, medium: 'share', campaign: 'listing' },
+    };
   }
 }
