@@ -149,20 +149,41 @@ export class ListingsService {
     return listing;
   }
 
-  /** The unit's searchable facts, read through the tenant's own visibility (a unit it cannot see is a 404). */
+  /**
+   * The unit's searchable facts, read through the tenant's own visibility (a unit it cannot see is a 404). G2
+   * (D-293): an agency lists another tenant's unit under its active mandate — the facts are then read as the platform
+   * once the mandate is checked (a unit grant does not show the building row), and the mandate is returned.
+   */
   private async snapshot(tx: Tx, ctx: TenantContext, unitId: string, showUnitNo: boolean) {
-    const unit = await tx.unit.findFirst({
+    let mandateId: string | null = null;
+    let unit = await tx.unit.findFirst({
       where: { id: unitId, tenantId: ctx.tenantId, deletedAt: null },
       include: { building: { include: { property: true } } },
     });
-    if (!unit) throw new DomainException('http.not_found');
-    const detail = await tx.unitDetail.findUnique({ where: { unitId } });
+    let detail = unit ? await tx.unitDetail.findUnique({ where: { unitId } }) : null;
+    if (!unit) {
+      const mandate = await tx.listingMandate.findFirst({
+        where: { tenantId: ctx.tenantId, unitId, state: 'active' },
+        select: { id: true },
+      });
+      if (!mandate) throw new DomainException('http.not_found');
+      mandateId = mandate.id;
+      [unit, detail] = await this.db.platform(async (p) => [
+        await p.unit.findFirst({
+          where: { id: unitId, deletedAt: null },
+          include: { building: { include: { property: true } } },
+        }),
+        await p.unitDetail.findUnique({ where: { unitId } }),
+      ]);
+      if (!unit) throw new DomainException('http.not_found');
+    }
     const address = (unit.building.address ?? unit.building.property.address ?? {}) as Record<
       string,
       string | null
     >;
     const kind = kindOf(detail?.kind, unit.type);
     return {
+      mandateId,
       buildingId: unit.buildingId,
       unitKind: kind,
       sizeSqm: unit.areaSqm,
@@ -422,7 +443,12 @@ export class ListingsService {
       this.settings.valueAt<number>('listing.review.comparables_min', now),
     ]);
     await this.db.platform(async (tx) => {
-      if (firstRule && !(await this.verified(tx, ctx.tenantId, listing.unitId))) {
+      // G2: an agency's listing counts the unit owner's verification (D-293)
+      const verifier = listing.mandateId
+        ? ((await tx.listingMandate.findUnique({ where: { id: listing.mandateId } }))?.ownerTenantId ??
+          ctx.tenantId)
+        : ctx.tenantId;
+      if (firstRule && !(await this.verified(tx, verifier, listing.unitId))) {
         const before = await tx.listing.count({
           where: { tenantId: ctx.tenantId, publishedAt: { not: null }, id: { not: listing.id } },
         });

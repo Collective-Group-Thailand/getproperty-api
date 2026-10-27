@@ -79,6 +79,8 @@ export const API_TAGS: Record<string, string> = {
     'Units: create (one or floor × pattern), edit, status override, subscription count (D-082, D-151).',
   'owner.listings':
     'Rental listings of the tenant: draft, photos, availability, submit, pause, close; owner verification (D-252).',
+  'owner.mandates':
+    'Agency mandates (owner → agency, one unit, with its grant), mandated units, co-broke agreements and deals with fee accruals (D-284, D-287, D-293).',
   'owner.leads':
     'The enquiries inbox: leads of my listings, replies (delivered in LINE), notes, won / lost; viewings and their calendar (D-252).',
   'owner.portfolio':

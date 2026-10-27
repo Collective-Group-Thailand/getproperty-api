@@ -21,6 +21,8 @@ export interface LandlordSignupInput {
   /** The landlord's name as residents will see it (a person by default; company data later in settings). */
   displayName: string;
   language?: 'th' | 'en';
+  /** G2 (D-284): estate agencies sign up the same way and get a tenant of type `agency`. */
+  type?: 'landlord' | 'agency';
 }
 
 export interface LandlordSignupResult {
@@ -35,6 +37,7 @@ export interface LandlordSignupResult {
  * data key, the person as its legal party and an active Owner membership, then operator tokens. Idempotent per
  * identity: a second sign-up with the same identity returns the landlord tenant it already owns. An identity is never
  * merged into another account by e-mail (no takeover through an unverified address).
+ * G2 (D-284): an estate agency signs up the same way (`type: 'agency'`) — free, unlimited users, units and listings.
  */
 @Injectable()
 export class LandlordSignupService {
@@ -51,6 +54,7 @@ export class LandlordSignupService {
   async signup(input: LandlordSignupInput): Promise<LandlordSignupResult> {
     const v = await this.identities.verify(input.identity, 'landlord_signup', 'landlord_signup');
     const language = input.language ?? 'th';
+    const type = input.type ?? 'landlord';
     return this.db.platform(async (tx) => {
       const user = (await this.identities.accountFor(tx, v, { create: true, language }))!;
       const owned = await tx.membership.findFirst({
@@ -59,7 +63,7 @@ export class LandlordSignupService {
           role: 'owner',
           status: 'active',
           deletedAt: null,
-          tenant: { type: 'landlord', deletedAt: null, status: { not: 'deactivated' } },
+          tenant: { type, deletedAt: null, status: { not: 'deactivated' } },
         },
         include: { tenant: true },
         orderBy: { createdAt: 'asc' },
@@ -78,8 +82,8 @@ export class LandlordSignupService {
       await tx.tenant.create({
         data: {
           id,
-          type: 'landlord',
-          slug: `landlord-${id.replace(/-/g, '').slice(-10)}`,
+          type,
+          slug: `${type}-${id.replace(/-/g, '').slice(-10)}`,
           displayName: name,
           legalName: name,
           legalForm: 'person',
@@ -106,7 +110,7 @@ export class LandlordSignupService {
         subjectType: 'core.tenant',
         subjectId: id,
         after: {
-          type: 'landlord',
+          type,
           slug: tenant.slug,
           legalForm: 'person',
           source: 'self_signup',
@@ -125,7 +129,7 @@ export class LandlordSignupService {
         aggregateType: 'tenant',
         aggregateId: id,
         tenantId: id,
-        payload: { tenantId: id, type: 'landlord', plan: null, source: 'self_signup' },
+        payload: { tenantId: id, type, plan: null, source: 'self_signup' },
       });
       return { created: true, tenant, tokens: await this.auth.issueOperator(tx, user, [v.provider]) };
     });

@@ -216,3 +216,122 @@ export class PublicSignupController {
     };
   }
 }
+
+/**
+ * G2 (D-284): self-serve sign-up of estate agencies — the same identities as landlords (D-255), a tenant of type
+ * `agency`, free and unlimited (users, units, listings). Owners then mandate the agency for their units (D-293).
+ */
+@ApiTags('public.signup')
+@ApiSurface(SURFACES.public)
+@Controller('public/signup/agency')
+export class PublicAgencySignupController {
+  constructor(
+    private readonly auth: AuthService,
+    private readonly signups: LandlordSignupService,
+  ) {}
+
+  @Post('otp')
+  @HttpCode(200)
+  @Public()
+  @Throttle(LIMIT)
+  @ApiEndpoint({
+    id: 'public.agencySignup.otp',
+    summary: 'Send an agency sign-up code by SMS',
+    description:
+      'A 6-digit code for an estate agency signing up by phone (no account or invitation is needed, D-284). Same limits as sign-in codes: one per OTP_RESEND_SECONDS, at most OTP_MAX_PER_HOUR per hour, expiry OTP_TTL_SECONDS.',
+    implements: ['D-284', 'D-255'],
+  })
+  @ApiJsonBody(OtpRequestDto, { phone: '+66810001234', language: 'th' })
+  @ApiSuccess(200, {
+    description: 'Code sent',
+    type: OtpChallengeDto,
+    example: {
+      challengeId: '3b241101-e2bb-4255-8caf-4136c566a962',
+      expiresAt: '2026-11-01T00:20:00+07:00',
+      resendAvailableAt: '2026-11-01T00:16:00+07:00',
+    },
+  })
+  @ApiStandardErrors('validation.failed', 'http.bad_request', 'auth.otp_rate_limited', 'provider.unavailable')
+  async otp(@Body() body: OtpRequestDto): Promise<OtpChallengeDto> {
+    return otpChallengeDto(await this.auth.landlordOtpRequest(body.phone, body.language));
+  }
+
+  @Post()
+  @Public()
+  @Throttle(LIMIT)
+  @ApiEndpoint({
+    id: 'public.agencySignup.create',
+    summary: 'Sign up as an estate agency',
+    description:
+      'Verifies the identity (phone OTP, LINE, Google or Apple through Firebase — D-255) and creates a tenant of type `agency` (active, free and unlimited per D-284) with its data key, the person as its legal party and an Owner membership; answers operator tokens. Idempotent per identity: the same identity again answers `200` with the agency it already owns. Identities are never merged by e-mail. Company data (legal form, tax id) is added later in settings; owners then mandate the agency for their units (D-293).',
+    implements: ['D-284', 'D-255', 'D-293'],
+  })
+  @ApiJsonBody(LandlordSignupDto, {
+    provider: 'line',
+    idToken: 'eyJhbGciOiJSUzI1NiJ9.e30.c2ln',
+    displayName: 'บ้านดี พร็อพเพอร์ตี้',
+  })
+  @ApiSuccess(201, {
+    description: 'Agency tenant created',
+    type: LandlordSignupResultDto,
+    example: {
+      created: true,
+      tenant: {
+        id: FAKE.tenantId,
+        slug: 'agency-0a1b2c3d4e',
+        displayName: 'บ้านดี พร็อพเพอร์ตี้',
+        type: 'agency',
+      },
+      tokens: TOKEN_PAIR_EXAMPLE,
+    },
+  })
+  @ApiSuccess(200, {
+    description: 'Already signed up: the existing agency tenant',
+    type: LandlordSignupResultDto,
+    example: {
+      created: false,
+      tenant: {
+        id: FAKE.tenantId,
+        slug: 'agency-0a1b2c3d4e',
+        displayName: 'บ้านดี พร็อพเพอร์ตี้',
+        type: 'agency',
+      },
+      tokens: TOKEN_PAIR_EXAMPLE,
+    },
+  })
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.bad_request',
+    'auth.otp_invalid',
+    'auth.otp_expired',
+    'auth.otp_attempts_exceeded',
+    'auth.line_token_invalid',
+    'auth.identity_token_invalid',
+    'auth.identity_email_in_use',
+    'auth.identity_contact_required',
+    'auth.account_disabled',
+    'provider.unavailable',
+  )
+  async create(
+    @Body() body: LandlordSignupDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<LandlordSignupResultDto> {
+    const result = await this.signups.signup({
+      identity: identityOf(body),
+      displayName: body.displayName,
+      language: body.language,
+      type: 'agency',
+    });
+    res.status(result.created ? 201 : 200);
+    return {
+      created: result.created,
+      tenant: {
+        id: result.tenant.id,
+        slug: result.tenant.slug,
+        displayName: result.tenant.displayName,
+        type: result.tenant.type,
+      },
+      tokens: tokenPairDto(result.tokens),
+    };
+  }
+}

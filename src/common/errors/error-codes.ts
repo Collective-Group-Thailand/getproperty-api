@@ -205,6 +205,11 @@ export const ERROR_CODES = {
   'portfolio.not_a_stub': HttpStatus.CONFLICT,
   'portfolio.claimant_invalid': HttpStatus.UNPROCESSABLE_ENTITY,
   'listing.duplicate_unit': HttpStatus.CONFLICT,
+  // G2 agency mandates and co-broke (D-293)
+  'mandate.invalid_state': HttpStatus.CONFLICT,
+  'mandate.exclusive_conflict': HttpStatus.CONFLICT,
+  'mandate.agency_required': HttpStatus.UNPROCESSABLE_ENTITY,
+  'co_broke.invalid_state': HttpStatus.CONFLICT,
   'listing.invalid_state': HttpStatus.CONFLICT,
   'listing.bank_account_in_message': HttpStatus.UNPROCESSABLE_ENTITY,
   'listing.incomplete': HttpStatus.UNPROCESSABLE_ENTITY,

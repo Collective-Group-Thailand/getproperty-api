@@ -52,6 +52,7 @@ model Listing {
   shareCardThDocumentId String?        @map("share_card_th_document_id") @db.Uuid
   shareCardEnDocumentId String?        @map("share_card_en_document_id") @db.Uuid
   shareCardHash    String?             @map("share_card_hash")
+  mandateId        String?             @map("mandate_id") @db.Uuid
   version          Int                 @default(1)
   createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy        String?             @map("created_by") @db.Uuid
@@ -64,6 +65,9 @@ model Listing {
   building     Building             @relation("ListingBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_building_id_fkey")
   shareCardTh  Document?            @relation("ListingShareCardTh", fields: [shareCardThDocumentId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_share_card_th_document_id_fkey")
   shareCardEn  Document?            @relation("ListingShareCardEn", fields: [shareCardEnDocumentId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_share_card_en_document_id_fkey")
+  mandate      ListingMandate?      @relation(fields: [mandateId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_mandate_id_fkey")
+  coBrokes     CoBrokeAgreement[]
+  deals        Deal[]
   shareLinks   ListingShareLink[]
   photos       ListingPhoto[]
   availability ListingAvailability?
@@ -77,6 +81,7 @@ model Listing {
   @@index([publishedAt(sort: Desc)], map: "listing_public_published_at_idx", where: raw("((state = 'published'::ops.listing_state) AND (hidden_at IS NULL))"))
   @@index([buildingId], map: "listing_building_id_idx")
   @@index([leaseId], map: "listing_lease_id_idx")
+  @@index([mandateId], map: "listing_mandate_id_idx")
   @@index([shareCardThDocumentId], map: "listing_share_card_th_document_id_idx")
   @@index([shareCardEnDocumentId], map: "listing_share_card_en_document_id_idx")
   @@map("listing")

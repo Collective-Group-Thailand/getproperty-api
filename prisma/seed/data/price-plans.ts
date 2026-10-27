@@ -7,13 +7,20 @@
  */
 export interface PricePlanSeed {
   key: string;
-  tenantType: 'apartment' | 'condo_juristic' | 'pm_company' | 'landlord' | null;
+  tenantType: 'apartment' | 'condo_juristic' | 'pm_company' | 'landlord' | 'agency' | null;
   nameTh: string;
   nameEn: string;
   kind: 'software' | 'addon' | 'hardware_rental' | 'hardware_sale' | 'service';
   isActive: boolean;
   version: {
-    billingUnit: 'per_unit' | 'per_meter_point' | 'per_building' | 'per_tenant' | 'per_report';
+    billingUnit:
+      | 'per_unit'
+      | 'per_meter_point'
+      | 'per_building'
+      | 'per_tenant'
+      | 'per_report'
+      | 'per_deal'
+      | 'percent_of_amount';
     unitPrice: string | null;
     priceRange: { from: string; to: string } | null;
     tiers: unknown[];
@@ -226,6 +233,50 @@ export const PRICE_PLANS: readonly PricePlanSeed[] = [
       termMonths: null,
       includedAllowances: {},
       terms: proposed(),
+      published: false,
+    },
+  },
+  {
+    // G2 (D-287, D-293): success fee on a deal closed through the platform, paid by the listing agency; no price until the
+    // platform admin publishes a version (O-027) — without a price nothing is accrued
+    key: 'success_fee',
+    tenantType: 'agency',
+    nameTh: 'ค่าธรรมเนียมความสำเร็จ',
+    nameEn: 'Success fee',
+    kind: 'service',
+    isActive: true,
+    version: {
+      billingUnit: 'percent_of_amount',
+      unitPrice: null,
+      priceRange: null,
+      tiers: [],
+      minUnits: null,
+      minMonthly: null,
+      termMonths: null,
+      includedAllowances: {},
+      terms: { status: 'proposed', decision: 'D-287', basis: 'commission', capAmount: null },
+      published: false,
+    },
+  },
+  {
+    // G2 (D-287, D-293): co-broke fee on a deal closed through the platform, paid by the co-agency; no price until the
+    // platform admin publishes a version (O-027) — without a price nothing is accrued
+    key: 'co_broke_fee',
+    tenantType: 'agency',
+    nameTh: 'ค่าธรรมเนียม co-broke',
+    nameEn: 'Co-broke fee',
+    kind: 'service',
+    isActive: true,
+    version: {
+      billingUnit: 'percent_of_amount',
+      unitPrice: null,
+      priceRange: null,
+      tiers: [],
+      minUnits: null,
+      minMonthly: null,
+      termMonths: null,
+      includedAllowances: {},
+      terms: { status: 'proposed', decision: 'D-287', basis: 'commission', capAmount: null },
       published: false,
     },
   },

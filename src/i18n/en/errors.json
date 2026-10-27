@@ -1196,5 +1196,25 @@
       "title": "Another user must publish",
       "detail": "The guide must be reviewed and published by a different platform user than the last one who edited it."
     }
+  },
+  "mandate": {
+    "invalid_state": {
+      "title": "Mandate cannot change now",
+      "detail": "This mandate is not in a state that allows this action (for example it was already accepted, ended or revoked)."
+    },
+    "exclusive_conflict": {
+      "title": "An exclusive mandate is in the way",
+      "detail": "The unit has an exclusive mandate, or other agencies already hold mandates so it cannot be made exclusive. End the other mandate first."
+    },
+    "agency_required": {
+      "title": "Not an estate agency",
+      "detail": "Mandates and co-broke agreements are made with tenants of type agency only."
+    }
+  },
+  "co_broke": {
+    "invalid_state": {
+      "title": "Co-broke agreement cannot change now",
+      "detail": "This co-broke agreement is not in a state that allows this action, or you are not the agency that may take it."
+    }
   }
 }

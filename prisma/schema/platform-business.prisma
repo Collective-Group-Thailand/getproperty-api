@@ -212,6 +212,7 @@ model PricePlanVersion {
   subscriptions   Subscription[]
   usages          SubscriptionUsage[]
   storagePackages StoragePackage[]
+  feeAccruals     FeeAccrual[]
 
   @@unique([planId, version], map: "price_plan_version_plan_id_version_key")
   @@map("price_plan_version")

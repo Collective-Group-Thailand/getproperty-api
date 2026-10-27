@@ -209,6 +209,7 @@ model Lease {
   lines            LeaseLine[]
   signatures       LeaseSignature[]
   events           LeaseEvent[]
+  deal             Deal?
   invitations      Invitation[]
   currentForUnits  UnitDetail[]
   deposit          Deposit?

@@ -1289,7 +1289,9 @@ describe('smart metering B3 (real PostgreSQL + MQTT broker)', () => {
   });
 
   it('3.3 the reading round shrinks as readings arrive; 3.4 meter health', async () => {
-    t.clock.set(new Date('2026-10-27T03:00:00Z')); // inside the 7-day window before the end-of-month cut-off
+    // inside the 7-day window before the end-of-month cut-off; never behind the OTPs earlier tests sent at the fake
+    // clock (a clock moved back hits the OTP resend gap — the test failed on the real 2026-10-27 after 03:00 UTC)
+    t.clock.set(new Date(Math.max(Date.parse('2026-10-27T03:00:00Z'), t.clock.now().getTime() + 120_000)));
     staff = await operatorToken(t, '+660000000003');
     owner = await ownerToken(t);
     const round = async () =>

@@ -28,6 +28,7 @@ export enum TenantTypeName {
   CondoJuristic = 'condo_juristic',
   PmCompany = 'pm_company',
   Landlord = 'landlord',
+  Agency = 'agency',
 }
 
 export enum TenantStatusName {
