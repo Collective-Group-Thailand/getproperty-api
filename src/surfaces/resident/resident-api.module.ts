@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ResidentAccessController } from '../owner/access.controller';
 import { ResidentInvoicesController } from '../owner/billing.controller';
 import { ResidentCommunityController } from '../owner/community.controller';
+import { ResidentContractsController, ResidentRenewalOffersController } from '../owner/contracts.controller';
 import { ResidentDepositsController, ResidentUploadsController } from '../owner/deposits.controller';
 import { ResidentInvoiceDocumentsController } from '../owner/documents.controller';
 import { ResidentLeaseNoticesController } from '../owner/lease-notices.controller';
@@ -42,6 +43,8 @@ import { ResidentCsatSurveyController } from './resident-survey.controller';
     ResidentIdentitiesController,
     ResidentIdentityVerificationController,
     ResidentRentRecordController,
+    ResidentContractsController,
+    ResidentRenewalOffersController,
     ResidentMessagingLinksController,
     ResidentLinkController,
     ResidentConsentsController,

@@ -1,0 +1,222 @@
+// G3 (pack G module E14, D-290, D-294): contract library kinds, signable documents of the non-lease kinds and lease
+// renewal offers (migration 0060, schema-design §7.5 rows 156–164).
+
+enum ContractKind {
+  lease_apartment_ocpb
+  lease_condo_private
+  lease_house
+  lease_room
+  reservation
+  brokerage_mandate
+  co_broke
+  addendum
+  notice_termination
+  notice_renewal
+
+  @@map("contract_kind")
+  @@schema("ops")
+}
+
+enum LegalReviewState {
+  pending_legal_verification
+  reviewed
+
+  @@map("legal_review_state")
+  @@schema("ops")
+}
+
+enum ContractDocumentState {
+  draft
+  pending_signature
+  signed
+  cancelled
+
+  @@map("contract_document_state")
+  @@schema("ops")
+}
+
+enum ContractSignerRole {
+  lessor
+  lessee
+  co_tenant
+  prospect
+  owner
+  agency
+  co_agency
+
+  @@map("contract_signer_role")
+  @@schema("ops")
+}
+
+enum RenewalOfferState {
+  offered
+  accepted
+  declined
+  expired
+  withdrawn
+
+  @@map("renewal_offer_state")
+  @@schema("ops")
+}
+
+enum RenewalRentSource {
+  benchmark
+  comparables
+  current_rent
+
+  @@map("renewal_rent_source")
+  @@schema("ops")
+}
+
+/// An e-signed document of a non-lease library kind (D-294); template version pinned; signed PDF held (D-286).
+model ContractDocument {
+  id                   String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId             String                @map("tenant_id") @db.Uuid
+  kind                 ContractKind
+  templateVersionId    String                @map("template_version_id") @db.Uuid
+  language             String                @default("th") @db.Char(2)
+  title                String
+  buildingId           String?               @map("building_id") @db.Uuid
+  unitId               String?               @map("unit_id") @db.Uuid
+  leaseId              String?               @map("lease_id") @db.Uuid
+  coBrokeAgreementId   String?               @map("co_broke_agreement_id") @db.Uuid
+  mandateId            String?               @map("mandate_id") @db.Uuid
+  counterpartyTenantId String?               @map("counterparty_tenant_id") @db.Uuid
+  signers              Json                  @default("[]")
+  variables            Json                  @default("{}")
+  number               String?               @db.Citext
+  state                ContractDocumentState @default(draft)
+  documentId           String?               @map("document_id") @db.Uuid
+  signedDocumentId     String?               @map("signed_document_id") @db.Uuid
+  sha256               Bytes?
+  contentSha256        String?               @map("content_sha256")
+  sentAt               DateTime?             @map("sent_at") @db.Timestamptz(6)
+  signedAt             DateTime?             @map("signed_at") @db.Timestamptz(6)
+  cancelledAt          DateTime?             @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason         String?               @map("cancel_reason")
+  version              Int                   @default(1)
+  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy            String?               @map("created_by") @db.Uuid
+  updatedAt            DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy            String?               @map("updated_by") @db.Uuid
+
+  tenant             Tenant               @relation("ContractDocumentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_document_tenant_id_fkey")
+  templateVersion    LeaseTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_document_template_version_id_fkey")
+  building           Building?            @relation("ContractDocumentBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_document_building_id_fkey")
+  unit               Unit?                @relation("ContractDocumentUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_document_unit_id_fkey")
+  lease              Lease?               @relation("ContractDocumentLease", fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_document_lease_id_fkey")
+  coBrokeAgreement   CoBrokeAgreement?    @relation("ContractDocumentCoBroke", fields: [coBrokeAgreementId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_document_co_broke_agreement_id_fkey")
+  mandate            ListingMandate?      @relation("ContractDocumentMandate", fields: [mandateId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_document_mandate_id_fkey")
+  counterpartyTenant Tenant?              @relation("ContractDocumentCounterparty", fields: [counterpartyTenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_document_counterparty_tenant_id_fkey")
+  document           Document?            @relation("ContractDocumentUnsigned", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_document_document_id_fkey")
+  signedDocument     Document?            @relation("ContractDocumentSigned", fields: [signedDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_document_signed_document_id_fkey")
+  signatures         ContractSignature[]
+  coBrokeAgreements  CoBrokeAgreement[]   @relation("CoBrokeContractDocument")
+  mandates           ListingMandate[]     @relation("MandateContractDocument")
+
+  @@unique([tenantId, number], map: "contract_document_tenant_id_number_key", where: raw("(number IS NOT NULL)"))
+  @@index([tenantId, kind, state], map: "contract_document_tenant_id_kind_state_idx")
+  @@index([counterpartyTenantId, state], map: "contract_document_counterparty_tenant_id_state_idx")
+  @@index([templateVersionId], map: "contract_document_template_version_id_idx")
+  @@index([buildingId], map: "contract_document_building_id_idx")
+  @@index([unitId], map: "contract_document_unit_id_idx")
+  @@index([leaseId], map: "contract_document_lease_id_idx")
+  @@index([coBrokeAgreementId], map: "contract_document_co_broke_agreement_id_idx")
+  @@index([mandateId], map: "contract_document_mandate_id_idx")
+  @@index([documentId], map: "contract_document_document_id_idx")
+  @@index([signedDocumentId], map: "contract_document_signed_document_id_idx")
+  @@map("contract_document")
+  @@schema("ops")
+}
+
+/// Append-only e-signature evidence of a contract document (D-062, D-294).
+model ContractSignature {
+  id                       String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                 String             @map("tenant_id") @db.Uuid
+  contractDocumentId       String             @map("contract_document_id") @db.Uuid
+  signerIndex              Int                @map("signer_index") @db.SmallInt
+  signerRole               ContractSignerRole @map("signer_role")
+  partyId                  String?            @map("party_id") @db.Uuid
+  signerTenantId           String?            @map("signer_tenant_id") @db.Uuid
+  userId                   String             @map("user_id") @db.Uuid
+  method                   SignatureMethod
+  otpChallengeId           String?            @map("otp_challenge_id") @db.Uuid
+  lineUserId               String?            @map("line_user_id")
+  signatureImageDocumentId String             @map("signature_image_document_id") @db.Uuid
+  pdfSha256                Bytes              @map("pdf_sha256")
+  signedAt                 DateTime           @map("signed_at") @db.Timestamptz(6)
+  ip                       String?            @db.Inet
+  userAgent                String?            @map("user_agent")
+  createdAt                DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                String?            @map("created_by") @db.Uuid
+
+  tenant           Tenant           @relation("ContractSignatureTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_signature_tenant_id_fkey")
+  contractDocument ContractDocument @relation(fields: [contractDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_signature_contract_document_id_fkey")
+  party            Party?           @relation("ContractSignatureParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_signature_party_id_fkey")
+  signerTenant     Tenant?          @relation("ContractSignatureSignerTenant", fields: [signerTenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_signature_signer_tenant_id_fkey")
+  user             UserAccount      @relation("ContractSignatureUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_signature_user_id_fkey")
+  otpChallenge     OtpChallenge?    @relation(fields: [otpChallengeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_signature_otp_challenge_id_fkey")
+  signatureImage   Document         @relation("ContractSignatureImage", fields: [signatureImageDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "contract_signature_image_fkey")
+
+  @@unique([contractDocumentId, signerIndex], map: "contract_signature_contract_document_id_signer_index_key")
+  @@index([tenantId], map: "contract_signature_tenant_id_idx")
+  @@index([partyId], map: "contract_signature_party_id_idx")
+  @@index([signerTenantId], map: "contract_signature_signer_tenant_id_idx")
+  @@index([userId], map: "contract_signature_user_id_idx")
+  @@index([otpChallengeId], map: "contract_signature_otp_challenge_id_idx")
+  @@index([signatureImageDocumentId], map: "contract_signature_image_idx")
+  @@map("contract_signature")
+  @@schema("ops")
+}
+
+/// A renewal offer on a lease (D-294): B7.5 letter + the resident's answer.
+model LeaseRenewalOffer {
+  id               String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String            @map("tenant_id") @db.Uuid
+  leaseId          String            @map("lease_id") @db.Uuid
+  buildingId       String            @map("building_id") @db.Uuid
+  unitId           String            @map("unit_id") @db.Uuid
+  noticeId         String?           @map("notice_id") @db.Uuid
+  currentRent      Decimal           @map("current_rent") @db.Decimal(14, 2)
+  suggestedRent    Decimal?          @map("suggested_rent") @db.Decimal(14, 2)
+  suggestionSource RenewalRentSource @map("suggestion_source")
+  offeredRent      Decimal           @map("offered_rent") @db.Decimal(14, 2)
+  months           Int               @db.SmallInt
+  startDate        DateTime          @map("start_date") @db.Date
+  respondBy        DateTime          @map("respond_by") @db.Date
+  state            RenewalOfferState @default(offered)
+  message          String?
+  newLeaseId       String?           @map("new_lease_id") @db.Uuid
+  decidedAt        DateTime?         @map("decided_at") @db.Timestamptz(6)
+  decidedByPartyId String?           @map("decided_by_party_id") @db.Uuid
+  decidedByUserId  String?           @map("decided_by_user_id") @db.Uuid
+  declineReason    String?           @map("decline_reason")
+  withdrawnAt      DateTime?         @map("withdrawn_at") @db.Timestamptz(6)
+  version          Int               @default(1)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?           @map("created_by") @db.Uuid
+  updatedAt        DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy        String?           @map("updated_by") @db.Uuid
+
+  tenant         Tenant       @relation("LeaseRenewalOfferTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_renewal_offer_tenant_id_fkey")
+  lease          Lease        @relation("LeaseRenewalOfferLease", fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_renewal_offer_lease_id_fkey")
+  building       Building     @relation("LeaseRenewalOfferBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_renewal_offer_building_id_fkey")
+  unit           Unit         @relation("LeaseRenewalOfferUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_renewal_offer_unit_id_fkey")
+  notice         LeaseNotice? @relation(fields: [noticeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_renewal_offer_notice_id_fkey")
+  newLease       Lease?       @relation("LeaseRenewalOfferNewLease", fields: [newLeaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_renewal_offer_new_lease_id_fkey")
+  decidedByParty Party?       @relation("LeaseRenewalOfferParty", fields: [decidedByPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_renewal_offer_decided_by_party_id_fkey")
+  decidedByUser  UserAccount? @relation("LeaseRenewalOfferUser", fields: [decidedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_renewal_offer_decided_by_user_id_fkey")
+
+  @@unique([leaseId], map: "lease_renewal_offer_open_key", where: raw("(state = 'offered'::ops.renewal_offer_state)"))
+  @@index([tenantId, state], map: "lease_renewal_offer_tenant_id_state_idx")
+  @@index([leaseId], map: "lease_renewal_offer_lease_id_idx")
+  @@index([buildingId], map: "lease_renewal_offer_building_id_idx")
+  @@index([unitId], map: "lease_renewal_offer_unit_id_idx")
+  @@index([noticeId], map: "lease_renewal_offer_notice_id_idx")
+  @@index([newLeaseId], map: "lease_renewal_offer_new_lease_id_idx")
+  @@index([decidedByPartyId], map: "lease_renewal_offer_decided_by_party_id_idx")
+  @@index([decidedByUserId], map: "lease_renewal_offer_decided_by_user_id_idx")
+  @@index([respondBy], map: "lease_renewal_offer_due_idx", where: raw("(state = 'offered'::ops.renewal_offer_state)"))
+  @@map("lease_renewal_offer")
+  @@schema("ops")
+}

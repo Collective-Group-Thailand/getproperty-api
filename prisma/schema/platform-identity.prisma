@@ -33,6 +33,7 @@ enum OtpPurpose {
   phone_verify
   landlord_signup
   prospect_login
+  contract_signature
 
   @@map("otp_purpose")
   @@schema("platform")
@@ -207,6 +208,7 @@ model OtpChallenge {
   bankAccountHistory    TenantBankAccountHistory[]
 
   leaseSignatures LeaseSignature[]
+  contractSignatures ContractSignature[]
 
   @@index([phoneHash, purpose, createdAt(sort: Desc)], map: "otp_challenge_phone_hash_purpose_created_at_idx")
   @@index([expiresAt], map: "otp_challenge_expires_at_idx")

@@ -17,6 +17,7 @@ import { BULLMQ_REDIS, type RedisClient } from '@database/redis.module';
 import { IntegrationDeliveryService } from '@modules/bridge-integrations/integration-delivery.service';
 import { BillingCyclesService } from '@modules/ops-billing/billing-cycles.service';
 import { EtaxService } from '@modules/ops-etax/etax.service';
+import { LeaseRenewalsService } from '@modules/ops-leases/lease-renewals.service';
 import { LeasesService } from '@modules/ops-leases/leases.service';
 import { ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
 import { ListingModerationService } from '@modules/ops-listings/listing-moderation.service';
@@ -88,6 +89,8 @@ export const MAINTENANCE_JOBS = {
   'storage-maintenance': 3_600_000,
   // G2 (D-293): mandates start on their first day and end after their last
   'mandates-maintenance': 3_600_000,
+  // G3 (D-294): renewal offers expire after respond_by; owners reminded at lease.renewal.remind_days
+  'lease-renewals': 3_600_000,
   // D-254: own LINE OAs re-checked every messaging.health_check.hours (the job only picks the due ones)
   'messaging-health': 900_000,
   // D-252 / O-018: ownership evidence deleted after its retention
@@ -143,6 +146,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly storageReclaim: StorageReclaimService,
     private readonly storagePackages: StoragePackagesService,
     private readonly mandates: MandatesService,
+    private readonly renewals: LeaseRenewalsService,
     private readonly messagingChannels: MessagingChannelsService,
     private readonly listingModeration: ListingModerationService,
     private readonly listingLeads: ListingLeadsService,
@@ -273,6 +277,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'mandates-maintenance':
         await this.mandates.maintain();
+        break;
+      case 'lease-renewals':
+        await this.renewals.maintain();
         break;
       case 'messaging-health':
         await this.messagingChannels.healthCheck();

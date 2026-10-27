@@ -110,7 +110,12 @@ describe('landlord documents: templates, stamp duty, document list (B7.5, real P
       .send({ unitId: house, lesseePartyId: lessee, startDate: '2026-11-01', months: 6, rent: '9000' })
       .expect(201);
     thLease = th.body.id as string;
-    expect(th.body.template).toEqual({ key: 'landlord_house', version: 1, language: 'th' });
+    expect(th.body.template).toEqual({
+      versionId: expect.any(String),
+      key: 'landlord_house',
+      version: 1,
+      language: 'th',
+    });
     expect(await pdfOf(`/v1/owner/leases/${thLease}/contract-preview`)).toContain('สัญญาเช่าบ้าน');
 
     const templates = await t.http.get('/v1/owner/lease-templates').set(as()).expect(200);

@@ -28,9 +28,12 @@ import { ExportsService } from './ops-documents/exports.service';
 import { InvoiceDocumentsService } from './ops-documents/invoice-documents.service';
 import { EtaxHooks } from './ops-etax/etax.hooks';
 import { EtaxService } from './ops-etax/etax.service';
+import { ContractLibraryService } from './ops-leases/contract-library.service';
 import { ContractRenderer } from './ops-leases/contract-renderer';
+import { ContractsService } from './ops-leases/contracts.service';
 import { IncomeSummariesService } from './ops-leases/income-summaries.service';
 import { LeaseNoticesService } from './ops-leases/lease-notices.service';
+import { LeaseRenewalsService } from './ops-leases/lease-renewals.service';
 import { LeaseStampDutyService } from './ops-leases/lease-stamp-duty.service';
 import { LeasesService } from './ops-leases/leases.service';
 import { RentCertificatesService } from './ops-leases/rent-certificates.service';
@@ -117,6 +120,9 @@ const SERVICES = [
   LeasesService,
   LeaseStampDutyService,
   LeaseNoticesService,
+  ContractLibraryService,
+  ContractsService,
+  LeaseRenewalsService,
   RentCertificatesService,
   RentRecordService,
   IncomeSummariesService,

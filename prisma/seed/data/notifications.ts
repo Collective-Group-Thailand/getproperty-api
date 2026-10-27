@@ -475,6 +475,56 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     ],
   },
   {
+    key: 'lease.renewal_due',
+    description: 'Owner: a lease reaches a renewal reminder threshold without an offer (G3, D-294)',
+    th: [
+      'สัญญาห้อง {{unit.unitNo}} เหลือ {{lease.daysLeft}} วัน',
+      'สัญญาเช่าห้อง {{unit.unitNo}} จะหมด {{lease.endDate}} (อีก {{lease.daysLeft}} วัน) เสนอต่อสัญญาพร้อมค่าเช่าที่แนะนำได้จากหน้าสัญญา',
+    ],
+    en: [
+      'Lease of {{unit.unitNo}}: {{lease.daysLeft}} days left',
+      'The lease of {{unit.unitNo}} ends {{lease.endDate}} ({{lease.daysLeft}} days). Offer a renewal with the suggested rent from the lease page.',
+    ],
+  },
+  {
+    key: 'lease.renewal_accepted',
+    description:
+      'Owner: the resident accepted a renewal offer; the renewal lease waits for signatures (G3, D-294)',
+    th: [
+      'ผู้เช่าห้อง {{unit.unitNo}} ตอบรับการต่อสัญญา',
+      'ผู้เช่าห้อง {{unit.unitNo}} ตอบรับการต่อสัญญาที่ค่าเช่า {{offer.rent}} บาท สัญญาฉบับใหม่ส่งให้ลงนามแล้ว ลงนามฝั่งผู้ให้เช่าได้เมื่อผู้เช่าลงนามครบ',
+    ],
+    en: [
+      'Renewal accepted for {{unit.unitNo}}',
+      'The resident of {{unit.unitNo}} accepted the renewal at THB {{offer.rent}}. The new lease was sent for signature; countersign once the resident has signed.',
+    ],
+  },
+  {
+    key: 'lease.renewal_declined',
+    description: 'Owner: the resident declined a renewal offer — the lease ends; list the unit (G3, D-294)',
+    th: [
+      'ผู้เช่าห้อง {{unit.unitNo}} ไม่ต่อสัญญา',
+      'ผู้เช่าห้อง {{unit.unitNo}} ไม่ต่อสัญญา สัญญาจะสิ้นสุด {{lease.endDate}} ลงประกาศไว้ล่วงหน้าเพื่อไม่ให้ห้องว่าง',
+    ],
+    en: [
+      'No renewal for {{unit.unitNo}}',
+      'The resident of {{unit.unitNo}} declined the renewal; the lease ends {{lease.endDate}}. List the unit early so it is not left empty.',
+    ],
+  },
+  {
+    key: 'contract.sent_for_signature',
+    description:
+      'Owner (counterparty tenant): a brokerage-mandate or co-broke contract waits for our signature (G3, D-294)',
+    th: [
+      'มีสัญญารอลงนาม {{contract.number}}',
+      '{{tenant.name}} ส่ง "{{contract.title}}" เลขที่ {{contract.number}} ให้ลงนาม',
+    ],
+    en: [
+      'Contract to sign {{contract.number}}',
+      '{{tenant.name}} sent "{{contract.title}}" ({{contract.number}}) for your signature.',
+    ],
+  },
+  {
     key: 'listing.viewing_reminder',
     description: 'Owner: a confirmed viewing is near (B7.3)',
     th: ['ใกล้ถึงเวลานัดดูห้อง', 'อย่าลืมนัดดู "{{listing.title}}" กับ {{lead.name}} {{viewing.at}} น.'],
@@ -570,6 +620,7 @@ export const NOTIFICATION_ROUTES: {
     'service_request.decided',
     'service_request.cost_settled',
     'lease.end_approaching',
+    'contract.sent_for_signature',
   ].map((eventType) => ({
     eventType,
     audience: 'resident',
@@ -770,6 +821,24 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         language: 'en',
         subject: null,
         body: 'Your lease of unit {{unit.unitNo}} with {{tenant.name}} ends {{lease.endDateEn}}. If you would like to stay, tell your landlord, or watch for a renewal offer here.\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'contract.sent_for_signature',
+    channel: 'line',
+    audience: 'resident',
+    description: 'A contract document (reservation, addendum …) waits for my e-signature (G3, D-294)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}} ส่ง "{{contract.title}}" เลขที่ {{contract.number}} ให้คุณลงนาม แตะเพื่ออ่านและลงนาม\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}} sent you "{{contract.title}}" ({{contract.number}}) to sign. Tap to read and sign.\n{{link}}',
       },
     ],
   },

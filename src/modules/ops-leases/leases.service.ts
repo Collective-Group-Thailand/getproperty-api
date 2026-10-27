@@ -34,6 +34,7 @@ import { operates } from '@modules/ops-units/building-access';
 import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
+import { LEASE_KINDS } from './contract-kinds';
 import { type ContractData, type ContractLanguage, ContractRenderer } from './contract-renderer';
 import { bahtTextEn, englishDate } from './english-text';
 import { landlordTemplateKey, landlordTemplateKind } from './landlord-templates';
@@ -90,6 +91,8 @@ export interface LeaseDraftInput {
   stampDutyPayer?: StampDutyPayer;
   /** B7.5 (D-253): Thai and English texts in one signed PDF (templates published in both languages only). */
   bilingual?: boolean;
+  /** G3 (D-294): a published lease-kind version of the contract library — the tenant's own or a platform draft. */
+  templateVersionId?: string;
 }
 
 export const LEASE_INCLUDE = {
@@ -542,7 +545,9 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
     const id = uuidv7(this.clock.now().getTime());
     const prepared = await this.db.tenant(ctx, (tx) => this.prepareDraft(tx, ctx, input));
     const { unit } = prepared;
-    const template = await this.templateFor(ctx.tenantId, unit, input.language ?? 'th');
+    const template = input.templateVersionId
+      ? await this.chosenTemplate(ctx, input.templateVersionId)
+      : await this.templateFor(ctx.tenantId, unit, input.language ?? 'th');
     if (input.bilingual) await this.assertBilingual(template.templateId);
     const gate = await this.checkTerms(
       ctx,
@@ -909,6 +914,32 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
     return version;
   }
 
+  /**
+   * G3 (D-294): a lease written on a chosen library version — a published lease-kind version the tenant sees (its own
+   * template, checked when it was published, or a platform draft); the version is pinned on the lease.
+   */
+  private async chosenTemplate(ctx: TenantContext, versionId: string) {
+    const v = await this.db.tenant(ctx, (tx) =>
+      tx.leaseTemplateVersion.findFirst({
+        where: { id: versionId, OR: [{ tenantId: null }, { tenantId: ctx.tenantId }] },
+        include: { template: { select: { kind: true } } },
+      }),
+    );
+    if (!v) throw new DomainException('http.not_found');
+    if (v.state !== 'published' || !LEASE_KINDS.includes(v.template.kind))
+      throw new DomainException('validation.failed', {
+        errors: [
+          {
+            path: 'templateVersionId',
+            code: 'state',
+            message: 'a published version of a lease contract kind',
+          },
+        ],
+      });
+    const { template: _kind, ...version } = v;
+    return version;
+  }
+
   /** The templates this tenant can write on: platform templates of its kind (landlord or standard) and its own. */
   async templates(ctx: TenantContext) {
     const tenant = await this.db.platform((tx) =>
@@ -921,7 +952,10 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
         orderBy: [{ key: 'asc' }],
       }),
     );
-    return all.filter((t) => t.tenantId !== null || t.key.startsWith('landlord_') === landlord);
+    return all.filter(
+      (t) =>
+        LEASE_KINDS.includes(t.kind) && (t.tenantId !== null || t.key.startsWith('landlord_') === landlord),
+    );
   }
 
   /** The data a contract renders from; decrypting the lessee's ID number is audited (`pii.decrypted`). */
@@ -1998,7 +2032,17 @@ export class LeasesService extends TenantScopedRepository implements OnModuleIni
         },
       });
       for (const l of due) {
-        await this.toEnding(tx, l, l.status === 'notice_given' ? 'notice_date' : 'end_date');
+        // G3 (D-294): a lease whose renewal is already in force closes by itself at its end — no move-out, the
+        // deposit was carried over to the renewal
+        const renewal =
+          l.status === 'active'
+            ? await tx.lease.findFirst({ where: { renewedFromLeaseId: l.id, status: 'active' } })
+            : null;
+        if (renewal) {
+          const end = l.endDate.toISOString().slice(0, 10);
+          const next = new Date(Date.parse(`${end}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+          await this.close(tx, l, 'ended', new Date(`${next}T00:00:00+07:00`), {});
+        } else await this.toEnding(tx, l, l.status === 'notice_given' ? 'notice_date' : 'end_date');
         changed += 1;
       }
       return changed;

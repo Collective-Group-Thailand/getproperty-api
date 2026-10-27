@@ -40,6 +40,11 @@ import {
   parcelsController,
 } from './community.controller';
 import { OwnerComplianceController } from './compliance.controller';
+import {
+  OwnerContractLibraryController,
+  OwnerContractsController,
+  OwnerRenewalsController,
+} from './contracts.controller';
 import { inspectionsController, OwnerDepositsController } from './deposits.controller';
 import { OwnerBillingDocumentsController, OwnerExportsController } from './documents.controller';
 import { OwnerEtaxController, OwnerTm30Controller } from './etax-tm30.controller';
@@ -148,6 +153,9 @@ import {
     OwnerPortfolioController,
     OwnerListingsController,
     OwnerMandatesController,
+    OwnerContractLibraryController,
+    OwnerContractsController,
+    OwnerRenewalsController,
     OwnerLeadsController,
     OwnerUnitDocumentsController,
     OwnerLeaseStampDutyController,

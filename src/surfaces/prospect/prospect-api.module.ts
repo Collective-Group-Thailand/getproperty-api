@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { ProspectContractsController } from '../owner/contracts.controller';
 import { ProspectIdentityVerificationController } from '../shared/identity-verification.controllers';
 import { ProspectMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
@@ -16,6 +17,7 @@ import { ProspectEnquiriesController } from './prospect.controller';
     ProspectEnquiriesController,
     ProspectIdentityVerificationController,
     ProspectRentRecordController,
+    ProspectContractsController,
   ],
   providers: [MeService],
 })

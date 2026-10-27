@@ -1216,5 +1216,45 @@
       "title": "Co-broke agreement cannot change now",
       "detail": "This co-broke agreement is not in a state that allows this action, or you are not the agency that may take it."
     }
+  },
+  "contract": {
+    "template_invalid": {
+      "title": "Contract text not allowed",
+      "detail": "The contract text has HTML or template syntax that is not allowed (scripts, styles, links, unescaped values, partials or unknown helpers)."
+    },
+    "unknown_variable": {
+      "title": "Unknown variable",
+      "detail": "The text or the values use a variable this contract kind does not have. Use only the variables listed for the kind."
+    },
+    "invalid_state": {
+      "title": "Contract cannot change now",
+      "detail": "This contract is not in a state that allows this action (for example it was already sent, signed or cancelled)."
+    },
+    "not_signer": {
+      "title": "Not a signer",
+      "detail": "You are not a signer of this contract, or your side has already signed."
+    },
+    "already_signed": {
+      "title": "Already signed",
+      "detail": "Every signature this contract needs from you is already recorded."
+    },
+    "changed": {
+      "title": "Contract changed",
+      "detail": "The contract you read is not the current one. Open it again and sign the version shown."
+    },
+    "signature_invalid": {
+      "title": "Signature not valid",
+      "detail": "The signature must be a PNG image of at most 200 KB."
+    }
+  },
+  "renewal": {
+    "offer_exists": {
+      "title": "A renewal offer is open",
+      "detail": "This lease already has an open renewal offer. Withdraw it before making a new one."
+    },
+    "invalid_state": {
+      "title": "Renewal offer cannot change now",
+      "detail": "This renewal offer was already answered, withdrawn or has expired, or the lease can no longer be renewed."
+    }
   }
 }

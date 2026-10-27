@@ -134,6 +134,7 @@ export function leaseDto(l: LeaseRow): LeaseDto {
       })),
     },
     template: {
+      versionId: l.templateVersion.id,
       key: l.templateVersion.template.key,
       version: l.templateVersion.version,
       language: (l.templateVersion.language === 'en' ? 'en' : 'th') as LanguageName,
@@ -287,7 +288,12 @@ export const LEASE_EXAMPLE: LeaseDto = {
       },
     ],
   },
-  template: { key: 'ocpb_2568_residential_th', version: 1, language: 'th' as LanguageName },
+  template: {
+    versionId: FAKE.uuid,
+    key: 'ocpb_2568_residential_th',
+    version: 1,
+    language: 'th' as LanguageName,
+  },
   stampDutyPayer: 'lessor' as StampDutyPayerName,
   bilingual: false,
   nextActions: ['record-notice', 'begin-move-out', 'terminate', 'renew'],

@@ -207,6 +207,16 @@ export class MandateDto {
   @ApiProperty({ type: String, example: null, nullable: true })
   endReason!: string | null;
 
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: null,
+    description:
+      'G3 (D-294): the brokerage-mandate contract sent for e-signature (evidence; the accept flow stays).',
+  })
+  contractDocumentId!: string | null;
+
   @ApiProperty({ type: String, format: 'date-time', example: FAKE.dateTime })
   createdAt!: string;
 }
@@ -346,6 +356,16 @@ export class CoBrokeDto {
 
   @ApiProperty({ type: String, format: 'date-time', example: FAKE.dateTime, nullable: true })
   signedAt!: string | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: null,
+    description:
+      'G3 (D-294): the co-broke contract; once both agencies e-signed it the agreement is `signed`.',
+  })
+  contractDocumentId!: string | null;
 
   @ApiProperty({ type: String, format: 'date-time', example: FAKE.dateTime })
   createdAt!: string;

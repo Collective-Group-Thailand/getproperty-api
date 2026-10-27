@@ -59,6 +59,7 @@ export function mandateDto(m: MandateView): MandateDto {
     endedAt: iso(m.endedAt),
     revokedAt: iso(m.revokedAt),
     endReason: m.endReason,
+    contractDocumentId: m.contractDocumentId,
     createdAt: m.createdAt.toISOString(),
   };
 }
@@ -80,6 +81,7 @@ export function coBrokeDto(c: CoBrokeView): CoBrokeDto {
     state: c.state as CoBrokeStateName,
     note: c.note,
     signedAt: iso(c.signedAt),
+    contractDocumentId: c.contractDocumentId,
     createdAt: c.createdAt.toISOString(),
   };
 }
@@ -140,6 +142,7 @@ const MANDATE_EXAMPLE: MandateDto = {
   endedAt: null,
   revokedAt: null,
   endReason: null,
+  contractDocumentId: null,
   createdAt: FAKE.dateTime,
 };
 
@@ -159,6 +162,7 @@ const CO_BROKE_EXAMPLE: CoBrokeDto = {
   state: CoBrokeStateName.Signed,
   note: null,
   signedAt: FAKE.dateTime,
+  contractDocumentId: null,
   createdAt: FAKE.dateTime,
 };
 

@@ -63,6 +63,8 @@ model ListingMandate {
   revokedAt         DateTime?        @map("revoked_at") @db.Timestamptz(6)
   revokedBy         String?          @map("revoked_by") @db.Uuid
   endReason         String?          @map("end_reason")
+  /// G3 (D-294): the e-signed brokerage-mandate contract (evidence; the accept flow stays).
+  contractDocumentId String?         @map("contract_document_id") @db.Uuid
   version           Int              @default(1)
   createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy         String?          @map("created_by") @db.Uuid
@@ -78,6 +80,8 @@ model ListingMandate {
   listings    Listing[]
   coBrokes    CoBrokeAgreement[]
   deals       Deal[]
+  contractDocument  ContractDocument?  @relation("MandateContractDocument", fields: [contractDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_mandate_contract_document_id_fkey")
+  contractDocuments ContractDocument[] @relation("ContractDocumentMandate")
 
   @@unique([unitId], map: "listing_mandate_exclusive_key", where: raw("(exclusive AND (state = ANY (ARRAY['accepted'::ops.mandate_state, 'active'::ops.mandate_state])))"))
   @@index([ownerTenantId, state], map: "listing_mandate_owner_tenant_id_state_idx")
@@ -86,6 +90,7 @@ model ListingMandate {
   @@index([grantId], map: "listing_mandate_grant_id_idx")
   @@index([buildingId], map: "listing_mandate_building_id_idx")
   @@index([ownerPartyId], map: "listing_mandate_owner_party_id_idx")
+  @@index([contractDocumentId], map: "listing_mandate_contract_document_id_idx")
   @@map("listing_mandate")
   @@schema("ops")
 }
@@ -107,6 +112,8 @@ model CoBrokeAgreement {
   signedBy         String?       @map("signed_by") @db.Uuid
   endedAt          DateTime?     @map("ended_at") @db.Timestamptz(6)
   cancelledAt      DateTime?     @map("cancelled_at") @db.Timestamptz(6)
+  /// G3 (D-294): the e-signed co-broke contract (in-app acceptance stays the fallback).
+  contractDocumentId String?     @map("contract_document_id") @db.Uuid
   version          Int           @default(1)
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy        String?       @map("created_by") @db.Uuid
@@ -119,7 +126,10 @@ model CoBrokeAgreement {
   unit           Unit            @relation("CoBrokeAgreementUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "co_broke_agreement_unit_id_fkey")
   mandate        ListingMandate? @relation(fields: [mandateId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "co_broke_agreement_mandate_id_fkey")
   deals          Deal[]
+  contractDocument  ContractDocument?  @relation("CoBrokeContractDocument", fields: [contractDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "co_broke_agreement_contract_document_id_fkey")
+  contractDocuments ContractDocument[] @relation("ContractDocumentCoBroke")
 
+  @@index([contractDocumentId], map: "co_broke_agreement_contract_document_id_idx")
   @@unique([listingId, coAgencyTenantId], map: "co_broke_agreement_live_key", where: raw("(state = ANY (ARRAY['proposed'::ops.co_broke_state, 'signed'::ops.co_broke_state]))"))
   @@index([listingId], map: "co_broke_agreement_listing_id_idx")
   @@index([coAgencyTenantId, state], map: "co_broke_agreement_co_agency_tenant_id_state_idx")

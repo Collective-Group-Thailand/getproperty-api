@@ -87,6 +87,8 @@ model LeaseTemplate {
   tenantId  String?  @map("tenant_id") @db.Uuid
   key       String
   name      String
+  /// D-290 / D-294: contract library kind.
+  kind      ContractKind @default(lease_apartment_ocpb)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy String?  @map("created_by") @db.Uuid
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -96,6 +98,7 @@ model LeaseTemplate {
   versions LeaseTemplateVersion[]
 
   @@unique([tenantId, key], map: "lease_template_tenant_id_key_key")
+  @@index([kind], map: "lease_template_kind_idx")
   @@map("lease_template")
   @@schema("ops")
 }
@@ -115,6 +118,12 @@ model LeaseTemplateVersion {
   effectiveFrom        DateTime             @map("effective_from") @db.Date
   publishedBy          String?              @map("published_by") @db.Uuid
   publishedAt          DateTime?            @map("published_at") @db.Timestamptz(6)
+  /// O-025 / D-294: pending legal verification until counsel signs this version off.
+  legalReviewState     LegalReviewState     @default(pending_legal_verification) @map("legal_review_state")
+  legalReviewedAt      DateTime?            @map("legal_reviewed_at") @db.Timestamptz(6)
+  legalReviewedBy      String?              @map("legal_reviewed_by") @db.Uuid
+  legalReviewNote      String?              @map("legal_review_note")
+  derivedFromVersionId String?              @map("derived_from_version_id") @db.Uuid
   createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy            String?              @map("created_by") @db.Uuid
   updatedAt            DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -123,9 +132,15 @@ model LeaseTemplateVersion {
   template LeaseTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "lease_template_version_template_id_fkey")
   tenant   Tenant?       @relation("LeaseTemplateVersionTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_template_version_tenant_id_fkey")
   leases   Lease[]
+  derivedFrom       LeaseTemplateVersion?  @relation("LeaseTemplateVersionDerived", fields: [derivedFromVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_template_version_derived_from_fkey")
+  derivedVersions   LeaseTemplateVersion[] @relation("LeaseTemplateVersionDerived")
+  legalReviewer     UserAccount?           @relation("LeaseTemplateVersionReviewer", fields: [legalReviewedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_template_version_legal_reviewed_by_fkey")
+  contractDocuments ContractDocument[]
 
   @@unique([templateId, language, version], map: "lease_template_version_template_id_language_version_key")
   @@index([tenantId], map: "lease_template_version_tenant_id_idx")
+  @@index([derivedFromVersionId], map: "lease_template_version_derived_from_version_id_idx")
+  @@index([legalReviewedBy], map: "lease_template_version_legal_reviewed_by_idx")
   @@map("lease_template_version")
   @@schema("ops")
 }
@@ -165,6 +180,8 @@ model Lease {
   noticeReasonCode               String?            @map("notice_reason_code")
   noticeEffectiveDate            DateTime?          @map("notice_effective_date") @db.Date
   endRemindedAt                  DateTime?          @map("end_reminded_at") @db.Timestamptz(6)
+  /// G3 (D-294): the last renewal reminder threshold (days before the end) sent to the owner.
+  renewalRemindedDays            Int?               @map("renewal_reminded_days") @db.SmallInt
   noticeEvidenceDocumentIds      String[]           @default([]) @map("notice_evidence_document_ids") @db.Uuid
   endedAt                        DateTime?          @map("ended_at") @db.Timestamptz(6)
   terminatedAt                   DateTime?          @map("terminated_at") @db.Timestamptz(6)
@@ -230,6 +247,10 @@ model Lease {
 
   listings     Listing[]     @relation("ListingLease")
   listingLeads ListingLead[] @relation("ListingLeadLease")
+
+  contractDocuments  ContractDocument[]  @relation("ContractDocumentLease")
+  renewalOffers      LeaseRenewalOffer[] @relation("LeaseRenewalOfferLease")
+  renewalOffersTaken LeaseRenewalOffer[] @relation("LeaseRenewalOfferNewLease")
 
   @@unique([tenantId, number], map: "lease_tenant_id_number_key")
   @@index([tenantId, buildingId, status], map: "lease_tenant_id_building_id_status_idx")
@@ -396,6 +417,7 @@ model LeaseNotice {
 
   tenant   Tenant    @relation("LeaseNoticeTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_notice_tenant_id_fkey")
   lease    Lease     @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_notice_lease_id_fkey")
+  renewalOffers LeaseRenewalOffer[]
   building Building  @relation("LeaseNoticeBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_notice_building_id_fkey")
   unit     Unit      @relation("LeaseNoticeUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_notice_unit_id_fkey")
   document Document? @relation("LeaseNoticeDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_notice_document_id_fkey")

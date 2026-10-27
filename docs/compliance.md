@@ -25,7 +25,7 @@
 | `compliance.no_renewal_fee` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (11); legal-reference §1 ค่าต่อสัญญา | block | lease, invoice | — | `owner.billingCycles.issue`, `owner.invoiceCharges.create`, `owner.invoices.debitNote`, `owner.invoices.issue`, `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
 | `compliance.entry_notice` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (5); legal-reference §1 เข้าห้อง | warn | access | — | — (engine/worker only) |
 | `compliance.no_cutoff` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (10); legal-reference §1 ตัดน้ำ/ไฟ; D-024, D-157 | block | access, invoice | — | — (engine/worker only) |
-| `compliance.forbidden_clause` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (1)–(12); legal-reference §1 ข้อสัญญาที่ขัดประกาศ | block | lease | — | `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
+| `compliance.forbidden_clause` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 5 (1)–(12); legal-reference §1 ข้อสัญญาที่ขัดประกาศ | block | lease | — | `owner.contractTemplates.publish`, `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
 | `compliance.late_fee_policy` | ประกาศ คกก.ว่าด้วยสัญญา 2568 ข้อ 4 (5); legal-reference §1 ค่าปรับล่าช้า; D-045, O-002 | block | invoice, lease | `late_fee.enabled` | `owner.invoices.issue`, `owner.leases.create`, `owner.leases.renew`, `owner.leases.sendForSignature`, `owner.leases.update` |
 
 18 rules.

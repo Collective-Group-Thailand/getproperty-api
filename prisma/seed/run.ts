@@ -22,6 +22,11 @@ import {
   DEFAULT_INSPECTION_TEMPLATE_NAME,
 } from '../../src/modules/ops-deposits/inspection-checklist';
 import {
+  LIBRARY_TEMPLATE_EFFECTIVE_FROM,
+  LIBRARY_TEMPLATE_VERSION,
+  libraryTemplates,
+} from '../../src/modules/ops-leases/contract-library-templates';
+import {
   CLAUSE_SCHEMA,
   FORBIDDEN_CLAUSE_TYPES,
   STANDARD_TEMPLATE_BODY,
@@ -113,6 +118,7 @@ export async function runSeed(
   await tx(db, () => seedFeatureFlags(db));
   await tx(db, () => seedWorkflowDefinitions(db));
   await tx(db, () => seedLeaseTemplates(db));
+  await tx(db, () => seedLibraryTemplates(db));
   await tx(db, () => seedInspectionTemplates(db));
   await tx(db, () => seedPricePlans(db));
   await tx(db, () => seedServiceCategories(db));
@@ -458,7 +464,7 @@ async function seedInspectionTemplates(db: ClientBase): Promise<void> {
 /** The platform สคบ. 2568 standard contract (D-020), version 1 — tenant_id NULL, published. */
 async function seedLeaseTemplates(db: ClientBase): Promise<void> {
   await db.query(
-    `INSERT INTO ops.lease_template (tenant_id, key, name) VALUES (NULL, $1, $2)
+    `INSERT INTO ops.lease_template (tenant_id, key, name, kind) VALUES (NULL, $1, $2, 'lease_apartment_ocpb')
      ON CONFLICT (tenant_id, key) DO NOTHING`,
     [STANDARD_TEMPLATE_KEY, STANDARD_TEMPLATE_NAME],
   );
@@ -482,9 +488,10 @@ async function seedLeaseTemplates(db: ClientBase): Promise<void> {
   // B7.5 (D-253): landlord templates per unit kind, th + en, published (founder 2026-10-24; counsel revises, O-017)
   for (const t of landlordTemplates()) {
     await db.query(
-      `INSERT INTO ops.lease_template (tenant_id, key, name)
-       SELECT NULL, $1, $2 WHERE NOT EXISTS (SELECT 1 FROM ops.lease_template WHERE tenant_id IS NULL AND key = $1)`,
-      [t.key, t.name],
+      `INSERT INTO ops.lease_template (tenant_id, key, name, kind)
+       SELECT NULL, $1, $2, $3::ops.contract_kind
+        WHERE NOT EXISTS (SELECT 1 FROM ops.lease_template WHERE tenant_id IS NULL AND key = $1)`,
+      [t.key, t.name, LANDLORD_KIND[t.kind]],
     );
     await db.query(
       `INSERT INTO ops.lease_template_version (template_id, tenant_id, version, language, body_html, clause_schema,
@@ -503,6 +510,46 @@ async function seedLeaseTemplates(db: ClientBase): Promise<void> {
         [...FORBIDDEN_CLAUSE_TYPES],
         landlordLegalRef(t.language),
         LANDLORD_TEMPLATE_EFFECTIVE_FROM,
+      ],
+    );
+  }
+}
+
+const LANDLORD_KIND = {
+  condo_unit: 'lease_condo_private',
+  house: 'lease_house',
+  room: 'lease_room',
+} as const;
+
+/**
+ * G3 (D-290, D-294): the contract-library drafts of the kinds B7 did not have (reservation, brokerage mandate,
+ * co-broke, addendum, renewal / termination notice texts), th + en, published, pending legal verification (O-025).
+ */
+async function seedLibraryTemplates(db: ClientBase): Promise<void> {
+  for (const t of libraryTemplates()) {
+    await db.query(
+      `INSERT INTO ops.lease_template (tenant_id, key, name, kind)
+       SELECT NULL, $1, $2, $3::ops.contract_kind
+        WHERE NOT EXISTS (SELECT 1 FROM ops.lease_template WHERE tenant_id IS NULL AND key = $1)`,
+      [t.key, t.name, t.kind],
+    );
+    await db.query(
+      `INSERT INTO ops.lease_template_version (template_id, tenant_id, version, language, body_html, clause_schema,
+                                              forbidden_clause_types, legal_ref, state, effective_from, published_at)
+       SELECT t.id, NULL, $2, $3, $4, $5::jsonb, $6::text[], $7, 'published', $8, now()
+         FROM ops.lease_template t
+        WHERE t.tenant_id IS NULL AND t.key = $1
+          AND NOT EXISTS (SELECT 1 FROM ops.lease_template_version v
+                           WHERE v.template_id = t.id AND v.language = $3 AND v.version = $2)`,
+      [
+        t.key,
+        LIBRARY_TEMPLATE_VERSION,
+        t.language,
+        t.body,
+        JSON.stringify(CLAUSE_SCHEMA),
+        [...FORBIDDEN_CLAUSE_TYPES],
+        t.legalRef,
+        LIBRARY_TEMPLATE_EFFECTIVE_FROM,
       ],
     );
   }
