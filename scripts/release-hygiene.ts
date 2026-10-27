@@ -29,7 +29,16 @@ function files(dir: string, accept: (path: string) => boolean): string[] {
 }
 
 const isSource = (p: string) => /\.(ts|json)$/.test(p) && !/\.(spec|int-spec|e2e-spec)\.ts$/.test(p);
-const ENTRY_POINTS = new Set(['src/main.ts', 'src/worker.ts', 'src/ingest.ts', 'src/instrument.ts']);
+// The three long-running processes, Sentry's preload and the one-shot commands (plain stdout lines for their logs).
+const ENTRY_POINTS = new Set([
+  'src/main.ts',
+  'src/worker.ts',
+  'src/ingest.ts',
+  'src/instrument.ts',
+  'src/migrate.ts',
+  'src/drill-smoke.ts',
+  'src/credentials-import.ts',
+]);
 const MARKERS: { rule: string; pattern: RegExp }[] = [
   { rule: 'dev marker', pattern: /\[dev\]/i },
   { rule: 'mock marker', pattern: /\bmock\b(?!-up)/i },

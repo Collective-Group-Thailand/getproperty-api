@@ -6,7 +6,9 @@
 //
 // The `core` schema belongs to @collective/asset-core (D-153, ADR-0010, ADR-0011): its 18 tables and 31 enums are
 // declared EXTERNAL so Prisma Migrate never creates, alters or drops them, and the shadow database used by
-// `prisma migrate dev|diff --from-migrations` is initialised with the package's own SQL first.
+// `prisma migrate dev|diff --from-migrations` is initialised with the package's own SQL first. The runner's
+// bookkeeping table `core._migration` is external too: otherwise `prisma migrate deploy` on a fresh database (after
+// `asset-core migrate`) sees a non-empty schema and stops with P3005.
 import 'dotenv/config';
 
 import { CORE_ENUMS, CORE_TABLES, coreMigrationSql } from '@collective/asset-core';
@@ -15,7 +17,7 @@ import { defineConfig } from 'prisma/config';
 export default defineConfig({
   schema: 'prisma/schema',
   experimental: { externalTables: true },
-  tables: { external: CORE_TABLES.map((t) => `core.${t}`) },
+  tables: { external: [...CORE_TABLES.map((t) => `core.${t}`), 'core._migration'] },
   enums: { external: Object.keys(CORE_ENUMS).map((e) => `core.${e}`) },
   migrations: {
     path: 'prisma/migrations',

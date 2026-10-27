@@ -16,3 +16,4 @@ contract
 docker
 !docker/entrypoint.sh
 .asset-core
+.collective-shared

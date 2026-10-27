@@ -89,7 +89,7 @@ describe('billing documents (B4.3)', () => {
     expect(plain).not.toContain('ภาษีมูลค่าเพิ่ม 7%');
     expect(plain).toContain('ผู้ให้เช่าไม่ได้จดทะเบียนภาษีมูลค่าเพิ่ม');
     expect(vat).toContain('ภาษีมูลค่าเพิ่ม 7%');
-    expect(vat).toContain('เลขประจำตัวผู้เสียภาษีอากร 0105500000000');
+    expect(vat).toContain('เลขประจำตัวผู้เสียภาษีอากร 0000000000042');
     expect(vat).toContain('สำนักงานใหญ่');
     expect(vat).not.toContain('ไม่ได้จดทะเบียนภาษีมูลค่าเพิ่ม');
   });

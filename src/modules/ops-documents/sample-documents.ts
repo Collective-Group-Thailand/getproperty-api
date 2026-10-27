@@ -19,7 +19,7 @@ export function sampleInvoiceSnapshot(vatRegistered = false): InvoiceSnapshot {
     tenant: {
       legalName: 'บริษัท ตัวอย่าง จำกัด (ทดสอบ)',
       displayName: 'หอพักตัวอย่าง',
-      taxId: vatRegistered ? '0105500000000' : null,
+      taxId: vatRegistered ? '0000000000042' : null,
       vatRegistered,
       address: {
         line1: '99/9 ถนนตัวอย่าง',
