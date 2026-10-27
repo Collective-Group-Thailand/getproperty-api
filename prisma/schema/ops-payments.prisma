@@ -261,6 +261,7 @@ model Payment {
   slipReviews      SlipReview[]       @relation("SlipReviewPayment")
   receipts         Receipt[]
   taxInvoices      TaxInvoice[]
+  deals            Deal[]
   credits          PayerCredit[]
 
   @@unique([provider, providerRef], map: "payment_provider_ref_key", where: raw("(provider_ref IS NOT NULL)"))

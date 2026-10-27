@@ -16,12 +16,14 @@ describe('storage metering settings (D-276)', () => {
       condo_juristic: '5',
       pm_company: '5',
       landlord: '5',
+      agency: '5',
     });
     expect(v['storage.price_per_gb_month']!.value).toEqual({
       apartment: null,
       condo_juristic: null,
       pm_company: null,
       landlord: null,
+      agency: null,
     });
     expect(v['storage.packs']!.value).toEqual([]);
     expect(v['storage.notice_at_percent']!.value).toEqual([80, 100]);

@@ -1,0 +1,203 @@
+// G2 agency mandates, co-broke agreements, deals and fee accruals (D-284, D-287, D-293); migration 0059,
+// schema-design §7.5 rows 149–155.
+
+enum MandateScope {
+  list
+  list_and_lease
+  manage
+
+  @@map("mandate_scope")
+  @@schema("ops")
+}
+
+enum MandateState {
+  invited
+  accepted
+  active
+  ended
+  revoked
+
+  @@map("mandate_state")
+  @@schema("ops")
+}
+
+enum CoBrokeState {
+  proposed
+  signed
+  ended
+  cancelled
+
+  @@map("co_broke_state")
+  @@schema("ops")
+}
+
+enum FeeAccrualKind {
+  success_fee
+  co_broke_fee
+
+  @@map("fee_accrual_kind")
+  @@schema("ops")
+}
+
+/// An owner mandates an agency tenant (tenant_id) for one unit, backed by a unit grant (D-293).
+model ListingMandate {
+  id                String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String           @map("tenant_id") @db.Uuid
+  ownerTenantId     String           @map("owner_tenant_id") @db.Uuid
+  ownerPartyId      String?          @map("owner_party_id") @db.Uuid
+  unitId            String           @map("unit_id") @db.Uuid
+  buildingId        String           @map("building_id") @db.Uuid
+  scope             MandateScope     @default(list)
+  exclusive         Boolean          @default(false)
+  commissionTerms   String?          @map("commission_terms")
+  commissionPercent Decimal?         @map("commission_percent") @db.Decimal(7, 4)
+  commissionAmount  Decimal?         @map("commission_amount") @db.Decimal(14, 2)
+  validFrom         DateTime         @map("valid_from") @db.Date
+  validTo           DateTime?        @map("valid_to") @db.Date
+  state             MandateState     @default(invited)
+  grantId           String?          @map("grant_id") @db.Uuid
+  acceptedAt        DateTime?        @map("accepted_at") @db.Timestamptz(6)
+  acceptedBy        String?          @map("accepted_by") @db.Uuid
+  activatedAt       DateTime?        @map("activated_at") @db.Timestamptz(6)
+  endedAt           DateTime?        @map("ended_at") @db.Timestamptz(6)
+  revokedAt         DateTime?        @map("revoked_at") @db.Timestamptz(6)
+  revokedBy         String?          @map("revoked_by") @db.Uuid
+  endReason         String?          @map("end_reason")
+  version           Int              @default(1)
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?          @map("created_by") @db.Uuid
+  updatedAt         DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?          @map("updated_by") @db.Uuid
+
+  tenant      Tenant            @relation("ListingMandateTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_mandate_tenant_id_fkey")
+  ownerTenant Tenant            @relation("ListingMandateOwnerTenant", fields: [ownerTenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_mandate_owner_tenant_id_fkey")
+  ownerParty  Party?            @relation("ListingMandateOwnerParty", fields: [ownerPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_mandate_owner_party_id_fkey")
+  unit        Unit              @relation("ListingMandateUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_mandate_unit_id_fkey")
+  building    Building          @relation("ListingMandateBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_mandate_building_id_fkey")
+  grant       AssetAccessGrant? @relation("ListingMandateGrant", fields: [grantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_mandate_grant_id_fkey")
+  listings    Listing[]
+  coBrokes    CoBrokeAgreement[]
+  deals       Deal[]
+
+  @@unique([unitId], map: "listing_mandate_exclusive_key", where: raw("(exclusive AND (state = ANY (ARRAY['accepted'::ops.mandate_state, 'active'::ops.mandate_state])))"))
+  @@index([ownerTenantId, state], map: "listing_mandate_owner_tenant_id_state_idx")
+  @@index([tenantId, state], map: "listing_mandate_tenant_id_state_idx")
+  @@index([unitId, state], map: "listing_mandate_unit_id_state_idx")
+  @@index([grantId], map: "listing_mandate_grant_id_idx")
+  @@index([buildingId], map: "listing_mandate_building_id_idx")
+  @@index([ownerPartyId], map: "listing_mandate_owner_party_id_idx")
+  @@map("listing_mandate")
+  @@schema("ops")
+}
+
+/// The listing agency (tenant_id) shares a listing with a co-agency at a split of its commission (D-293).
+model CoBrokeAgreement {
+  id               String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String        @map("tenant_id") @db.Uuid
+  coAgencyTenantId String        @map("co_agency_tenant_id") @db.Uuid
+  listingId        String        @map("listing_id") @db.Uuid
+  unitId           String        @map("unit_id") @db.Uuid
+  mandateId        String?       @map("mandate_id") @db.Uuid
+  splitPercent     Decimal       @map("split_percent") @db.Decimal(7, 4)
+  validFrom        DateTime      @map("valid_from") @db.Date
+  validTo          DateTime?     @map("valid_to") @db.Date
+  state            CoBrokeState  @default(proposed)
+  note             String?
+  signedAt         DateTime?     @map("signed_at") @db.Timestamptz(6)
+  signedBy         String?       @map("signed_by") @db.Uuid
+  endedAt          DateTime?     @map("ended_at") @db.Timestamptz(6)
+  cancelledAt      DateTime?     @map("cancelled_at") @db.Timestamptz(6)
+  version          Int           @default(1)
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?       @map("created_by") @db.Uuid
+  updatedAt        DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy        String?       @map("updated_by") @db.Uuid
+
+  tenant         Tenant          @relation("CoBrokeAgreementTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "co_broke_agreement_tenant_id_fkey")
+  coAgencyTenant Tenant          @relation("CoBrokeAgreementCoAgencyTenant", fields: [coAgencyTenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "co_broke_agreement_co_agency_tenant_id_fkey")
+  listing        Listing         @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "co_broke_agreement_listing_id_fkey")
+  unit           Unit            @relation("CoBrokeAgreementUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "co_broke_agreement_unit_id_fkey")
+  mandate        ListingMandate? @relation(fields: [mandateId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "co_broke_agreement_mandate_id_fkey")
+  deals          Deal[]
+
+  @@unique([listingId, coAgencyTenantId], map: "co_broke_agreement_live_key", where: raw("(state = ANY (ARRAY['proposed'::ops.co_broke_state, 'signed'::ops.co_broke_state]))"))
+  @@index([listingId], map: "co_broke_agreement_listing_id_idx")
+  @@index([coAgencyTenantId, state], map: "co_broke_agreement_co_agency_tenant_id_state_idx")
+  @@index([tenantId, state], map: "co_broke_agreement_tenant_id_state_idx")
+  @@index([unitId], map: "co_broke_agreement_unit_id_idx")
+  @@index([mandateId], map: "co_broke_agreement_mandate_id_idx")
+  @@map("co_broke_agreement")
+  @@schema("ops")
+}
+
+/// A lease of a listed / mandated unit closed through the platform, once per lease (D-293; append-only).
+model Deal {
+  id                    String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId              String    @map("tenant_id") @db.Uuid
+  leaseId               String    @unique(map: "deal_lease_id_key") @map("lease_id") @db.Uuid
+  unitId                String    @map("unit_id") @db.Uuid
+  buildingId            String    @map("building_id") @db.Uuid
+  listingId             String?   @map("listing_id") @db.Uuid
+  mandateId             String?   @map("mandate_id") @db.Uuid
+  coBrokeAgreementId    String?   @map("co_broke_agreement_id") @db.Uuid
+  listingAgencyTenantId String?   @map("listing_agency_tenant_id") @db.Uuid
+  coAgencyTenantId      String?   @map("co_agency_tenant_id") @db.Uuid
+  monthlyRent           Decimal   @map("monthly_rent") @db.Decimal(14, 2)
+  commissionAmount      Decimal?  @map("commission_amount") @db.Decimal(14, 2)
+  coBrokeAmount         Decimal?  @map("co_broke_amount") @db.Decimal(14, 2)
+  firstPaymentId        String?   @map("first_payment_id") @db.Uuid
+  closedAt              DateTime  @map("closed_at") @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant              Tenant            @relation("DealTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deal_tenant_id_fkey")
+  lease               Lease             @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deal_lease_id_fkey")
+  unit                Unit              @relation("DealUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deal_unit_id_fkey")
+  building            Building          @relation("DealBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deal_building_id_fkey")
+  listing             Listing?          @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deal_listing_id_fkey")
+  mandate             ListingMandate?   @relation(fields: [mandateId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deal_mandate_id_fkey")
+  coBrokeAgreement    CoBrokeAgreement? @relation(fields: [coBrokeAgreementId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deal_co_broke_agreement_id_fkey")
+  listingAgencyTenant Tenant?           @relation("DealListingAgencyTenant", fields: [listingAgencyTenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deal_listing_agency_tenant_id_fkey")
+  coAgencyTenant      Tenant?           @relation("DealCoAgencyTenant", fields: [coAgencyTenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deal_co_agency_tenant_id_fkey")
+  firstPayment        Payment?          @relation(fields: [firstPaymentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "deal_first_payment_id_fkey")
+  accruals            FeeAccrual[]
+
+  @@index([tenantId, closedAt(sort: Desc)], map: "deal_tenant_id_closed_at_idx")
+  @@index([listingAgencyTenantId], map: "deal_listing_agency_tenant_id_idx")
+  @@index([coAgencyTenantId], map: "deal_co_agency_tenant_id_idx")
+  @@index([listingId], map: "deal_listing_id_idx")
+  @@index([mandateId], map: "deal_mandate_id_idx")
+  @@index([coBrokeAgreementId], map: "deal_co_broke_agreement_id_idx")
+  @@index([unitId], map: "deal_unit_id_idx")
+  @@index([buildingId], map: "deal_building_id_idx")
+  @@index([firstPaymentId], map: "deal_first_payment_id_idx")
+  @@map("deal")
+  @@schema("ops")
+}
+
+/// A success / co-broke fee an agency (tenant_id) owes for a deal per the price plan (D-287, D-293; invoiced in G5).
+model FeeAccrual {
+  id                    String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId              String         @map("tenant_id") @db.Uuid
+  dealId                String         @map("deal_id") @db.Uuid
+  kind                  FeeAccrualKind
+  pricePlanVersionId    String         @map("price_plan_version_id") @db.Uuid
+  billingUnit           String         @map("billing_unit")
+  rate                  Decimal        @db.Decimal(14, 4)
+  baseAmount            Decimal?       @map("base_amount") @db.Decimal(14, 2)
+  amount                Decimal        @db.Decimal(14, 2)
+  capped                Boolean        @default(false)
+  accruedOn             DateTime       @map("accrued_on") @db.Date
+  platformInvoiceLineId String?        @map("platform_invoice_line_id") @db.Uuid
+  creditNoteId          String?        @map("credit_note_id") @db.Uuid
+  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant           Tenant           @relation("FeeAccrualTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fee_accrual_tenant_id_fkey")
+  deal             Deal             @relation(fields: [dealId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fee_accrual_deal_id_fkey")
+  pricePlanVersion PricePlanVersion @relation(fields: [pricePlanVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fee_accrual_price_plan_version_id_fkey")
+
+  @@unique([dealId, kind, tenantId], map: "fee_accrual_deal_id_kind_tenant_id_key")
+  @@index([tenantId, accruedOn], map: "fee_accrual_tenant_id_accrued_on_idx")
+  @@index([pricePlanVersionId], map: "fee_accrual_price_plan_version_id_idx")
+  @@map("fee_accrual")
+  @@schema("ops")
+}

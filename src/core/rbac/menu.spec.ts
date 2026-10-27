@@ -46,6 +46,18 @@ describe('menu entitlements (/me)', () => {
     expect(entitledMenu(OWNER_MENU, set('owner'), 'apartment', {})).not.toContain('listings');
   });
 
+  it('an agency owner gets listings, mandated units, mandates, co-broke and deals — no building console (G2)', () => {
+    const agency = entitledMenu(OWNER_MENU, set('owner'), 'agency', {});
+    expect(agency).toEqual(
+      expect.arrayContaining(['listings', 'leads', 'mandated_units', 'mandates', 'co_broke', 'deals']),
+    );
+    for (const key of ['portfolio', 'dashboard', 'buildings', 'units', 'devices'])
+      expect(agency).not.toContain(key);
+    const landlord = entitledMenu(OWNER_MENU, set('owner'), 'landlord', {});
+    expect(landlord).toEqual(expect.arrayContaining(['mandates', 'deals']));
+    expect(landlord).not.toContain('co_broke');
+  });
+
   it('platform roles: support sees tenants, not outbox', () => {
     const support = entitledMenu(ADMIN_MENU, set('support'), null, {});
     expect(support).toContain('tenants');

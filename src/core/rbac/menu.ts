@@ -3,7 +3,7 @@
  * permissions (D-090/D-091), the tenant type (D-150) and feature flags. Keys are stable identifiers the web maps to
  * routes; adding an entry is additive.
  */
-export type TenantTypeKey = 'apartment' | 'condo_juristic' | 'pm_company' | 'landlord';
+export type TenantTypeKey = 'apartment' | 'condo_juristic' | 'pm_company' | 'landlord' | 'agency';
 
 export interface MenuEntry {
   key: string;
@@ -21,9 +21,14 @@ export const OWNER_MENU: readonly MenuEntry[] = [
   // D-251: a landlord's home is the portfolio of its units across projects, not a building
   { key: 'portfolio', anyOf: ['unit.read'], tenantTypes: ['landlord'] },
   // D-252: listings — landlords first (apartments later for vacant units)
-  { key: 'listings', anyOf: ['listing.read'], tenantTypes: ['landlord'] },
+  { key: 'listings', anyOf: ['listing.read'], tenantTypes: ['landlord', 'agency'] },
   // B7.3: the enquiries inbox beside the listings
-  { key: 'leads', anyOf: ['listing.read'], tenantTypes: ['landlord'] },
+  { key: 'leads', anyOf: ['listing.read'], tenantTypes: ['landlord', 'agency'] },
+  // G2 (D-284, D-293): an agency works on the units owners mandated to it; owners see their mandates and deals
+  { key: 'mandated_units', anyOf: ['listing.read'], tenantTypes: ['agency'] },
+  { key: 'mandates', anyOf: ['listing.read', 'tenant.grant.manage'], tenantTypes: ['landlord', 'agency'] },
+  { key: 'co_broke', anyOf: ['listing.read'], tenantTypes: ['agency'] },
+  { key: 'deals', anyOf: ['listing.read'], tenantTypes: ['landlord', 'agency'] },
   { key: 'dashboard', anyOf: ['report.read', 'property.read'], tenantTypes: BUILDING_OPERATORS },
   { key: 'buildings', anyOf: ['property.read'], tenantTypes: BUILDING_OPERATORS },
   { key: 'units', anyOf: ['unit.read'], tenantTypes: BUILDING_OPERATORS },

@@ -315,6 +315,15 @@ export class ListingDto {
   @ApiProperty({ format: 'uuid' })
   buildingId!: string;
 
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description:
+      'G2 (D-293): the mandate under which an agency lists another owner’s unit; null = the tenant’s own unit.',
+  })
+  mandateId!: string | null;
+
   @ApiProperty({ enum: ListingStateName, enumName: 'ListingState', example: ListingStateName.Published })
   state!: ListingStateName;
 
@@ -509,6 +518,7 @@ export const LISTING_EXAMPLE = {
   id: FAKE.uuid,
   unitId: FAKE.uuid,
   buildingId: FAKE.buildingId,
+  mandateId: null,
   state: 'published',
   slug: 'condo-1br-0a1b2c3d4e',
   titleTh: 'คอนโด 1 ห้องนอน ใกล้ BTS อารีย์',

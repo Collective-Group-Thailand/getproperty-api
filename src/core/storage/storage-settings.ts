@@ -4,7 +4,7 @@
  * metering not active for that type (usage is still snapshotted, nothing is held, no notice is sent); a null price =
  * overage not sold.
  */
-export const TENANT_TYPES = ['apartment', 'condo_juristic', 'pm_company', 'landlord'] as const;
+export const TENANT_TYPES = ['apartment', 'condo_juristic', 'pm_company', 'landlord', 'agency'] as const;
 export type StorageTenantType = (typeof TENANT_TYPES)[number];
 
 const DECIMAL = /^\d{1,6}(\.\d{1,4})?$/;

@@ -20,6 +20,7 @@ import { EtaxService } from '@modules/ops-etax/etax.service';
 import { LeasesService } from '@modules/ops-leases/leases.service';
 import { ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
 import { ListingModerationService } from '@modules/ops-listings/listing-moderation.service';
+import { MandatesService } from '@modules/ops-listings/mandates.service';
 import { SettlementsService } from '@modules/ops-payments/settlements.service';
 import { ReceivablesService } from '@modules/ops-receivables/receivables.service';
 import { MaintenancePlansService } from '@modules/ops-service/maintenance-plans.service';
@@ -85,6 +86,8 @@ export const MAINTENANCE_JOBS = {
   // G1 (D-285, D-286): object storage vs counters per tenant prefix; package expiry / renewal, reclaim purge, holds
   'storage-reconcile': 86_400_000,
   'storage-maintenance': 3_600_000,
+  // G2 (D-293): mandates start on their first day and end after their last
+  'mandates-maintenance': 3_600_000,
   // D-254: own LINE OAs re-checked every messaging.health_check.hours (the job only picks the due ones)
   'messaging-health': 900_000,
   // D-252 / O-018: ownership evidence deleted after its retention
@@ -139,6 +142,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly storageReconciliation: StorageReconciliationService,
     private readonly storageReclaim: StorageReclaimService,
     private readonly storagePackages: StoragePackagesService,
+    private readonly mandates: MandatesService,
     private readonly messagingChannels: MessagingChannelsService,
     private readonly listingModeration: ListingModerationService,
     private readonly listingLeads: ListingLeadsService,
@@ -266,6 +270,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
       case 'storage-maintenance':
         await this.storagePackages.maintain();
         await this.storageReclaim.purge();
+        break;
+      case 'mandates-maintenance':
+        await this.mandates.maintain();
         break;
       case 'messaging-health':
         await this.messagingChannels.healthCheck();

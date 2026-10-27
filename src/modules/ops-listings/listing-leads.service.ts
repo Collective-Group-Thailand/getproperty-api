@@ -1026,10 +1026,11 @@ export class ListingLeadsService {
     });
     if (!lease) return { closed: 0, won: 0, lost: 0 };
     const now = this.clock.now();
+    // G2 (D-293): listings agencies hold under a mandate for the unit close as well
     const live = await tx.listing.findMany({
       where: {
         unitId: lease.unitId,
-        tenantId: lease.tenantId,
+        OR: [{ tenantId: lease.tenantId }, { mandateId: { not: null } }],
         state: { in: ['pending_review', 'published', 'paused'] },
       },
     });
@@ -1058,9 +1059,8 @@ export class ListingLeadsService {
     }
     const leads = await tx.listingLead.findMany({
       where: {
-        tenantId: lease.tenantId,
         state: { in: OPEN },
-        OR: [{ listingId: { in: live.map((l) => l.id) } }, { leaseId }],
+        OR: [{ listingId: { in: live.map((l) => l.id) } }, { tenantId: lease.tenantId, leaseId }],
       },
       include: { listing: true, viewings: true },
     });

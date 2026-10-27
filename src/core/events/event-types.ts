@@ -47,6 +47,22 @@ export const DOMAIN_EVENT_TYPES = {
   'identity.verification_rejected': 'The e-KYC provider did not verify a person (D-267).',
   'listing.share_kit_generated':
     'The share cards of a listing were rendered (again) for its share kit (D-268).',
+  'mandate.invited': 'An owner invited an agency to list (lease / manage) one unit (G2, D-293).',
+  'mandate.accepted': 'The agency accepted a mandate; its unit grant exists, active from valid_from (D-293).',
+  'mandate.activated': 'A mandate is in force: the agency sees the unit and may list it (D-293).',
+  'mandate.declined': 'The agency declined a mandate invitation (D-293).',
+  'mandate.revoked':
+    'The owner revoked a mandate: the grant is revoked and the agency listings of the unit closed (D-293).',
+  'mandate.ended':
+    'A mandate ended (validity over or either party ended it): grant revoked, agency listings closed (D-293).',
+  'co_broke.proposed': 'A listing agency proposed a co-broke agreement to another agency (D-293).',
+  'co_broke.signed': 'The co-agency signed (accepted) a co-broke agreement (D-293).',
+  'co_broke.cancelled': 'A proposed co-broke agreement was cancelled before signing (D-293).',
+  'co_broke.ended': 'A signed co-broke agreement was ended by one of the agencies (D-293).',
+  'deal.closed':
+    'A lease of a listed / mandated unit closed through the platform (activated, e-signed, first payment confirmed) — once per lease (D-293).',
+  'fee.accrued':
+    'A success / co-broke fee was accrued for an agency per the published price plan (D-287, G5 invoices it).',
   'listing.closed':
     'A listing was closed — leased, withdrawn by the owner, or hidden for good by moderation (D-252).',
   'listing.rejected': 'Moderation rejected a listing with a reason; the owner is told (D-252).',

@@ -99,6 +99,7 @@ export class OwnerListingsController {
       id: l.id,
       unitId: l.unitId,
       buildingId: l.buildingId,
+      mandateId: l.mandateId,
       state: l.state as ListingStateName,
       slug: l.slug,
       titleTh: l.titleTh,
