@@ -14,6 +14,7 @@ import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import { AdminFilesController, AdminIntegrationEventsController } from './admin-backlog.controller';
 import { ADMIN_BUSINESS_CONTROLLERS } from './admin-business.controller';
+import { AdminContractLibraryController } from './admin-contract-library.controller';
 import { AdminProviderCredentialsController } from './admin-credentials.controller';
 import { AdminGuidesController } from './admin-guides.controller';
 import { AdminListingsController } from './admin-listings.controller';
@@ -53,6 +54,7 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
     AdminTenantStorageQuotaController,
     AdminMessagingRatesController,
     AdminGuidesController,
+    AdminContractLibraryController,
     AdminListingsController,
     AdminComplianceController,
     AdminDocumentTemplatesController,

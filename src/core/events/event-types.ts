@@ -59,6 +59,30 @@ export const DOMAIN_EVENT_TYPES = {
   'co_broke.signed': 'The co-agency signed (accepted) a co-broke agreement (D-293).',
   'co_broke.cancelled': 'A proposed co-broke agreement was cancelled before signing (D-293).',
   'co_broke.ended': 'A signed co-broke agreement was ended by one of the agencies (D-293).',
+  'contract_template.copied':
+    'A tenant copied a contract-library version into its own template (derived_from_version_id, D-294).',
+  'contract_template.updated': 'A tenant edited the draft text of its own contract template (D-294).',
+  'contract_template.published':
+    'A tenant published its own contract template version after the compliance check (D-158, D-294).',
+  'contract_template.reviewed':
+    'The platform admin recorded the legal-review state of a library version (O-025, D-294).',
+  'contract.created':
+    'A signable contract document (reservation, mandate, co-broke, addendum) was drafted (D-294).',
+  'contract.sent_for_signature':
+    'A contract document was numbered, rendered with its sha256 and sent to its signers (D-062, D-294).',
+  'contract.signed_by': 'One signer signed a contract document (OTP + LINE or drawn in the console, D-062).',
+  'contract.signed': 'Every signer signed: the signed PDF is stored under legal hold (D-286, D-294).',
+  'contract.cancelled': 'A draft or unsigned contract document was cancelled (D-294).',
+  'lease.renewal_offered':
+    'The owner offered a renewal (rent, term, respond-by) with the B7.5 renewal_offer letter (D-294).',
+  'lease.renewal_accepted':
+    'The resident accepted a renewal offer; the renewal lease draft is sent for signature (D-294).',
+  'lease.renewal_declined':
+    'The resident declined a renewal offer; the lease ends (lessee notice / move-out, D-219, D-294).',
+  'lease.renewal_withdrawn': 'The owner withdrew an open renewal offer (D-294).',
+  'lease.renewal_expired': 'A renewal offer passed its respond-by date unanswered (D-294).',
+  'lease.renewal_due':
+    'A lease in force reaches a renewal reminder threshold (lease.renewal.remind_days) without an offer (D-294).',
   'deal.closed':
     'A lease of a listed / mandated unit closed through the platform (activated, e-signed, first payment confirmed) — once per lease (D-293).',
   'fee.accrued':

@@ -133,7 +133,7 @@ export function fonts(): string {
   return fontCss;
 }
 
-const compiled = new Map<string, Handlebars.TemplateDelegate<ContractData>>();
+const compiled = new Map<string, Handlebars.TemplateDelegate<object>>();
 const hbs = Handlebars.create();
 
 /**
@@ -160,10 +160,10 @@ export class ContractRenderer {
     @Optional() private readonly brand?: PlatformBrand,
   ) {}
 
-  body(templateBody: string, data: ContractData): string {
+  body(templateBody: string, data: object): string {
     let fn = compiled.get(templateBody);
     if (!fn) {
-      fn = hbs.compile<ContractData>(templateBody, { strict: false, noEscape: false });
+      fn = hbs.compile<object>(templateBody, { strict: false, noEscape: false });
       compiled.set(templateBody, fn);
     }
     return fn(data);
@@ -211,6 +211,27 @@ export class ContractRenderer {
         ? `Lease no. ${data.contract.number ?? 'draft'} · SHA-256 of the text ${hash}`
         : `สัญญาเลขที่ ${data.contract.number ?? 'ร่าง'} · SHA-256 ของข้อความ ${hash}`;
     const pdf = await this.pdf.render(await this.brandedDocument(body, title, language), { title, footer });
+    return { pdf, sha256: createHash('sha256').update(pdf).digest(), contentSha256, text: this.text(body) };
+  }
+
+  /**
+   * G3 (D-294): any contract-library text (reservation, mandate, co-broke, addendum, a library preview) with its own
+   * data → PDF; the footer carries the title and the content hash like a lease.
+   */
+  async renderDocument(
+    templateBody: string,
+    data: object,
+    options: { title: string; language?: ContractLanguage },
+  ): Promise<{ pdf: Buffer; sha256: Buffer; contentSha256: string; text: string }> {
+    const language = options.language ?? 'th';
+    const body = this.body(templateBody, data);
+    const contentSha256 = this.contentSha256(body);
+    const hash = `${contentSha256.slice(0, 16)}…${contentSha256.slice(-8)}`;
+    const footer = `${options.title} · SHA-256 ${language === 'en' ? 'of the text' : 'ของข้อความ'} ${hash}`;
+    const pdf = await this.pdf.render(await this.brandedDocument(body, options.title, language), {
+      title: options.title,
+      footer,
+    });
     return { pdf, sha256: createHash('sha256').update(pdf).digest(), contentSha256, text: this.text(body) };
   }
 }

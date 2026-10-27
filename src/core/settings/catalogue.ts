@@ -872,6 +872,44 @@ export const SETTINGS: readonly SettingDef[] = [
     reason: 'seed: B7.5',
   },
   {
+    key: 'contract.library.disclaimer',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-290 / D-294 (G3): the disclaimer shown with every contract-library draft and every document made from one ({"th": …, "en": …}); drafts stay pending legal verification (O-025).',
+    editableBy: ADMIN_COMPLIANCE,
+    value: {
+      th: 'ตัวอย่างสัญญาเพื่ออำนวยความสะดวก ไม่ใช่คำแนะนำทางกฎหมาย',
+      en: 'A sample contract provided for convenience; not legal advice.',
+    },
+    reason: 'seed: D-290 (founder text)',
+    check: (value: unknown) =>
+      value &&
+      typeof value === 'object' &&
+      ['th', 'en'].every((k) => {
+        const v = (value as Record<string, unknown>)[k];
+        return typeof v === 'string' && v.trim().length > 0 && v.length <= 500;
+      })
+        ? []
+        : ['{"th": text, "en": text} (each 1–500 characters)'],
+  },
+  {
+    key: 'lease.renewal.remind_days',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-294 (G3): days before a lease in force ends when the owner is reminded to offer a renewal (once per threshold, while no offer is open or accepted); [] = off. A landlord already reminded by B7.11 (lease.end.remind_days_before) is not reminded again at that threshold or earlier.',
+    editableBy: OWNER_SETTINGS,
+    value: [60, 30],
+    reason: 'seed: D-294 (pack G3: 60 / 30 days)',
+    check: (value: unknown) =>
+      Array.isArray(value) &&
+      value.length <= 6 &&
+      value.every((v) => Number.isInteger(v) && v >= 1 && v <= 365)
+        ? []
+        : ['an array of up to 6 whole days between 1 and 365'],
+  },
+  {
     key: 'lease.notice.late_payment_days',
     valueType: 'int',
     scopeAllowed: ['platform'],

@@ -349,6 +349,16 @@ export class LeaseCreateDto {
   language?: LanguageName;
 
   @ApiPropertyOptional({
+    type: String,
+    format: 'uuid',
+    description:
+      'G3 (D-294): write the lease on a published lease-kind version of the contract library — the tenant’s own template (checked when published) or a platform draft — instead of the default template; the version is pinned.',
+  })
+  @IsOptional()
+  @IsUUID()
+  templateVersionId?: string;
+
+  @ApiPropertyOptional({
     enum: StampDutyPayerName,
     enumName: 'StampDutyPayer',
     description: 'Who pays the stamp duty (O-019), default `lessor` (liable by law unless agreed otherwise).',
@@ -743,6 +753,13 @@ export class LeaseContractViewDto {
 }
 
 export class LeaseTemplateRefDto {
+  @ApiProperty({
+    format: 'uuid',
+    example: FAKE.uuid,
+    description: 'G3 (D-294): the template version pinned on the lease (contract library).',
+  })
+  versionId!: string;
+
   @ApiProperty({ example: 'landlord_condo_unit' })
   key!: string;
 

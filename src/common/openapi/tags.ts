@@ -95,7 +95,17 @@ export const API_TAGS: Record<string, string> = {
   'owner.leases':
     'Leases on the สคบ. 2568 standard contract: drafts with compliance checks, contract PDF, e-signature and countersignature, activation, notices, move-out, termination, renewal, resident invitations (D-020, D-023, D-061, D-062).',
   'owner.leaseTemplates': 'The standard contract templates and the addendum clause types they allow (D-020).',
+  'owner.contractLibrary':
+    'Contract library: platform drafts and own templates — copy, edit, clause diff, compliance check, publish; every draft pending legal verification with the disclaimer (D-290, D-294, O-025).',
+  'owner.contracts':
+    'Signable contract documents of the library (reservation, brokerage mandate, co-broke, addendum): draft, send, e-sign, archive (D-062, D-294).',
+  'owner.renewals':
+    'Renewal offers: suggested rent, offer with the renewal letter, answers, withdrawal (D-294).',
   'resident.leases': 'My leases: contract, e-signature with OTP + LINE, 30-day notice (D-020, D-062).',
+  'resident.contracts':
+    'Contract documents I sign (reservation, addendum …): read and e-sign with OTP + LINE (D-062, D-294).',
+  'resident.renewals':
+    'Renewal offers on my leases: accept (renewal lease to sign) or decline (move-out) (D-294).',
   'resident.invitations': 'Lease invitations: preview and accept after the PDPA consents (D-025, D-061).',
   'owner.deposits':
     'Deposits: receipt, the 7-day settlement with itemised deductions and evidence, refund and statement, late flags (D-023, D-159).',
@@ -268,8 +278,11 @@ export const API_TAGS: Record<string, string> = {
   'prospect.identityVerification': 'Verify my identity so owners see it on my enquiries (optional, D-267).',
   'resident.rentRecord': 'My rent record and what I share of it (D-256).',
   'prospect.rentRecord': 'My rent record, shared with an enquiry or as a letter (D-256).',
+  'prospect.contracts':
+    'Contract documents I sign as a prospect (reservation): read and e-sign (D-062, D-294).',
   'public.rentRecords': 'Check a rent record letter by its verification code (D-256).',
   'admin.guides': 'Guides of the public site: write, edit, review and publish (D-271).',
+  'admin.contractLibrary': 'Platform contract drafts and their legal-review state (O-025, D-294).',
   'public.guides': 'Published guides of the public site per language (D-271).',
   'webhooks.ekyc': 'Signed outcomes of identity verification sessions from the e-KYC provider (D-267).',
   'webhooks.line':

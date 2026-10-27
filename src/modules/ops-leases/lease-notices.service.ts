@@ -18,6 +18,7 @@ import { PDF_RENDERER, type PdfRendererPort } from '@integrations/pdf/pdf-render
 import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
+import { ContractLibraryService } from './contract-library.service';
 import { type ContractLanguage, ContractRenderer } from './contract-renderer';
 import { bahtTextEn, englishDate } from './english-text';
 import { addressText, type LeaseRow, LeasesService } from './leases.service';
@@ -80,6 +81,7 @@ export class LeaseNoticesService extends TenantScopedRepository implements OnMod
     private readonly audit: AuditService,
     private readonly events: DomainEvents,
     private readonly config: AppConfig,
+    private readonly library: ContractLibraryService,
     @Inject(PDF_RENDERER) private readonly pdf: PdfRendererPort,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
@@ -165,7 +167,33 @@ export class LeaseNoticesService extends TenantScopedRepository implements OnMod
     return lease;
   }
 
-  async issue(ctx: TenantContext, leaseId: string, input: NoticeInput): Promise<LeaseNotice> {
+  /**
+   * G3 (D-294): the tenant's own published library text for a letter kind (renewal offer → `notice_renewal`,
+   * termination / non-renewal → `notice_termination`) replaces the built-in body; numbering, PDF and flow stay B7.5.
+   */
+  private async customBody(
+    tenantId: string,
+    kind: LeaseNoticeKind,
+    language: ContractLanguage,
+    data: NoticeData,
+  ) {
+    const libraryKind =
+      kind === 'renewal_offer'
+        ? 'notice_renewal'
+        : kind === 'termination' || kind === 'non_renewal'
+          ? 'notice_termination'
+          : null;
+    if (!libraryKind) return null;
+    const own = await this.library.ownPublished(tenantId, libraryKind, language);
+    return own ? this.renderer.body(own.bodyHtml, data) : null;
+  }
+
+  async issue(
+    ctx: TenantContext,
+    leaseId: string,
+    input: NoticeInput,
+    options: { within?: (tx: Tx, notice: LeaseNotice) => Promise<void> } = {},
+  ): Promise<LeaseNotice> {
     const lease = await this.leases.get(ctx, leaseId);
     if (!ISSUABLE[input.kind].includes(lease.status))
       throw new DomainException('lease.invalid_state', { params: { status: lease.status } });
@@ -298,7 +326,8 @@ export class LeaseNoticesService extends TenantScopedRepository implements OnMod
         const data = this.letterData(language, number, today, base, terms, refundDays, message);
         const title = noticeTitle(input.kind, language);
         const html = await this.renderer.brandedDocument(
-          noticeBody(input.kind, language, data),
+          (await this.customBody(lease.tenantId, input.kind, language, data)) ??
+            noticeBody(input.kind, language, data),
           title,
           language,
         );
@@ -355,6 +384,7 @@ export class LeaseNoticesService extends TenantScopedRepository implements OnMod
           { noticeId: notice.id, kind: input.kind, number, lesseePartyId: lease.lesseePartyId },
           'lease.notice_issued',
         );
+        if (options.within) await options.within(tx, notice);
         return notice;
       },
       { timeout: 60_000 },
