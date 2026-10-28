@@ -1,0 +1,119 @@
+// G5 boosts and verified photo / 360° orders (D-287, D-291, D-297, D-298); migration 0063, schema-design §7.5
+// rows 176–180. Fee accruals (G2) live in ops-agency.prisma.
+
+enum BoostState {
+  pending_payment
+  active
+  expired
+  cancelled
+
+  @@map("boost_state")
+  @@schema("ops")
+}
+
+enum MediaServiceKind {
+  verified_photo
+  tour_360
+
+  @@map("media_service_kind")
+  @@schema("platform")
+}
+
+enum MediaServiceState {
+  pending_payment
+  requested
+  scheduled
+  delivered
+  cancelled
+
+  @@map("media_service_state")
+  @@schema("platform")
+}
+
+/// A boost of one listing or one building (G5, D-297): active for its window once the purchase invoice is paid.
+model ListingBoost {
+  id                 String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String     @map("tenant_id") @db.Uuid
+  listingId          String?    @map("listing_id") @db.Uuid
+  buildingId         String?    @map("building_id") @db.Uuid
+  productKey         String     @map("product_key")
+  pricePlanVersionId String     @map("price_plan_version_id") @db.Uuid
+  days               Int?       @db.SmallInt
+  months             Int?       @db.SmallInt
+  price              Decimal    @default(0) @db.Decimal(14, 2)
+  free               Boolean    @default(false)
+  state              BoostState @default(pending_payment)
+  platformInvoiceId  String?    @map("platform_invoice_id") @db.Uuid
+  startsAt           DateTime?  @map("starts_at") @db.Timestamptz(6)
+  endsAt             DateTime?  @map("ends_at") @db.Timestamptz(6)
+  activatedAt        DateTime?  @map("activated_at") @db.Timestamptz(6)
+  cancelledAt        DateTime?  @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason       String?    @map("cancel_reason")
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          String?    @map("created_by") @db.Uuid
+  updatedAt          DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy          String?    @map("updated_by") @db.Uuid
+
+  tenant           Tenant           @relation("ListingBoostTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_boost_tenant_id_fkey")
+  listing          Listing?         @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_boost_listing_id_fkey")
+  building         Building?        @relation("ListingBoostBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_boost_building_id_fkey")
+  pricePlanVersion PricePlanVersion @relation(fields: [pricePlanVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_boost_price_plan_version_id_fkey")
+  platformInvoice  PlatformInvoice? @relation(fields: [platformInvoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_boost_platform_invoice_id_fkey")
+
+  @@unique([listingId, productKey], map: "listing_boost_pending_listing_key", where: raw("(state = 'pending_payment'::ops.boost_state)"))
+  @@unique([buildingId, productKey], map: "listing_boost_pending_building_key", where: raw("(state = 'pending_payment'::ops.boost_state)"))
+  @@index([listingId, endsAt], map: "listing_boost_active_listing_idx", where: raw("(state = 'active'::ops.boost_state)"))
+  @@index([buildingId, endsAt], map: "listing_boost_active_building_idx", where: raw("(state = 'active'::ops.boost_state)"))
+  @@index([tenantId, state], map: "listing_boost_tenant_id_state_idx")
+  @@index([state, endsAt], map: "listing_boost_state_ends_at_idx")
+  @@index([platformInvoiceId], map: "listing_boost_platform_invoice_id_idx")
+  @@index([pricePlanVersionId], map: "listing_boost_price_plan_version_id_idx")
+  @@map("listing_boost")
+  @@schema("ops")
+}
+
+/// A verified photo / 360° tour ordered from the platform (G5, D-297; partner O-032).
+model MediaServiceOrder {
+  id                     String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId               String            @map("tenant_id") @db.Uuid
+  listingId              String?           @map("listing_id") @db.Uuid
+  unitId                 String            @map("unit_id") @db.Uuid
+  buildingId             String            @map("building_id") @db.Uuid
+  service                MediaServiceKind
+  pricePlanVersionId     String            @map("price_plan_version_id") @db.Uuid
+  price                  Decimal           @default(0) @db.Decimal(14, 2)
+  state                  MediaServiceState @default(pending_payment)
+  platformInvoiceId      String?           @map("platform_invoice_id") @db.Uuid
+  note                   String?
+  partnerRef             String?           @map("partner_ref")
+  scheduledFor           DateTime?         @map("scheduled_for") @db.Timestamptz(6)
+  deliverableDocumentIds String[]          @default([]) @map("deliverable_document_ids") @db.Uuid
+  requestedAt            DateTime?         @map("requested_at") @db.Timestamptz(6)
+  scheduledAt            DateTime?         @map("scheduled_at") @db.Timestamptz(6)
+  deliveredAt            DateTime?         @map("delivered_at") @db.Timestamptz(6)
+  cancelledAt            DateTime?         @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason           String?           @map("cancel_reason")
+  version                Int               @default(1)
+  createdAt              DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy              String?           @map("created_by") @db.Uuid
+  updatedAt              DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy              String?           @map("updated_by") @db.Uuid
+
+  tenant           Tenant           @relation("MediaServiceOrderTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "media_service_order_tenant_id_fkey")
+  listing          Listing?         @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "media_service_order_listing_id_fkey")
+  unit             Unit             @relation("MediaServiceOrderUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "media_service_order_unit_id_fkey")
+  building         Building         @relation("MediaServiceOrderBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "media_service_order_building_id_fkey")
+  pricePlanVersion PricePlanVersion @relation(fields: [pricePlanVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "media_service_order_price_plan_version_id_fkey")
+  platformInvoice  PlatformInvoice? @relation(fields: [platformInvoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "media_service_order_platform_invoice_id_fkey")
+
+  @@unique([unitId, service], map: "media_service_order_open_key", where: raw("(state = ANY (ARRAY['pending_payment'::platform.media_service_state, 'requested'::platform.media_service_state, 'scheduled'::platform.media_service_state]))"))
+  @@index([tenantId, state], map: "media_service_order_tenant_id_state_idx")
+  @@index([state, createdAt], map: "media_service_order_state_idx")
+  @@index([listingId], map: "media_service_order_listing_id_idx")
+  @@index([unitId], map: "media_service_order_unit_id_idx")
+  @@index([buildingId], map: "media_service_order_building_id_idx")
+  @@index([pricePlanVersionId], map: "media_service_order_price_plan_version_id_idx")
+  @@index([platformInvoiceId], map: "media_service_order_platform_invoice_id_idx")
+  @@map("media_service_order")
+  @@schema("platform")
+}

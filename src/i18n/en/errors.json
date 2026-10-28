@@ -1314,5 +1314,47 @@
       "title": "Cannot retry this post",
       "detail": "This post has not failed."
     }
+  },
+  "boost": {
+    "not_on_sale": {
+      "title": "This boost is not on sale",
+      "detail": "getproperty has not set a price for this boost yet. Try again later."
+    },
+    "pending": {
+      "title": "Already waiting for payment",
+      "detail": "The same boost of this listing or building is waiting for its invoice to be paid."
+    },
+    "already_active": {
+      "title": "A free boost is already running",
+      "detail": "This building already has its free boost in force; a new one can start when it ends."
+    },
+    "listing_not_public": {
+      "title": "The listing is not public",
+      "detail": "Only a published listing can be boosted or get a media service."
+    }
+  },
+  "media_service": {
+    "not_on_sale": {
+      "title": "This service is not on sale",
+      "detail": "getproperty has not set a price for this service yet."
+    },
+    "order_open": {
+      "title": "An order is already open",
+      "detail": "This unit already has an open order for the same service."
+    },
+    "invalid_state": {
+      "title": "Not possible right now",
+      "detail": "This order is in a state that does not allow this."
+    }
+  },
+  "fee": {
+    "not_invoiced": {
+      "title": "Not invoiced yet",
+      "detail": "This fee is not on a platform invoice yet; it can be disputed once invoiced."
+    },
+    "already_disputed": {
+      "title": "Already disputed",
+      "detail": "A credit note for this fee is waiting for approval or was issued."
+    }
   }
 }

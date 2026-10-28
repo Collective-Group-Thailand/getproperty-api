@@ -204,8 +204,14 @@ model FeeAccrual {
   tenant           Tenant           @relation("FeeAccrualTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fee_accrual_tenant_id_fkey")
   deal             Deal             @relation(fields: [dealId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fee_accrual_deal_id_fkey")
   pricePlanVersion PricePlanVersion @relation(fields: [pricePlanVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fee_accrual_price_plan_version_id_fkey")
+  /// G5 (0063): the platform invoice line that charged it (set once) and the credit note of a dispute.
+  platformInvoiceLine PlatformInvoiceLine? @relation(fields: [platformInvoiceLineId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fee_accrual_platform_invoice_line_id_fkey")
+  creditNote          PlatformCreditNote?  @relation(fields: [creditNoteId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fee_accrual_credit_note_id_fkey")
 
   @@unique([dealId, kind, tenantId], map: "fee_accrual_deal_id_kind_tenant_id_key")
+  @@unique([platformInvoiceLineId], map: "fee_accrual_platform_invoice_line_id_key", where: raw("(platform_invoice_line_id IS NOT NULL)"))
+  @@index([creditNoteId], map: "fee_accrual_credit_note_id_idx")
+  @@index([tenantId, accruedOn], map: "fee_accrual_uninvoiced_idx", where: raw("(platform_invoice_line_id IS NULL)"))
   @@index([tenantId, accruedOn], map: "fee_accrual_tenant_id_accrued_on_idx")
   @@index([pricePlanVersionId], map: "fee_accrual_price_plan_version_id_idx")
   @@map("fee_accrual")

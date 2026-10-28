@@ -273,6 +273,22 @@ export class PublicListingSummaryDto {
   })
   vacantSince!: string | null;
 
+  @ApiProperty({
+    example: false,
+    description:
+      'G5 (D-297): a boosted listing shown in a sponsored slot on top of a search page (at most `boost.search.max_per_page` per page, ranked by verified vacancy then freshness); always labelled as an ad. False everywhere else (organic results, detail, owner page).',
+  })
+  sponsored!: boolean;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: null,
+    description:
+      'The ad label to show on a sponsored card ("โฆษณา" / "Ad" by Accept-Language); null when not sponsored.',
+  })
+  sponsoredLabel!: string | null;
+
   @ApiProperty({ type: String, format: 'date-time' })
   publishedAt!: string;
 }
@@ -414,6 +430,8 @@ const SUMMARY_EXAMPLE = {
   ownerIdentityVerified: true,
   verifiedVacant: true,
   vacantSince: '2026-10-31',
+  sponsored: false,
+  sponsoredLabel: null,
   publishedAt: '2026-11-01T10:00:00+07:00',
 };
 

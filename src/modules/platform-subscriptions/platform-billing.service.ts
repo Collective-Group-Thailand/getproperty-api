@@ -428,42 +428,50 @@ export class PlatformBillingService {
 
   /** Maker (D-091): a Finance user asks for a credit note on an issued invoice (≤ what is not yet credited). */
   requestCreditNote(invoiceId: string, input: { amount: string; reason: string }) {
+    return this.db.platform((tx) => this.requestCreditNoteIn(tx, invoiceId, input));
+  }
+
+  /** The maker step inside the caller's platform transaction (G5 disputes link the note to an accrual). */
+  async requestCreditNoteIn(tx: Tx, invoiceId: string, input: { amount: string; reason: string }) {
     const userId = by();
     if (!userId) throw new DomainException('auth.unauthenticated');
-    return this.db.platform(async (tx) => {
-      const invoice = await tx.platformInvoice.findUnique({ where: { id: invoiceId } });
-      if (!invoice) throw new DomainException('http.not_found');
-      if (invoice.state === 'void' || invoice.state === 'credited')
-        throw new DomainException('platform_invoice.invalid_state', { params: { state: invoice.state } });
-      const pending = await tx.platformCreditNote.aggregate({
-        where: { invoiceId, state: 'requested' },
-        _sum: { amount: true },
+    const invoice = await tx.platformInvoice.findUnique({ where: { id: invoiceId } });
+    if (!invoice) throw new DomainException('http.not_found');
+    if (invoice.state === 'void' || invoice.state === 'credited')
+      throw new DomainException('platform_invoice.invalid_state', { params: { state: invoice.state } });
+    const room = await this.creditRoom(tx, invoice);
+    if (new Decimal(input.amount).gt(room))
+      throw new DomainException('platform_invoice.amount_exceeds_open', {
+        params: { open: room.toFixed(2) },
       });
-      const room = new Decimal(invoice.total.toString())
-        .minus(invoice.creditedTotal.toString())
-        .minus((pending._sum.amount ?? 0).toString());
-      if (new Decimal(input.amount).gt(room))
-        throw new DomainException('platform_invoice.amount_exceeds_open', {
-          params: { open: room.toFixed(2) },
-        });
-      const note = await tx.platformCreditNote.create({
-        data: {
-          tenantId: invoice.tenantId,
-          invoiceId,
-          amount: new Decimal(input.amount).toFixed(2),
-          reason: input.reason,
-          requestedBy: userId,
-        },
-      });
-      await this.audit.record(tx, {
-        action: 'platform_credit_note.requested',
+    const note = await tx.platformCreditNote.create({
+      data: {
         tenantId: invoice.tenantId,
-        subjectType: 'platform.platform_credit_note',
-        subjectId: note.id,
-        after: { invoice: invoice.number, amount: note.amount.toString(), reason: input.reason },
-      });
-      return note;
+        invoiceId,
+        amount: new Decimal(input.amount).toFixed(2),
+        reason: input.reason,
+        requestedBy: userId,
+      },
     });
+    await this.audit.record(tx, {
+      action: 'platform_credit_note.requested',
+      tenantId: invoice.tenantId,
+      subjectType: 'platform.platform_credit_note',
+      subjectId: note.id,
+      after: { invoice: invoice.number, amount: note.amount.toString(), reason: input.reason },
+    });
+    return note;
+  }
+
+  /** What may still be credited on an invoice: total − credited − credit notes waiting for approval. */
+  async creditRoom(tx: Tx, invoice: PlatformInvoice): Promise<Decimal> {
+    const pending = await tx.platformCreditNote.aggregate({
+      where: { invoiceId: invoice.id, state: 'requested' },
+      _sum: { amount: true },
+    });
+    return new Decimal(invoice.total.toString())
+      .minus(invoice.creditedTotal.toString())
+      .minus((pending._sum.amount ?? 0).toString());
   }
 
   /**

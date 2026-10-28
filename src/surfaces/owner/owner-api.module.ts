@@ -55,6 +55,7 @@ import {
   OwnerNotificationRoutesController,
   OwnerSupportGrantsController,
 } from './governance.controller';
+import { OwnerBoostsController, OwnerMediaServicesController } from './growth.controller';
 import { OwnerInsightsController } from './insights.controller';
 import { OwnerLeaseStampDutyController, OwnerUnitDocumentsController } from './landlord-documents.controller';
 import { OwnerLeadsController } from './leads.controller';
@@ -139,6 +140,8 @@ import {
     OwnerMessagingAddonsController,
     OwnerSocialChannelsController,
     OwnerListingSocialPostsController,
+    OwnerBoostsController,
+    OwnerMediaServicesController,
     OwnerTenantController,
     OwnerMembersController,
     OwnerInvitationsController,

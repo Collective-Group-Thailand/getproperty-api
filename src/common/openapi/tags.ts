@@ -40,6 +40,10 @@ export const API_TAGS: Record<string, string> = {
   'owner.me':
     'Who I am in the owner console: tenants, current tenant and type, role, permissions, menu entitlements, feature flags, subscription state; password and TOTP setup.',
   'owner.messaging': 'The operator’s own LINE Official Account: connect, check, disconnect (D-254).',
+  'owner.boosts':
+    'Boost a listing or a building: sponsored, labelled slots on top of public search for a paid window (G5, D-297).',
+  'owner.mediaServices':
+    'Order a verified photo / 360° tour for a listing; a partner fulfils it after payment (G5, D-297, O-032).',
   'owner.social':
     'The tenant’s own Facebook Page: connect, check, disconnect; automatic listing posts (G4, D-288). Groups are never automated.',
   'owner.serviceCosts':
@@ -184,6 +188,10 @@ export const API_TAGS: Record<string, string> = {
   'admin.settings': 'Platform defaults of configurable business values (ADR-0004).',
   'admin.messagingRates':
     'Rates of the shared getproperty LINE OA: free messages, price per counted message, VAT; maker-checker (D-254).',
+  'admin.feeAccruals':
+    'Success / co-broke fees accrued per deal, invoiced monthly on the platform invoice; disputes as credit notes (G5, D-297).',
+  'admin.mediaServices':
+    'Verified photo / 360° orders: schedule the partner, upload deliverables to the tenant, deliver or cancel (G5, D-297).',
   'admin.storage': 'Storage of every tenant: latest daily snapshot, allowance and level (D-276, D-279).',
   'admin.listings': 'Listing moderation queue and owner verification decisions (D-252).',
   'admin.compliance':

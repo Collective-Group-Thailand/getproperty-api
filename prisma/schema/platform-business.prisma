@@ -213,6 +213,8 @@ model PricePlanVersion {
   usages          SubscriptionUsage[]
   storagePackages StoragePackage[]
   feeAccruals     FeeAccrual[]
+  listingBoosts      ListingBoost[]
+  mediaServiceOrders MediaServiceOrder[]
 
   @@unique([planId, version], map: "price_plan_version_plan_id_version_key")
   @@map("price_plan_version")
@@ -460,6 +462,8 @@ model PlatformInvoice {
   receipts     PlatformReceipt[]
   creditNotes  PlatformCreditNote[]
   storagePackages StoragePackage[]
+  listingBoosts      ListingBoost[]
+  mediaServiceOrders MediaServiceOrder[]
 
   @@index([tenantId, state], map: "platform_invoice_tenant_id_state_idx")
   @@index([subscriptionId], map: "platform_invoice_subscription_id_idx")
@@ -484,6 +488,7 @@ model PlatformInvoiceLine {
 
   tenant  Tenant          @relation("PlatformInvoiceLineTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_invoice_line_tenant_id_fkey")
   invoice PlatformInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_invoice_line_invoice_id_fkey")
+  feeAccruals FeeAccrual[]
 
   @@unique([invoiceId, lineNo], map: "platform_invoice_line_invoice_id_line_no_key")
   @@index([tenantId], map: "platform_invoice_line_tenant_id_idx")
@@ -576,6 +581,7 @@ model PlatformCreditNote {
   requester UserAccount     @relation("PlatformCreditNoteRequester", fields: [requestedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_credit_note_requested_by_fkey")
   approver  UserAccount?    @relation("PlatformCreditNoteApprover", fields: [approvedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_credit_note_approved_by_fkey")
   document  Document?       @relation("PlatformCreditNoteDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "platform_credit_note_document_id_fkey")
+  feeAccruals FeeAccrual[]
 
   @@index([tenantId], map: "platform_credit_note_tenant_id_idx")
   @@index([invoiceId], map: "platform_credit_note_invoice_id_idx")

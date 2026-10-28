@@ -12,15 +12,15 @@ How it runs: each step in its own subagent on the sandbox copies (Node 24, embed
 | G2 | api + asset-core | done | api 5931568, core 6049a1a (0.7.0) | 678 paths (+17) | — | D-293; core legal-hold guard on core.document added; unit 551, e2e 35, int 451, core 80; smart-metering 3.3 clock fix |
 | G3 | api | done | 36c7c79 | 712 paths (+34) | O-030 | D-294; unit 555, e2e 35, int 463 |
 | G7 | api | done | api d69d6c8 (fddfd93) | 721 paths (+9) | O-031 | D-295; migration 0061; unit 562, e2e 35, int 472 (65 suites); self-viewing off by default (O-024); prospect phone OTP added |
-| G4 | api | done | (this merge) | 730 paths (+9) | — (notes on O-027, O-029) | D-296; migration 0062; unit 569, int 478 (66 suites); test:e2e deferred; FB Page via fake (FACEBOOK_MODE off in uat/prod); LIFF /link/oa must use prospect confirm endpoint |
-| G5 | api | running | | | | |
+| G4 | api | done | api 65e874d (f8ad203) | 730 paths (+9) | — (notes on O-027, O-029) | D-296; migration 0062; unit 569, int 478 (66 suites); test:e2e deferred; FB Page via fake (FACEBOOK_MODE off in uat/prod); LIFF /link/oa must use prospect confirm endpoint |
+| G5 | api | done | (this merge) | 746 paths (+16) | O-032 | D-297, D-298; migration 0063; unit 577, int 482 (67 suites); test:e2e deferred; all G5 products seeded without price (O-027) |
 | G8 | api | todo | | | | |
 | G6 | api | todo | | | | |
 | G9 | api | todo | | | | |
 | GW1 | web | done | web a115699 | adopted api 5931568 | — | unit 1,130, e2e 192 |
 | GW2 | web | done | web d326a41 | — | — | unit 1,138, e2e 196 (2 flaky on retry: admin-tenants:166, owner-settings:180); contract-request AgencyDto details |
 | GW3 | web | done | web b65047e (7e73385) | adopted api 36c7c79 | — | unit 1,152, e2e 202 (1 flaky on retry: owner-settings), storybook, Lighthouse owner budgets; contract-requests: owner menu `contracts` key, admin `contract_library` key (admin legal-review page not built), unit/lessee labels on RenewalOfferDto/ContractDto |
-| GW4 | web | todo | | | | |
+| GW4 | web | running | | | | adopts api G5 |
 | GW5 | web | todo | | | | |
 | GW6 | web | todo | | | | |
 | GL1 | liff | todo | | | | |

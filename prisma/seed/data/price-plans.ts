@@ -19,6 +19,7 @@ export interface PricePlanSeed {
       | 'per_building'
       | 'per_tenant'
       | 'per_report'
+      | 'per_listing'
       | 'per_deal'
       | 'percent_of_amount';
     unitPrice: string | null;
@@ -299,6 +300,111 @@ export const PRICE_PLANS: readonly PricePlanSeed[] = [
       termMonths: null,
       includedAllowances: {},
       terms: { product: 'line_oa_integration', status: 'proposed', decision: 'D-287' },
+      published: false,
+    },
+  },
+  {
+    // G5 (D-287, D-297): boosts — no price until the platform admin publishes a version (O-027): not on sale
+    key: 'boost_listing_7d',
+    tenantType: null,
+    nameTh: 'โปรโมตประกาศ 7 วัน',
+    nameEn: 'Listing boost, 7 days',
+    kind: 'addon',
+    isActive: true,
+    version: {
+      billingUnit: 'per_listing',
+      unitPrice: null,
+      priceRange: null,
+      tiers: [],
+      minUnits: null,
+      minMonthly: null,
+      termMonths: null,
+      includedAllowances: {},
+      terms: { product: 'boost', target: 'listing', days: 7, status: 'proposed', decision: 'D-287' },
+      published: false,
+    },
+  },
+  {
+    // G5: listing boost for 30 days (O-027)
+    key: 'boost_listing_30d',
+    tenantType: null,
+    nameTh: 'โปรโมตประกาศ 30 วัน',
+    nameEn: 'Listing boost, 30 days',
+    kind: 'addon',
+    isActive: true,
+    version: {
+      billingUnit: 'per_listing',
+      unitPrice: null,
+      priceRange: null,
+      tiers: [],
+      minUnits: null,
+      minMonthly: null,
+      termMonths: null,
+      includedAllowances: {},
+      terms: { product: 'boost', target: 'listing', days: 30, status: 'proposed', decision: 'D-287' },
+      published: false,
+    },
+  },
+  {
+    // G5: every listing of a building for one month; free per tenant with the setting boost.building.free (O-027)
+    key: 'boost_building_month',
+    tenantType: null,
+    nameTh: 'โปรโมตอาคารรายเดือน',
+    nameEn: 'Building boost, monthly',
+    kind: 'addon',
+    isActive: true,
+    version: {
+      billingUnit: 'per_building',
+      unitPrice: null,
+      priceRange: null,
+      tiers: [],
+      minUnits: null,
+      minMonthly: null,
+      termMonths: null,
+      includedAllowances: {},
+      terms: { product: 'boost', target: 'building', months: 1, status: 'proposed', decision: 'D-287' },
+      published: false,
+    },
+  },
+  {
+    // G5: verified photo service for a listing, fulfilled by a partner (O-032); no price until set (O-027)
+    key: 'media_verified_photo',
+    tenantType: null,
+    nameTh: 'บริการถ่ายภาพยืนยันห้องจริง',
+    nameEn: 'Verified photo service',
+    kind: 'service',
+    isActive: true,
+    version: {
+      billingUnit: 'per_listing',
+      unitPrice: null,
+      priceRange: null,
+      tiers: [],
+      minUnits: null,
+      minMonthly: null,
+      termMonths: null,
+      includedAllowances: {},
+      terms: { product: 'media_service', service: 'verified_photo', status: 'proposed', decision: 'D-287' },
+      published: false,
+    },
+  },
+  {
+    // G5: 360° tour for a listing, fulfilled by a partner (O-032); no price until set (O-027)
+    key: 'media_tour_360',
+    tenantType: null,
+    nameTh: 'บริการถ่ายภาพ 360°',
+    nameEn: '360° tour service',
+    kind: 'service',
+    isActive: true,
+    version: {
+      billingUnit: 'per_listing',
+      unitPrice: null,
+      priceRange: null,
+      tiers: [],
+      minUnits: null,
+      minMonthly: null,
+      termMonths: null,
+      includedAllowances: {},
+      terms: { product: 'media_service', service: 'tour_360', status: 'proposed', decision: 'D-287' },
       published: false,
     },
   },

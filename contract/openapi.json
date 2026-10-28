@@ -366,6 +366,50 @@
           "type": "https://errors.getproperty.co/billing_cycle.invalid_state"
         }
       },
+      "problem.boost.already_active": {
+        "summary": "boost.already_active",
+        "value": {
+          "code": "boost.already_active",
+          "detail": "อาคารนี้มีการโปรโมตฟรีที่ยังมีผลอยู่ เริ่มใหม่ได้เมื่อครบกำหนด",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "มีการโปรโมตฟรีอยู่แล้ว",
+          "type": "https://errors.getproperty.co/boost.already_active"
+        }
+      },
+      "problem.boost.listing_not_public": {
+        "summary": "boost.listing_not_public",
+        "value": {
+          "code": "boost.listing_not_public",
+          "detail": "โปรโมตหรือสั่งบริการถ่ายภาพได้เฉพาะประกาศที่เผยแพร่แล้ว",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ประกาศยังไม่เผยแพร่",
+          "type": "https://errors.getproperty.co/boost.listing_not_public"
+        }
+      },
+      "problem.boost.not_on_sale": {
+        "summary": "boost.not_on_sale",
+        "value": {
+          "code": "boost.not_on_sale",
+          "detail": "getproperty ยังไม่ได้กำหนดราคาการโปรโมตนี้ กรุณาลองใหม่ภายหลัง",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ยังไม่เปิดขายการโปรโมตนี้",
+          "type": "https://errors.getproperty.co/boost.not_on_sale"
+        }
+      },
+      "problem.boost.pending": {
+        "summary": "boost.pending",
+        "value": {
+          "code": "boost.pending",
+          "detail": "การโปรโมตเดียวกันของประกาศหรืออาคารนี้กำลังรอชำระใบแจ้งหนี้",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "รอชำระเงินอยู่แล้ว",
+          "type": "https://errors.getproperty.co/boost.pending"
+        }
+      },
       "problem.co_broke.invalid_state": {
         "summary": "co_broke.invalid_state",
         "value": {
@@ -1004,6 +1048,28 @@
           "status": 409,
           "title": "ไม่เปิดให้จอง",
           "type": "https://errors.getproperty.co/facility.unavailable"
+        }
+      },
+      "problem.fee.already_disputed": {
+        "summary": "fee.already_disputed",
+        "value": {
+          "code": "fee.already_disputed",
+          "detail": "มีใบลดหนี้ของค่าธรรมเนียมนี้รออนุมัติหรือออกแล้ว",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "โต้แย้งไปแล้ว",
+          "type": "https://errors.getproperty.co/fee.already_disputed"
+        }
+      },
+      "problem.fee.not_invoiced": {
+        "summary": "fee.not_invoiced",
+        "value": {
+          "code": "fee.not_invoiced",
+          "detail": "ค่าธรรมเนียมนี้ยังไม่อยู่ในใบแจ้งหนี้ของแพลตฟอร์ม โต้แย้งได้หลังออกใบแจ้งหนี้",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ยังไม่ได้ออกใบแจ้งหนี้",
+          "type": "https://errors.getproperty.co/fee.not_invoiced"
         }
       },
       "problem.grant.not_allowed": {
@@ -1774,6 +1840,39 @@
           "status": 409,
           "title": "เปลี่ยนสถานะการมอบหมายไม่ได้ในตอนนี้",
           "type": "https://errors.getproperty.co/mandate.invalid_state"
+        }
+      },
+      "problem.media_service.invalid_state": {
+        "summary": "media_service.invalid_state",
+        "value": {
+          "code": "media_service.invalid_state",
+          "detail": "สถานะของคำสั่งนี้ไม่อนุญาตให้ทำรายการนี้",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ทำรายการนี้ไม่ได้ในขณะนี้",
+          "type": "https://errors.getproperty.co/media_service.invalid_state"
+        }
+      },
+      "problem.media_service.not_on_sale": {
+        "summary": "media_service.not_on_sale",
+        "value": {
+          "code": "media_service.not_on_sale",
+          "detail": "getproperty ยังไม่ได้กำหนดราคาบริการนี้",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ยังไม่เปิดขายบริการนี้",
+          "type": "https://errors.getproperty.co/media_service.not_on_sale"
+        }
+      },
+      "problem.media_service.order_open": {
+        "summary": "media_service.order_open",
+        "value": {
+          "code": "media_service.order_open",
+          "detail": "ห้องนี้มีคำสั่งบริการเดียวกันที่ยังไม่เสร็จ",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "มีคำสั่งที่ยังไม่เสร็จอยู่แล้ว",
+          "type": "https://errors.getproperty.co/media_service.order_open"
         }
       },
       "problem.membership.already_member": {
@@ -2566,6 +2665,17 @@
           "status": 409,
           "title": "ปิดงานนี้จากแอปพนักงานไม่ได้",
           "type": "https://errors.getproperty.co/staff_task.not_completable"
+        }
+      },
+      "problem.storage.allowance_exceeded": {
+        "summary": "storage.allowance_exceeded",
+        "value": {
+          "code": "storage.allowance_exceeded",
+          "detail": "ไฟล์นี้เป็นไฟล์เสริมและจะทำให้เกินพื้นที่จัดเก็บที่ได้รับ กรุณาลบไฟล์ที่ไม่ใช้แล้ว หรือติดต่อ getproperty เพื่อเพิ่มพื้นที่ เอกสารที่กฎหมายกำหนดยังจัดเก็บได้ตามปกติ",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "พื้นที่จัดเก็บเต็มแล้ว",
+          "type": "https://errors.getproperty.co/storage.allowance_exceeded"
         }
       },
       "problem.storage.legal_hold": {
@@ -3652,6 +3762,126 @@
         ],
         "type": "object"
       },
+      "AdminFeeAccrualDto": {
+        "properties": {
+          "accruedOn": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Fee accrued (before VAT). Unit: THB, decimal string (D-046).",
+            "example": "1500.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "baseAmount": {
+            "description": "Base of the percentage. Unit: THB, decimal string (D-046).",
+            "example": "15000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "billingUnit": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeBillingUnit"
+              }
+            ],
+            "example": "percent_of_amount"
+          },
+          "capped": {
+            "example": false,
+            "type": "boolean"
+          },
+          "creditNote": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeeCreditNoteRefDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dealId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "invoice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeeInvoiceRefDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeAccrualKind"
+              }
+            ],
+            "example": "success_fee"
+          },
+          "leaseId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "rate": {
+            "example": "10.0000",
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeAccrualState"
+              }
+            ],
+            "example": "invoiced"
+          },
+          "tenantId": {
+            "description": "The paying agency tenant.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "tenantName": {
+            "example": "บริษัท ตัวอย่าง จำกัด",
+            "type": "string"
+          },
+          "unitNo": {
+            "example": "A-201",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "tenantName",
+          "dealId",
+          "leaseId",
+          "unitNo",
+          "kind",
+          "billingUnit",
+          "rate",
+          "baseAmount",
+          "amount",
+          "capped",
+          "accruedOn",
+          "state",
+          "invoice",
+          "creditNote"
+        ],
+        "type": "object"
+      },
       "AdminFilePresignDto": {
         "properties": {
           "fileName": {
@@ -4051,6 +4281,184 @@
           "menu",
           "featureFlags",
           "totpEnabled"
+        ],
+        "type": "object"
+      },
+      "AdminMediaServiceOrderDto": {
+        "properties": {
+          "cancelReason": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cancelledAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "deliverableDocumentIds": {
+            "description": "Delivered files: documents of this tenant in the unit’s scope (listing media, counted to the quota).",
+            "example": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "deliveredAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "invoice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoragePackageInvoiceDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "listingId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "listingTitle": {
+            "example": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "example": "บริการถ่ายภาพยืนยันห้องจริง",
+            "type": "string"
+          },
+          "note": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "partnerRef": {
+            "example": "PARTNER-2026-0042",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "price": {
+            "description": "Price incl. VAT (snapshot). Unit: THB, decimal string (D-046).",
+            "example": "1605.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "requestedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scheduledAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scheduledFor": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "service": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaServiceKind"
+              }
+            ],
+            "example": "verified_photo"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaServiceState"
+              }
+            ],
+            "example": "pending_payment"
+          },
+          "tenantId": {
+            "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+            "format": "uuid",
+            "type": "string"
+          },
+          "tenantName": {
+            "example": "บริษัท ตัวอย่าง จำกัด",
+            "type": "string"
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "unitNo": {
+            "example": "A-201",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "service",
+          "name",
+          "state",
+          "listingId",
+          "listingTitle",
+          "unitId",
+          "unitNo",
+          "price",
+          "note",
+          "scheduledFor",
+          "deliverableDocumentIds",
+          "requestedAt",
+          "deliveredAt",
+          "cancelledAt",
+          "cancelReason",
+          "invoice",
+          "createdAt",
+          "tenantId",
+          "tenantName",
+          "partnerRef",
+          "scheduledAt"
         ],
         "type": "object"
       },
@@ -6780,6 +7188,298 @@
           "data": {
             "items": {
               "$ref": "#/components/schemas/BookingDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "BoostDto": {
+        "properties": {
+          "buildingId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "days": {
+            "example": 7,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "endsAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "free": {
+            "example": false,
+            "type": "boolean"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "invoice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoragePackageInvoiceDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The purchase invoice (null when free)."
+          },
+          "listingId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "listingSlug": {
+            "example": "condo-1br-ari-8f3k2",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "months": {
+            "example": null,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "name": {
+            "example": "โปรโมตประกาศ 7 วัน",
+            "type": "string"
+          },
+          "price": {
+            "description": "Price paid incl. VAT (snapshot; 0.00 when free). Unit: THB, decimal string (D-046).",
+            "example": "535.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "productId": {
+            "description": "The product (price plan).",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "productKey": {
+            "example": "boost_listing_7d",
+            "type": "string"
+          },
+          "startsAt": {
+            "description": "Set when paid; later than now when queued after an earlier boost of the same target.",
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StoragePackageState"
+              }
+            ],
+            "example": "pending_payment"
+          },
+          "target": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BoostTarget"
+              }
+            ],
+            "example": "listing"
+          },
+          "targetName": {
+            "description": "Listing title or building name.",
+            "example": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "productId",
+          "productKey",
+          "name",
+          "target",
+          "listingId",
+          "listingSlug",
+          "buildingId",
+          "targetName",
+          "days",
+          "months",
+          "price",
+          "free",
+          "state",
+          "startsAt",
+          "endsAt",
+          "invoice",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "BoostProductDto": {
+        "properties": {
+          "currency": {
+            "example": "THB",
+            "type": "string"
+          },
+          "days": {
+            "description": "Length in days (or `months`).",
+            "example": 7,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "free": {
+            "description": "A building boost that is free for this tenant (`boost.building.free`, D-297).",
+            "example": false,
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Product id (price plan) to buy.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "key": {
+            "example": "boost_listing_7d",
+            "type": "string"
+          },
+          "months": {
+            "description": "Length in calendar months.",
+            "example": null,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "nameEn": {
+            "example": "Listing boost, 7 days",
+            "type": "string"
+          },
+          "nameTh": {
+            "example": "โปรโมตประกาศ 7 วัน",
+            "type": "string"
+          },
+          "onSale": {
+            "description": "Can be bought now (priced, or free for this tenant).",
+            "example": false,
+            "type": "boolean"
+          },
+          "price": {
+            "description": "Price before VAT; null = not on sale (O-027). Unit: THB, decimal string (D-046).",
+            "example": null,
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "target": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BoostTarget"
+              }
+            ],
+            "example": "listing"
+          },
+          "total": {
+            "description": "Price incl. VAT; null = not on sale. Unit: THB, decimal string (D-046).",
+            "example": null,
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vatRate": {
+            "example": "0.0700",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "nameTh",
+          "nameEn",
+          "target",
+          "days",
+          "months",
+          "price",
+          "total",
+          "vatRate",
+          "currency",
+          "onSale",
+          "free"
+        ],
+        "type": "object"
+      },
+      "BoostProductsDto": {
+        "properties": {
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/BoostProductDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "products"
+        ],
+        "type": "object"
+      },
+      "BoostPurchaseDto": {
+        "properties": {
+          "productId": {
+            "description": "Boost product id (`GET /v1/owner/boost-products`).",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "productId"
+        ],
+        "type": "object"
+      },
+      "BoostTarget": {
+        "enum": [
+          "listing",
+          "building"
+        ],
+        "type": "string"
+      },
+      "BoostsDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/BoostDto"
             },
             "type": "array"
           }
@@ -13463,12 +14163,77 @@
         ],
         "type": "string"
       },
+      "FeeAccrualState": {
+        "enum": [
+          "uninvoiced",
+          "invoiced",
+          "disputed",
+          "credited"
+        ],
+        "type": "string"
+      },
       "FeeBillingUnit": {
         "enum": [
           "percent_of_amount",
           "per_deal"
         ],
         "type": "string"
+      },
+      "FeeCreditNoteRefDto": {
+        "properties": {
+          "amount": {
+            "description": "Credited amount incl. VAT. Unit: THB, decimal string (D-046).",
+            "example": "1605.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "number": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "description": "Platform credit note status.",
+            "example": "requested",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "number",
+          "amount"
+        ],
+        "type": "object"
+      },
+      "FeeInvoiceRefDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "number": {
+            "example": "PIV-2026-00040",
+            "type": "string"
+          },
+          "state": {
+            "description": "Platform invoice status.",
+            "example": "issued",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "state"
+        ],
+        "type": "object"
       },
       "FileCompleteDto": {
         "properties": {
@@ -23335,6 +24100,397 @@
         ],
         "type": "object"
       },
+      "MediaDeliverDto": {
+        "properties": {
+          "documentIds": {
+            "description": "Uploaded deliverables (presigned with `POST …/deliverables`).",
+            "example": [
+              "3b241101-e2bb-4255-8caf-4136c566a962"
+            ],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "documentIds"
+        ],
+        "type": "object"
+      },
+      "MediaDeliverableDto": {
+        "properties": {
+          "fileName": {
+            "example": "room-301-01.jpg",
+            "maxLength": 255,
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaDeliverableKind"
+              }
+            ],
+            "example": "listing_photo"
+          },
+          "mimeType": {
+            "example": "image/jpeg",
+            "type": "string"
+          },
+          "sha256": {
+            "example": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "example": 2345678,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "title": {
+            "example": "ห้องนั่งเล่น",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "fileName",
+          "mimeType",
+          "sizeBytes",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "MediaDeliverableKind": {
+        "enum": [
+          "listing_photo",
+          "other"
+        ],
+        "type": "string"
+      },
+      "MediaScheduleDto": {
+        "properties": {
+          "partnerRef": {
+            "example": "PARTNER-2026-0042",
+            "maxLength": 200,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scheduledFor": {
+            "description": "The partner’s visit.",
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheduledFor"
+        ],
+        "type": "object"
+      },
+      "MediaServiceKind": {
+        "enum": [
+          "verified_photo",
+          "tour_360"
+        ],
+        "type": "string"
+      },
+      "MediaServiceOrderCreateDto": {
+        "properties": {
+          "listingId": {
+            "description": "One of my listings (its unit is photographed).",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "note": {
+            "example": "สะดวกช่วงบ่ายวันธรรมดา",
+            "maxLength": 1000,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "service": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaServiceKind"
+              }
+            ],
+            "example": "verified_photo"
+          }
+        },
+        "required": [
+          "listingId",
+          "service"
+        ],
+        "type": "object"
+      },
+      "MediaServiceOrderDto": {
+        "properties": {
+          "cancelReason": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cancelledAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "deliverableDocumentIds": {
+            "description": "Delivered files: documents of this tenant in the unit’s scope (listing media, counted to the quota).",
+            "example": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "deliveredAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "invoice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoragePackageInvoiceDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "listingId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "listingTitle": {
+            "example": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "example": "บริการถ่ายภาพยืนยันห้องจริง",
+            "type": "string"
+          },
+          "note": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "price": {
+            "description": "Price incl. VAT (snapshot). Unit: THB, decimal string (D-046).",
+            "example": "1605.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "requestedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scheduledFor": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "service": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaServiceKind"
+              }
+            ],
+            "example": "verified_photo"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaServiceState"
+              }
+            ],
+            "example": "pending_payment"
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "unitNo": {
+            "example": "A-201",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "service",
+          "name",
+          "state",
+          "listingId",
+          "listingTitle",
+          "unitId",
+          "unitNo",
+          "price",
+          "note",
+          "scheduledFor",
+          "deliverableDocumentIds",
+          "requestedAt",
+          "deliveredAt",
+          "cancelledAt",
+          "cancelReason",
+          "invoice",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "MediaServiceOrdersDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/MediaServiceOrderDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "MediaServiceProductDto": {
+        "properties": {
+          "currency": {
+            "example": "THB",
+            "type": "string"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "key": {
+            "example": "media_verified_photo",
+            "type": "string"
+          },
+          "nameEn": {
+            "example": "Verified photo service",
+            "type": "string"
+          },
+          "nameTh": {
+            "example": "บริการถ่ายภาพยืนยันห้องจริง",
+            "type": "string"
+          },
+          "onSale": {
+            "example": false,
+            "type": "boolean"
+          },
+          "price": {
+            "description": "Price before VAT; null = not on sale (O-027). Unit: THB, decimal string (D-046).",
+            "example": null,
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "service": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaServiceKind"
+              }
+            ],
+            "example": "verified_photo"
+          },
+          "total": {
+            "description": "Price incl. VAT; null = not on sale. Unit: THB, decimal string (D-046).",
+            "example": null,
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vatRate": {
+            "example": "0.0700",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "nameTh",
+          "nameEn",
+          "service",
+          "price",
+          "total",
+          "vatRate",
+          "currency",
+          "onSale"
+        ],
+        "type": "object"
+      },
+      "MediaServiceProductsDto": {
+        "properties": {
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/MediaServiceProductDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "products"
+        ],
+        "type": "object"
+      },
+      "MediaServiceState": {
+        "enum": [
+          "pending_payment",
+          "requested",
+          "scheduled",
+          "delivered",
+          "cancelled"
+        ],
+        "type": "string"
+      },
       "MemberDto": {
         "properties": {
           "buildingIds": {
@@ -32074,6 +33230,19 @@
           "smokingAllowed": {
             "type": "boolean"
           },
+          "sponsored": {
+            "description": "G5 (D-297): a boosted listing shown in a sponsored slot on top of a search page (at most `boost.search.max_per_page` per page, ranked by verified vacancy then freshness); always labelled as an ad. False everywhere else (organic results, detail, owner page).",
+            "example": false,
+            "type": "boolean"
+          },
+          "sponsoredLabel": {
+            "description": "The ad label to show on a sponsored card (\"โฆษณา\" / \"Ad\" by Accept-Language); null when not sponsored.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "title": {
             "description": "English title for `Accept-Language: en` when the owner wrote one.",
             "example": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
@@ -32142,6 +33311,8 @@
           "ownerIdentityVerified",
           "verifiedVacant",
           "vacantSince",
+          "sponsored",
+          "sponsoredLabel",
           "publishedAt",
           "description",
           "facilities",
@@ -32302,6 +33473,19 @@
             "example": "condo-1br-0a1b2c3d4e",
             "type": "string"
           },
+          "sponsored": {
+            "description": "G5 (D-297): a boosted listing shown in a sponsored slot on top of a search page (at most `boost.search.max_per_page` per page, ranked by verified vacancy then freshness); always labelled as an ad. False everywhere else (organic results, detail, owner page).",
+            "example": false,
+            "type": "boolean"
+          },
+          "sponsoredLabel": {
+            "description": "The ad label to show on a sponsored card (\"โฆษณา\" / \"Ad\" by Accept-Language); null when not sponsored.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "title": {
             "description": "English title for `Accept-Language: en` when the owner wrote one.",
             "example": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
@@ -32359,6 +33543,8 @@
           "ownerIdentityVerified",
           "verifiedVacant",
           "vacantSince",
+          "sponsored",
+          "sponsoredLabel",
           "publishedAt"
         ],
         "type": "object"
@@ -54991,6 +56177,571 @@
         "x-surface": "admin"
       }
     },
+    "/v1/admin/fee-accruals": {
+      "get": {
+        "description": "Fees accrued per deal (D-293) with their state: `uninvoiced` (waits for the monthly invoice of its month), `invoiced`, `disputed` (credit note waiting for approval), `credited` (D-297). Newest first.\n\nImplements: D-287, D-293, D-297.",
+        "operationId": "admin.feeAccruals.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sort field; each endpoint validates it against its own allow-list.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "example": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "description": "Free-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The paying agency.",
+            "in": "query",
+            "name": "tenantId",
+            "required": false,
+            "schema": {
+              "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/FeeAccrualState"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "accruedOn": "2026-11-01",
+                      "amount": "1500.00",
+                      "baseAmount": "15000.00",
+                      "billingUnit": "percent_of_amount",
+                      "capped": false,
+                      "creditNote": null,
+                      "dealId": "0199f2a0-0000-7000-8000-0000000000f1",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "invoice": {
+                        "id": "0199f2a0-0000-7000-8000-0000000000f3",
+                        "number": "PIV-2026-00040",
+                        "state": "issued"
+                      },
+                      "kind": "success_fee",
+                      "leaseId": "0199f2a0-0000-7000-8000-0000000000f2",
+                      "rate": "10.0000",
+                      "state": "invoiced",
+                      "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                      "tenantName": "บริษัท ตัวอย่าง จำกัด",
+                      "unitNo": "A-201"
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "perPage": 25,
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/AdminFeeAccrualDto"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "One page of results",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Success / co-broke fee accruals",
+        "tags": [
+          "admin.feeAccruals"
+        ],
+        "x-required-permissions": [
+          "admin.tenant.read"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/fee-accruals/{accrualId}/actions/dispute": {
+      "post": {
+        "description": "Requests a platform credit note (maker, D-091) on the fee’s invoice for what the fee was charged incl. VAT (after a monthly cap, pro rata), never more than the unpaid part (money already paid is refunded by Finance outside the platform); linked to the accrual. Another platform user approves or rejects it (`/v1/admin/platform-invoices/credit-notes/{id}/actions/approve|reject`); a rejected dispute may be raised again. Not invoiced yet: `fee.not_invoiced`; a note waiting or issued: `fee.already_disputed`.\n\nImplements: D-091, D-297.",
+        "operationId": "admin.feeAccruals.dispute",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accrualId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "reason": "สัญญาเช่ายกเลิกก่อนเข้าอยู่ ตกลงคืนค่าธรรมเนียม"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "accruedOn": "2026-11-01",
+                  "amount": "1500.00",
+                  "baseAmount": "15000.00",
+                  "billingUnit": "percent_of_amount",
+                  "capped": false,
+                  "creditNote": {
+                    "amount": "1605.00",
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "number": null,
+                    "state": "requested"
+                  },
+                  "dealId": "0199f2a0-0000-7000-8000-0000000000f1",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "invoice": {
+                    "id": "0199f2a0-0000-7000-8000-0000000000f3",
+                    "number": "PIV-2026-00040",
+                    "state": "issued"
+                  },
+                  "kind": "success_fee",
+                  "leaseId": "0199f2a0-0000-7000-8000-0000000000f2",
+                  "rate": "10.0000",
+                  "state": "disputed",
+                  "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                  "tenantName": "บริษัท ตัวอย่าง จำกัด",
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminFeeAccrualDto"
+                }
+              }
+            },
+            "description": "Disputed",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "fee.already_disputed": {
+                    "$ref": "#/components/examples/problem.fee.already_disputed"
+                  },
+                  "fee.not_invoiced": {
+                    "$ref": "#/components/examples/problem.fee.not_invoiced"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "platform_invoice.invalid_state": {
+                    "$ref": "#/components/examples/problem.platform_invoice.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `fee.already_disputed`, `fee.not_invoiced`, `idempotency.in_progress`, `platform_invoice.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "platform_invoice.amount_exceeds_open": {
+                    "$ref": "#/components/examples/problem.platform_invoice.amount_exceeds_open"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `platform_invoice.amount_exceeds_open`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Dispute a fee (request a credit note)",
+        "tags": [
+          "admin.feeAccruals"
+        ],
+        "x-required-permissions": [
+          "admin.platform_invoice.issue"
+        ],
+        "x-surface": "admin"
+      }
+    },
     "/v1/admin/files/presign": {
       "post": {
         "description": "A platform-scoped file (no tenant): kind `tariff_source` (the utility notice a tariff version cites as `sourceDocumentId`), `contract` or `other`; images or PDF up to the kind’s limit. Returns a 15-minute signed PUT URL; upload, then `complete` (D-214, D-021a).\n\nImplements: D-214, D-021, D-025.",
@@ -62330,6 +64081,1642 @@
         "summary": "Who I am in the platform admin",
         "tags": [
           "admin.me"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/media-service-orders": {
+      "get": {
+        "description": "Verified photo / 360° orders of every tenant, newest first (D-297).\n\nImplements: D-297.",
+        "operationId": "admin.mediaServices.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sort field; each endpoint validates it against its own allow-list.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "example": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "description": "Free-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MediaServiceState"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tenantId",
+            "required": false,
+            "schema": {
+              "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "cancelReason": null,
+                      "cancelledAt": null,
+                      "createdAt": "2026-11-01T10:00:00+07:00",
+                      "deliverableDocumentIds": [],
+                      "deliveredAt": null,
+                      "id": "0199f2a0-0000-7000-8000-0000000000e5",
+                      "invoice": {
+                        "dueAt": "2026-11-08T10:00:00+07:00",
+                        "id": "0199f2a0-0000-7000-8000-0000000000cd",
+                        "number": "PIV-2026-00032",
+                        "qrAvailable": false,
+                        "state": "issued",
+                        "total": "1605.00"
+                      },
+                      "listingId": "0199f2a0-0000-7000-8000-0000000000e3",
+                      "listingTitle": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                      "name": "บริการถ่ายภาพยืนยันห้องจริง",
+                      "note": null,
+                      "partnerRef": null,
+                      "price": "1605.00",
+                      "requestedAt": "2026-11-01T00:15:00+07:00",
+                      "scheduledAt": null,
+                      "scheduledFor": null,
+                      "service": "verified_photo",
+                      "state": "requested",
+                      "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                      "tenantName": "บริษัท ตัวอย่าง จำกัด",
+                      "unitId": "0199f2a0-0000-7000-8000-0000000000e6",
+                      "unitNo": "A-201"
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "perPage": 25,
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/AdminMediaServiceOrderDto"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "One page of results",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Media service orders",
+        "tags": [
+          "admin.mediaServices"
+        ],
+        "x-required-permissions": [
+          "admin.listing.verify"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/media-service-orders/{orderId}": {
+      "get": {
+        "description": "A media service order with its tenant, partner reference and deliverables (D-297).\n\nImplements: D-297.",
+        "operationId": "admin.mediaServices.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "cancelReason": null,
+                  "cancelledAt": null,
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "deliverableDocumentIds": [],
+                  "deliveredAt": null,
+                  "id": "0199f2a0-0000-7000-8000-0000000000e5",
+                  "invoice": {
+                    "dueAt": "2026-11-08T10:00:00+07:00",
+                    "id": "0199f2a0-0000-7000-8000-0000000000cd",
+                    "number": "PIV-2026-00032",
+                    "qrAvailable": false,
+                    "state": "issued",
+                    "total": "1605.00"
+                  },
+                  "listingId": "0199f2a0-0000-7000-8000-0000000000e3",
+                  "listingTitle": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                  "name": "บริการถ่ายภาพยืนยันห้องจริง",
+                  "note": null,
+                  "partnerRef": null,
+                  "price": "1605.00",
+                  "requestedAt": "2026-11-01T00:15:00+07:00",
+                  "scheduledAt": null,
+                  "scheduledFor": null,
+                  "service": "verified_photo",
+                  "state": "requested",
+                  "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                  "tenantName": "บริษัท ตัวอย่าง จำกัด",
+                  "unitId": "0199f2a0-0000-7000-8000-0000000000e6",
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMediaServiceOrderDto"
+                }
+              }
+            },
+            "description": "Order",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "One media service order",
+        "tags": [
+          "admin.mediaServices"
+        ],
+        "x-required-permissions": [
+          "admin.listing.verify"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/media-service-orders/{orderId}/actions/cancel": {
+      "post": {
+        "description": "Cancels an open order with a reason (D-297). Money already paid comes back only through a platform credit note requested by Finance (D-091).\n\nImplements: D-297, D-091.",
+        "operationId": "admin.mediaServices.cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "reason": "พาร์ทเนอร์ไม่สามารถเข้าพื้นที่ได้"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "cancelReason": "พาร์ทเนอร์ไม่สามารถเข้าพื้นที่ได้",
+                  "cancelledAt": "2026-11-01T00:15:00+07:00",
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "deliverableDocumentIds": [],
+                  "deliveredAt": null,
+                  "id": "0199f2a0-0000-7000-8000-0000000000e5",
+                  "invoice": {
+                    "dueAt": "2026-11-08T10:00:00+07:00",
+                    "id": "0199f2a0-0000-7000-8000-0000000000cd",
+                    "number": "PIV-2026-00032",
+                    "qrAvailable": false,
+                    "state": "issued",
+                    "total": "1605.00"
+                  },
+                  "listingId": "0199f2a0-0000-7000-8000-0000000000e3",
+                  "listingTitle": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                  "name": "บริการถ่ายภาพยืนยันห้องจริง",
+                  "note": null,
+                  "partnerRef": null,
+                  "price": "1605.00",
+                  "requestedAt": "2026-11-01T00:15:00+07:00",
+                  "scheduledAt": null,
+                  "scheduledFor": null,
+                  "service": "verified_photo",
+                  "state": "cancelled",
+                  "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                  "tenantName": "บริษัท ตัวอย่าง จำกัด",
+                  "unitId": "0199f2a0-0000-7000-8000-0000000000e6",
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMediaServiceOrderDto"
+                }
+              }
+            },
+            "description": "Cancelled",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "media_service.invalid_state": {
+                    "$ref": "#/components/examples/problem.media_service.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `media_service.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Cancel an order",
+        "tags": [
+          "admin.mediaServices"
+        ],
+        "x-required-permissions": [
+          "admin.listing.verify"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/media-service-orders/{orderId}/actions/deliver": {
+      "post": {
+        "description": "Finishes the uploads (object present with its size) and attaches the deliverables — documents of the ordering tenant in the order’s unit (`listing_photo` / `other`); the owner sees them on the order and may add them to the listing (D-297). Unknown or foreign document ids: 404.\n\nImplements: D-297.",
+        "operationId": "admin.mediaServices.deliver",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "documentIds": [
+                      "3b241101-e2bb-4255-8caf-4136c566a962"
+                    ]
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/MediaDeliverDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "cancelReason": null,
+                  "cancelledAt": null,
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "deliverableDocumentIds": [
+                    "3b241101-e2bb-4255-8caf-4136c566a962"
+                  ],
+                  "deliveredAt": "2026-11-01T00:15:00+07:00",
+                  "id": "0199f2a0-0000-7000-8000-0000000000e5",
+                  "invoice": {
+                    "dueAt": "2026-11-08T10:00:00+07:00",
+                    "id": "0199f2a0-0000-7000-8000-0000000000cd",
+                    "number": "PIV-2026-00032",
+                    "qrAvailable": false,
+                    "state": "issued",
+                    "total": "1605.00"
+                  },
+                  "listingId": "0199f2a0-0000-7000-8000-0000000000e3",
+                  "listingTitle": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                  "name": "บริการถ่ายภาพยืนยันห้องจริง",
+                  "note": null,
+                  "partnerRef": null,
+                  "price": "1605.00",
+                  "requestedAt": "2026-11-01T00:15:00+07:00",
+                  "scheduledAt": null,
+                  "scheduledFor": null,
+                  "service": "verified_photo",
+                  "state": "delivered",
+                  "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                  "tenantName": "บริษัท ตัวอย่าง จำกัด",
+                  "unitId": "0199f2a0-0000-7000-8000-0000000000e6",
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMediaServiceOrderDto"
+                }
+              }
+            },
+            "description": "Delivered",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "document.not_uploaded": {
+                    "$ref": "#/components/examples/problem.document.not_uploaded"
+                  },
+                  "media_service.invalid_state": {
+                    "$ref": "#/components/examples/problem.media_service.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `document.not_uploaded`, `media_service.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "document.size_mismatch": {
+                    "$ref": "#/components/examples/problem.document.size_mismatch"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `document.size_mismatch`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Mark an order delivered",
+        "tags": [
+          "admin.mediaServices"
+        ],
+        "x-required-permissions": [
+          "admin.listing.verify"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/media-service-orders/{orderId}/actions/schedule": {
+      "post": {
+        "description": "A requested (paid) order gets its visit and the partner’s reference; a scheduled one may be moved (D-297, O-032). Other states: `media_service.invalid_state`.\n\nImplements: D-297.",
+        "operationId": "admin.mediaServices.schedule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "partnerRef": "PARTNER-2026-0042",
+                    "scheduledFor": "2026-11-01T00:15:00+07:00"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/MediaScheduleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "cancelReason": null,
+                  "cancelledAt": null,
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "deliverableDocumentIds": [],
+                  "deliveredAt": null,
+                  "id": "0199f2a0-0000-7000-8000-0000000000e5",
+                  "invoice": {
+                    "dueAt": "2026-11-08T10:00:00+07:00",
+                    "id": "0199f2a0-0000-7000-8000-0000000000cd",
+                    "number": "PIV-2026-00032",
+                    "qrAvailable": false,
+                    "state": "issued",
+                    "total": "1605.00"
+                  },
+                  "listingId": "0199f2a0-0000-7000-8000-0000000000e3",
+                  "listingTitle": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                  "name": "บริการถ่ายภาพยืนยันห้องจริง",
+                  "note": null,
+                  "partnerRef": "PARTNER-2026-0042",
+                  "price": "1605.00",
+                  "requestedAt": "2026-11-01T00:15:00+07:00",
+                  "scheduledAt": "2026-11-01T00:15:00+07:00",
+                  "scheduledFor": "2026-11-01T00:15:00+07:00",
+                  "service": "verified_photo",
+                  "state": "scheduled",
+                  "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                  "tenantName": "บริษัท ตัวอย่าง จำกัด",
+                  "unitId": "0199f2a0-0000-7000-8000-0000000000e6",
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMediaServiceOrderDto"
+                }
+              }
+            },
+            "description": "Scheduled",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "media_service.invalid_state": {
+                    "$ref": "#/components/examples/problem.media_service.invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `media_service.invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Schedule the partner’s visit",
+        "tags": [
+          "admin.mediaServices"
+        ],
+        "x-required-permissions": [
+          "admin.listing.verify"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/media-service-orders/{orderId}/deliverables": {
+      "post": {
+        "description": "Presigns one delivered file as a document of the ordering tenant (unit scope, kind `listing_photo` or `other`) — counted to that tenant’s storage (D-286; an optional upload over a full allowance is refused with `storage.allowance_exceeded`). Upload with the returned URL, then deliver. Only for a requested or scheduled order. Audited.\n\nImplements: D-297, D-286.",
+        "operationId": "admin.mediaServices.presignDeliverable",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "fileName": "room-301-01.jpg",
+                    "kind": "listing_photo",
+                    "mimeType": "image/jpeg",
+                    "sha256": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+                    "sizeBytes": 2345678
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/MediaDeliverableDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "expiresAt": "2026-11-01T00:30:00+07:00",
+                  "file": {
+                    "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "height": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "kind": "listing_photo",
+                    "mimeType": "image/jpeg",
+                    "retentionClass": "meter_photo",
+                    "scanStatus": "pending",
+                    "scopeId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "scopeType": "unit",
+                    "sizeBytes": 2345678,
+                    "title": "มิเตอร์ห้อง A-201",
+                    "uploadState": "presigned",
+                    "width": null
+                  },
+                  "headers": {
+                    "Content-Type": "image/jpeg"
+                  },
+                  "multipart": null,
+                  "uploadUrl": "https://storage.example.com/upload?X-Amz-Signature=abc"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/FilePresignedDto"
+                }
+              }
+            },
+            "description": "Presigned",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "media_service.invalid_state": {
+                    "$ref": "#/components/examples/problem.media_service.invalid_state"
+                  },
+                  "storage.allowance_exceeded": {
+                    "$ref": "#/components/examples/problem.storage.allowance_exceeded"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `media_service.invalid_state`, `storage.allowance_exceeded`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "document.type_not_allowed": {
+                    "$ref": "#/components/examples/problem.document.type_not_allowed"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `document.type_not_allowed`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Upload a deliverable",
+        "tags": [
+          "admin.mediaServices"
+        ],
+        "x-required-permissions": [
+          "admin.listing.verify"
         ],
         "x-surface": "admin"
       }
@@ -96449,6 +99836,666 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/boost-products": {
+      "get": {
+        "description": "Listing boosts (7 / 30 days) and the building boost (one month) with the price before and incl. VAT of the price-plan version in force; `onSale: false` = no price yet (O-027, shown \"ยังไม่เปิดขาย\"); `free: true` = the building boost is free for this tenant (`boost.building.free`, D-297).\n\nImplements: D-287, D-291, D-297.",
+        "operationId": "owner.boosts.products",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "products": [
+                    {
+                      "currency": "THB",
+                      "days": 7,
+                      "free": false,
+                      "id": "0199f2a0-0000-7000-8000-0000000000e1",
+                      "key": "boost_listing_7d",
+                      "months": null,
+                      "nameEn": "Listing boost, 7 days",
+                      "nameTh": "โปรโมตประกาศ 7 วัน",
+                      "onSale": false,
+                      "price": null,
+                      "target": "listing",
+                      "total": null,
+                      "vatRate": "0.0700"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BoostProductsDto"
+                }
+              }
+            },
+            "description": "Products",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Boost products",
+        "tags": [
+          "owner.boosts"
+        ],
+        "x-required-permissions": [
+          "listing.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/boosts": {
+      "get": {
+        "description": "The tenant’s boosts, newest first, with their window and purchase invoice (D-297).\n\nImplements: D-297.",
+        "operationId": "owner.boosts.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StoragePackageState"
+            }
+          },
+          {
+            "in": "query",
+            "name": "listingId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "buildingId": null,
+                      "createdAt": "2026-11-01T10:00:00+07:00",
+                      "days": 7,
+                      "endsAt": null,
+                      "free": false,
+                      "id": "0199f2a0-0000-7000-8000-0000000000e2",
+                      "invoice": {
+                        "dueAt": "2026-11-08T10:00:00+07:00",
+                        "id": "0199f2a0-0000-7000-8000-0000000000cc",
+                        "number": "PIV-2026-00031",
+                        "qrAvailable": false,
+                        "state": "issued",
+                        "total": "535.00"
+                      },
+                      "listingId": "0199f2a0-0000-7000-8000-0000000000e3",
+                      "listingSlug": "condo-1br-ari-8f3k2",
+                      "months": null,
+                      "name": "โปรโมตประกาศ 7 วัน",
+                      "price": "535.00",
+                      "productId": "0199f2a0-0000-7000-8000-0000000000e1",
+                      "productKey": "boost_listing_7d",
+                      "startsAt": null,
+                      "state": "pending_payment",
+                      "target": "listing",
+                      "targetName": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BoostsDto"
+                }
+              }
+            },
+            "description": "Boosts",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "My boosts",
+        "tags": [
+          "owner.boosts"
+        ],
+        "x-required-permissions": [
+          "listing.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/boosts/{boostId}": {
+      "get": {
+        "description": "A boost of this tenant (D-297). Another tenant’s: 404.\n\nImplements: D-297.",
+        "operationId": "owner.boosts.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "boostId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "buildingId": null,
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "days": 7,
+                  "endsAt": null,
+                  "free": false,
+                  "id": "0199f2a0-0000-7000-8000-0000000000e2",
+                  "invoice": {
+                    "dueAt": "2026-11-08T10:00:00+07:00",
+                    "id": "0199f2a0-0000-7000-8000-0000000000cc",
+                    "number": "PIV-2026-00031",
+                    "qrAvailable": false,
+                    "state": "issued",
+                    "total": "535.00"
+                  },
+                  "listingId": "0199f2a0-0000-7000-8000-0000000000e3",
+                  "listingSlug": "condo-1br-ari-8f3k2",
+                  "months": null,
+                  "name": "โปรโมตประกาศ 7 วัน",
+                  "price": "535.00",
+                  "productId": "0199f2a0-0000-7000-8000-0000000000e1",
+                  "productKey": "boost_listing_7d",
+                  "startsAt": null,
+                  "state": "pending_payment",
+                  "target": "listing",
+                  "targetName": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BoostDto"
+                }
+              }
+            },
+            "description": "Boost",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "One of my boosts",
+        "tags": [
+          "owner.boosts"
+        ],
+        "x-required-permissions": [
+          "listing.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/building-rules/{ruleId}/acknowledgements": {
       "get": {
         "description": "Residents who acknowledged it, with the lease it was given for and when.\n\nImplements: D-073.",
@@ -98214,6 +102261,314 @@
         ],
         "x-required-permissions": [
           "unit.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/buildings/{buildingId}/boosts": {
+      "post": {
+        "description": "Buys a building boost (every public listing of this tenant in the building, one month) for a building the tenant owns or operates (D-297); free and active at once where `boost.building.free` is on for the tenant (one free boost in force at a time: `boost.already_active`). Otherwise as a listing boost. Another tenant’s building: 404.\n\nImplements: D-287, D-297, D-250.",
+        "operationId": "owner.boosts.boostBuilding",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "buildingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "productId": "0199f2a0-0000-7000-8000-0000000000e7"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/BoostPurchaseDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "days": null,
+                  "endsAt": null,
+                  "free": false,
+                  "id": "0199f2a0-0000-7000-8000-0000000000e2",
+                  "invoice": {
+                    "dueAt": "2026-11-08T10:00:00+07:00",
+                    "id": "0199f2a0-0000-7000-8000-0000000000cc",
+                    "number": "PIV-2026-00031",
+                    "qrAvailable": false,
+                    "state": "issued",
+                    "total": "535.00"
+                  },
+                  "listingId": null,
+                  "listingSlug": null,
+                  "months": 1,
+                  "name": "โปรโมตอาคารรายเดือน",
+                  "price": "535.00",
+                  "productId": "0199f2a0-0000-7000-8000-0000000000e1",
+                  "productKey": "boost_building_month",
+                  "startsAt": null,
+                  "state": "pending_payment",
+                  "target": "building",
+                  "targetName": "หอพักตัวอย่าง"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BoostDto"
+                }
+              }
+            },
+            "description": "Ordered",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "boost.already_active": {
+                    "$ref": "#/components/examples/problem.boost.already_active"
+                  },
+                  "boost.not_on_sale": {
+                    "$ref": "#/components/examples/problem.boost.not_on_sale"
+                  },
+                  "boost.pending": {
+                    "$ref": "#/components/examples/problem.boost.pending"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `boost.already_active`, `boost.not_on_sale`, `boost.pending`, `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Boost a building",
+        "tags": [
+          "owner.boosts"
+        ],
+        "x-required-permissions": [
+          "tenant.subscription.manage"
         ],
         "x-surface": "owner"
       }
@@ -149836,6 +154191,314 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/listings/{listingId}/boosts": {
+      "post": {
+        "description": "Buys a listing boost for a published listing of this tenant (D-297): a pending boost and a `purchase` platform invoice (line `boost`); it is active from the payment for its days, queued after a boost of the listing still in force. Not on sale: `boost.not_on_sale`; the same boost already waiting for payment: `boost.pending`; listing not public: `boost.listing_not_public`. Another tenant’s listing: 404.\n\nImplements: D-287, D-297, D-250.",
+        "operationId": "owner.boosts.boostListing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "productId": "0199f2a0-0000-7000-8000-0000000000e1"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/BoostPurchaseDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "buildingId": null,
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "days": 7,
+                  "endsAt": null,
+                  "free": false,
+                  "id": "0199f2a0-0000-7000-8000-0000000000e2",
+                  "invoice": {
+                    "dueAt": "2026-11-08T10:00:00+07:00",
+                    "id": "0199f2a0-0000-7000-8000-0000000000cc",
+                    "number": "PIV-2026-00031",
+                    "qrAvailable": false,
+                    "state": "issued",
+                    "total": "535.00"
+                  },
+                  "listingId": "0199f2a0-0000-7000-8000-0000000000e3",
+                  "listingSlug": "condo-1br-ari-8f3k2",
+                  "months": null,
+                  "name": "โปรโมตประกาศ 7 วัน",
+                  "price": "535.00",
+                  "productId": "0199f2a0-0000-7000-8000-0000000000e1",
+                  "productKey": "boost_listing_7d",
+                  "startsAt": null,
+                  "state": "pending_payment",
+                  "target": "listing",
+                  "targetName": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BoostDto"
+                }
+              }
+            },
+            "description": "Ordered",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "boost.listing_not_public": {
+                    "$ref": "#/components/examples/problem.boost.listing_not_public"
+                  },
+                  "boost.not_on_sale": {
+                    "$ref": "#/components/examples/problem.boost.not_on_sale"
+                  },
+                  "boost.pending": {
+                    "$ref": "#/components/examples/problem.boost.pending"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `boost.listing_not_public`, `boost.not_on_sale`, `boost.pending`, `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Boost a listing",
+        "tags": [
+          "owner.boosts"
+        ],
+        "x-required-permissions": [
+          "tenant.subscription.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/listings/{listingId}/comparables": {
       "get": {
         "description": "Comparable listings — same kind and bedrooms, size within ±20 %, same district or within 1 km of the same station, published now or let in the last 12 months — their rent band (25th / 50th / 75th percentile) and median days to let (D-269). Nothing below `listing.comparables.min`; never per competitor, never public.\n\nImplements: D-269.",
@@ -159385,6 +164048,926 @@
         "summary": "Start authenticator (TOTP) set-up",
         "tags": [
           "owner.me"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/media-service-orders": {
+      "get": {
+        "description": "Verified photo / 360° orders of this tenant, newest first, with state and invoice (D-297).\n\nImplements: D-297.",
+        "operationId": "owner.mediaServices.list",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "cancelReason": null,
+                      "cancelledAt": null,
+                      "createdAt": "2026-11-01T10:00:00+07:00",
+                      "deliverableDocumentIds": [],
+                      "deliveredAt": null,
+                      "id": "0199f2a0-0000-7000-8000-0000000000e5",
+                      "invoice": {
+                        "dueAt": "2026-11-08T10:00:00+07:00",
+                        "id": "0199f2a0-0000-7000-8000-0000000000cd",
+                        "number": "PIV-2026-00032",
+                        "qrAvailable": false,
+                        "state": "issued",
+                        "total": "1605.00"
+                      },
+                      "listingId": "0199f2a0-0000-7000-8000-0000000000e3",
+                      "listingTitle": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                      "name": "บริการถ่ายภาพยืนยันห้องจริง",
+                      "note": null,
+                      "price": "1605.00",
+                      "requestedAt": null,
+                      "scheduledFor": null,
+                      "service": "verified_photo",
+                      "state": "pending_payment",
+                      "unitId": "0199f2a0-0000-7000-8000-0000000000e6",
+                      "unitNo": "A-201"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MediaServiceOrdersDto"
+                }
+              }
+            },
+            "description": "Orders",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "My media service orders",
+        "tags": [
+          "owner.mediaServices"
+        ],
+        "x-required-permissions": [
+          "listing.read"
+        ],
+        "x-surface": "owner"
+      },
+      "post": {
+        "description": "Orders a media service for one of the tenant’s listings (D-297): a `purchase` platform invoice (line `media_service`); the order is `requested` once paid and the platform books the partner (O-032). Not on sale: `media_service.not_on_sale`; an open order for the unit and service: `media_service.order_open`; a closed / rejected listing: `boost.listing_not_public`. Another tenant’s listing: 404.\n\nImplements: D-287, D-297, D-250.",
+        "operationId": "owner.mediaServices.order",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "listingId": "0199f2a0-0000-7000-8000-0000000000e3",
+                    "note": null,
+                    "service": "verified_photo"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/MediaServiceOrderCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "cancelReason": null,
+                  "cancelledAt": null,
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "deliverableDocumentIds": [],
+                  "deliveredAt": null,
+                  "id": "0199f2a0-0000-7000-8000-0000000000e5",
+                  "invoice": {
+                    "dueAt": "2026-11-08T10:00:00+07:00",
+                    "id": "0199f2a0-0000-7000-8000-0000000000cd",
+                    "number": "PIV-2026-00032",
+                    "qrAvailable": false,
+                    "state": "issued",
+                    "total": "1605.00"
+                  },
+                  "listingId": "0199f2a0-0000-7000-8000-0000000000e3",
+                  "listingTitle": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                  "name": "บริการถ่ายภาพยืนยันห้องจริง",
+                  "note": null,
+                  "price": "1605.00",
+                  "requestedAt": null,
+                  "scheduledFor": null,
+                  "service": "verified_photo",
+                  "state": "pending_payment",
+                  "unitId": "0199f2a0-0000-7000-8000-0000000000e6",
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MediaServiceOrderDto"
+                }
+              }
+            },
+            "description": "Ordered",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "boost.listing_not_public": {
+                    "$ref": "#/components/examples/problem.boost.listing_not_public"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "media_service.not_on_sale": {
+                    "$ref": "#/components/examples/problem.media_service.not_on_sale"
+                  },
+                  "media_service.order_open": {
+                    "$ref": "#/components/examples/problem.media_service.order_open"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `boost.listing_not_public`, `idempotency.in_progress`, `media_service.not_on_sale`, `media_service.order_open`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Order a verified photo / 360° tour",
+        "tags": [
+          "owner.mediaServices"
+        ],
+        "x-required-permissions": [
+          "tenant.subscription.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/media-service-orders/{orderId}": {
+      "get": {
+        "description": "A media service order of this tenant with its deliverables (D-297). Another tenant’s: 404.\n\nImplements: D-297.",
+        "operationId": "owner.mediaServices.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "cancelReason": null,
+                  "cancelledAt": null,
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "deliverableDocumentIds": [],
+                  "deliveredAt": null,
+                  "id": "0199f2a0-0000-7000-8000-0000000000e5",
+                  "invoice": {
+                    "dueAt": "2026-11-08T10:00:00+07:00",
+                    "id": "0199f2a0-0000-7000-8000-0000000000cd",
+                    "number": "PIV-2026-00032",
+                    "qrAvailable": false,
+                    "state": "issued",
+                    "total": "1605.00"
+                  },
+                  "listingId": "0199f2a0-0000-7000-8000-0000000000e3",
+                  "listingTitle": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
+                  "name": "บริการถ่ายภาพยืนยันห้องจริง",
+                  "note": null,
+                  "price": "1605.00",
+                  "requestedAt": null,
+                  "scheduledFor": null,
+                  "service": "verified_photo",
+                  "state": "pending_payment",
+                  "unitId": "0199f2a0-0000-7000-8000-0000000000e6",
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MediaServiceOrderDto"
+                }
+              }
+            },
+            "description": "Order",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "One media service order",
+        "tags": [
+          "owner.mediaServices"
+        ],
+        "x-required-permissions": [
+          "listing.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/media-service-products": {
+      "get": {
+        "description": "The media services the platform offers with their price (before / incl. VAT); `onSale: false` = no price yet (O-027).\n\nImplements: D-287, D-291, D-297.",
+        "operationId": "owner.mediaServices.products",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "products": [
+                    {
+                      "currency": "THB",
+                      "id": "0199f2a0-0000-7000-8000-0000000000e4",
+                      "key": "media_verified_photo",
+                      "nameEn": "Verified photo service",
+                      "nameTh": "บริการถ่ายภาพยืนยันห้องจริง",
+                      "onSale": false,
+                      "price": null,
+                      "service": "verified_photo",
+                      "total": null,
+                      "vatRate": "0.0700"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MediaServiceProductsDto"
+                }
+              }
+            },
+            "description": "Products",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Verified photo / 360° products",
+        "tags": [
+          "owner.mediaServices"
+        ],
+        "x-required-permissions": [
+          "listing.read"
         ],
         "x-surface": "owner"
       }
@@ -211345,6 +216928,8 @@
                       "rent": "15000.00",
                       "sizeSqm": "28.50",
                       "slug": "condo-1br-0a1b2c3d4e",
+                      "sponsored": false,
+                      "sponsoredLabel": null,
                       "title": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
                       "unitKind": "condo_unit",
                       "vacantSince": "2026-10-31",
@@ -211730,6 +217315,8 @@
                   "sizeSqm": "28.50",
                   "slug": "condo-1br-0a1b2c3d4e",
                   "smokingAllowed": false,
+                  "sponsored": false,
+                  "sponsoredLabel": null,
                   "title": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
                   "unitKind": "condo_unit",
                   "utility": {
@@ -212406,6 +217993,8 @@
                       "rent": "15000.00",
                       "sizeSqm": "28.50",
                       "slug": "condo-1br-0a1b2c3d4e",
+                      "sponsored": false,
+                      "sponsoredLabel": null,
                       "title": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
                       "unitKind": "condo_unit",
                       "vacantSince": "2026-10-31",
@@ -260836,6 +266425,10 @@
       "name": "admin.featureFlags"
     },
     {
+      "description": "Success / co-broke fees accrued per deal, invoiced monthly on the platform invoice; disputes as credit notes (G5, D-297).",
+      "name": "admin.feeAccruals"
+    },
+    {
       "description": "Install / de-install orders and site surveys of Collective's field engineers (D-081, D-156).",
       "name": "admin.fieldWork"
     },
@@ -260866,6 +266459,10 @@
     {
       "description": "Who I am in the platform admin zone: roles, permissions, menu, TOTP state (D-161).",
       "name": "admin.me"
+    },
+    {
+      "description": "Verified photo / 360° orders: schedule the partner, upload deliverables to the tenant, deliver or cancel (G5, D-297).",
+      "name": "admin.mediaServices"
     },
     {
       "description": "Rates of the shared getproperty LINE OA: free messages, price per counted message, VAT; maker-checker (D-254).",
@@ -261036,6 +266633,10 @@
       "name": "owner.billing"
     },
     {
+      "description": "Boost a listing or a building: sponsored, labelled slots on top of public search for a paid window (G5, D-297).",
+      "name": "owner.boosts"
+    },
+    {
       "description": "Versioned building rules with resident acknowledgements (also at lease signing, B2.3) and the building’s contacts (B5.3, D-073).",
       "name": "owner.buildingRules"
     },
@@ -261158,6 +266759,10 @@
     {
       "description": "Who I am in the owner console: tenants, current tenant and type, role, permissions, menu entitlements, feature flags, subscription state; password and TOTP setup.",
       "name": "owner.me"
+    },
+    {
+      "description": "Order a verified photo / 360° tour for a listing; a partner fulfils it after payment (G5, D-297, O-032).",
+      "name": "owner.mediaServices"
     },
     {
       "description": "People working for the tenant: roles and building limits (D-090).",
