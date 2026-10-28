@@ -68,6 +68,13 @@ export class ShareKitDto {
 
   @ApiProperty({ type: ShareCardsDto })
   cards!: ShareCardsDto;
+
+  @ApiProperty({
+    type: [ShareCardDto],
+    description:
+      'G4 image bundle: the listing’s photos in order (1600 px WebP, signed 10 minutes) to download and post by hand in Facebook groups — groups are never automated (D-288).',
+  })
+  photos!: ShareCardDto[];
 }
 
 export class PublicShareUtmDto {

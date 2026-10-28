@@ -12,6 +12,8 @@ import {
   Min,
 } from 'class-validator';
 
+import { PlatformInvoiceStatusName } from '../admin/platform-business.dto';
+
 export enum MessagingChannelStateName {
   Pending = 'pending',
   Verified = 'verified',
@@ -59,6 +61,16 @@ export class MessagingChannelConnectDto {
   @IsString()
   @Length(20, 512)
   accessToken!: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    example: '0199f2a0-0000-7000-8000-0000000000cc',
+    description:
+      'G4 (D-287): the LINE OA integration price version the owner accepts — required only while a priced version is in force for the tenant type (`messaging.addon_terms_required` tells which); see `GET /v1/owner/messaging/addons`.',
+  })
+  @IsOptional()
+  @IsUUID()
+  acceptAddonVersionId?: string;
 }
 
 export class MessagingChannelDto {
@@ -340,4 +352,88 @@ export class PublicPricingDto {
     description: 'A published change that takes effect later, if any.',
   })
   messagingNext!: PublicMessagingRateDto | null;
+}
+
+export enum MessagingAddonChargeName {
+  Setup = 'setup',
+  Monthly = 'monthly',
+}
+
+export class MessagingAddonOfferDto {
+  @ApiProperty({ example: 'line_oa_integration' })
+  planKey!: string;
+
+  @ApiProperty({ example: 'เชื่อม LINE OA ของบริษัทนายหน้า' })
+  nameTh!: string;
+
+  @ApiProperty({ example: 'Agency LINE OA integration' })
+  nameEn!: string;
+
+  @ApiProperty({ type: String, format: 'uuid', nullable: true, example: null })
+  versionId!: string | null;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'false = no published price (O-027): connecting is free and nothing is charged ("ยังไม่เปิดขาย").',
+  })
+  onSale!: boolean;
+
+  @ApiProperty({ type: String, nullable: true, example: null, description: 'Monthly fee before VAT (THB).' })
+  monthlyFee!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: null,
+    description: 'One-time setup fee before VAT (THB).',
+  })
+  setupFee!: string | null;
+
+  @ApiProperty({ example: '0.0700' })
+  vatRate!: string;
+
+  @ApiProperty({ example: 'THB' })
+  currency!: string;
+
+  @ApiProperty({ type: String, format: 'date', nullable: true, example: null })
+  effectiveFrom!: string | null;
+}
+
+export class MessagingAddonInvoiceDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  id!: string;
+
+  @ApiProperty({ example: 'PINV-2026-000123' })
+  number!: string;
+
+  @ApiProperty({ enum: MessagingAddonChargeName, enumName: 'MessagingAddonCharge', example: 'monthly' })
+  charge!: MessagingAddonChargeName;
+
+  @ApiProperty({ type: String, format: 'date', example: '2026-12-01' })
+  periodStart!: string;
+
+  @ApiProperty({ type: String, format: 'date', example: '2026-12-31' })
+  periodEnd!: string;
+
+  @ApiProperty({ example: '1059.30', description: 'Incl. VAT (THB).' })
+  total!: string;
+
+  @ApiProperty({ enum: PlatformInvoiceStatusName, enumName: 'PlatformInvoiceStatus', example: 'issued' })
+  state!: PlatformInvoiceStatusName;
+}
+
+export class MessagingAddonsDto {
+  @ApiProperty({
+    type: MessagingAddonOfferDto,
+    nullable: true,
+    description: 'null = no OA integration add-on for this tenant type (connecting is free, D-254).',
+  })
+  offer!: MessagingAddonOfferDto | null;
+
+  @ApiProperty({ example: false, description: 'The setup fee was already invoiced (it is charged once).' })
+  setupCharged!: boolean;
+
+  @ApiProperty({ type: [MessagingAddonInvoiceDto] })
+  invoices!: MessagingAddonInvoiceDto[];
 }

@@ -883,6 +883,42 @@ export const SETTINGS: readonly SettingDef[] = [
     value: 3,
     reason: 'seed: B7.9 (D-265: three bills)',
   },
+  // --- G4 distribution (D-288, D-296) ----------------------------------------------------------------------
+  {
+    key: 'listing.verified_vacant.require_history',
+    valueType: 'bool',
+    scopeAllowed: ['platform'],
+    description:
+      'D-296 (G4): the "verified vacant" badge needs lease history on getproperty (a lease of the unit that ended or was terminated, and nothing in force since). Off = a unit with no lease record and no occupancy also counts as verified vacant.',
+    editableBy: ['admin.listing.moderate'],
+    value: true,
+    reason: 'seed: D-296 (badge only from real data)',
+  },
+  {
+    key: 'social.post.max_attempts',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-296 (G4): attempts at a Facebook Page post (publish / update / delete) before it is marked failed (rate limits and provider errors are retried; a refused token is not).',
+    editableBy: ADMIN,
+    value: 5,
+    reason: 'seed: D-296',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 20 ? [] : ['1–20'],
+  },
+  {
+    key: 'social.post.retry_minutes',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description: 'D-296 (G4): minutes before a Facebook Page post is tried again, doubled per attempt.',
+    editableBy: ADMIN,
+    value: 10,
+    reason: 'seed: D-296',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 1440
+        ? []
+        : ['1–1440 minutes'],
+  },
   {
     key: 'listing.comparables.min',
     valueType: 'int',

@@ -46,11 +46,14 @@ import { ListingLeaseHooks, SelfViewingDoorHook } from './ops-listings/listing.s
 import { ListingInsightsService } from './ops-listings/listing-insights.service';
 import { ListingLeadsService } from './ops-listings/listing-leads.service';
 import { ListingModerationService } from './ops-listings/listing-moderation.service';
+import { ListingOgImageService } from './ops-listings/listing-og-image.service';
 import { ListingShareService } from './ops-listings/listing-share.service';
+import { ListingSocialService } from './ops-listings/listing-social.service';
 import { ListingsService } from './ops-listings/listings.service';
 import { MandatesService } from './ops-listings/mandates.service';
 import { PublicListingsService } from './ops-listings/public-listings.service';
 import { SelfViewingService } from './ops-listings/self-viewing.service';
+import { SocialChannelsService } from './ops-listings/social-channels.service';
 import { PartiesService } from './ops-parties/parties.service';
 import { PartyNotifications } from './ops-parties/party-notifications';
 import { ResidentDocumentsService } from './ops-parties/resident-documents.service';
@@ -108,6 +111,9 @@ const SERVICES = [
   PublicListingsService,
   ListingInsightsService,
   ListingShareService,
+  ListingOgImageService,
+  SocialChannelsService,
+  ListingSocialService,
   UnitProfilesService,
   UtilityAccountsService,
   MetersService,

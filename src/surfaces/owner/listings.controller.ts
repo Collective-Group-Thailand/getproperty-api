@@ -254,8 +254,8 @@ export class OwnerListingsController {
     id: 'owner.listings.shareKit',
     summary: 'Share kit of a listing',
     description:
-      'For a published listing: a short link per channel (LINE, Facebook group, Marketplace, QR, plain link — `<web>/s/{code}` → the listing with UTM; made on first use, then the same), captions in Thai and English per channel, clicks and enquiries per channel, and the 1080 × 1080 photo cards (th / en, PNG: cover photo, rent, title, area, facts, QR of the link, getproperty logo) — rendered again only when what they show changes (D-268). Nothing is posted anywhere (Facebook forbids automated posting): the owner copies and downloads; LINE opens its share picker. `listing.invalid_state` unless published.',
-    implements: ['D-268'],
+      'For a published listing: a short link per channel (LINE, Facebook group, Marketplace, QR, plain link — `<web>/s/{code}` → the listing with UTM; made on first use, then the same), captions in Thai and English per channel, clicks and enquiries per channel, and the 1080 × 1080 photo cards (th / en, PNG: cover photo, rent, title, area, facts, QR of the link, getproperty logo) — rendered again only when what they show changes (D-268) — plus the listing’s photos as an image bundle (G4). Nothing is posted into groups or Marketplace (D-288: groups are never automated; the owner copies and downloads; LINE opens its share picker) — automatic posts go only to the tenant’s own Facebook Page. An agency listing never claims "no agent fee". `listing.invalid_state` unless published.',
+    implements: ['D-268', 'D-288'],
   })
   @ApiSuccess(200, {
     description: 'Share kit',
@@ -289,6 +289,14 @@ export class OwnerListingsController {
           height: 1080,
         },
       },
+      photos: [
+        {
+          documentId: FAKE.uuid,
+          url: 'https://storage.getproperty.test/photo-01.webp',
+          width: 1600,
+          height: 1200,
+        },
+      ],
     },
   })
   @ApiStandardErrors('validation.failed', 'http.not_found', 'listing.invalid_state', ...T)

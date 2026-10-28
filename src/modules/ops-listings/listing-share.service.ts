@@ -46,6 +46,8 @@ export interface ShareKit {
   listingId: string;
   links: ShareKitLink[];
   cards: { th: ShareCardFile; en: ShareCardFile };
+  /** G4 image bundle: the listing's photos in order (1600 px WebP renditions, signed for 10 minutes). */
+  photos: ShareCardFile[];
 }
 
 export interface ShareCardFile {
@@ -87,7 +89,7 @@ export class ListingShareService {
     return `${this.origin()}/s/${code}`;
   }
 
-  private code(): string {
+  code(): string {
     let s = '';
     for (let i = 0; i < 8; i++) s += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
     return s;
@@ -126,7 +128,8 @@ export class ListingShareService {
     );
   }
 
-  private texts(listing: Listing, verified: boolean, lang: 'th' | 'en') {
+  /** Card / caption texts of a listing in one language (also the Open Graph card and Page posts, G4). */
+  texts(listing: Listing, verified: boolean, lang: 'th' | 'en') {
     const th = lang === 'th';
     const rent = baht(listing.rent);
     const title = (!th && listing.titleEn) || listing.titleTh;
@@ -169,13 +172,16 @@ export class ListingShareService {
     const terms = th
       ? `ค่าเช่า ${rent}/เดือน · มัดจำ ${listing.depositMonths} เดือน · ล่วงหน้า ${listing.advanceMonths} เดือน · สัญญาขั้นต่ำ ${listing.minTermMonths} เดือน`
       : `Rent ${rent}/month · deposit ${listing.depositMonths} mo · advance ${listing.advanceMonths} mo · minimum ${listing.minTermMonths} months`;
+    // G4: an agency's listing (G2 mandate) never claims "no agent fee"
+    const direct = listing.mandateId === null;
     const badge = th
-      ? [verified ? 'เจ้าของยืนยันแล้ว' : null, 'ไม่มีค่านายหน้า'].filter(Boolean).join(' · ')
-      : [verified ? 'Verified owner' : null, 'No agent fee'].filter(Boolean).join(' · ');
+      ? [verified ? 'เจ้าของยืนยันแล้ว' : null, direct ? 'ไม่มีค่านายหน้า' : null].filter(Boolean).join(' · ')
+      : [verified ? 'Verified owner' : null, direct ? 'No agent fee' : null].filter(Boolean).join(' · ');
     return { rent, title, place, facts, terms, badge };
   }
 
-  private caption(listing: Listing, verified: boolean, lang: 'th' | 'en', url: string): string {
+  /** The caption of a channel (B7.9); the Facebook Page post text too (G4). */
+  caption(listing: Listing, verified: boolean, lang: 'th' | 'en', url: string): string {
     const t = this.texts(listing, verified, lang);
     const lines =
       lang === 'th'
@@ -184,7 +190,7 @@ export class ListingShareService {
             t.terms,
             t.place ? `ที่ตั้ง: ${t.place}` : null,
             t.facts || null,
-            t.badge,
+            t.badge || null,
             `ดูรูปทั้งหมด ถามหรือนัดดูห้อง: ${url}`,
           ]
         : [
@@ -192,14 +198,14 @@ export class ListingShareService {
             t.terms,
             t.place ? `Where: ${t.place}` : null,
             t.facts || null,
-            t.badge,
+            t.badge || null,
             `All photos, questions and viewings: ${url}`,
           ];
     return lines.filter(Boolean).join('\n');
   }
 
   /** The cover photo's bytes (its 1600 px rendition, else the original), or null without photos. */
-  private async cover(tx: Tx, listingId: string): Promise<{ id: string; body: Buffer } | null> {
+  async cover(tx: Tx, listingId: string): Promise<{ id: string; body: Buffer } | null> {
     const photo = await tx.listingPhoto.findFirst({
       where: { listingId },
       orderBy: { sortOrder: 'asc' },
@@ -342,7 +348,59 @@ export class ListingShareService {
         };
       }),
       cards: { th: await this.card(doc(thId)), en: await this.card(doc(enId)) },
+      photos: await this.photoBundle(ctx, listingId),
     };
+  }
+
+  /** G4: the photos of the share kit's image bundle, in order (downloaded and posted by hand in groups, D-288). */
+  private async photoBundle(ctx: TenantContext, listingId: string): Promise<ShareCardFile[]> {
+    const photos = await this.db.tenant(ctx, (tx) =>
+      tx.listingPhoto.findMany({
+        where: { listingId, tenantId: ctx.tenantId },
+        orderBy: { sortOrder: 'asc' },
+        include: { document: { select: { storageKey: true, width: true, height: true } } },
+      }),
+    );
+    const out: ShareCardFile[] = [];
+    for (const [i, p] of photos.entries()) {
+      const w = p.document.width ? Math.min(p.document.width, 1600) : 1600;
+      const h =
+        p.document.width && p.document.height
+          ? Math.round((p.document.height * w) / p.document.width)
+          : Math.round((w * 3) / 4);
+      out.push({
+        documentId: p.documentId,
+        url: await this.storage.presignGet(renditionKey(p.document.storageKey, 1600), {
+          expiresInSeconds: CARD_URL_TTL_SECONDS,
+          fileName: `photo-${String(i + 1).padStart(2, '0')}.webp`,
+          contentType: 'image/webp',
+        }),
+        width: w,
+        height: h,
+      });
+    }
+    return out;
+  }
+
+  /**
+   * The short link of a listing for one channel, made on first use (G4: the `facebook_page` link of a Page post, so
+   * its clicks and enquiries are counted like the share kit's). Runs in the caller's transaction.
+   */
+  async linkIn(tx: Tx, listing: Pick<Listing, 'id' | 'tenantId'>, channel: ListingChannel): Promise<string> {
+    const existing = await tx.listingShareLink.findFirst({ where: { listingId: listing.id, channel } });
+    if (existing) return this.shortUrl(existing.code);
+    for (let attempt = 0; ; attempt++) {
+      const code = this.code();
+      const clash = await tx.listingShareLink.findUnique({ where: { code } });
+      if (clash) {
+        if (attempt >= 4) throw new Error('share link: no free code');
+        continue;
+      }
+      await tx.listingShareLink.create({
+        data: { tenantId: listing.tenantId, listingId: listing.id, channel, code, createdBy: null },
+      });
+      return this.shortUrl(code);
+    }
   }
 
   /**

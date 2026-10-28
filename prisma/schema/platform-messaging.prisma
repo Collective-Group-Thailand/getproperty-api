@@ -184,3 +184,50 @@ model MessagingNotice {
   @@map("messaging_notice")
   @@schema("platform")
 }
+
+// G4 (D-288, D-296): a tenant's own Facebook Page; migration 0062, schema-design §7.5 row 170.
+
+enum SocialProvider {
+  facebook_page
+
+  @@map("social_provider")
+  @@schema("platform")
+}
+
+enum SocialChannelState {
+  verified
+  failing
+  revoked
+
+  @@map("social_channel_state")
+  @@schema("platform")
+}
+
+/// A tenant's own Facebook Page (D-288); the Page access token sealed with the tenant data key (D-148 / D-240).
+model SocialChannel {
+  id            String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String             @map("tenant_id") @db.Uuid
+  provider      SocialProvider     @default(facebook_page)
+  pageId        String             @map("page_id")
+  pageName      String?            @map("page_name")
+  tokenEnc      Bytes              @map("token_enc")
+  state         SocialChannelState @default(verified)
+  autoPost      Boolean            @default(true) @map("auto_post")
+  verifiedAt    DateTime?          @map("verified_at") @db.Timestamptz(6)
+  lastCheckedAt DateTime?          @map("last_checked_at") @db.Timestamptz(6)
+  lastError     String?            @map("last_error")
+  revokedAt     DateTime?          @map("revoked_at") @db.Timestamptz(6)
+  revokedBy     String?            @map("revoked_by") @db.Uuid
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?            @map("created_by") @db.Uuid
+  updatedAt     DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?            @map("updated_by") @db.Uuid
+
+  tenant Tenant              @relation("SocialChannelTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "social_channel_tenant_id_fkey")
+  posts  ListingSocialPost[]
+
+  @@unique([tenantId, provider], map: "social_channel_tenant_provider_key", where: raw("(state <> 'revoked'::platform.social_channel_state)"))
+  @@index([tenantId, state], map: "social_channel_tenant_id_state_idx")
+  @@map("social_channel")
+  @@schema("platform")
+}

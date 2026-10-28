@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 
 import sharp from 'sharp';
 
-import { renderShareCard, SHARE_CARD_SIZE } from './share-card';
+import { renderOgCard, renderShareCard, SHARE_CARD_SIZE } from './share-card';
 
 /** D-268: the square share card renders in Thai and English, with or without a photo. */
 describe('share card (D-268)', () => {
@@ -43,5 +43,29 @@ describe('share card (D-268)', () => {
     });
     expect((await sharp(png).metadata()).width).toBe(SHARE_CARD_SIZE);
     if (process.env.SHARE_CARD_OUT) writeFileSync(`${process.env.SHARE_CARD_OUT}/card-en.png`, png);
+  });
+});
+
+describe('Open Graph card (G4, D-296)', () => {
+  it('renders a 1200 × 630 PNG with or without a photo', async () => {
+    const sharpLib = sharp;
+    for (const photo of [
+      null,
+      await sharpLib({ create: { width: 800, height: 600, channels: 3, background: '#7aa6c2' } })
+        .jpeg()
+        .toBuffer(),
+    ]) {
+      const png = await renderOgCard({
+        photo,
+        rent: '฿15,000',
+        perMonth: '/ เดือน',
+        title: 'คอนโด 1 ห้องนอน ใกล้ BTS อารีย์',
+        place: 'พญาไท, กรุงเทพมหานคร',
+        facts: '1 ห้องนอน · 28.5 ตร.ม.',
+        badges: 'ว่างจริง ตรวจจากสัญญาในระบบ',
+      });
+      const meta = await sharpLib(png).metadata();
+      expect([meta.format, meta.width, meta.height]).toEqual(['png', 1200, 630]);
+    }
   });
 });

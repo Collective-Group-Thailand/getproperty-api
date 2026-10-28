@@ -308,7 +308,18 @@ export class ListingsService {
         subjectId: id,
         after: { fields: Object.keys(input) },
       });
-      return { listing: await this.found(tx, ctx, id), wasPublic: listing.state === 'published' };
+      const updated = await this.found(tx, ctx, id);
+      // G4 (D-288): a new rent of a public listing edits its Facebook Page posts
+      if (listing.state === 'published' && !updated.rent.equals(listing.rent))
+        await this.events.record(tx, {
+          type: 'listing.price_changed',
+          aggregateType: 'listing',
+          aggregateId: id,
+          tenantId: ctx.tenantId,
+          buildingId: listing.buildingId,
+          payload: { listingId: id, unitId: listing.unitId, rent: updated.rent.toFixed(2) },
+        });
+      return { listing: updated, wasPublic: listing.state === 'published' };
     });
     // A published listing whose new words need a look goes back to the queue (hidden until approved).
     if (result.wasPublic) {

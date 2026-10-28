@@ -280,4 +280,26 @@ export const PRICE_PLANS: readonly PricePlanSeed[] = [
       published: false,
     },
   },
+  {
+    // G4 (D-287, D-296): an agency's own LINE OA integration — monthly fee (unit price) + one-time setup fee (setup_fee);
+    // no price until the platform admin publishes a version (O-027): connecting stays free and nothing is charged
+    key: 'line_oa_integration',
+    tenantType: 'agency',
+    nameTh: 'เชื่อม LINE OA ของบริษัทนายหน้า',
+    nameEn: 'Agency LINE OA integration',
+    kind: 'addon',
+    isActive: true,
+    version: {
+      billingUnit: 'per_tenant',
+      unitPrice: null,
+      priceRange: null,
+      tiers: [],
+      minUnits: null,
+      minMonthly: null,
+      termMonths: null,
+      includedAllowances: {},
+      terms: { product: 'line_oa_integration', status: 'proposed', decision: 'D-287' },
+      published: false,
+    },
+  },
 ];

@@ -28,6 +28,8 @@ export enum ListingChannelName {
   FacebookMarketplace = 'facebook_marketplace',
   Qr = 'qr',
   Link = 'link',
+  /** G4 (D-288): the link of an automatic post on the tenant's own Facebook Page. */
+  FacebookPage = 'facebook_page',
 }
 export enum ListingLeadStateName {
   New = 'new',

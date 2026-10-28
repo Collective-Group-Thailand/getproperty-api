@@ -50,6 +50,13 @@ import { FAKE_EKYC_SECRET, FakeEkyc } from './ekyc/fake-ekyc';
 import { EMAIL, type EmailPort } from './email/email.port';
 import { FakeEmail } from './email/fake-email';
 import { SesEmailAdapter } from './email/ses-email.adapter';
+import {
+  FACEBOOK_PAGES,
+  type FacebookPagesPort,
+  FacebookPagesUnavailable,
+} from './facebook/facebook-pages.port';
+import { FakeFacebookPages } from './facebook/fake-facebook-pages';
+import { GraphFacebookPages } from './facebook/graph-facebook-pages';
 import { KEY_WRAP } from './kms/key-wrap.port';
 import { LocalKeyWrap } from './kms/local-key-wrap';
 import { FakeLineChannelApi } from './line-channels/fake-line-channel-api';
@@ -348,6 +355,17 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
         config.useFakes ? new FakeLineChannelApi() : new LineChannelApiAdapter(),
     },
     {
+      // G4 / D-288 / O-029: own Facebook Pages — off in production until the Meta app review
+      provide: FACEBOOK_PAGES,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig): FacebookPagesPort => {
+        const mode = config.get('FACEBOOK_MODE') ?? (config.useFakes ? 'fake' : 'off');
+        if (mode === 'fake') return new FakeFacebookPages();
+        if (mode === 'real') return new GraphFacebookPages(config.get('FACEBOOK_GRAPH_VERSION'));
+        return new FacebookPagesUnavailable();
+      },
+    },
+    {
       provide: WEB_PUSH,
       inject: [AppConfig],
       useFactory: (config: AppConfig): WebPushPort =>
@@ -393,6 +411,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
     LINE_LOGIN,
     LINE_MESSAGING,
     LINE_CHANNEL_API,
+    FACEBOOK_PAGES,
     FIREBASE_VERIFIER,
     EMAIL,
     WEB_PUSH,

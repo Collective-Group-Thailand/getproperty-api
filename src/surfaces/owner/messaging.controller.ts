@@ -12,6 +12,7 @@ import {
   MessagingChannelsService,
 } from '@core/messaging/messaging-channels.service';
 import { MessagingUsageService } from '@core/messaging/messaging-usage.service';
+import { MessagingAddonsService } from '@modules/platform-subscriptions/messaging-addons.service';
 import {
   Body,
   Controller,
@@ -31,6 +32,8 @@ import { iso, isoOrNull } from '../shared/mappers';
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
   LineWebhookAckDto,
+  type MessagingAddonChargeName,
+  MessagingAddonsDto,
   MessagingChannelConnectDto,
   MessagingChannelDto,
   type MessagingChannelStateName,
@@ -100,7 +103,10 @@ const linkDto = (l: LinkPreview): MessagingLinkDto => ({
 @ApiSurface(SURFACES.owner)
 @Controller('owner/messaging/channels')
 export class OwnerMessagingController {
-  constructor(private readonly channels: MessagingChannelsService) {}
+  constructor(
+    private readonly channels: MessagingChannelsService,
+    private readonly addons: MessagingAddonsService,
+  ) {}
 
   @Get()
   @TenantScoped()
@@ -125,8 +131,8 @@ export class OwnerMessagingController {
     id: 'owner.messagingChannels.connect',
     summary: 'Connect my own LINE Official Account',
     description:
-      'The Messaging API channel id, secret and access token (sealed with the tenant key, D-148), for the tenant or one building; replaces the one connected before. getproperty checks the token with LINE (`verified`, or `failing` with the reason) and answers the webhook URL to set in the LINE console. Messages then go out under the operator’s OA to residents who linked it — the others keep the shared OA until they do; LINE’s quota and charges are the operator’s (D-254).',
-    implements: ['D-254', 'D-148'],
+      'The Messaging API channel id, secret and access token (sealed with the tenant key, D-148), for the tenant or one building; replaces the one connected before. getproperty checks the token with LINE (`verified`, or `failing` with the reason) and answers the webhook URL to set in the LINE console (one URL per channel — each tenant’s webhook is checked with its own secret). Messages then go out under the operator’s OA to residents and prospects who linked it — the others keep the shared OA until they do; LINE’s quota and charges are the operator’s (D-254). G4 (D-287): while a priced LINE OA integration add-on is in force for the tenant type (agencies), send `acceptAddonVersionId` = that version (else 409 `messaging.addon_terms_required` with the prices); the setup fee is then invoiced once and the monthly fee each month (no price published = free, O-027).',
+    implements: ['D-254', 'D-148', 'D-287'],
   })
   @ApiJsonBody(MessagingChannelConnectDto, {
     lineChannelId: '1657000000',
@@ -134,12 +140,22 @@ export class OwnerMessagingController {
     accessToken: 'eyJhbGciOiJIUzI1NiJ9.long-lived-channel-access-token',
   })
   @ApiSuccess(201, { description: 'Connected', type: MessagingChannelDto, example: CHANNEL_EXAMPLE })
-  @ApiStandardErrors('validation.failed', 'http.bad_request', 'http.not_found', ...T)
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.bad_request',
+    'http.not_found',
+    'messaging.addon_terms_required',
+    ...T,
+  )
   async connect(
     @CurrentTenant() ctx: TenantContext,
     @Body() body: MessagingChannelConnectDto,
   ): Promise<MessagingChannelDto> {
-    return channelDto(await this.channels.connect(ctx, body));
+    const { acceptAddonVersionId, ...input } = body;
+    await this.addons.assertAccepted(ctx, acceptAddonVersionId);
+    const channel = await this.channels.connect(ctx, input);
+    await this.addons.chargeSetup(ctx);
+    return channelDto(channel);
   }
 
   @Post(':channelId/actions/verify')
@@ -330,5 +346,126 @@ export class OwnerMessagingUsageController {
     @Query() query: MessagingUsageQuery,
   ): Promise<MessagingUsageDto> {
     return this.usage.summary(ctx, query.month);
+  }
+}
+
+/** G4 (D-287): the LINE OA integration add-on of the tenant — offer and fee invoices. */
+@ApiTags('owner.messaging')
+@ApiSurface(SURFACES.owner)
+@Controller('owner/messaging/addons')
+export class OwnerMessagingAddonsController {
+  constructor(private readonly addons: MessagingAddonsService) {}
+
+  @Get()
+  @TenantScoped()
+  @Can('tenant.settings.read')
+  @ApiEndpoint({
+    id: 'owner.messagingAddons.get',
+    summary: 'LINE OA integration fee',
+    description:
+      'The LINE OA integration add-on for this tenant type (G4, D-287, D-291): monthly and setup fee of the price-plan version in force (`onSale: false` = no price published — O-027 — connecting an own OA is free and nothing is charged), whether the setup fee was invoiced, and the fee invoices (`purchase` platform invoices; unpaid = nothing suspended, D-250). LINE bills message charges of an own OA to the operator directly (D-254).',
+    implements: ['D-287', 'D-291', 'D-254'],
+  })
+  @ApiSuccess(200, {
+    description: 'Offer and invoices',
+    type: MessagingAddonsDto,
+    example: {
+      offer: {
+        planKey: 'line_oa_integration',
+        nameTh: 'เชื่อม LINE OA ของบริษัทนายหน้า',
+        nameEn: 'Agency LINE OA integration',
+        versionId: null,
+        onSale: false,
+        monthlyFee: null,
+        setupFee: null,
+        vatRate: '0.0700',
+        currency: 'THB',
+        effectiveFrom: null,
+      },
+      setupCharged: false,
+      invoices: [],
+    },
+  })
+  @ApiStandardErrors(...T)
+  async get(@CurrentTenant() ctx: TenantContext): Promise<MessagingAddonsDto> {
+    const c = await this.addons.catalogue(ctx);
+    const v = c.onSale ? c.version : null;
+    const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
+    return {
+      offer: c.plan
+        ? {
+            planKey: c.plan.key,
+            nameTh: c.plan.nameTh,
+            nameEn: c.plan.nameEn,
+            versionId: v?.id ?? null,
+            onSale: c.onSale,
+            monthlyFee: v?.unitPrice ? v.unitPrice.toFixed(2) : null,
+            setupFee: v ? v.setupFee.toFixed(2) : null,
+            vatRate: (c.version?.vatRate ?? 0.07).toString().length
+              ? Number(c.version?.vatRate ?? 0.07).toFixed(4)
+              : '0.0700',
+            currency: c.version?.currency ?? 'THB',
+            effectiveFrom: v ? day(v.effectiveFrom) : null,
+          }
+        : null,
+      setupCharged: c.setupCharged,
+      invoices: c.invoices.map((i) => ({
+        id: i.id,
+        number: i.number,
+        charge: (this.addons.chargeOf(i) ?? 'monthly') as MessagingAddonChargeName,
+        periodStart: day(i.periodStart)!,
+        periodEnd: day(i.periodEnd)!,
+        total: i.total.toFixed(2),
+        state: i.state as MessagingAddonsDto['invoices'][number]['state'],
+      })),
+    };
+  }
+}
+
+/** G4: a prospect links an operator’s (an agency’s) own OA, so lead and viewing messages come through it (D-254). */
+@ApiTags('prospect.messagingLinks')
+@ApiSurface(SURFACES.prospect)
+@Controller('prospect/messaging-links')
+export class ProspectMessagingLinksController {
+  constructor(private readonly channels: MessagingChannelsService) {}
+
+  @Get(':token')
+  @ApiEndpoint({
+    id: 'prospect.messagingLinks.get',
+    summary: 'Who asks me to link their LINE account',
+    description:
+      'The operator (e.g. an estate agency) and its LINE OA behind the link the OA replied with, and whether it can still be used (G4, D-254).',
+    implements: ['D-254', 'D-287'],
+  })
+  @ApiSuccess(200, { description: 'The link', type: MessagingLinkDto, example: LINK_EXAMPLE })
+  @ApiStandardErrors('messaging.link_invalid')
+  async get(@Param('token') token: string): Promise<MessagingLinkDto> {
+    return linkDto(await this.channels.preview(token.slice(0, 128)));
+  }
+
+  @Post(':token/actions/confirm')
+  @HttpCode(200)
+  @ApiEndpoint({
+    id: 'prospect.messagingLinks.confirm',
+    summary: 'Link the operator’s LINE account to me',
+    description:
+      'My enquiry and viewing messages from this operator then come through its own OA (G4); the same OA user cannot be linked to another person (`messaging.line_user_taken`). Single use; expires after `messaging.link_token.ttl_minutes` (D-254).',
+    implements: ['D-254', 'D-287'],
+  })
+  @ApiSuccess(200, {
+    description: 'Linked',
+    type: MessagingLinkDto,
+    example: { ...LINK_EXAMPLE, state: 'used' as MessagingLinkStateName },
+  })
+  @ApiStandardErrors(
+    'messaging.link_invalid',
+    'messaging.link_expired',
+    'messaging.link_used',
+    'messaging.line_user_taken',
+  )
+  async confirm(@Param('token') token: string): Promise<MessagingLinkDto> {
+    const actor = RequestContext.actor();
+    if (actor?.type !== 'user') throw new DomainException('auth.unauthenticated');
+    return linkDto(await this.channels.confirm(actor.publicId, token.slice(0, 128)));
   }
 }

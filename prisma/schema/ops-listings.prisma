@@ -53,6 +53,8 @@ model Listing {
   shareCardEnDocumentId String?        @map("share_card_en_document_id") @db.Uuid
   shareCardHash    String?             @map("share_card_hash")
   mandateId        String?             @map("mandate_id") @db.Uuid
+  ogImageDocumentId String?            @map("og_image_document_id") @db.Uuid
+  ogImageHash      String?             @map("og_image_hash")
   version          Int                 @default(1)
   createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy        String?             @map("created_by") @db.Uuid
@@ -66,6 +68,8 @@ model Listing {
   shareCardTh  Document?            @relation("ListingShareCardTh", fields: [shareCardThDocumentId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_share_card_th_document_id_fkey")
   shareCardEn  Document?            @relation("ListingShareCardEn", fields: [shareCardEnDocumentId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_share_card_en_document_id_fkey")
   mandate      ListingMandate?      @relation(fields: [mandateId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_mandate_id_fkey")
+  ogImage      Document?            @relation("ListingOgImage", fields: [ogImageDocumentId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_og_image_document_id_fkey")
+  socialPosts  ListingSocialPost[]
   coBrokes     CoBrokeAgreement[]
   deals        Deal[]
   shareLinks   ListingShareLink[]
@@ -85,6 +89,7 @@ model Listing {
   @@index([mandateId], map: "listing_mandate_id_idx")
   @@index([shareCardThDocumentId], map: "listing_share_card_th_document_id_idx")
   @@index([shareCardEnDocumentId], map: "listing_share_card_en_document_id_idx")
+  @@index([ogImageDocumentId], map: "listing_og_image_document_id_idx")
   @@map("listing")
   @@schema("ops")
 }
@@ -273,7 +278,60 @@ enum ListingChannel {
   facebook_marketplace
   qr
   link
+  facebook_page
 
   @@map("listing_channel")
+  @@schema("ops")
+}
+
+// G4 (D-288, D-296): automatic posts on a tenant's own Facebook Page; migration 0062, schema-design §7.5 rows 171–172.
+
+enum SocialPostState {
+  queued
+  posted
+  failed
+  deleted
+
+  @@map("social_post_state")
+  @@schema("ops")
+}
+
+enum SocialPostAction {
+  publish
+  update
+  delete
+
+  @@map("social_post_action")
+  @@schema("ops")
+}
+
+/// One listing × own Facebook Page: what getproperty posted there and what it still has to do (D-288).
+model ListingSocialPost {
+  id               String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String            @map("tenant_id") @db.Uuid
+  listingId        String            @map("listing_id") @db.Uuid
+  channelId        String            @map("channel_id") @db.Uuid
+  state            SocialPostState   @default(queued)
+  pendingAction    SocialPostAction? @map("pending_action")
+  externalPostId   String?           @map("external_post_id")
+  contentHash      String?           @map("content_hash")
+  attempts         Int               @default(0)
+  nextAttemptAt    DateTime?         @map("next_attempt_at") @db.Timestamptz(6)
+  lastError        String?           @map("last_error")
+  postedAt         DateTime?         @map("posted_at") @db.Timestamptz(6)
+  updatedOnPageAt  DateTime?         @map("updated_on_page_at") @db.Timestamptz(6)
+  deletedAt        DateTime?         @map("deleted_at") @db.Timestamptz(6)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant  Tenant        @relation("ListingSocialPostTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_social_post_tenant_id_fkey")
+  listing Listing       @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_social_post_listing_id_fkey")
+  channel SocialChannel @relation(fields: [channelId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_social_post_channel_id_fkey")
+
+  @@unique([listingId, channelId], map: "listing_social_post_listing_id_channel_id_key")
+  @@index([channelId], map: "listing_social_post_channel_id_idx")
+  @@index([tenantId, state], map: "listing_social_post_tenant_id_state_idx")
+  @@index([nextAttemptAt], map: "listing_social_post_due_idx", where: raw("(state = 'queued'::ops.social_post_state)"))
+  @@map("listing_social_post")
   @@schema("ops")
 }

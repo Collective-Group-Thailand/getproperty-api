@@ -7,6 +7,7 @@ import { PilotKpisService } from './platform-analytics/pilot-kpis.service';
 import { GuidesService } from './platform-content/guides.service';
 import { FieldWorkService } from './platform-subscriptions/field-work.service';
 import { HaasService } from './platform-subscriptions/haas.service';
+import { MessagingAddonsService } from './platform-subscriptions/messaging-addons.service';
 import { PilotsService } from './platform-subscriptions/pilots.service';
 import { PlatformBillingService } from './platform-subscriptions/platform-billing.service';
 import { PlatformDocuments } from './platform-subscriptions/platform-documents';
@@ -31,6 +32,7 @@ const SERVICES = [
   CsatSurveyService,
   GuidesService,
   StoragePackagesService,
+  MessagingAddonsService,
 ];
 
 /**

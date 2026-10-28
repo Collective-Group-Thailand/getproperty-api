@@ -62,7 +62,11 @@ import { OwnerLeaseNoticesController } from './lease-notices.controller';
 import { OwnerLeasesController, OwnerLeaseTemplatesController } from './leases.controller';
 import { OwnerListingsController } from './listings.controller';
 import { OwnerMandatesController } from './mandates.controller';
-import { OwnerMessagingController, OwnerMessagingUsageController } from './messaging.controller';
+import {
+  OwnerMessagingAddonsController,
+  OwnerMessagingController,
+  OwnerMessagingUsageController,
+} from './messaging.controller';
 import {
   OwnerBankAccountsController,
   OwnerComplianceAcknowledgementsController,
@@ -98,6 +102,7 @@ import {
   OwnerReadingReviewsController,
   OwnerUtilityInvoicesController,
 } from './smart.controller';
+import { OwnerListingSocialPostsController, OwnerSocialChannelsController } from './social.controller';
 import { OwnerStorageController } from './storage.controller';
 import { OwnerSubscriptionController } from './subscription.controller';
 import {
@@ -131,6 +136,9 @@ import {
     OwnerServiceCostsController,
     OwnerMessagingController,
     OwnerMessagingUsageController,
+    OwnerMessagingAddonsController,
+    OwnerSocialChannelsController,
+    OwnerListingSocialPostsController,
     OwnerTenantController,
     OwnerMembersController,
     OwnerInvitationsController,
