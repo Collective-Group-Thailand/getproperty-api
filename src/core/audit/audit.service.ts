@@ -243,6 +243,18 @@ export const AUDIT_ACTIONS = [
   'co_broke.cancelled',
   'co_broke.ended',
   'deal.closed',
+  // G5 boosts, media services, fee invoices (D-297)
+  'boost.ordered',
+  'boost.activated',
+  'boost.expired',
+  'media_service.ordered',
+  'media_service.requested',
+  'media_service.scheduled',
+  'media_service.deliverable_presigned',
+  'media_service.delivered',
+  'media_service.cancelled',
+  'fee.invoiced',
+  'fee.disputed',
   // G3 contract library, contracts, renewals (D-294)
   'contract_template.copied',
   'contract_template.updated',

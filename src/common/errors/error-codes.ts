@@ -207,6 +207,16 @@ export const ERROR_CODES = {
   'listing.duplicate_unit': HttpStatus.CONFLICT,
   // G2 agency mandates and co-broke (D-293)
   'mandate.invalid_state': HttpStatus.CONFLICT,
+  // G5 (D-297): boosts, verified photo / 360° orders, fee disputes
+  'boost.not_on_sale': HttpStatus.CONFLICT,
+  'boost.pending': HttpStatus.CONFLICT,
+  'boost.already_active': HttpStatus.CONFLICT,
+  'boost.listing_not_public': HttpStatus.CONFLICT,
+  'media_service.not_on_sale': HttpStatus.CONFLICT,
+  'media_service.order_open': HttpStatus.CONFLICT,
+  'media_service.invalid_state': HttpStatus.CONFLICT,
+  'fee.not_invoiced': HttpStatus.CONFLICT,
+  'fee.already_disputed': HttpStatus.CONFLICT,
   'mandate.exclusive_conflict': HttpStatus.CONFLICT,
   'mandate.agency_required': HttpStatus.UNPROCESSABLE_ENTITY,
   'co_broke.invalid_state': HttpStatus.CONFLICT,

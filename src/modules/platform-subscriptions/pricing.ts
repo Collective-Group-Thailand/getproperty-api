@@ -51,7 +51,12 @@ export interface ChargeLine {
     | 'adjustment'
     | 'storage'
     | 'setup'
-    | 'messaging_addon';
+    | 'messaging_addon'
+    // G5 (D-297): boosts, verified photo / 360° orders, success / co-broke fees
+    | 'boost'
+    | 'media_service'
+    | 'success_fee'
+    | 'co_broke_fee';
   description: string;
   quantity: string;
   unitPrice: string;

@@ -8,6 +8,7 @@ import { IdentityVerificationService } from '@core/identity/identity-verificatio
 import { SettingsService } from '@core/settings/settings.service';
 import { TenantTx } from '@database/tenant-tx';
 import { type Furnishing, type PortfolioUnitKind, Prisma } from '@generated/prisma/client';
+import { sponsoredSlots } from '@modules/platform-subscriptions/growth-products';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { ListingInsightsService } from './listing-insights.service';
@@ -77,6 +78,9 @@ type Row = {
   /** G4: the last day of the unit's last ended / terminated lease on getproperty (null = no history). */
   last_lease_end: Date | null;
 };
+
+/** G5 (D-297): the label of a sponsored result (boosted listings are always shown as ads). */
+export const SPONSORED_LABEL = { th: 'โฆษณา', en: 'Ad' } as const;
 
 const ISO_DAY = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
@@ -170,9 +174,18 @@ export class PublicListingsService {
     return out;
   }
 
-  private summary(row: Row, cover: PublicPhoto | null, lang: 'th' | 'en', requireHistory: boolean) {
+  private summary(
+    row: Row,
+    cover: PublicPhoto | null,
+    lang: 'th' | 'en',
+    requireHistory: boolean,
+    sponsored = false,
+  ) {
     return {
       ...this.vacancy(row, requireHistory),
+      // G5 (D-297): a boosted listing in a sponsored slot is labelled as an ad
+      sponsored,
+      sponsoredLabel: sponsored ? SPONSORED_LABEL[lang] : null,
       slug: row.slug,
       title: this.title(row, lang),
       unitKind: row.unit_kind,
@@ -265,7 +278,8 @@ export class PublicListingsService {
           ? Prisma.sql`l.rent DESC, l.published_at DESC`
           : Prisma.sql`l.published_at DESC, l.id DESC`;
     const filter = Prisma.join(where, ' AND ');
-    const today = bangkokDate(this.clock.now());
+    const now = this.clock.now();
+    const today = bangkokDate(now);
     const requireHistory = await this.vacancyRule();
     const [rows, total] = await this.db.platform(async (tx) => [
       await tx.$queryRaw<
@@ -277,13 +291,56 @@ export class PublicListingsService {
         >`SELECT count(*) AS n FROM ops.listing l JOIN core.tenant t ON t.id = l.tenant_id WHERE ${filter}`
       )[0]!.n,
     ]);
+    // G5 (D-297): boosted listings matching the same query on top of the page, labelled, at most N per page
+    const sponsored = query.ownerTenantId
+      ? []
+      : await this.sponsored(filter, today, now, requireHistory, Math.floor(offset / limit));
+    const sponsoredIds = new Set(sponsored.map((r) => r.id));
     const page = rows.slice(0, limit);
-    const covers = await this.covers(page.map((r) => r.id));
+    const organic = page.filter((r) => !sponsoredIds.has(r.id));
+    const covers = await this.covers([...sponsored, ...organic].map((r) => r.id));
     return {
-      data: page.map((row) => this.summary(row, covers.get(row.id) ?? null, lang, requireHistory)),
+      data: [
+        ...sponsored.map((row) => this.summary(row, covers.get(row.id) ?? null, lang, requireHistory, true)),
+        ...organic.map((row) => this.summary(row, covers.get(row.id) ?? null, lang, requireHistory)),
+      ],
       total: Number(total),
       nextCursor: rows.length > limit ? encodeCursor(offset + limit) : null,
     };
+  }
+
+  /**
+   * The sponsored slots of one results page (G5, D-297): listings with a boost in force — of the listing itself or of
+   * its building (bought by the listing's tenant) — matching the query; ranked by verified vacancy, freshness, id;
+   * `boost.search.max_per_page` per page (0 = none), each boosted listing once across pages.
+   */
+  private async sponsored(
+    filter: Prisma.Sql,
+    today: string,
+    now: Date,
+    requireHistory: boolean,
+    pageIndex: number,
+  ): Promise<Row[]> {
+    const perPage = (await this.settings.valueAt<number>('boost.search.max_per_page', now)) ?? 0;
+    if (perPage <= 0) return [];
+    const candidates = await this.db.platform(
+      (tx) =>
+        tx.$queryRaw<Row[]>`${this.select(today)} WHERE ${filter} AND EXISTS (
+          SELECT 1 FROM ops.listing_boost b
+           WHERE b.state = 'active' AND b.starts_at <= ${now} AND b.ends_at > ${now}
+             AND (b.listing_id = l.id OR (b.building_id = l.building_id AND b.tenant_id = l.tenant_id)))
+          ORDER BY l.published_at DESC, l.id LIMIT 500`,
+    );
+    return sponsoredSlots(
+      candidates.map((row) => ({
+        row,
+        id: row.id,
+        verifiedVacant: this.vacancy(row, requireHistory).verifiedVacant,
+        publishedAt: row.published_at,
+      })),
+      pageIndex,
+      perPage,
+    ).map((c) => c.row);
   }
 
   async detail(slug: string, lang: 'th' | 'en') {

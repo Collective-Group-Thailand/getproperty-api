@@ -5,8 +5,11 @@ import { CsatSurveyService } from './platform-analytics/csat-survey.service';
 import { InsightsService } from './platform-analytics/insights.service';
 import { PilotKpisService } from './platform-analytics/pilot-kpis.service';
 import { GuidesService } from './platform-content/guides.service';
+import { BoostsService } from './platform-subscriptions/boosts.service';
+import { FeeInvoicingService } from './platform-subscriptions/fee-invoicing.service';
 import { FieldWorkService } from './platform-subscriptions/field-work.service';
 import { HaasService } from './platform-subscriptions/haas.service';
+import { MediaServicesService } from './platform-subscriptions/media-services.service';
 import { MessagingAddonsService } from './platform-subscriptions/messaging-addons.service';
 import { PilotsService } from './platform-subscriptions/pilots.service';
 import { PlatformBillingService } from './platform-subscriptions/platform-billing.service';
@@ -33,6 +36,9 @@ const SERVICES = [
   GuidesService,
   StoragePackagesService,
   MessagingAddonsService,
+  BoostsService,
+  FeeInvoicingService,
+  MediaServicesService,
 ];
 
 /**

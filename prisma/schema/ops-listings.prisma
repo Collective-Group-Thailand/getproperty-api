@@ -70,6 +70,8 @@ model Listing {
   mandate      ListingMandate?      @relation(fields: [mandateId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_mandate_id_fkey")
   ogImage      Document?            @relation("ListingOgImage", fields: [ogImageDocumentId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_og_image_document_id_fkey")
   socialPosts  ListingSocialPost[]
+  boosts       ListingBoost[]
+  mediaServiceOrders MediaServiceOrder[]
   coBrokes     CoBrokeAgreement[]
   deals        Deal[]
   shareLinks   ListingShareLink[]

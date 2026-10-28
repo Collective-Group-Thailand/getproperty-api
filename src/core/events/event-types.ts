@@ -101,6 +101,23 @@ export const DOMAIN_EVENT_TYPES = {
     'A lease of a listed / mandated unit closed through the platform (activated, e-signed, first payment confirmed) — once per lease (D-293).',
   'fee.accrued':
     'A success / co-broke fee was accrued for an agency per the published price plan (D-287, G5 invoices it).',
+  // G5 boost & growth billing (D-297)
+  'boost.ordered':
+    'A tenant bought (or got free) a listing / building boost; a purchase platform invoice waits for payment (D-297).',
+  'boost.activated':
+    'A boost is in force for its window (paid, free or queued after the previous one, D-297).',
+  'boost.expired': 'A boost reached its end; the listing leaves the sponsored slots (D-297).',
+  'media_service.ordered':
+    'A tenant ordered a verified photo / 360° tour for a listing (purchase invoice, D-297).',
+  'media_service.requested': 'A media service order is paid (or free) and waits for the partner (O-032).',
+  'media_service.scheduled': 'The platform booked the partner’s visit for a media service order.',
+  'media_service.delivered':
+    'The deliverables of a media service order were stored as the tenant’s documents.',
+  'media_service.cancelled':
+    'The platform cancelled a media service order (money back only by a credit note).',
+  'fee.invoiced':
+    'An agency’s success / co-broke fees of past months were put on one purchase platform invoice (D-297).',
+  'fee.disputed': 'Finance requested a platform credit note for a disputed fee accrual (D-297, D-091).',
   'listing.closed':
     'A listing was closed — leased, withdrawn by the owner, or hidden for good by moderation (D-252).',
   'listing.rejected': 'Moderation rejected a listing with a reason; the owner is told (D-252).',

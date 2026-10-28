@@ -919,6 +919,29 @@ export const SETTINGS: readonly SettingDef[] = [
         ? []
         : ['1–1440 minutes'],
   },
+  // --- G5 boost & growth billing (D-287, D-291, D-297) --------------------------------------------------------
+  {
+    key: 'boost.search.max_per_page',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-297 (G5): at most this many boosted listings in the sponsored slots on top of each public search page (always labelled as ads; ranked by verified vacancy, then freshness). 0 = no sponsored slots. The default 3 is an assumption (O-027).',
+    editableBy: ADMIN,
+    value: 3,
+    reason: 'seed: D-297 (assumption, O-027)',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 10 ? [] : ['0–10'],
+  },
+  {
+    key: 'boost.building.free',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-297 (G5): the building boost is free for this tenant (e.g. Apartment Smart customers — which tenants qualify is open, O-027); set by the platform admin platform-wide or per tenant. One free building boost in force at a time.',
+    editableBy: ADMIN,
+    value: false,
+    reason: 'seed: D-297 (no free boost until decided, O-027)',
+  },
   {
     key: 'listing.comparables.min',
     valueType: 'int',

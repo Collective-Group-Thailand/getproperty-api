@@ -16,6 +16,7 @@ import { AdminFilesController, AdminIntegrationEventsController } from './admin-
 import { ADMIN_BUSINESS_CONTROLLERS } from './admin-business.controller';
 import { AdminContractLibraryController } from './admin-contract-library.controller';
 import { AdminProviderCredentialsController } from './admin-credentials.controller';
+import { AdminFeeAccrualsController, AdminMediaServicesController } from './admin-growth.controller';
 import { AdminGuidesController } from './admin-guides.controller';
 import { AdminListingsController } from './admin-listings.controller';
 import { AdminMessagingRatesController } from './admin-messaging.controller';
@@ -51,6 +52,8 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
     AdminPlatformUsersController,
     AdminSettingsController,
     AdminStorageController,
+    AdminFeeAccrualsController,
+    AdminMediaServicesController,
     AdminTenantStorageQuotaController,
     AdminMessagingRatesController,
     AdminGuidesController,
