@@ -1,0 +1,143 @@
+// G6 (D-287, D-300): audience preferences, sponsored campaigns, deliveries and campaign links; migration 0065,
+// schema-design §7.5 rows 189–194.
+
+enum SponsoredCampaignState {
+  draft
+  scheduled
+  sending
+  sent
+  cancelled
+  rejected
+
+  @@map("sponsored_campaign_state")
+  @@schema("platform")
+}
+
+enum SponsoredDeliveryState {
+  pending
+  sent
+  failed
+  cancelled
+
+  @@map("sponsored_delivery_state")
+  @@schema("platform")
+}
+
+/// What a person who consented to `platform.recommendations` wants to hear about (G6, D-300); platform-only.
+model AudiencePreference {
+  id          String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId      String              @unique(map: "audience_preference_user_id_key") @map("user_id") @db.Uuid
+  consentId   String?             @map("consent_id") @db.Uuid
+  areaSlugs   String[]            @default([]) @map("area_slugs")
+  budgetMin   Decimal?            @map("budget_min") @db.Decimal(14, 2)
+  budgetMax   Decimal?            @map("budget_max") @db.Decimal(14, 2)
+  unitKinds   PortfolioUnitKind[] @default([]) @map("unit_kinds")
+  moveInFrom  DateTime?           @map("move_in_from") @db.Date
+  moveInTo    DateTime?           @map("move_in_to") @db.Date
+  language    String              @default("th") @db.Char(2)
+  quietStart  DateTime?           @map("quiet_start") @db.Time(0)
+  quietEnd    DateTime?           @map("quiet_end") @db.Time(0)
+  withdrawnAt DateTime?           @map("withdrawn_at") @db.Timestamptz(6)
+  version     Int                 @default(1)
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   String?             @map("created_by") @db.Uuid
+  updatedAt   DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy   String?             @map("updated_by") @db.Uuid
+
+  user    UserAccount @relation("AudiencePreferenceUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "audience_preference_user_id_fkey")
+  consent Consent?    @relation(fields: [consentId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "audience_preference_consent_id_fkey")
+
+  @@index([consentId], map: "audience_preference_consent_id_idx")
+  @@index([withdrawnAt], map: "audience_preference_withdrawn_at_idx", where: raw("(withdrawn_at IS NOT NULL)"))
+  @@map("audience_preference")
+  @@schema("platform")
+}
+
+/// A buyer tenant's sponsored broadcast through getproperty's LINE OA (G6, D-287, D-300, O-023); aggregates only.
+model SponsoredCampaign {
+  id                 String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String                 @map("tenant_id") @db.Uuid
+  name               String
+  listingIds         String[]               @map("listing_ids") @db.Uuid
+  segment            Json                   @default("{}")
+  maxRecipients      Int                    @map("max_recipients")
+  pricePlanVersionId String?                @map("price_plan_version_id") @db.Uuid
+  pricePerRecipient  Decimal?               @map("price_per_recipient") @db.Decimal(14, 4)
+  vatRate            Decimal?               @map("vat_rate") @db.Decimal(5, 4)
+  minimumRecipients  Int?                   @map("minimum_recipients")
+  scheduledAt        DateTime?              @map("scheduled_at") @db.Timestamptz(6)
+  state              SponsoredCampaignState @default(draft)
+  estimated          Int?
+  delivered          Int                    @default(0)
+  clicks             Int                    @default(0)
+  platformInvoiceId  String?                @map("platform_invoice_id") @db.Uuid
+  sendingStartedAt   DateTime?              @map("sending_started_at") @db.Timestamptz(6)
+  completedAt        DateTime?              @map("completed_at") @db.Timestamptz(6)
+  cancelledAt        DateTime?              @map("cancelled_at") @db.Timestamptz(6)
+  rejectedAt         DateTime?              @map("rejected_at") @db.Timestamptz(6)
+  rejectReason       String?                @map("reject_reason")
+  version            Int                    @default(1)
+  createdAt          DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          String?                @map("created_by") @db.Uuid
+  updatedAt          DateTime               @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy          String?                @map("updated_by") @db.Uuid
+
+  tenant           Tenant                  @relation("SponsoredCampaignTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "sponsored_campaign_tenant_id_fkey")
+  pricePlanVersion PricePlanVersion?       @relation(fields: [pricePlanVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "sponsored_campaign_price_plan_version_id_fkey")
+  platformInvoice  PlatformInvoice?        @relation(fields: [platformInvoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "sponsored_campaign_platform_invoice_id_fkey")
+  deliveries       SponsoredDelivery[]
+  links            SponsoredCampaignLink[]
+
+  @@index([tenantId, state, createdAt(sort: Desc)], map: "sponsored_campaign_tenant_id_state_idx")
+  @@index([state, scheduledAt], map: "sponsored_campaign_state_idx")
+  @@index([pricePlanVersionId], map: "sponsored_campaign_price_plan_version_id_idx")
+  @@index([platformInvoiceId], map: "sponsored_campaign_platform_invoice_id_idx")
+  @@map("sponsored_campaign")
+  @@schema("platform")
+}
+
+/// One campaign × person (G6, D-300): frequency cap, the person's history, DSR; platform-only, never shown to the buyer.
+model SponsoredDelivery {
+  id           String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  campaignId   String                 @map("campaign_id") @db.Uuid
+  userId       String                 @map("user_id") @db.Uuid
+  state        SponsoredDeliveryState @default(pending)
+  batchId      String                 @map("batch_id") @db.Uuid
+  language     String                 @db.Char(2)
+  attempts     Int                    @default(0) @db.SmallInt
+  sentAt       DateTime?              @map("sent_at") @db.Timestamptz(6)
+  failedReason String?                @map("failed_reason")
+  createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime               @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  campaign SponsoredCampaign @relation(fields: [campaignId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "sponsored_delivery_campaign_id_fkey")
+  user     UserAccount       @relation("SponsoredDeliveryUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "sponsored_delivery_user_id_fkey")
+
+  @@unique([campaignId, userId], map: "sponsored_delivery_campaign_id_user_id_key")
+  @@index([userId, createdAt(sort: Desc)], map: "sponsored_delivery_user_id_created_at_idx")
+  @@index([batchId], map: "sponsored_delivery_batch_id_idx", where: raw("(state = 'pending'::platform.sponsored_delivery_state)"))
+  @@map("sponsored_delivery")
+  @@schema("platform")
+}
+
+/// The short link of one listing in one sponsored campaign (`<web>/s/<code>`); clicks per campaign (G6, D-300).
+model SponsoredCampaignLink {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  campaignId    String    @map("campaign_id") @db.Uuid
+  listingId     String    @map("listing_id") @db.Uuid
+  code          String    @unique(map: "sponsored_campaign_link_code_key")
+  clicks        Int       @default(0)
+  lastClickedAt DateTime? @map("last_clicked_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant   Tenant            @relation("SponsoredCampaignLinkTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "sponsored_campaign_link_tenant_id_fkey")
+  campaign SponsoredCampaign @relation(fields: [campaignId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "sponsored_campaign_link_campaign_id_fkey")
+  listing  Listing           @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "sponsored_campaign_link_listing_id_fkey")
+
+  @@unique([campaignId, listingId], map: "sponsored_campaign_link_campaign_id_listing_id_key")
+  @@index([tenantId], map: "sponsored_campaign_link_tenant_id_idx")
+  @@index([listingId], map: "sponsored_campaign_link_listing_id_idx")
+  @@map("sponsored_campaign_link")
+  @@schema("platform")
+}

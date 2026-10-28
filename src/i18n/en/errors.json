@@ -1386,5 +1386,37 @@
       "title": "This offer is closed",
       "detail": "The relocation offer was dismissed, withdrawn or has closed."
     }
+  },
+  "recommendations": {
+    "consent_required": {
+      "title": "Recommendations are off",
+      "detail": "Turn on “Recommended places” first, then set the areas and budget you are interested in."
+    },
+    "consent_outdated": {
+      "title": "The consent text changed",
+      "detail": "Please read the latest text and confirm again."
+    }
+  },
+  "broadcast": {
+    "sponsored_disabled": {
+      "title": "Sponsored messages are not available yet",
+      "detail": "Sponsored recommendations through getproperty’s LINE OA are not switched on yet."
+    },
+    "not_on_sale": {
+      "title": "Not on sale yet",
+      "detail": "No price per recipient has been set for this service yet."
+    },
+    "listing_not_public": {
+      "title": "Listing not published",
+      "detail": "A campaign can only carry your own listings that are published on getproperty."
+    },
+    "below_minimum": {
+      "title": "Below the minimum",
+      "detail": "This segment has fewer recipients than the minimum of {minimum}. Try more areas or a wider budget."
+    },
+    "invalid_state": {
+      "title": "Not possible in this campaign state",
+      "detail": "The campaign was already scheduled, sent, cancelled or rejected."
+    }
   }
 }

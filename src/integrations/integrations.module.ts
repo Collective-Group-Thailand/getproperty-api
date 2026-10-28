@@ -68,6 +68,9 @@ import { LocalKeyWrap } from './kms/local-key-wrap';
 import { FakeLineChannelApi } from './line-channels/fake-line-channel-api';
 import { LineChannelApiAdapter } from './line-channels/line-channel-api.adapter';
 import { LINE_CHANNEL_API, type LineChannelApiPort } from './line-channels/line-channel-api.port';
+import { FakeLineMulticast } from './line-multicast/fake-line-multicast';
+import { LineMulticastAdapter } from './line-multicast/line-multicast.adapter';
+import { LINE_MULTICAST, type LineMulticastPort } from './line-multicast/line-multicast.port';
 import { FakeLockVendors } from './locks/fake-lock-vendors';
 import { LOCK_VENDORS } from './locks/lock-vendor.port';
 import { RealLockVendors } from './locks/real-lock-vendors';
@@ -361,6 +364,15 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
         config.useFakes ? new FakeLineChannelApi() : new LineChannelApiAdapter(),
     },
     {
+      // G6 / D-300: sponsored broadcast multicast through getproperty's OA (used only while the O-023 gate is on)
+      provide: LINE_MULTICAST,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig): LineMulticastPort =>
+        config.useFakes
+          ? new FakeLineMulticast()
+          : new LineMulticastAdapter(required(config, 'LINE_MESSAGING_ACCESS_TOKEN')),
+    },
+    {
       // G4 / D-288 / O-029: own Facebook Pages — off in production until the Meta app review
       provide: FACEBOOK_PAGES,
       inject: [AppConfig],
@@ -426,6 +438,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
     LINE_LOGIN,
     LINE_MESSAGING,
     LINE_CHANNEL_API,
+    LINE_MULTICAST,
     FACEBOOK_PAGES,
     GETBUILD_HANDOFF,
     FIREBASE_VERIFIER,

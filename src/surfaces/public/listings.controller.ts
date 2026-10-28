@@ -781,8 +781,8 @@ export class PublicShareLinksController {
     id: 'public.shareLinks.open',
     summary: 'Open a share link',
     description:
-      'A short link of a listing’s share kit was opened (`<web>/s/{code}`, D-268): counts the click and answers the listing to show and the UTM of its channel. `404` when the code is unknown or the listing is no longer public (the web then shows the search).',
-    implements: ['D-268'],
+      'A short link of a listing’s share kit was opened (`<web>/s/{code}`, D-268): counts the click and answers the listing to show and the UTM of its channel. G6: the link of a listing in a sponsored LINE campaign answers channel `line_sponsored` (clicks counted per campaign, never per person, D-300) — pass it on as the enquiry’s channel. `404` when the code is unknown or the listing is no longer public (the web then shows the search).',
+    implements: ['D-268', 'D-300'],
   })
   @ApiSuccess(200, {
     description: 'Where to go',
@@ -799,7 +799,10 @@ export class PublicShareLinksController {
     return {
       slug,
       channel: channel as ListingChannelName,
-      utm: { source: channel, medium: 'share', campaign: 'listing' },
+      utm:
+        channel === 'line_sponsored'
+          ? { source: 'line', medium: 'sponsored', campaign: 'sponsored_broadcast' }
+          : { source: channel, medium: 'share', campaign: 'listing' },
     };
   }
 }

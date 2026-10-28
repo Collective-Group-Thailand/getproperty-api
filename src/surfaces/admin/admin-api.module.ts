@@ -14,6 +14,7 @@ import { webVitalsController } from '../shared/web-vitals.controller';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import { AdminFilesController, AdminIntegrationEventsController } from './admin-backlog.controller';
+import { AdminBroadcastController, AdminSponsoredCampaignsController } from './admin-broadcast.controller';
 import { ADMIN_BUSINESS_CONTROLLERS } from './admin-business.controller';
 import { AdminContractLibraryController } from './admin-contract-library.controller';
 import { AdminProviderCredentialsController } from './admin-credentials.controller';
@@ -46,6 +47,8 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
   controllers: [
     ...ADMIN_BUSINESS_CONTROLLERS,
     systemPingController(SURFACES.admin),
+    AdminSponsoredCampaignsController,
+    AdminBroadcastController,
     AdminSystemController,
     AdminMeController,
     AdminTenantsController,

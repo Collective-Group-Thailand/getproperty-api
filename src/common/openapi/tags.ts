@@ -292,6 +292,15 @@ export const API_TAGS: Record<string, string> = {
   'resident.rentRecord': 'My rent record and what I share of it (D-256).',
   'resident.relocationOffers':
     'Moving out: places in my destination area and my rent record sent to a new landlord — only with consent resident.relocation (G8, D-299).',
+  'resident.recommendations':
+    'Recommended places: my separate opt-in (platform.recommendations), what I want to hear about, one-tap withdraw and what was sent to me (G6, D-300).',
+  'prospect.recommendations':
+    'Recommended places: my separate opt-in (platform.recommendations), what I want to hear about, one-tap withdraw and what was sent to me (G6, D-300).',
+  'owner.sponsoredCampaigns':
+    'Sponsored broadcast of my own listings through getproperty’s LINE OA to people who chose to receive recommendations — estimate, schedule, aggregate report; billed per delivered recipient (G6, D-300, O-023).',
+  'admin.sponsoredCampaigns': 'Sponsored campaigns of all buyers: list and reject (G6, D-300).',
+  'admin.broadcast':
+    'Sponsored broadcast switch (O-023), frequency cap, quiet hours and the recommendations consent text (G6, D-300).',
   'public.handoffs':
     'A getbuild buyer’s invitation to rent out the unit they bought: preview or decline (G8, D-299).',
   'owner.rentalHandoffs':

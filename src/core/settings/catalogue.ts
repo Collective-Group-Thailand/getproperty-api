@@ -998,6 +998,106 @@ export const SETTINGS: readonly SettingDef[] = [
     check: (value: unknown) =>
       Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 180 ? [] : ['0–180 days'],
   },
+  // --- G6 audience, marketing consent, sponsored broadcast (D-287, D-300; O-023, O-027) ---------------------------
+  {
+    key: 'broadcast.sponsored.enabled',
+    valueType: 'bool',
+    scopeAllowed: ['platform'],
+    description:
+      'D-300 / O-023 (G6): sponsored broadcasts through getproperty’s LINE OA may be scheduled and sent. Stays false until LINE Thailand confirms in writing that sponsored listings through the getproperty OA are allowed (O-023); internal (non-sponsored) recommendations do not need it.',
+    editableBy: ADMIN,
+    value: false,
+    reason: 'seed: O-023 open (LINE Thailand has not confirmed)',
+  },
+  {
+    key: 'broadcast.sponsored.max_per_week',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-300 (G6): frequency cap — at most this many sponsored messages per person in any rolling 7 days, over all campaigns (G-growth-api G6: ≤ 2). 0 = none are sent.',
+    editableBy: ADMIN,
+    value: 2,
+    reason: 'seed: D-300 (G-growth-api G6)',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 7 ? [] : ['0–7 per week'],
+  },
+  {
+    key: 'broadcast.sponsored.quiet_hours',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-300 / D-025 (G6): no sponsored message is sent between these local times unless the person set their own quiet hours (default as notifications.quiet_hours, 21:00–08:00 Asia/Bangkok); a person in quiet hours gets it after the window, within the campaign’s send window.',
+    editableBy: ADMIN,
+    value: { start: '21:00', end: '08:00', timezone: 'Asia/Bangkok' },
+    reason: 'seed: D-300 (same default as notifications.quiet_hours)',
+    check: (value: unknown) => {
+      const v = value as { start?: unknown; end?: unknown; timezone?: unknown } | null;
+      const hhmm = (x: unknown) => typeof x === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(x);
+      return v && typeof v === 'object' && hhmm(v.start) && hhmm(v.end) && typeof v.timezone === 'string'
+        ? []
+        : ['{start: "HH:MM", end: "HH:MM", timezone}'];
+    },
+  },
+  {
+    key: 'broadcast.sponsored.max_listings',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-300 (G6): how many of the buyer’s own published listings one sponsored campaign may carry (one Flex bubble each).',
+    editableBy: ADMIN,
+    value: 5,
+    reason: 'seed: D-300',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 10 ? [] : ['1–10 listings'],
+  },
+  {
+    key: 'broadcast.sponsored.send_window_hours',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-300 (G6): a sending campaign completes this many hours after it started even when not everyone was reached (people in quiet hours or at the frequency cap are not waited for longer).',
+    editableBy: ADMIN,
+    value: 24,
+    reason: 'seed: D-300',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 168 ? [] : ['1–168 hours'],
+  },
+  {
+    key: 'broadcast.sponsored.attribution_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-300 (G6): an enquiry on a campaign listing by someone who got the campaign counts as a campaign lead in the buyer’s aggregate report when it is made within this many days of the message.',
+    editableBy: ADMIN,
+    value: 7,
+    reason: 'seed: D-300',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 60 ? [] : ['1–60 days'],
+  },
+  {
+    key: 'broadcast.sponsored.delivery_keep_months',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-300 / D-025 (G6): months a per-person delivery row (who got which campaign) is kept for the frequency cap, the person’s history and disputes; afterwards it is deleted and only the campaign’s aggregate counters remain.',
+    editableBy: ADMIN,
+    value: 12,
+    reason: 'seed: D-300 (schema-design G6-d)',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 36 ? [] : ['1–36 months'],
+  },
+  {
+    key: 'audience.preferences.keep_days_after_withdrawal',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-300 / D-025 (G6): days a person’s recommendation preferences are kept after they withdraw consent platform.recommendations (never used meanwhile; 0 = deleted at once); DSR erasure deletes them immediately.',
+    editableBy: ADMIN,
+    value: 30,
+    reason: 'seed: D-300 (schema-design G6-b)',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 90 ? [] : ['0–90 days'],
+  },
   {
     key: 'listing.comparables.min',
     valueType: 'int',

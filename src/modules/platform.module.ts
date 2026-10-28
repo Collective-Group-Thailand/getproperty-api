@@ -4,6 +4,8 @@ import { AnalyticsService } from './platform-analytics/analytics.service';
 import { CsatSurveyService } from './platform-analytics/csat-survey.service';
 import { InsightsService } from './platform-analytics/insights.service';
 import { PilotKpisService } from './platform-analytics/pilot-kpis.service';
+import { AudienceService } from './platform-audience/audience.service';
+import { SponsoredCampaignsService } from './platform-audience/sponsored-campaigns.service';
 import { GuidesService } from './platform-content/guides.service';
 import { BoostsService } from './platform-subscriptions/boosts.service';
 import { FeeInvoicingService } from './platform-subscriptions/fee-invoicing.service';
@@ -39,6 +41,8 @@ const SERVICES = [
   BoostsService,
   FeeInvoicingService,
   MediaServicesService,
+  AudienceService,
+  SponsoredCampaignsService,
 ];
 
 /**

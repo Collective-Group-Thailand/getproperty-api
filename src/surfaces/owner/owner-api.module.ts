@@ -105,6 +105,7 @@ import {
   OwnerUtilityInvoicesController,
 } from './smart.controller';
 import { OwnerListingSocialPostsController, OwnerSocialChannelsController } from './social.controller';
+import { OwnerSponsoredCampaignsController } from './sponsored.controller';
 import { OwnerStorageController } from './storage.controller';
 import { OwnerSubscriptionController } from './subscription.controller';
 import {
@@ -142,6 +143,7 @@ import {
     OwnerSocialChannelsController,
     OwnerListingSocialPostsController,
     OwnerBoostsController,
+    OwnerSponsoredCampaignsController,
     OwnerMediaServicesController,
     OwnerEmployerHousingController,
     OwnerRentalHandoffsController,

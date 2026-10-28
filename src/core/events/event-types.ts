@@ -121,6 +121,19 @@ export const DOMAIN_EVENT_TYPES = {
     'A resident under notice who consented (`resident.relocation`) got a relocation offer (D-299).',
   'relocation.offer_withdrawn':
     'The resident withdrew consent `resident.relocation`: open offers stopped and their destination was erased.',
+  // G6 audience, marketing consent, sponsored broadcast (D-300)
+  'audience.preferences_updated':
+    'A person who consented to `platform.recommendations` set what they want to hear about (D-300).',
+  'audience.withdrawn':
+    'A person withdrew `platform.recommendations`: nothing more is sent, pending deliveries were cancelled (D-300).',
+  'sponsored_campaign.created': 'A buyer tenant drafted a sponsored campaign of its own listings (D-300).',
+  'sponsored_campaign.scheduled':
+    'A sponsored campaign was scheduled at the price-plan price per recipient (gate on, O-023; D-300).',
+  'sponsored_campaign.sending': 'A scheduled sponsored campaign started sending (D-300).',
+  'sponsored_campaign.sent':
+    'A sponsored campaign completed; its purchase platform invoice bills the delivered recipients (D-300).',
+  'sponsored_campaign.cancelled': 'The buyer cancelled a draft / scheduled sponsored campaign.',
+  'sponsored_campaign.rejected': 'The platform rejected a sponsored campaign (not billed, D-300).',
   // G5 boost & growth billing (D-297)
   'boost.ordered':
     'A tenant bought (or got free) a listing / building boost; a purchase platform invoice waits for payment (D-297).',

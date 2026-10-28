@@ -215,6 +215,7 @@ model PricePlanVersion {
   feeAccruals     FeeAccrual[]
   listingBoosts      ListingBoost[]
   mediaServiceOrders MediaServiceOrder[]
+  sponsoredCampaigns SponsoredCampaign[]
 
   @@unique([planId, version], map: "price_plan_version_plan_id_version_key")
   @@map("price_plan_version")
@@ -464,6 +465,7 @@ model PlatformInvoice {
   storagePackages StoragePackage[]
   listingBoosts      ListingBoost[]
   mediaServiceOrders MediaServiceOrder[]
+  sponsoredCampaigns SponsoredCampaign[]
 
   @@index([tenantId, state], map: "platform_invoice_tenant_id_state_idx")
   @@index([subscriptionId], map: "platform_invoice_subscription_id_idx")

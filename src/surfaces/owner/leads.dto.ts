@@ -30,6 +30,8 @@ export enum ListingChannelName {
   Link = 'link',
   /** G4 (D-288): the link of an automatic post on the tenant's own Facebook Page. */
   FacebookPage = 'facebook_page',
+  /** G6 (D-300): a link in a sponsored message through getproperty's LINE OA. */
+  LineSponsored = 'line_sponsored',
 }
 export enum ListingLeadStateName {
   New = 'new',
