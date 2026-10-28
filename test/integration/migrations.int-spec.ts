@@ -30,10 +30,10 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
     expect(core.applied).toHaveLength(13);
     const applied = await applyPrismaMigrations(db.admin);
     expect(applied).toEqual(listMigrations().map((m) => m.name));
-    expect(applied).toHaveLength(63);
+    expect(applied).toHaveLength(64);
   });
 
-  it('creates exactly the tables of schema-design §7.1–§7.3 (+ §7.5): core 18, platform 77 (+ B4.1 compliance_score, D-203 topic preferences, B6.1 platform business 17, B6.3 analytics 4, D-240 provider_credential, D-276 storage 2, B7.2 listing verification + report 2, B7.7 own LINE OA 3, B7.7 metering 3, B7.10 identity verification 1, B7.11 rent record share 1, B7.13 guide 1, G1 storage quota 5, G4 social channel 1, G5 media service order 1), ops 75 (B2.1–B4.5, B5.1 service 5, B5.3 community 8, B6.2 e-Tax / TM30 2, D-218 service messages 1, D-226 link requests 1, B7.2 listings 3, B7.3 leads, messages, viewings 3, B7.9 share links 1, G2 mandates, co-broke, deals, fee accruals 4, G3 contract documents, signatures, renewal offers 3, G7 viewing access 1, G4 listing social posts 1, G5 listing boost 1), bridge 1, smart 28 (B1.3 + B3 + D-208 reading requests + B5.2 access 3 − T-14 telemetry_15m, partitioned parents counted once), juristic empty', async () => {
+  it('creates exactly the tables of schema-design §7.1–§7.3 (+ §7.5): core 18, platform 77 (+ B4.1 compliance_score, D-203 topic preferences, B6.1 platform business 17, B6.3 analytics 4, D-240 provider_credential, D-276 storage 2, B7.2 listing verification + report 2, B7.7 own LINE OA 3, B7.7 metering 3, B7.10 identity verification 1, B7.11 rent record share 1, B7.13 guide 1, G1 storage quota 5, G4 social channel 1, G5 media service order 1), ops 75 (B2.1–B4.5, B5.1 service 5, B5.3 community 8, B6.2 e-Tax / TM30 2, D-218 service messages 1, D-226 link requests 1, B7.2 listings 3, B7.3 leads, messages, viewings 3, B7.9 share links 1, G2 mandates, co-broke, deals, fee accruals 4, G3 contract documents, signatures, renewal offers 3, G7 viewing access 1, G4 listing social posts 1, G5 listing boost 1, G8 rental handoff, employer agreement / worker, relocation offer 4), bridge 1, smart 28 (B1.3 + B3 + D-208 reading requests + B5.2 access 3 − T-14 telemetry_15m, partitioned parents counted once), juristic empty', async () => {
     const { rows } = await db.admin.query<{ schema: string; n: number }>(
       `SELECT n.nspname AS schema, count(c.oid)::int AS n
          FROM pg_namespace n LEFT JOIN pg_class c ON c.relnamespace = n.oid AND c.relkind IN ('r', 'p') AND NOT c.relispartition AND c.relname NOT LIKE '\\_%'
@@ -43,7 +43,7 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
       bridge: 1,
       core: 18,
       juristic: 0,
-      ops: 91,
+      ops: 95,
       platform: 84,
       smart: 28,
     });

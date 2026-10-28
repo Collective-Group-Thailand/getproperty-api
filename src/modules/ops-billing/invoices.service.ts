@@ -1208,7 +1208,7 @@ export class InvoicesService extends TenantScopedRepository {
         const lease = this.found(
           await tx.lease.findFirst({ where: this.own(ctx, { id: leaseId, unitId: unit.id }) }),
         );
-        partyId ??= lease.lesseePartyId;
+        partyId ??= lease.payerPartyId ?? lease.lesseePartyId;
       }
       if (!partyId) {
         const current = await tx.unitDetail.findUnique({
@@ -1224,7 +1224,7 @@ export class InvoicesService extends TenantScopedRepository {
               { path: 'partyId', code: 'required', message: 'the unit has no lessee: name the party' },
             ],
           });
-        partyId = lease.lesseePartyId;
+        partyId = lease.payerPartyId ?? lease.lesseePartyId;
         leaseId = lease.id;
       }
       this.found(await tx.party.findFirst({ where: { id: partyId, deletedAt: null } }));

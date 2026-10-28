@@ -14,6 +14,7 @@ import { ResidentPaymentsController } from '../owner/payments.controller';
 import { ResidentRentCertificatesController } from '../owner/rent-certificates.controller';
 import { ResidentServiceRequestsController } from '../owner/service.controller';
 import { ResidentUsageController } from '../owner/smart.controller';
+import { ResidentRelocationOffersController } from '../shared/growth-network.controllers';
 import { ResidentIdentitiesController } from '../shared/identities.controllers';
 import { ResidentIdentityVerificationController } from '../shared/identity-verification.controllers';
 import { ResidentLinkController, ResidentMeController } from '../shared/me.controllers';
@@ -43,6 +44,7 @@ import { ResidentCsatSurveyController } from './resident-survey.controller';
     ResidentIdentitiesController,
     ResidentIdentityVerificationController,
     ResidentRentRecordController,
+    ResidentRelocationOffersController,
     ResidentContractsController,
     ResidentRenewalOffersController,
     ResidentMessagingLinksController,

@@ -89,7 +89,8 @@ export class ResidentInvoicesService {
       issuedAt: { not: null },
       OR: [
         { billedPartyId: { in: partyIds } },
-        { lease: { parties: { some: { partyId: { in: partyIds } } } } },
+        // G8 (D-299): invoices an employer pays stay with the employer, not in the workers' LIFF
+        { lease: { payerPartyId: null, parties: { some: { partyId: { in: partyIds } } } } },
       ],
     };
   }

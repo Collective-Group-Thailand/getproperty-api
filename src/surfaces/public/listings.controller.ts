@@ -407,7 +407,7 @@ export class ListingReportedDto {
   received!: boolean;
 }
 
-const SUMMARY_EXAMPLE = {
+export const SUMMARY_EXAMPLE = {
   slug: 'condo-1br-0a1b2c3d4e',
   title: 'คอนโด 1 ห้องนอน ใกล้ BTS อารีย์',
   unitKind: 'condo_unit',

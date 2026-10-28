@@ -15,6 +15,7 @@ import { SupportGrantService } from '@core/tenancy/support-grant.service';
 import { WorkflowTimers } from '@core/workflow/workflow-timers.service';
 import { BULLMQ_REDIS, type RedisClient } from '@database/redis.module';
 import { IntegrationDeliveryService } from '@modules/bridge-integrations/integration-delivery.service';
+import { RentalHandoffsService } from '@modules/bridge-integrations/rental-handoffs.service';
 import { BillingCyclesService } from '@modules/ops-billing/billing-cycles.service';
 import { EtaxService } from '@modules/ops-etax/etax.service';
 import { LeaseRenewalsService } from '@modules/ops-leases/lease-renewals.service';
@@ -23,6 +24,7 @@ import { ListingLeadsService } from '@modules/ops-listings/listing-leads.service
 import { ListingModerationService } from '@modules/ops-listings/listing-moderation.service';
 import { ListingSocialService } from '@modules/ops-listings/listing-social.service';
 import { MandatesService } from '@modules/ops-listings/mandates.service';
+import { RelocationService } from '@modules/ops-listings/relocation.service';
 import { SelfViewingService } from '@modules/ops-listings/self-viewing.service';
 import { SettlementsService } from '@modules/ops-payments/settlements.service';
 import { ReceivablesService } from '@modules/ops-receivables/receivables.service';
@@ -104,6 +106,9 @@ export const MAINTENANCE_JOBS = {
   // G5 (D-297): boosts past their end expire; success / co-broke fees of past months go on one platform invoice
   boosts: 900_000,
   'growth-fees': 3_600_000,
+  // G8 (D-299): getbuild handoff invitations delivered through the port / expired; relocation offers closed
+  'rental-handoffs': 300_000,
+  'relocation-offers': 3_600_000,
   // D-252 / O-018: ownership evidence deleted after its retention
   'listing-evidence-purge': 3_600_000,
   // B7.3: viewing reminders (both sides) and the owner's nudge on unanswered enquiries; G7 self-viewing sweep
@@ -166,6 +171,8 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly messagingAddons: MessagingAddonsService,
     private readonly boosts: BoostsService,
     private readonly growthFees: FeeInvoicingService,
+    private readonly rentalHandoffs: RentalHandoffsService,
+    private readonly relocation: RelocationService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -311,6 +318,12 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'growth-fees':
         await this.growthFees.invoiceDue();
+        break;
+      case 'rental-handoffs':
+        await this.rentalHandoffs.maintain();
+        break;
+      case 'relocation-offers':
+        await this.relocation.maintain();
         break;
       case 'listing-evidence-purge':
         await this.listingModeration.purgeEvidence();

@@ -132,6 +132,15 @@ export class EnvironmentVariables {
   @IsIn(['off', 'fake', 'real'])
   FACEBOOK_MODE?: 'off' | 'fake' | 'real';
 
+  /**
+   * getbuild rental handoff (G8, D-299, O-033): `off` (no getbuild API agreed yet — handoffs are kept and wait for
+   * delivery; the listing draft is prefilled from the event only) or `fake` (tests and demos). Unset: `fake` with the
+   * in-memory fakes, else `off`. The `unit.transferred` event itself arrives on the signed webhook (D-238).
+   */
+  @IsOptional()
+  @IsIn(['off', 'fake'])
+  GETBUILD_MODE?: 'off' | 'fake';
+
   /** Graph API version of the real Facebook adapter (G4). */
   @IsOptional()
   @Matches(/^v\d{1,2}\.\d$/)

@@ -55,6 +55,7 @@ model Listing {
   mandateId        String?             @map("mandate_id") @db.Uuid
   ogImageDocumentId String?            @map("og_image_document_id") @db.Uuid
   ogImageHash      String?             @map("og_image_hash")
+  campaignTag      String?             @map("campaign_tag")
   version          Int                 @default(1)
   createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy        String?             @map("created_by") @db.Uuid
@@ -72,6 +73,7 @@ model Listing {
   socialPosts  ListingSocialPost[]
   boosts       ListingBoost[]
   mediaServiceOrders MediaServiceOrder[]
+  rentalHandoffs   RentalHandoff[]
   coBrokes     CoBrokeAgreement[]
   deals        Deal[]
   shareLinks   ListingShareLink[]

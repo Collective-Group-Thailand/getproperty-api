@@ -11,7 +11,12 @@ import { CLOCK, type Clock } from '@core/clock/clock';
 import { DomainEvents } from '@core/events/domain-events';
 import { type Tx } from '@database/prisma.service';
 import { TenantTx } from '@database/tenant-tx';
-import { type Furnishing, type PortfolioUnitKind, Prisma } from '@generated/prisma/client';
+import {
+  type Furnishing,
+  type OwnershipSource,
+  type PortfolioUnitKind,
+  Prisma,
+} from '@generated/prisma/client';
 import { Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
@@ -39,6 +44,8 @@ export interface PortfolioUnitInput {
   furnishing?: Furnishing;
   /** Default monthly rent, decimal string. */
   defaultRent?: string;
+  /** G8 (D-299): how the ownership is known — a getbuild transfer instead of the owner's own declaration. */
+  ownership?: { source: OwnershipSource; sourceRef?: string };
 }
 
 export type PortfolioUnitState = 'vacant' | 'leased' | 'notice_given';
@@ -229,7 +236,8 @@ export class PortfolioService {
             partyId: tenant.legalPartyId,
             sharePct: 100,
             validFrom: new Date(bangkokDate(now)),
-            source: 'self_declared',
+            source: input.ownership?.source ?? 'self_declared',
+            sourceRef: input.ownership?.sourceRef ?? null,
             createdBy: by,
           },
         });

@@ -57,6 +57,12 @@ import {
 } from './facebook/facebook-pages.port';
 import { FakeFacebookPages } from './facebook/fake-facebook-pages';
 import { GraphFacebookPages } from './facebook/graph-facebook-pages';
+import { FakeGetbuildHandoff } from './getbuild/fake-getbuild-handoff';
+import {
+  GETBUILD_HANDOFF,
+  type GetbuildHandoffPort,
+  GetbuildHandoffUnavailable,
+} from './getbuild/getbuild-handoff.port';
 import { KEY_WRAP } from './kms/key-wrap.port';
 import { LocalKeyWrap } from './kms/local-key-wrap';
 import { FakeLineChannelApi } from './line-channels/fake-line-channel-api';
@@ -366,6 +372,15 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
       },
     },
     {
+      // G8 / D-299 / O-033: getbuild unit facts + invitation delivery — off in production until the API is agreed
+      provide: GETBUILD_HANDOFF,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig): GetbuildHandoffPort =>
+        (config.get('GETBUILD_MODE') ?? (config.useFakes ? 'fake' : 'off')) === 'fake'
+          ? new FakeGetbuildHandoff()
+          : new GetbuildHandoffUnavailable(),
+    },
+    {
       provide: WEB_PUSH,
       inject: [AppConfig],
       useFactory: (config: AppConfig): WebPushPort =>
@@ -412,6 +427,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
     LINE_MESSAGING,
     LINE_CHANNEL_API,
     FACEBOOK_PAGES,
+    GETBUILD_HANDOFF,
     FIREBASE_VERIFIER,
     EMAIL,
     WEB_PUSH,

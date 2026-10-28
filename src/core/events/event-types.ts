@@ -101,6 +101,26 @@ export const DOMAIN_EVENT_TYPES = {
     'A lease of a listed / mandated unit closed through the platform (activated, e-signed, first payment confirmed) — once per lease (D-293).',
   'fee.accrued':
     'A success / co-broke fee was accrued for an agency per the published price plan (D-287, G5 invoices it).',
+  // G8 getbuild handoff, employer housing, relocation network (D-299)
+  'rental_handoff.created':
+    'A getbuild buyer with rental intent got a rental handoff (once per transfer, `unit.transferred`, D-299).',
+  'rental_handoff.delivered': 'getbuild received the buyer’s single-use invitation link (port, O-033).',
+  'rental_handoff.accepted':
+    'A landlord claimed a rental handoff: the unit is in its portfolio with a prefilled listing draft (D-299).',
+  'rental_handoff.listed':
+    'The listing drafted from a rental handoff was published (developer campaign, D-299).',
+  'rental_handoff.declined': 'The buyer declined the rental handoff invitation.',
+  'rental_handoff.expired': 'A rental handoff invitation passed `getbuild.handoff.valid_days` unused.',
+  'employer_agreement.created':
+    'An employer agreement was recorded: the employer pays its workers’ leases (D-299).',
+  'employer_agreement.updated':
+    'An employer agreement changed (split rule, deduction, dates, workers or ended).',
+  'lease.payer_changed':
+    'A lease was attached to / detached from an employer agreement: its next invoices go to the payer (D-299).',
+  'relocation.offer_ready':
+    'A resident under notice who consented (`resident.relocation`) got a relocation offer (D-299).',
+  'relocation.offer_withdrawn':
+    'The resident withdrew consent `resident.relocation`: open offers stopped and their destination was erased.',
   // G5 boost & growth billing (D-297)
   'boost.ordered':
     'A tenant bought (or got free) a listing / building boost; a purchase platform invoice waits for payment (D-297).',
