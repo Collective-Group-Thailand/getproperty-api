@@ -261,6 +261,17 @@ export const AUDIT_ACTIONS = [
   'relocation.dismissed',
   'relocation.withdrawn',
   'relocation.closed',
+  // G6 audience, marketing consent, sponsored broadcast (D-300)
+  'audience.preferences_updated',
+  'audience.withdrawn',
+  'audience.purged',
+  'sponsored_campaign.created',
+  'sponsored_campaign.scheduled',
+  'sponsored_campaign.sending',
+  'sponsored_campaign.sent',
+  'sponsored_campaign.cancelled',
+  'sponsored_campaign.rejected',
+  'broadcast.consent_text_published',
   // G5 boosts, media services, fee invoices (D-297)
   'boost.ordered',
   'boost.activated',

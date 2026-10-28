@@ -73,6 +73,7 @@ model Listing {
   socialPosts  ListingSocialPost[]
   boosts       ListingBoost[]
   mediaServiceOrders MediaServiceOrder[]
+  sponsoredCampaignLinks SponsoredCampaignLink[]
   rentalHandoffs   RentalHandoff[]
   coBrokes     CoBrokeAgreement[]
   deals        Deal[]
@@ -283,6 +284,7 @@ enum ListingChannel {
   qr
   link
   facebook_page
+  line_sponsored
 
   @@map("listing_channel")
   @@schema("ops")

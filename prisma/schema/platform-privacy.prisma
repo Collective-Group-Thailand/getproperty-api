@@ -115,6 +115,7 @@ model Consent {
   purposeVersion   ConsentPurposeVersion @relation(fields: [purposeVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "consent_purpose_version_id_fkey")
   evidenceDocument Document?             @relation("ConsentEvidenceDocument", fields: [evidenceDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "consent_evidence_document_id_fkey")
   relocationOffers RelocationOffer[]
+  audiencePreferences AudiencePreference[]
 
   @@index([subjectType, subjectId, capturedAt(sort: Desc)], map: "consent_subject_type_subject_id_captured_at_idx")
   @@index([tenantId], map: "consent_tenant_id_idx")

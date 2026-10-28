@@ -31,6 +31,7 @@ import { ReceivablesService } from '@modules/ops-receivables/receivables.service
 import { MaintenancePlansService } from '@modules/ops-service/maintenance-plans.service';
 import { Tm30Service } from '@modules/ops-tm30/tm30.service';
 import { AnalyticsService } from '@modules/platform-analytics/analytics.service';
+import { SponsoredCampaignsService } from '@modules/platform-audience/sponsored-campaigns.service';
 import { BoostsService } from '@modules/platform-subscriptions/boosts.service';
 import { FeeInvoicingService } from '@modules/platform-subscriptions/fee-invoicing.service';
 import { MessagingAddonsService } from '@modules/platform-subscriptions/messaging-addons.service';
@@ -109,6 +110,8 @@ export const MAINTENANCE_JOBS = {
   // G8 (D-299): getbuild handoff invitations delivered through the port / expired; relocation offers closed
   'rental-handoffs': 300_000,
   'relocation-offers': 3_600_000,
+  // G6 (D-300): sponsored campaigns start / send (only while broadcast.sponsored.enabled), withdrawn preferences purged
+  'sponsored-broadcasts': 60_000,
   // D-252 / O-018: ownership evidence deleted after its retention
   'listing-evidence-purge': 3_600_000,
   // B7.3: viewing reminders (both sides) and the owner's nudge on unanswered enquiries; G7 self-viewing sweep
@@ -173,6 +176,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly growthFees: FeeInvoicingService,
     private readonly rentalHandoffs: RentalHandoffsService,
     private readonly relocation: RelocationService,
+    private readonly sponsored: SponsoredCampaignsService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -324,6 +328,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'relocation-offers':
         await this.relocation.maintain();
+        break;
+      case 'sponsored-broadcasts':
+        await this.sponsored.run();
         break;
       case 'listing-evidence-purge':
         await this.listingModeration.purgeEvidence();

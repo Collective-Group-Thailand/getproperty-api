@@ -279,6 +279,17 @@ export class DsrService extends TenantScopedRepository {
           select: { tenantId: true, role: true, status: true },
         })
       : [];
+    // G6 (D-300): recommendation preferences and what was sent (Collective is the controller)
+    const preference = dsr.subjectId
+      ? await tx.audiencePreference.findUnique({ where: { userId: dsr.subjectId } })
+      : null;
+    const sponsored = dsr.subjectId
+      ? await tx.sponsoredDelivery.findMany({
+          where: { userId: dsr.subjectId },
+          include: { campaign: { select: { listingIds: true, tenant: { select: { displayName: true } } } } },
+          orderBy: { createdAt: 'desc' },
+        })
+      : [];
     const body = Buffer.from(
       JSON.stringify(
         {
@@ -303,6 +314,25 @@ export class DsrService extends TenantScopedRepository {
             purposeVersionId: c.purposeVersionId,
             granted: c.granted,
             at: c.capturedAt,
+          })),
+          recommendationPreferences: preference
+            ? {
+                areas: preference.areaSlugs,
+                budgetMin: preference.budgetMin?.toFixed(2) ?? null,
+                budgetMax: preference.budgetMax?.toFixed(2) ?? null,
+                unitKinds: preference.unitKinds,
+                moveInFrom: preference.moveInFrom,
+                moveInTo: preference.moveInTo,
+                language: preference.language,
+                withdrawnAt: preference.withdrawnAt,
+                updatedAt: preference.updatedAt,
+              }
+            : null,
+          sponsoredMessages: sponsored.map((d) => ({
+            state: d.state,
+            sentAt: d.sentAt,
+            sponsor: d.campaign.tenant.displayName,
+            listingIds: d.campaign.listingIds,
           })),
         },
         null,
@@ -366,6 +396,9 @@ export class DsrService extends TenantScopedRepository {
         updatedBy: userIdOf(RequestContext.actor()),
       },
     });
+    // G6 (D-300): recommendation preferences and per-person delivery rows go (campaign totals stay)
+    await tx.audiencePreference.deleteMany({ where: { userId: dsr.subjectId } });
+    await tx.sponsoredDelivery.deleteMany({ where: { userId: dsr.subjectId } });
     const identities = await tx.userIdentity.findMany({ where: { userId: dsr.subjectId } });
     for (const i of identities)
       await tx.userIdentity.update({
@@ -377,9 +410,10 @@ export class DsrService extends TenantScopedRepository {
           rawClaims: {},
         },
       });
+    // G6 fix: the reason is required with the revocation (CHECK auth_session_revoked_check) — the platform team acted
     await tx.authSession.updateMany({
       where: { userId: dsr.subjectId, revokedAt: null },
-      data: { revokedAt: now },
+      data: { revokedAt: now, revokeReason: 'admin' },
     });
   }
 

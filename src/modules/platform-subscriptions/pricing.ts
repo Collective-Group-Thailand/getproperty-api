@@ -56,7 +56,9 @@ export interface ChargeLine {
     | 'boost'
     | 'media_service'
     | 'success_fee'
-    | 'co_broke_fee';
+    | 'co_broke_fee'
+    // G6 (D-300): sponsored broadcast, per delivered recipient
+    | 'sponsored_broadcast';
   description: string;
   quantity: string;
   unitPrice: string;

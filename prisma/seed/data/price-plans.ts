@@ -21,6 +21,7 @@ export interface PricePlanSeed {
       | 'per_report'
       | 'per_listing'
       | 'per_deal'
+      | 'per_recipient'
       | 'percent_of_amount';
     unitPrice: string | null;
     priceRange: { from: string; to: string } | null;
@@ -405,6 +406,34 @@ export const PRICE_PLANS: readonly PricePlanSeed[] = [
       termMonths: null,
       includedAllowances: {},
       terms: { product: 'media_service', service: 'tour_360', status: 'proposed', decision: 'D-287' },
+      published: false,
+    },
+  },
+  {
+    // G6 (D-287, D-300): sponsored broadcast through getproperty's LINE OA, billed per delivered recipient; minimum
+    // recipients per campaign in the terms; no price until the platform admin publishes a version (O-027): not on
+    // sale, and nothing is sent while broadcast.sponsored.enabled is off (O-023)
+    key: 'sponsored_broadcast',
+    tenantType: null,
+    nameTh: 'ส่งห้องแนะนำแบบโฆษณาผ่าน LINE getproperty',
+    nameEn: 'Sponsored broadcast via getproperty LINE',
+    kind: 'addon',
+    isActive: true,
+    version: {
+      billingUnit: 'per_recipient',
+      unitPrice: null,
+      priceRange: null,
+      tiers: [],
+      minUnits: null,
+      minMonthly: null,
+      termMonths: null,
+      includedAllowances: {},
+      terms: {
+        product: 'sponsored_broadcast',
+        minimumRecipients: 500,
+        status: 'proposed',
+        decision: 'D-287',
+      },
       published: false,
     },
   },

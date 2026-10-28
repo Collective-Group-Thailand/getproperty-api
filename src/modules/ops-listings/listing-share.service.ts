@@ -407,12 +407,30 @@ export class ListingShareService {
    * A short link was opened (public, D-268): counts the click and answers where to go — the listing's slug and the
    * UTM of its channel. A listing no longer public is a 404 (the web shows the search instead).
    */
+  /**
+   * G6 (D-300): the link of a listing in a sponsored campaign (same `<web>/s/<code>` page) — counts the click on the
+   * link and the campaign (never per person) and answers channel `line_sponsored`, which the enquiry then carries.
+   */
+  private async openSponsored(tx: Tx, code: string): Promise<{ slug: string; channel: ListingChannel }> {
+    const link = await tx.sponsoredCampaignLink.findUnique({ where: { code }, include: { listing: true } });
+    const l = link?.listing;
+    if (!link || !l || l.state !== 'published' || l.hiddenAt) throw new DomainException('http.not_found');
+    const now = this.clock.now();
+    await tx.sponsoredCampaignLink.update({
+      where: { id: link.id },
+      data: { clicks: { increment: 1 }, lastClickedAt: now },
+    });
+    await tx.sponsoredCampaign.update({ where: { id: link.campaignId }, data: { clicks: { increment: 1 } } });
+    return { slug: l.slug, channel: 'line_sponsored' };
+  }
+
   async open(code: string): Promise<{ slug: string; channel: ListingChannel }> {
     if (!/^[a-z0-9]{8}$/.test(code)) throw new DomainException('http.not_found');
     return this.db.platform(async (tx) => {
       const link = await tx.listingShareLink.findUnique({ where: { code }, include: { listing: true } });
-      const l = link?.listing;
-      if (!link || !l || l.state !== 'published' || l.hiddenAt) throw new DomainException('http.not_found');
+      if (!link) return this.openSponsored(tx, code);
+      const l = link.listing;
+      if (!l || l.state !== 'published' || l.hiddenAt) throw new DomainException('http.not_found');
       await tx.listingShareLink.update({
         where: { id: link.id },
         data: { clicks: { increment: 1 }, lastClickedAt: this.clock.now() },
