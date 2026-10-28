@@ -120,8 +120,10 @@ export async function renderShareCard(input: ShareCardInput): Promise<Buffer> {
     layers.push({ input: l.input, left: MARGIN, top });
     top += l.height + 6;
   }
-  const badge = await line(input.badge, { size: 28, bold: true, color: BRAND, width: textWidth });
-  layers.push({ input: badge.input, left: MARGIN, top: SHARE_CARD_SIZE - MARGIN - badge.height });
+  if (input.badge) {
+    const badge = await line(input.badge, { size: 28, bold: true, color: BRAND, width: textWidth });
+    layers.push({ input: badge.input, left: MARGIN, top: SHARE_CARD_SIZE - MARGIN - badge.height });
+  }
 
   const qr = await QRCode.toBuffer(input.url, {
     type: 'png',
@@ -154,6 +156,82 @@ export async function renderShareCard(input: ShareCardInput): Promise<Buffer> {
 
   return sharp({
     create: { width: SHARE_CARD_SIZE, height: SHARE_CARD_SIZE, channels: 3, background: '#ffffff' },
+  })
+    .composite(layers)
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+}
+
+/** What the Open Graph card of a public listing shows (G4, D-296); texts already in the card's language. */
+export interface OgCardInput {
+  photo: Buffer | null;
+  rent: string;
+  perMonth: string;
+  title: string;
+  place: string;
+  facts: string;
+  /** Badges in one line (`ว่างจริง ตรวจจากสัญญา · เจ้าของยืนยันแล้ว`), or empty. */
+  badges: string;
+}
+
+export const OG_CARD_WIDTH = 1200;
+export const OG_CARD_HEIGHT = 630;
+const OG_PHOTO_WIDTH = 630;
+
+/**
+ * The 1200 × 630 Open Graph card of a public listing (G4): the cover photo on the left, rent, title, place, facts and
+ * the badges on the right, the getproperty logo at the bottom — what Facebook, LINE and search engines preview for the
+ * page and for a Facebook Page post's link. PNG, same fonts and colours as the share card.
+ */
+export async function renderOgCard(input: OgCardInput): Promise<Buffer> {
+  await fonts();
+  const layers: sharp.OverlayOptions[] = [];
+  if (input.photo) {
+    const photo = await sharp(input.photo)
+      .rotate()
+      .resize(OG_PHOTO_WIDTH, OG_CARD_HEIGHT, { fit: 'cover', position: 'attention' })
+      .toBuffer();
+    layers.push({ input: photo, left: 0, top: 0 });
+  } else {
+    layers.push({
+      input: {
+        create: { width: OG_PHOTO_WIDTH, height: OG_CARD_HEIGHT, channels: 3, background: '#e7efe9' },
+      },
+      left: 0,
+      top: 0,
+    });
+  }
+  const left = OG_PHOTO_WIDTH + 48;
+  const width = OG_CARD_WIDTH - left - 48;
+  let top = 64;
+  const rent = await line(input.rent, { size: 72, bold: true, color: INK, width: width - 140 });
+  const per = await line(input.perMonth, { size: 30, color: MUTED, width: 140 });
+  layers.push({ input: rent.input, left, top });
+  layers.push({ input: per.input, left: left + rent.width + 10, top: top + rent.height - per.height - 10 });
+  top += rent.height + 18;
+  for (const [text, size, bold, color] of [
+    [input.title, 36, true, INK],
+    [input.place, 28, false, MUTED],
+    [input.facts, 28, false, MUTED],
+  ] as const) {
+    if (!text) continue;
+    const l = await line(text, { size, bold, color, width });
+    layers.push({ input: l.input, left, top });
+    top += l.height + 10;
+  }
+  if (input.badges) {
+    const badges = await line(input.badges, { size: 26, bold: true, color: BRAND, width });
+    layers.push({ input: badges.input, left, top: top + 14 });
+  }
+  const logoFile = join(brandAssetsDir(), 'getproperty-logo.png');
+  if (existsSync(logoFile)) {
+    const logo = await sharp(readFileSync(logoFile))
+      .resize({ height: 44 })
+      .toBuffer({ resolveWithObject: true });
+    layers.push({ input: logo.data, left, top: OG_CARD_HEIGHT - 56 - logo.info.height });
+  }
+  return sharp({
+    create: { width: OG_CARD_WIDTH, height: OG_CARD_HEIGHT, channels: 3, background: '#ffffff' },
   })
     .composite(layers)
     .png({ compressionLevel: 9 })

@@ -4,10 +4,18 @@ import { toBangkokIso } from '@common/time/bangkok';
 import { ListingInsightsService } from '@modules/ops-listings/listing-insights.service';
 import { ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
 import { ListingModerationService } from '@modules/ops-listings/listing-moderation.service';
+import { ListingOgImageService } from '@modules/ops-listings/listing-og-image.service';
 import { ListingShareService } from '@modules/ops-listings/listing-share.service';
 import { PublicListingsService } from '@modules/ops-listings/public-listings.service';
-import { Body, Controller, Get, Header, HttpCode, Param, Post, Query, Req } from '@nestjs/common';
-import { ApiProperty, ApiPropertyOptional, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Header, HttpCode, Param, Post, Query, Req, Res } from '@nestjs/common';
+import {
+  ApiProduces,
+  ApiProperty,
+  ApiPropertyOptional,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { seconds, Throttle } from '@nestjs/throttler';
 import { Type } from 'class-transformer';
 import {
@@ -21,7 +29,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { type Request } from 'express';
+import { type Request, type Response } from 'express';
 
 import { ListingChannelName, ViewingSlotsDto } from '../owner/leads.dto';
 import { FurnishingName, PortfolioUnitKindName } from '../owner/portfolio.controller';
@@ -249,6 +257,22 @@ export class PublicListingSummaryDto {
   })
   ownerIdentityVerified!: boolean;
 
+  @ApiProperty({
+    example: true,
+    description:
+      'G4 (D-296) badge "ว่างจริง": getproperty’s own lease data shows nobody lives there — no current occupancy, no lease in force or waiting for signature — and the unit had a lease on the platform that ended (`listing.verified_vacant.require_history`). Never from the owner’s say-so.',
+  })
+  verifiedVacant!: boolean;
+
+  @ApiProperty({
+    type: String,
+    format: 'date',
+    nullable: true,
+    example: '2026-10-31',
+    description: 'The day the last lease on getproperty ended, when `verifiedVacant`; else null.',
+  })
+  vacantSince!: string | null;
+
   @ApiProperty({ type: String, format: 'date-time' })
   publishedAt!: string;
 }
@@ -309,6 +333,27 @@ export class PublicListingDetailDto extends PublicListingSummaryDto {
     description: 'The unit’s real utility cost (D-265).',
   })
   utility!: ListingUtilityDto | null;
+
+  @ApiProperty({
+    example: 'https://api.getproperty.co/v1/public/listings/condo-1br-0a1b2c3d4e/og-image',
+    description: 'G4: the 1200 × 630 Open Graph card (`og:image`, Facebook / LINE previews), a stable URL.',
+  })
+  ogImageUrl!: string;
+
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: true,
+    description:
+      'G4: schema.org JSON-LD (`Offer` of an `Apartment` / `House` / `Room` / `Accommodation` with a monthly THB `UnitPriceSpecification`) to embed as `application/ld+json`; only facts already on the page (D-252).',
+    example: {
+      '@context': 'https://schema.org',
+      '@type': 'Offer',
+      price: '15000.00',
+      priceCurrency: 'THB',
+      itemOffered: { '@type': 'Apartment', numberOfBedrooms: 1 },
+    },
+  })
+  jsonLd!: Record<string, unknown>;
 }
 
 export class PublicSitemapEntryDto {
@@ -367,6 +412,8 @@ const SUMMARY_EXAMPLE = {
   cover: { url: 'https://storage.invalid/p.w960.webp', width: 960, height: 720, caption: null },
   verifiedOwner: true,
   ownerIdentityVerified: true,
+  verifiedVacant: true,
+  vacantSince: '2026-10-31',
   publishedAt: '2026-11-01T10:00:00+07:00',
 };
 
@@ -386,6 +433,7 @@ export class PublicListingsController {
     private readonly moderation: ListingModerationService,
     private readonly leads: ListingLeadsService,
     private readonly insights: ListingInsightsService,
+    private readonly ogImages: ListingOgImageService,
   ) {}
 
   @Get()
@@ -475,8 +523,8 @@ export class PublicListingsController {
     id: 'public.listings.get',
     summary: 'One listing',
     description:
-      'The public page of a listing (D-252): description, facilities, every photo in order, floor, map pin, the owner’s display name and verified flag. `404` when it is not (or no longer) public.',
-    implements: ['D-252'],
+      'The public page of a listing (D-252): description, facilities, every photo in order, floor, map pin, the owner’s display name and verified flag, the real utility cost (D-265), the verified-vacant badge, the Open Graph card URL and the schema.org JSON-LD (G4, D-296). `404` when it is not (or no longer) public.',
+    implements: ['D-252', 'D-265', 'D-296'],
   })
   @ApiSuccess(200, {
     description: 'Listing',
@@ -498,6 +546,15 @@ export class PublicListingsController {
         averageBill3m: '1240.50',
         basedOnBills: 3,
       },
+      ogImageUrl: 'https://api.getproperty.co/v1/public/listings/condo-1br-0a1b2c3d4e/og-image',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'Offer',
+        url: 'https://getproperty.co/rent/condo-1br-0a1b2c3d4e',
+        price: '15000.00',
+        priceCurrency: 'THB',
+        itemOffered: { '@type': 'Apartment', numberOfBedrooms: 1 },
+      },
     },
   })
   @ApiStandardErrors('validation.failed', 'http.not_found', 'http.too_many_requests')
@@ -506,6 +563,33 @@ export class PublicListingsController {
       slug.slice(0, 80),
       lang(req.headers['accept-language']),
     )) as unknown as PublicListingDetailDto;
+  }
+
+  @Get(':slug/og-image')
+  @Public()
+  @Throttle(SEARCH_LIMIT)
+  @ApiEndpoint({
+    id: 'public.listings.ogImage',
+    summary: 'Open Graph card of a listing',
+    description:
+      'The 1200 × 630 PNG previewed by Facebook, LINE and search engines for the listing page and for its Facebook Page posts (G4, D-296): cover photo, rent, title, place, facts, the verified badges and the getproperty logo. Rendered again only when what it shows changes (`ETag` = its content hash); cacheable for an hour. `404` when the listing is not public.',
+    implements: ['D-296', 'D-288'],
+  })
+  @ApiProduces('image/png')
+  @ApiResponse({
+    status: 200,
+    description: 'The PNG card (1200 × 630)',
+    content: { 'image/png': { schema: { type: 'string', format: 'binary' }, example: '<PNG, 1200 × 630>' } },
+  })
+  @ApiStandardErrors('http.not_found', 'http.too_many_requests')
+  async ogImage(@Param('slug') slug: string, @Res() res: Response): Promise<void> {
+    const image = await this.ogImages.image(slug.slice(0, 80));
+    res.status(200);
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Length', String(image.body.length));
+    res.setHeader('ETag', `"${image.etag}"`);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.end(image.body);
   }
 
   @Get(':slug/viewing-slots')

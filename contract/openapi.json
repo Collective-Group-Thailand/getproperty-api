@@ -940,6 +940,28 @@
           "type": "https://errors.getproperty.co/export.not_ready"
         }
       },
+      "problem.facebook.page_refused": {
+        "summary": "facebook.page_refused",
+        "value": {
+          "code": "facebook.page_refused",
+          "detail": "Facebook ไม่ยอมรับ token ของ Page นี้ ตรวจสอบรหัส Page และ Page access token แล้วลองใหม่",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 422,
+          "title": "Facebook ไม่ยอมรับ Page นี้",
+          "type": "https://errors.getproperty.co/facebook.page_refused"
+        }
+      },
+      "problem.facebook.unavailable": {
+        "summary": "facebook.unavailable",
+        "value": {
+          "code": "facebook.unavailable",
+          "detail": "การโพสต์ลง Facebook Page อัตโนมัติยังไม่เปิดให้บริการ โปรดใช้ชุดแชร์แทน",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 503,
+          "title": "ยังเชื่อม Facebook Page ไม่ได้",
+          "type": "https://errors.getproperty.co/facebook.unavailable"
+        }
+      },
       "problem.facility.booking_invalid_state": {
         "summary": "facility.booking_invalid_state",
         "value": {
@@ -1776,6 +1798,17 @@
           "type": "https://errors.getproperty.co/membership.last_owner"
         }
       },
+      "problem.messaging.addon_terms_required": {
+        "summary": "messaging.addon_terms_required",
+        "value": {
+          "code": "messaging.addon_terms_required",
+          "detail": "การเชื่อม LINE OA ของคุณมีค่าตั้งค่าและค่าบริการรายเดือน โปรดยืนยันราคาก่อนเชื่อมต่อ",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ต้องยอมรับค่าบริการก่อน",
+          "type": "https://errors.getproperty.co/messaging.addon_terms_required"
+        }
+      },
       "problem.messaging.line_user_taken": {
         "summary": "messaging.line_user_taken",
         "value": {
@@ -2511,6 +2544,17 @@
           "status": 409,
           "title": "ไม่รับสลิป",
           "type": "https://errors.getproperty.co/slip.not_allowed"
+        }
+      },
+      "problem.social.post_invalid_state": {
+        "summary": "social.post_invalid_state",
+        "value": {
+          "code": "social.post_invalid_state",
+          "detail": "โพสต์นี้ไม่ได้อยู่ในสถานะที่ล้มเหลว",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "สั่งโพสต์ใหม่ไม่ได้",
+          "type": "https://errors.getproperty.co/social.post_invalid_state"
         }
       },
       "problem.staff_task.not_completable": {
@@ -20968,7 +21012,8 @@
           "facebook_group",
           "facebook_marketplace",
           "qr",
-          "link"
+          "link",
+          "facebook_page"
         ],
         "type": "string"
       },
@@ -23422,8 +23467,181 @@
         ],
         "type": "string"
       },
+      "MessagingAddonCharge": {
+        "enum": [
+          "setup",
+          "monthly"
+        ],
+        "type": "string"
+      },
+      "MessagingAddonInvoiceDto": {
+        "properties": {
+          "charge": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessagingAddonCharge"
+              }
+            ],
+            "example": "monthly"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "number": {
+            "example": "PINV-2026-000123",
+            "type": "string"
+          },
+          "periodEnd": {
+            "example": "2026-12-31",
+            "format": "date",
+            "type": "string"
+          },
+          "periodStart": {
+            "example": "2026-12-01",
+            "format": "date",
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlatformInvoiceStatus"
+              }
+            ],
+            "example": "issued"
+          },
+          "total": {
+            "description": "Incl. VAT (THB).",
+            "example": "1059.30",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "charge",
+          "periodStart",
+          "periodEnd",
+          "total",
+          "state"
+        ],
+        "type": "object"
+      },
+      "MessagingAddonOfferDto": {
+        "properties": {
+          "currency": {
+            "example": "THB",
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "monthlyFee": {
+            "description": "Monthly fee before VAT (THB).",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nameEn": {
+            "example": "Agency LINE OA integration",
+            "type": "string"
+          },
+          "nameTh": {
+            "example": "เชื่อม LINE OA ของบริษัทนายหน้า",
+            "type": "string"
+          },
+          "onSale": {
+            "description": "false = no published price (O-027): connecting is free and nothing is charged (\"ยังไม่เปิดขาย\").",
+            "example": false,
+            "type": "boolean"
+          },
+          "planKey": {
+            "example": "line_oa_integration",
+            "type": "string"
+          },
+          "setupFee": {
+            "description": "One-time setup fee before VAT (THB).",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vatRate": {
+            "example": "0.0700",
+            "type": "string"
+          },
+          "versionId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "planKey",
+          "nameTh",
+          "nameEn",
+          "versionId",
+          "onSale",
+          "monthlyFee",
+          "setupFee",
+          "vatRate",
+          "currency",
+          "effectiveFrom"
+        ],
+        "type": "object"
+      },
+      "MessagingAddonsDto": {
+        "properties": {
+          "invoices": {
+            "items": {
+              "$ref": "#/components/schemas/MessagingAddonInvoiceDto"
+            },
+            "type": "array"
+          },
+          "offer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessagingAddonOfferDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null = no OA integration add-on for this tenant type (connecting is free, D-254)."
+          },
+          "setupCharged": {
+            "description": "The setup fee was already invoiced (it is charged once).",
+            "example": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "offer",
+          "setupCharged",
+          "invoices"
+        ],
+        "type": "object"
+      },
       "MessagingChannelConnectDto": {
         "properties": {
+          "acceptAddonVersionId": {
+            "description": "G4 (D-287): the LINE OA integration price version the owner accepts — required only while a priced version is in force for the tenant type (`messaging.addon_terms_required` tells which); see `GET /v1/owner/messaging/addons`.",
+            "example": "0199f2a0-0000-7000-8000-0000000000cc",
+            "format": "uuid",
+            "type": "string"
+          },
           "accessToken": {
             "description": "Messaging API → Channel access token (long-lived). Stored encrypted (D-148), never shown again.",
             "example": "eyJhbGciOiJIUzI1NiJ9.long-lived-channel-access-token",
@@ -30824,8 +31042,53 @@
         ],
         "type": "object"
       },
+      "ProblemAddonTerms": {
+        "properties": {
+          "currency": {
+            "example": "THB",
+            "type": "string"
+          },
+          "monthlyFee": {
+            "description": "Monthly fee before VAT (THB).",
+            "example": "990.00",
+            "type": "string"
+          },
+          "setupFee": {
+            "description": "One-time setup fee before VAT (THB).",
+            "example": "1500.00",
+            "type": "string"
+          },
+          "vatRate": {
+            "description": "VAT rate.",
+            "example": "0.0700",
+            "type": "string"
+          },
+          "versionId": {
+            "description": "The price-plan version to accept (`acceptAddonVersionId`).",
+            "example": "0199f2a0-0000-7000-8000-0000000000cc",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "versionId",
+          "monthlyFee",
+          "setupFee",
+          "vatRate",
+          "currency"
+        ],
+        "type": "object"
+      },
       "ProblemDetails": {
         "properties": {
+          "addon": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProblemAddonTerms"
+              }
+            ],
+            "description": "`messaging.addon_terms_required` only (G4, D-287): the LINE OA integration prices in force; connect again with `acceptAddonVersionId`"
+          },
           "attemptsRemaining": {
             "description": "`auth.otp_invalid` only (B1.3): codes that may still be tried on this challenge",
             "example": 4,
@@ -31719,6 +31982,21 @@
             ],
             "description": "The map pin (D-252: public)."
           },
+          "jsonLd": {
+            "additionalProperties": true,
+            "description": "G4: schema.org JSON-LD (`Offer` of an `Apartment` / `House` / `Room` / `Accommodation` with a monthly THB `UnitPriceSpecification`) to embed as `application/ld+json`; only facts already on the page (D-252).",
+            "example": {
+              "@context": "https://schema.org",
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Apartment",
+                "numberOfBedrooms": 1
+              },
+              "price": "15000.00",
+              "priceCurrency": "THB"
+            },
+            "type": "object"
+          },
           "minTermMonths": {
             "example": 12,
             "type": "integer"
@@ -31732,6 +32010,11 @@
                 "type": "null"
               }
             ]
+          },
+          "ogImageUrl": {
+            "description": "G4: the 1200 × 630 Open Graph card (`og:image`, Facebook / LINE previews), a stable URL.",
+            "example": "https://api.getproperty.co/v1/public/listings/condo-1br-0a1b2c3d4e/og-image",
+            "type": "string"
           },
           "ownerDisplayName": {
             "example": "มาลี มีสุข",
@@ -31817,8 +32100,22 @@
             ],
             "description": "The unit’s real utility cost (D-265)."
           },
+          "vacantSince": {
+            "description": "The day the last lease on getproperty ended, when `verifiedVacant`; else null.",
+            "example": "2026-10-31",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "verifiedOwner": {
             "description": "The unit’s owner is verified (badge \"เจ้าของตัวจริง\").",
+            "type": "boolean"
+          },
+          "verifiedVacant": {
+            "description": "G4 (D-296) badge \"ว่างจริง\": getproperty’s own lease data shows nobody lives there — no current occupancy, no lease in force or waiting for signature — and the unit had a lease on the platform that ended (`listing.verified_vacant.require_history`). Never from the owner’s say-so.",
+            "example": true,
             "type": "boolean"
           }
         },
@@ -31843,6 +32140,8 @@
           "cover",
           "verifiedOwner",
           "ownerIdentityVerified",
+          "verifiedVacant",
+          "vacantSince",
           "publishedAt",
           "description",
           "facilities",
@@ -31852,7 +32151,9 @@
           "ownerDisplayName",
           "ownerProfileSlug",
           "smokingAllowed",
-          "utility"
+          "utility",
+          "ogImageUrl",
+          "jsonLd"
         ],
         "type": "object"
       },
@@ -32016,8 +32317,22 @@
               }
             ]
           },
+          "vacantSince": {
+            "description": "The day the last lease on getproperty ended, when `verifiedVacant`; else null.",
+            "example": "2026-10-31",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "verifiedOwner": {
             "description": "The unit’s owner is verified (badge \"เจ้าของตัวจริง\").",
+            "type": "boolean"
+          },
+          "verifiedVacant": {
+            "description": "G4 (D-296) badge \"ว่างจริง\": getproperty’s own lease data shows nobody lives there — no current occupancy, no lease in force or waiting for signature — and the unit had a lease on the platform that ended (`listing.verified_vacant.require_history`). Never from the owner’s say-so.",
+            "example": true,
             "type": "boolean"
           }
         },
@@ -32042,6 +32357,8 @@
           "cover",
           "verifiedOwner",
           "ownerIdentityVerified",
+          "verifiedVacant",
+          "vacantSince",
           "publishedAt"
         ],
         "type": "object"
@@ -40287,12 +40604,20 @@
             "example": "0193f2a4-b1c2-7d3e-8f40-5a6b7c8d9e0a",
             "format": "uuid",
             "type": "string"
+          },
+          "photos": {
+            "description": "G4 image bundle: the listing’s photos in order (1600 px WebP, signed 10 minutes) to download and post by hand in Facebook groups — groups are never automated (D-288).",
+            "items": {
+              "$ref": "#/components/schemas/ShareCardDto"
+            },
+            "type": "array"
           }
         },
         "required": [
           "listingId",
           "links",
-          "cards"
+          "cards",
+          "photos"
         ],
         "type": "object"
       },
@@ -40788,6 +41113,240 @@
           "approved",
           "rejected",
           "duplicate"
+        ],
+        "type": "string"
+      },
+      "SocialChannelConnectDto": {
+        "properties": {
+          "autoPost": {
+            "description": "Post published listings automatically (default true).",
+            "example": true,
+            "type": "boolean"
+          },
+          "pageAccessToken": {
+            "description": "A Page access token with `pages_manage_posts` (from the Meta app of O-029). Checked with Facebook, stored encrypted with the tenant key (D-148), never shown again.",
+            "example": "EAAG-page-access-token",
+            "type": "string"
+          },
+          "pageId": {
+            "description": "The numeric id of the Facebook Page.",
+            "example": "102345678901234",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageId",
+          "pageAccessToken"
+        ],
+        "type": "object"
+      },
+      "SocialChannelDto": {
+        "properties": {
+          "autoPost": {
+            "example": true,
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "lastCheckedAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastError": {
+            "description": "Why Facebook refused (no token).",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pageId": {
+            "example": "102345678901234",
+            "type": "string"
+          },
+          "pageName": {
+            "example": "บ้านดี พร็อพเพอร์ตี้",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SocialProvider"
+              }
+            ],
+            "example": "facebook_page"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SocialChannelState"
+              }
+            ],
+            "example": "verified"
+          },
+          "verifiedAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "pageId",
+          "pageName",
+          "state",
+          "autoPost",
+          "verifiedAt",
+          "lastCheckedAt",
+          "lastError",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "SocialChannelState": {
+        "enum": [
+          "verified",
+          "failing",
+          "revoked"
+        ],
+        "type": "string"
+      },
+      "SocialPostAction": {
+        "description": "While `queued`: what getproperty is about to do on the Page.",
+        "enum": [
+          "publish",
+          "update",
+          "delete"
+        ],
+        "type": "string"
+      },
+      "SocialPostDto": {
+        "properties": {
+          "attempts": {
+            "example": 0,
+            "type": "integer"
+          },
+          "channelId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "deletedAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "lastError": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pageId": {
+            "example": "102345678901234",
+            "type": "string"
+          },
+          "pageName": {
+            "example": "บ้านดี พร็อพเพอร์ตี้",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pendingAction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SocialPostAction"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "While `queued`: what getproperty is about to do on the Page.",
+            "example": null
+          },
+          "postUrl": {
+            "example": "https://www.facebook.com/102345678901234/posts/1001",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "postedAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SocialPostState"
+              }
+            ],
+            "example": "posted"
+          },
+          "updatedOnPageAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "channelId",
+          "pageId",
+          "pageName",
+          "state",
+          "pendingAction",
+          "postUrl",
+          "attempts",
+          "lastError",
+          "postedAt",
+          "updatedOnPageAt",
+          "deletedAt"
+        ],
+        "type": "object"
+      },
+      "SocialPostState": {
+        "enum": [
+          "queued",
+          "posted",
+          "failed",
+          "deleted"
+        ],
+        "type": "string"
+      },
+      "SocialProvider": {
+        "enum": [
+          "facebook_page"
         ],
         "type": "string"
       },
@@ -150468,7 +151027,7 @@
     },
     "/v1/owner/listings/{listingId}/share-kit": {
       "post": {
-        "description": "For a published listing: a short link per channel (LINE, Facebook group, Marketplace, QR, plain link — `<web>/s/{code}` → the listing with UTM; made on first use, then the same), captions in Thai and English per channel, clicks and enquiries per channel, and the 1080 × 1080 photo cards (th / en, PNG: cover photo, rent, title, area, facts, QR of the link, getproperty logo) — rendered again only when what they show changes (D-268). Nothing is posted anywhere (Facebook forbids automated posting): the owner copies and downloads; LINE opens its share picker. `listing.invalid_state` unless published.\n\nImplements: D-268.",
+        "description": "For a published listing: a short link per channel (LINE, Facebook group, Marketplace, QR, plain link — `<web>/s/{code}` → the listing with UTM; made on first use, then the same), captions in Thai and English per channel, clicks and enquiries per channel, and the 1080 × 1080 photo cards (th / en, PNG: cover photo, rent, title, area, facts, QR of the link, getproperty logo) — rendered again only when what they show changes (D-268) — plus the listing’s photos as an image bundle (G4). Nothing is posted into groups or Marketplace (D-288: groups are never automated; the owner copies and downloads; LINE opens its share picker) — automatic posts go only to the tenant’s own Facebook Page. An agency listing never claims \"no agent fee\". `listing.invalid_state` unless published.\n\nImplements: D-268, D-288.",
         "operationId": "owner.listings.shareKit",
         "parameters": [
           {
@@ -150516,7 +151075,15 @@
                       "url": "https://app.getproperty.co/s/ab12cd34"
                     }
                   ],
-                  "listingId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                  "listingId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "photos": [
+                    {
+                      "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "height": 1200,
+                      "url": "https://storage.getproperty.test/photo-01.webp",
+                      "width": 1600
+                    }
+                  ]
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ShareKitDto"
@@ -150720,6 +151287,517 @@
         "summary": "Share kit of a listing",
         "tags": [
           "owner.listings"
+        ],
+        "x-required-permissions": [
+          "listing.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/listings/{listingId}/social-posts": {
+      "get": {
+        "description": "One entry per connected Page: queued (with what is about to happen), posted (link to the post), failed (why) or deleted (D-288). Another tenant’s listing: 404.\n\nImplements: D-288, D-296.",
+        "operationId": "owner.listingSocialPosts.list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "attempts": 0,
+                    "channelId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "deletedAt": null,
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "lastError": null,
+                    "pageId": "102345678901234",
+                    "pageName": "บ้านดี พร็อพเพอร์ตี้",
+                    "pendingAction": null,
+                    "postUrl": "https://www.facebook.com/102345678901234/posts/1001",
+                    "postedAt": "2026-11-01T10:01:00+07:00",
+                    "state": "posted",
+                    "updatedOnPageAt": null
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SocialPostDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Posts",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Facebook Page posts of a listing",
+        "tags": [
+          "owner.social"
+        ],
+        "x-required-permissions": [
+          "listing.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/listings/{listingId}/social-posts/{postId}/actions/retry": {
+      "post": {
+        "description": "Queues what the listing needs now on its Page (publish, edit or delete) for a failed post on a verified Page; `social.post_invalid_state` otherwise. Another tenant’s post: 404 (D-288).\n\nImplements: D-288.",
+        "operationId": "owner.listingSocialPosts.retry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "postId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "attempts": 0,
+                  "channelId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "deletedAt": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "lastError": null,
+                  "pageId": "102345678901234",
+                  "pageName": "บ้านดี พร็อพเพอร์ตี้",
+                  "pendingAction": "publish",
+                  "postUrl": "https://www.facebook.com/102345678901234/posts/1001",
+                  "postedAt": "2026-11-01T10:01:00+07:00",
+                  "state": "queued",
+                  "updatedOnPageAt": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SocialPostDto"
+                }
+              }
+            },
+            "description": "Queued",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "social.post_invalid_state": {
+                    "$ref": "#/components/examples/problem.social.post_invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `social.post_invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Try a failed Page post again",
+        "tags": [
+          "owner.social"
         ],
         "x-required-permissions": [
           "listing.manage"
@@ -159054,6 +160132,190 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/messaging/addons": {
+      "get": {
+        "description": "The LINE OA integration add-on for this tenant type (G4, D-287, D-291): monthly and setup fee of the price-plan version in force (`onSale: false` = no price published — O-027 — connecting an own OA is free and nothing is charged), whether the setup fee was invoiced, and the fee invoices (`purchase` platform invoices; unpaid = nothing suspended, D-250). LINE bills message charges of an own OA to the operator directly (D-254).\n\nImplements: D-287, D-291, D-254.",
+        "operationId": "owner.messagingAddons.get",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "invoices": [],
+                  "offer": {
+                    "currency": "THB",
+                    "effectiveFrom": null,
+                    "monthlyFee": null,
+                    "nameEn": "Agency LINE OA integration",
+                    "nameTh": "เชื่อม LINE OA ของบริษัทนายหน้า",
+                    "onSale": false,
+                    "planKey": "line_oa_integration",
+                    "setupFee": null,
+                    "vatRate": "0.0700",
+                    "versionId": null
+                  },
+                  "setupCharged": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingAddonsDto"
+                }
+              }
+            },
+            "description": "Offer and invoices",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "LINE OA integration fee",
+        "tags": [
+          "owner.messaging"
+        ],
+        "x-required-permissions": [
+          "tenant.settings.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/messaging/channels": {
       "get": {
         "description": "The own LINE OAs connected for the tenant or a building, with their state, the webhook URL to set at LINE and how many residents linked them. None = residents are messaged through the shared getproperty OA (D-254).\n\nImplements: D-254.",
@@ -159241,7 +160503,7 @@
         "x-surface": "owner"
       },
       "post": {
-        "description": "The Messaging API channel id, secret and access token (sealed with the tenant key, D-148), for the tenant or one building; replaces the one connected before. getproperty checks the token with LINE (`verified`, or `failing` with the reason) and answers the webhook URL to set in the LINE console. Messages then go out under the operator’s OA to residents who linked it — the others keep the shared OA until they do; LINE’s quota and charges are the operator’s (D-254).\n\nImplements: D-254, D-148.",
+        "description": "The Messaging API channel id, secret and access token (sealed with the tenant key, D-148), for the tenant or one building; replaces the one connected before. getproperty checks the token with LINE (`verified`, or `failing` with the reason) and answers the webhook URL to set in the LINE console (one URL per channel — each tenant’s webhook is checked with its own secret). Messages then go out under the operator’s OA to residents and prospects who linked it — the others keep the shared OA until they do; LINE’s quota and charges are the operator’s (D-254). G4 (D-287): while a priced LINE OA integration add-on is in force for the tenant type (agencies), send `acceptAddonVersionId` = that version (else 409 `messaging.addon_terms_required` with the prices); the setup fee is then invoiced once and the monthly fee each month (no price published = free, O-027).\n\nImplements: D-254, D-148, D-287.",
         "operationId": "owner.messagingChannels.connect",
         "parameters": [
           {
@@ -159399,6 +160661,26 @@
               }
             },
             "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "messaging.addon_terms_required": {
+                    "$ref": "#/components/examples/problem.messaging.addon_terms_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `messaging.addon_terms_required`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -185526,6 +186808,927 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/social-channels": {
+      "get": {
+        "description": "The Facebook Page connected for automatic listing posts (G4, D-288): page, state, auto-post switch, last check. Never the token.\n\nImplements: D-288, D-296.",
+        "operationId": "owner.socialChannels.list",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "autoPost": true,
+                    "createdAt": "2026-11-01T10:00:00+07:00",
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "lastCheckedAt": "2026-11-01T10:00:00+07:00",
+                    "lastError": null,
+                    "pageId": "102345678901234",
+                    "pageName": "บ้านดี พร็อพเพอร์ตี้",
+                    "provider": "facebook_page",
+                    "state": "verified",
+                    "verifiedAt": "2026-11-01T10:00:00+07:00"
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SocialChannelDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Pages",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "My Facebook Page",
+        "tags": [
+          "owner.social"
+        ],
+        "x-required-permissions": [
+          "tenant.settings.read"
+        ],
+        "x-surface": "owner"
+      },
+      "post": {
+        "description": "Connects the tenant’s own Facebook Page with a Page access token (G4, D-288): checked with Facebook first — a refused token stores nothing (`facebook.page_refused`) — then sealed with the tenant key (D-148 / D-240) and never shown again; replaces the Page connected before. Published listings are then posted there automatically, edited when the rent changes and deleted when the unit is let or the listing stops being public. Facebook groups are never automated (the share kit stays for them). `facebook.unavailable` while the Meta app is not approved (O-029).\n\nImplements: D-288, D-148, D-296.",
+        "operationId": "owner.socialChannels.connect",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "autoPost": true,
+                    "pageAccessToken": "EAAG-page-access-token",
+                    "pageId": "102345678901234"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/SocialChannelConnectDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "autoPost": true,
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "lastCheckedAt": "2026-11-01T10:00:00+07:00",
+                  "lastError": null,
+                  "pageId": "102345678901234",
+                  "pageName": "บ้านดี พร็อพเพอร์ตี้",
+                  "provider": "facebook_page",
+                  "state": "verified",
+                  "verifiedAt": "2026-11-01T10:00:00+07:00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SocialChannelDto"
+                }
+              }
+            },
+            "description": "Connected",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "facebook.page_refused": {
+                    "$ref": "#/components/examples/problem.facebook.page_refused"
+                  },
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `facebook.page_refused`, `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "facebook.unavailable": {
+                    "$ref": "#/components/examples/problem.facebook.unavailable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `facebook.unavailable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Connect my Facebook Page",
+        "tags": [
+          "owner.social"
+        ],
+        "x-required-permissions": [
+          "tenant.settings.update"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/social-channels/{channelId}/actions/revoke": {
+      "post": {
+        "description": "Nothing more is posted on the Page; waiting posts are dropped; posts already there stay for the owner to manage on Facebook. Another tenant’s Page: 404 (D-288).\n\nImplements: D-288.",
+        "operationId": "owner.socialChannels.revoke",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channelId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Disconnected",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Disconnect my Facebook Page",
+        "tags": [
+          "owner.social"
+        ],
+        "x-required-permissions": [
+          "tenant.settings.update"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/social-channels/{channelId}/actions/verify": {
+      "post": {
+        "description": "Asks Facebook for the Page with its token: `verified`, or `failing` with the reason (nothing is posted while failing). Another tenant’s Page: 404 (D-288).\n\nImplements: D-288.",
+        "operationId": "owner.socialChannels.verify",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channelId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "autoPost": true,
+                  "createdAt": "2026-11-01T10:00:00+07:00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "lastCheckedAt": "2026-11-01T10:00:00+07:00",
+                  "lastError": null,
+                  "pageId": "102345678901234",
+                  "pageName": "บ้านดี พร็อพเพอร์ตี้",
+                  "provider": "facebook_page",
+                  "state": "verified",
+                  "verifiedAt": "2026-11-01T10:00:00+07:00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SocialChannelDto"
+                }
+              }
+            },
+            "description": "Checked",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "facebook.unavailable": {
+                    "$ref": "#/components/examples/problem.facebook.unavailable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `facebook.unavailable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Check my Facebook Page again",
+        "tags": [
+          "owner.social"
+        ],
+        "x-required-permissions": [
+          "tenant.settings.update"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/storage": {
       "get": {
         "description": "What the tenant stores (files incl. thumbnails / renditions + records at their counted size), the quota = free allowance (tenant override first) + active storage packages, its level (ok / warning / full / over), the price per GB-month above it, where the space goes (categories), the bytes under legal hold (counted, never deletable — D-286), the bytes deleted for reclaim that count until their purge, and the last 30 daily snapshots (D-276, D-285). `metered: false` while the platform has not set a free allowance for the tenant type.\n\nImplements: D-276, D-285, D-286.",
@@ -206545,6 +208748,385 @@
         "x-surface": "prospect"
       }
     },
+    "/v1/prospect/messaging-links/{token}": {
+      "get": {
+        "description": "The operator (e.g. an estate agency) and its LINE OA behind the link the OA replied with, and whether it can still be used (G4, D-254).\n\nImplements: D-254, D-287.",
+        "operationId": "prospect.messagingLinks.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "botName": "หอพักสุขใจ",
+                  "botPictureUrl": null,
+                  "expiresAt": "2026-11-01T00:45:00+07:00",
+                  "state": "valid",
+                  "tenantName": "หอพักสุขใจ"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingLinkDto"
+                }
+              }
+            },
+            "description": "The link",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "messaging.link_invalid": {
+                    "$ref": "#/components/examples/problem.messaging.link_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `messaging.link_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "Who asks me to link their LINE account",
+        "tags": [
+          "prospect.messagingLinks"
+        ],
+        "x-surface": "prospect"
+      }
+    },
+    "/v1/prospect/messaging-links/{token}/actions/confirm": {
+      "post": {
+        "description": "My enquiry and viewing messages from this operator then come through its own OA (G4); the same OA user cannot be linked to another person (`messaging.line_user_taken`). Single use; expires after `messaging.link_token.ttl_minutes` (D-254).\n\nImplements: D-254, D-287.",
+        "operationId": "prospect.messagingLinks.confirm",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "botName": "หอพักสุขใจ",
+                  "botPictureUrl": null,
+                  "expiresAt": "2026-11-01T00:45:00+07:00",
+                  "state": "used",
+                  "tenantName": "หอพักสุขใจ"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingLinkDto"
+                }
+              }
+            },
+            "description": "Linked",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "messaging.link_invalid": {
+                    "$ref": "#/components/examples/problem.messaging.link_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `messaging.link_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "messaging.line_user_taken": {
+                    "$ref": "#/components/examples/problem.messaging.line_user_taken"
+                  },
+                  "messaging.link_used": {
+                    "$ref": "#/components/examples/problem.messaging.link_used"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `messaging.line_user_taken`, `messaging.link_used`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "410": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "messaging.link_expired": {
+                    "$ref": "#/components/examples/problem.messaging.link_expired"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `messaging.link_expired`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "Link the operator’s LINE account to me",
+        "tags": [
+          "prospect.messagingLinks"
+        ],
+        "x-surface": "prospect"
+      }
+    },
     "/v1/prospect/ping": {
       "get": {
         "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `prospect` surface until its real endpoints land. Anonymous or with an `prospect` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`).\n\nImplements: D-002, ADR-0002.",
@@ -208765,7 +211347,9 @@
                       "slug": "condo-1br-0a1b2c3d4e",
                       "title": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
                       "unitKind": "condo_unit",
-                      "verifiedOwner": true
+                      "vacantSince": "2026-10-31",
+                      "verifiedOwner": true,
+                      "verifiedVacant": true
                     }
                   ],
                   "nextCursor": null,
@@ -209066,7 +211650,7 @@
     },
     "/v1/public/listings/{slug}": {
       "get": {
-        "description": "The public page of a listing (D-252): description, facilities, every photo in order, floor, map pin, the owner’s display name and verified flag. `404` when it is not (or no longer) public.\n\nImplements: D-252.",
+        "description": "The public page of a listing (D-252): description, facilities, every photo in order, floor, map pin, the owner’s display name and verified flag, the real utility cost (D-265), the verified-vacant badge, the Open Graph card URL and the schema.org JSON-LD (G4, D-296). `404` when it is not (or no longer) public.\n\nImplements: D-252, D-265, D-296.",
         "operationId": "public.listings.get",
         "parameters": [
           {
@@ -209110,12 +211694,24 @@
                     "lat": 13.7799,
                     "lng": 100.5446
                   },
+                  "jsonLd": {
+                    "@context": "https://schema.org",
+                    "@type": "Offer",
+                    "itemOffered": {
+                      "@type": "Apartment",
+                      "numberOfBedrooms": 1
+                    },
+                    "price": "15000.00",
+                    "priceCurrency": "THB",
+                    "url": "https://getproperty.co/rent/condo-1br-0a1b2c3d4e"
+                  },
                   "minTermMonths": 12,
                   "nearestTransit": {
                     "distanceM": 350,
                     "line": "BTS สายสุขุมวิท",
                     "name": "BTS อารีย์"
                   },
+                  "ogImageUrl": "https://api.getproperty.co/v1/public/listings/condo-1br-0a1b2c3d4e/og-image",
                   "ownerDisplayName": "มาลี มีสุข",
                   "ownerIdentityVerified": true,
                   "ownerProfileSlug": "landlord-0a1b2c3d4e",
@@ -209159,7 +211755,9 @@
                       "tiers": []
                     }
                   },
-                  "verifiedOwner": true
+                  "vacantSince": "2026-10-31",
+                  "verifiedOwner": true,
+                  "verifiedVacant": true
                 },
                 "schema": {
                   "$ref": "#/components/schemas/PublicListingDetailDto"
@@ -209268,6 +211866,122 @@
         },
         "security": [],
         "summary": "One listing",
+        "tags": [
+          "public.listings"
+        ],
+        "x-surface": "public"
+      }
+    },
+    "/v1/public/listings/{slug}/og-image": {
+      "get": {
+        "description": "The 1200 × 630 PNG previewed by Facebook, LINE and search engines for the listing page and for its Facebook Page posts (G4, D-296): cover photo, rent, title, place, facts, the verified badges and the getproperty logo. Rendered again only when what it shows changes (`ETag` = its content hash); cacheable for an hour. `404` when the listing is not public.\n\nImplements: D-296, D-288.",
+        "operationId": "public.listings.ogImage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "example": "<PNG, 1200 × 630>",
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The PNG card (1200 × 630)",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Open Graph card of a listing",
         "tags": [
           "public.listings"
         ],
@@ -209694,7 +212408,9 @@
                       "slug": "condo-1br-0a1b2c3d4e",
                       "title": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์",
                       "unitKind": "condo_unit",
-                      "verifiedOwner": true
+                      "vacantSince": "2026-10-31",
+                      "verifiedOwner": true,
+                      "verifiedVacant": true
                     }
                   ],
                   "medianReplyMinutes": 42,
@@ -258528,6 +261244,10 @@
       "name": "owner.settings"
     },
     {
+      "description": "The tenant’s own Facebook Page: connect, check, disconnect; automatic listing posts (G4, D-288). Groups are never automated.",
+      "name": "owner.social"
+    },
+    {
       "description": "The owner's storage: files and records counted against the free allowance of the tenant type, the level and the daily snapshots (D-276).",
       "name": "owner.storage"
     },
@@ -258602,6 +261322,10 @@
     {
       "description": "Who I am as a prospect: open enquiries and upcoming viewings (B7.3, D-252).",
       "name": "prospect.me"
+    },
+    {
+      "description": "Link an operator’s (an agency’s) own LINE OA to me (G4, D-254).",
+      "name": "prospect.messagingLinks"
     },
     {
       "description": "My rent record, shared with an enquiry or as a letter (D-256).",

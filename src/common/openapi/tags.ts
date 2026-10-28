@@ -40,6 +40,8 @@ export const API_TAGS: Record<string, string> = {
   'owner.me':
     'Who I am in the owner console: tenants, current tenant and type, role, permissions, menu entitlements, feature flags, subscription state; password and TOTP setup.',
   'owner.messaging': 'The operator’s own LINE Official Account: connect, check, disconnect (D-254).',
+  'owner.social':
+    'The tenant’s own Facebook Page: connect, check, disconnect; automatic listing posts (G4, D-288). Groups are never automated.',
   'owner.serviceCosts':
     'Landlords: who fixes a repair, who pays, quotations and receipts, settlement on the next invoice (D-263).',
   'owner.identities':
@@ -123,6 +125,7 @@ export const API_TAGS: Record<string, string> = {
   'resident.inspections':
     'My move-in and move-out reports: lines, photos, the PDF, my countersignature (L5 5.2, D-253).',
   'resident.messagingLinks': 'Link an operator’s own LINE OA to me (D-254).',
+  'prospect.messagingLinks': 'Link an operator’s (an agency’s) own LINE OA to me (G4, D-254).',
   'resident.identities':
     'My ways to open the resident app outside LINE: phone, Google, Apple (D-255, D-283).',
   'resident.consents': 'PDPA consents of the resident (D-025).',

@@ -21,6 +21,7 @@ import { LeaseRenewalsService } from '@modules/ops-leases/lease-renewals.service
 import { LeasesService } from '@modules/ops-leases/leases.service';
 import { ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
 import { ListingModerationService } from '@modules/ops-listings/listing-moderation.service';
+import { ListingSocialService } from '@modules/ops-listings/listing-social.service';
 import { MandatesService } from '@modules/ops-listings/mandates.service';
 import { SelfViewingService } from '@modules/ops-listings/self-viewing.service';
 import { SettlementsService } from '@modules/ops-payments/settlements.service';
@@ -28,6 +29,7 @@ import { ReceivablesService } from '@modules/ops-receivables/receivables.service
 import { MaintenancePlansService } from '@modules/ops-service/maintenance-plans.service';
 import { Tm30Service } from '@modules/ops-tm30/tm30.service';
 import { AnalyticsService } from '@modules/platform-analytics/analytics.service';
+import { MessagingAddonsService } from '@modules/platform-subscriptions/messaging-addons.service';
 import { StoragePackagesService } from '@modules/platform-subscriptions/storage-packages.service';
 import { SubscriptionsService } from '@modules/platform-subscriptions/subscriptions.service';
 import { AccessCredentialsService } from '@modules/smart-access/access-credentials.service';
@@ -94,6 +96,9 @@ export const MAINTENANCE_JOBS = {
   'lease-renewals': 3_600_000,
   // D-254: own LINE OAs re-checked every messaging.health_check.hours (the job only picks the due ones)
   'messaging-health': 900_000,
+  // G4 (D-288): Facebook Page posts queued by listing events; (D-287) the monthly LINE OA integration fee
+  'social-posts': 60_000,
+  'messaging-addons': 3_600_000,
   // D-252 / O-018: ownership evidence deleted after its retention
   'listing-evidence-purge': 3_600_000,
   // B7.3: viewing reminders (both sides) and the owner's nudge on unanswered enquiries; G7 self-viewing sweep
@@ -152,6 +157,8 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly listingModeration: ListingModerationService,
     private readonly listingLeads: ListingLeadsService,
     private readonly selfViewing: SelfViewingService,
+    private readonly listingSocial: ListingSocialService,
+    private readonly messagingAddons: MessagingAddonsService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -285,6 +292,12 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'messaging-health':
         await this.messagingChannels.healthCheck();
+        break;
+      case 'social-posts':
+        await this.listingSocial.sweep();
+        break;
+      case 'messaging-addons':
+        await this.messagingAddons.maintain();
         break;
       case 'listing-evidence-purge':
         await this.listingModeration.purgeEvidence();

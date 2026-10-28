@@ -1,5 +1,7 @@
 import { OBJECT_STORAGE, type ObjectStorage } from '@collective/integrations/storage';
 import { DomainException } from '@common/errors/domain.exception';
+import { bangkokDate, toBangkokIso } from '@common/time/bangkok';
+import { AppConfig } from '@config/app-config';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { renditionKey } from '@core/documents/document-policy';
 import { IdentityVerificationService } from '@core/identity/identity-verification.service';
@@ -9,6 +11,7 @@ import { type Furnishing, type PortfolioUnitKind, Prisma } from '@generated/pris
 import { Inject, Injectable } from '@nestjs/common';
 
 import { ListingInsightsService } from './listing-insights.service';
+import { listingJsonLd } from './listing-json-ld';
 
 export interface PublicListingQuery {
   q?: string;
@@ -69,6 +72,10 @@ type Row = {
   updated_at: Date;
   verified: boolean;
   identity_verified: boolean;
+  /** G4: no current occupancy, no lease in force or waiting for signature (any tenant). */
+  no_occupant: boolean;
+  /** G4: the last day of the unit's last ended / terminated lease on getproperty (null = no history). */
+  last_lease_end: Date | null;
 };
 
 const ISO_DAY = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
@@ -101,7 +108,35 @@ export class PublicListingsService {
     private readonly settings: SettingsService,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly identity: IdentityVerificationService,
+    private readonly config: AppConfig,
   ) {}
+
+  /** The public page of a listing on the marketing site (D-252: `/rent/{slug}`). */
+  pageUrl(slug: string): string {
+    return `${this.config.get('PUBLIC_WEB_APP_URL')}/rent/${slug}`;
+  }
+
+  /** The stable Open Graph card URL (G4) — a redirect-free PNG served by this API. */
+  ogImageUrl(slug: string): string {
+    return `${this.config.get('PUBLIC_API_BASE_URL')}/v1/public/listings/${slug}/og-image`;
+  }
+
+  /**
+   * G4 (D-296) "verified vacant": getproperty's own data says nobody lives there — no current occupancy, no lease in
+   * force or waiting for signature — and, unless `listing.verified_vacant.require_history` is off, the unit had a
+   * lease on the platform that ended (otherwise there is no evidence either way). `vacantSince` = that lease's end.
+   */
+  private async vacancyRule(): Promise<boolean> {
+    return (
+      (await this.settings.valueAt<boolean>('listing.verified_vacant.require_history', this.clock.now())) !==
+      false
+    );
+  }
+
+  private vacancy(row: Row, requireHistory: boolean) {
+    const verified = row.no_occupant && (!requireHistory || row.last_lease_end !== null);
+    return { verifiedVacant: verified, vacantSince: verified ? ISO_DAY(row.last_lease_end) : null };
+  }
 
   async photo(
     doc: { storageKey: string; width: number | null; height: number | null },
@@ -135,8 +170,9 @@ export class PublicListingsService {
     return out;
   }
 
-  private summary(row: Row, cover: PublicPhoto | null, lang: 'th' | 'en') {
+  private summary(row: Row, cover: PublicPhoto | null, lang: 'th' | 'en', requireHistory: boolean) {
     return {
+      ...this.vacancy(row, requireHistory),
       slug: row.slug,
       title: this.title(row, lang),
       unitKind: row.unit_kind,
@@ -164,7 +200,8 @@ export class PublicListingsService {
     };
   }
 
-  private select = Prisma.sql`
+  private select(today: string) {
+    return Prisma.sql`
     SELECT l.id, l.slug, l.title_th, l.title_en, l.unit_kind, l.rent, l.deposit_months, l.advance_months,
            l.min_term_months, l.size_sqm, l.bedrooms, l.bathrooms, l.furnishing, l.pets_allowed, l.available_from,
            l.province, l.district, l.address_text, l.transit_name, l.transit_line, l.transit_distance_m,
@@ -173,8 +210,20 @@ export class PublicListingsService {
                     WHERE v.unit_id = l.unit_id AND v.tenant_id = l.tenant_id AND v.state = 'approved') AS verified,
            EXISTS (SELECT 1 FROM core.membership m
                      JOIN platform.identity_verification iv ON iv.user_id = m.user_id AND iv.state = 'approved'
-                    WHERE m.tenant_id = l.tenant_id AND m.role = 'owner' AND m.status = 'active') AS identity_verified
+                    WHERE m.tenant_id = l.tenant_id AND m.role = 'owner' AND m.status = 'active') AS identity_verified,
+           (NOT EXISTS (SELECT 1 FROM core.occupancy o
+                         WHERE o.unit_id = l.unit_id AND o.valid_from <= ${today}::date
+                           AND (o.valid_to IS NULL OR o.valid_to > ${today}::date) AND o.moved_out_at IS NULL)
+            AND NOT EXISTS (SELECT 1 FROM ops.lease x
+                             WHERE x.unit_id = l.unit_id
+                               AND x.status IN ('pending_signature', 'active', 'notice_given', 'ending'))) AS no_occupant,
+           (SELECT max(COALESCE((x.move_out_at AT TIME ZONE 'Asia/Bangkok')::date,
+                                CASE WHEN x.status = 'terminated' AND x.terminated_at IS NOT NULL
+                                     THEN (x.terminated_at AT TIME ZONE 'Asia/Bangkok')::date END,
+                                x.end_date))
+              FROM ops.lease x WHERE x.unit_id = l.unit_id AND x.status IN ('ended', 'terminated')) AS last_lease_end
       FROM ops.listing l JOIN core.tenant t ON t.id = l.tenant_id`;
+  }
 
   async search(query: PublicListingQuery, lang: 'th' | 'en') {
     const limit = Math.min(Math.max(query.limit ?? 20, 1), 50);
@@ -216,10 +265,12 @@ export class PublicListingsService {
           ? Prisma.sql`l.rent DESC, l.published_at DESC`
           : Prisma.sql`l.published_at DESC, l.id DESC`;
     const filter = Prisma.join(where, ' AND ');
+    const today = bangkokDate(this.clock.now());
+    const requireHistory = await this.vacancyRule();
     const [rows, total] = await this.db.platform(async (tx) => [
       await tx.$queryRaw<
         Row[]
-      >`${this.select} WHERE ${filter} ORDER BY ${order} LIMIT ${limit + 1} OFFSET ${offset}`,
+      >`${this.select(today)} WHERE ${filter} ORDER BY ${order} LIMIT ${limit + 1} OFFSET ${offset}`,
       (
         await tx.$queryRaw<
           { n: bigint }[]
@@ -229,15 +280,17 @@ export class PublicListingsService {
     const page = rows.slice(0, limit);
     const covers = await this.covers(page.map((r) => r.id));
     return {
-      data: page.map((row) => this.summary(row, covers.get(row.id) ?? null, lang)),
+      data: page.map((row) => this.summary(row, covers.get(row.id) ?? null, lang, requireHistory)),
       total: Number(total),
       nextCursor: rows.length > limit ? encodeCursor(offset + limit) : null,
     };
   }
 
   async detail(slug: string, lang: 'th' | 'en') {
+    const today = bangkokDate(this.clock.now());
+    const requireHistory = await this.vacancyRule();
     const rows = await this.db.platform(
-      (tx) => tx.$queryRaw<Row[]>`${this.select} WHERE ${PUBLIC} AND l.slug = ${slug}`,
+      (tx) => tx.$queryRaw<Row[]>`${this.select(today)} WHERE ${PUBLIC} AND l.slug = ${slug}`,
     );
     const row = rows[0];
     if (!row) throw new DomainException('http.not_found');
@@ -259,13 +312,38 @@ export class PublicListingsService {
     const cover = listing.photos[0]
       ? await this.photo(listing.photos[0].document, listing.photos[0].caption, 960)
       : null;
+    const summary = this.summary(row, cover, lang, requireHistory);
+    const description =
+      lang === 'en' && listing.descriptionEn ? listing.descriptionEn : listing.descriptionTh;
+    const geo = listing.lat && listing.lng ? { lat: Number(listing.lat), lng: Number(listing.lng) } : null;
+    const ogImageUrl = this.ogImageUrl(row.slug);
     return {
-      ...this.summary(row, cover, lang),
-      description: lang === 'en' && listing.descriptionEn ? listing.descriptionEn : listing.descriptionTh,
+      ...summary,
+      description,
+      ogImageUrl,
+      jsonLd: listingJsonLd({
+        url: this.pageUrl(row.slug),
+        imageUrl: ogImageUrl,
+        title: summary.title,
+        description,
+        unitKind: row.unit_kind,
+        rent: summary.rent,
+        sizeSqm: summary.sizeSqm,
+        bedrooms: row.bedrooms,
+        bathrooms: row.bathrooms,
+        petsAllowed: row.pets_allowed,
+        availableFrom: summary.availableFrom,
+        address: row.address_text,
+        district: row.district,
+        province: row.province,
+        geo,
+        publishedAt: toBangkokIso(row.published_at),
+        language: lang,
+      }),
       facilities: listing.facilities,
       photos,
       floor: listing.floorLabel,
-      geo: listing.lat && listing.lng ? { lat: Number(listing.lat), lng: Number(listing.lng) } : null,
+      geo,
       ownerDisplayName: listing.tenant.displayName,
       ownerProfileSlug: (await this.verifiedUnits(listing.tenantId)) > 0 ? listing.tenant.slug : null,
       smokingAllowed: listing.smokingAllowed,

@@ -1157,6 +1157,10 @@
     "line_user_taken": {
       "title": "เชื่อมกับผู้ใช้อื่นแล้ว",
       "detail": "บัญชี LINE นี้เชื่อมกับผู้ใช้ getproperty คนอื่นอยู่แล้ว"
+    },
+    "addon_terms_required": {
+      "title": "ต้องยอมรับค่าบริการก่อน",
+      "detail": "การเชื่อม LINE OA ของคุณมีค่าตั้งค่าและค่าบริการรายเดือน โปรดยืนยันราคาก่อนเชื่อมต่อ"
     }
   },
   "messaging_rate": {
@@ -1293,6 +1297,22 @@
     "access_invalid_state": {
       "title": "ทำรายการนี้ไม่ได้ตอนนี้",
       "detail": "การเข้าชมนี้อยู่ในสถานะที่ทำรายการนี้ไม่ได้"
+    }
+  },
+  "facebook": {
+    "unavailable": {
+      "title": "ยังเชื่อม Facebook Page ไม่ได้",
+      "detail": "การโพสต์ลง Facebook Page อัตโนมัติยังไม่เปิดให้บริการ โปรดใช้ชุดแชร์แทน"
+    },
+    "page_refused": {
+      "title": "Facebook ไม่ยอมรับ Page นี้",
+      "detail": "Facebook ไม่ยอมรับ token ของ Page นี้ ตรวจสอบรหัส Page และ Page access token แล้วลองใหม่"
+    }
+  },
+  "social": {
+    "post_invalid_state": {
+      "title": "สั่งโพสต์ใหม่ไม่ได้",
+      "detail": "โพสต์นี้ไม่ได้อยู่ในสถานะที่ล้มเหลว"
     }
   }
 }

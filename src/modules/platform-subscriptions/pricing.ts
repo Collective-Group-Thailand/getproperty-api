@@ -42,7 +42,16 @@ export interface UsageCounts {
 }
 
 export interface ChargeLine {
-  kind: 'subscription' | 'addon' | 'hardware_rental' | 'ai_overage' | 'discount' | 'adjustment' | 'storage';
+  kind:
+    | 'subscription'
+    | 'addon'
+    | 'hardware_rental'
+    | 'ai_overage'
+    | 'discount'
+    | 'adjustment'
+    | 'storage'
+    | 'setup'
+    | 'messaging_addon';
   description: string;
   quantity: string;
   unitPrice: string;

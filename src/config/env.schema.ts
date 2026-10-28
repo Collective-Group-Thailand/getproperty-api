@@ -123,6 +123,20 @@ export class EnvironmentVariables {
   @IsIn(['off', 'fake'])
   EKYC_MODE: 'off' | 'fake' = 'off';
 
+  /**
+   * Automatic posts on tenants' own Facebook Pages (G4, D-288, O-029): `off` (no approved Meta app — connecting a Page
+   * answers `facebook.unavailable`), `fake` (tests and demos) or `real` (Graph API, UNVERIFIED until the app review).
+   * Unset: `fake` with the in-memory fakes, else `off`.
+   */
+  @IsOptional()
+  @IsIn(['off', 'fake', 'real'])
+  FACEBOOK_MODE?: 'off' | 'fake' | 'real';
+
+  /** Graph API version of the real Facebook adapter (G4). */
+  @IsOptional()
+  @Matches(/^v\d{1,2}\.\d$/)
+  FACEBOOK_GRAPH_VERSION: string = 'v21.0';
+
   /** Shared secret of the e-KYC webhook signature (`X-Ekyc-Signature`, hex HMAC-SHA256 of the raw body). */
   @IsOptional()
   @IsString()

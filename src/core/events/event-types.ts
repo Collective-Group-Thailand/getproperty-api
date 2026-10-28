@@ -47,6 +47,20 @@ export const DOMAIN_EVENT_TYPES = {
   'identity.verification_rejected': 'The e-KYC provider did not verify a person (D-267).',
   'listing.share_kit_generated':
     'The share cards of a listing were rendered (again) for its share kit (D-268).',
+  // G4 distribution (D-288, D-296)
+  'listing.price_changed':
+    'The rent of a published listing changed; its Facebook Page posts are edited (G4, D-288).',
+  'listing.social_posted':
+    'getproperty posted (or edited) a listing on the tenant’s own Facebook Page (D-288).',
+  'listing.social_post_deleted':
+    'A listing’s Facebook Page post was deleted (the unit was let or the listing is no longer public, D-288).',
+  'listing.social_post_failed':
+    'A Facebook Page post could not be published / edited / deleted after its attempts, or the token was refused (D-288).',
+  'social_channel.connected': 'A tenant connected its own Facebook Page (token sealed, D-288).',
+  'social_channel.revoked': 'A tenant disconnected its Facebook Page; nothing more is posted there (D-288).',
+  'social_channel.failing': 'Facebook refused the Page token of a connected Page (D-288).',
+  'messaging.addon_invoiced':
+    'The LINE OA integration setup or monthly fee of a tenant was invoiced on a purchase platform invoice (G4, D-287).',
   'mandate.invited': 'An owner invited an agency to list (lease / manage) one unit (G2, D-293).',
   'mandate.accepted': 'The agency accepted a mandate; its unit grant exists, active from valid_from (D-293).',
   'mandate.activated': 'A mandate is in force: the agency sees the unit and may list it (D-293).',

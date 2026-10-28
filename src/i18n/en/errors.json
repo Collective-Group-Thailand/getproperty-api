@@ -1157,6 +1157,10 @@
     "line_user_taken": {
       "title": "Linked to someone else",
       "detail": "This LINE account is already linked to another getproperty user."
+    },
+    "addon_terms_required": {
+      "title": "Accept the fees first",
+      "detail": "Connecting your own LINE OA has a setup fee and a monthly fee; confirm the prices before connecting."
     }
   },
   "messaging_rate": {
@@ -1293,6 +1297,22 @@
     "access_invalid_state": {
       "title": "Not possible right now",
       "detail": "This viewing access is in a state that does not allow this."
+    }
+  },
+  "facebook": {
+    "unavailable": {
+      "title": "Facebook Pages are not available",
+      "detail": "Automatic posts on Facebook Pages are not available yet; use the share kit instead."
+    },
+    "page_refused": {
+      "title": "Facebook refused this Page",
+      "detail": "Facebook did not accept this Page's token. Check the Page id and the Page access token and try again."
+    }
+  },
+  "social": {
+    "post_invalid_state": {
+      "title": "Cannot retry this post",
+      "detail": "This post has not failed."
     }
   }
 }

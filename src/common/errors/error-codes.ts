@@ -260,6 +260,11 @@ export const ERROR_CODES = {
   'messaging.link_expired': HttpStatus.GONE,
   'messaging.link_used': HttpStatus.CONFLICT,
   'messaging.line_user_taken': HttpStatus.CONFLICT,
+  // G4 (D-287, D-288, D-296): agency OA fee, own Facebook Pages
+  'messaging.addon_terms_required': HttpStatus.CONFLICT,
+  'facebook.unavailable': HttpStatus.SERVICE_UNAVAILABLE,
+  'facebook.page_refused': HttpStatus.UNPROCESSABLE_ENTITY,
+  'social.post_invalid_state': HttpStatus.CONFLICT,
   'messaging_rate.in_the_past': HttpStatus.UNPROCESSABLE_ENTITY,
   'messaging_rate.invalid_state': HttpStatus.CONFLICT,
   'messaging_rate.same_checker': HttpStatus.CONFLICT,

@@ -47,6 +47,8 @@ export interface ProblemExtensions {
   /** `viewing.code_not_available` only (G7): the door-code window. */
   codeValidFrom?: string;
   codeValidTo?: string;
+  /** `messaging.addon_terms_required` only (G4, D-287): the OA integration prices in force to accept. */
+  addon?: { versionId: string; monthlyFee: string; setupFee: string; vatRate: string; currency: string };
 }
 
 /** The storage position sent with `storage.allowance_exceeded` (G1). */
@@ -62,6 +64,28 @@ export class ProblemStoragePosition {
     description: 'Where the owner sees storage packages.',
   })
   packagesUrl!: string;
+}
+
+/** The LINE OA integration prices sent with `messaging.addon_terms_required` (G4). */
+export class ProblemAddonTerms {
+  @ApiProperty({
+    format: 'uuid',
+    example: '0199f2a0-0000-7000-8000-0000000000cc',
+    description: 'The price-plan version to accept (`acceptAddonVersionId`).',
+  })
+  versionId!: string;
+
+  @ApiProperty({ example: '990.00', description: 'Monthly fee before VAT (THB).' })
+  monthlyFee!: string;
+
+  @ApiProperty({ example: '1500.00', description: 'One-time setup fee before VAT (THB).' })
+  setupFee!: string;
+
+  @ApiProperty({ example: '0.0700', description: 'VAT rate.' })
+  vatRate!: string;
+
+  @ApiProperty({ example: 'THB' })
+  currency!: string;
 }
 
 /** RFC 9457 problem details, served as `application/problem+json` (contract §3). */
@@ -202,6 +226,13 @@ export class ProblemDetails {
     description: '`viewing.code_not_available` only (G7): when the door code stops working',
   })
   codeValidTo?: string;
+
+  @ApiPropertyOptional({
+    type: () => ProblemAddonTerms,
+    description:
+      '`messaging.addon_terms_required` only (G4, D-287): the LINE OA integration prices in force; connect again with `acceptAddonVersionId`',
+  })
+  addon?: ProblemAddonTerms;
 
   @ApiProperty({ example: '6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e' })
   requestId!: string;
