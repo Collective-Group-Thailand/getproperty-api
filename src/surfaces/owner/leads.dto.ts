@@ -18,6 +18,8 @@ import {
 import { LanguageName } from '../shared/common.dto';
 import { MoneyOutput } from '../shared/fields';
 import { LeadRentRecordDto } from '../shared/rent-record.dto';
+import { ViewingAccessStateName, ViewingModeName } from '../shared/status.enums';
+import { AccessResultName, AccessSourceName, CredentialStatusName, LockScopeName } from './access.dto';
 
 /** D-268: where a listing is shared and where an enquiry came from. */
 export enum ListingChannelName {
@@ -73,6 +75,78 @@ export enum ViewingOutcomeName {
 const AT = '2026-11-07T10:00:00+07:00';
 const AT_END = '2026-11-07T10:30:00+07:00';
 
+/**
+ * G7 (D-295): the door-code window of a self viewing — never the code itself (the booked prospect fetches it with
+ * `GET /v1/prospect/viewings/{id}/access-code` inside the window).
+ */
+export class ViewingAccessSummaryDto {
+  @ApiProperty({ enum: ViewingAccessStateName, enumName: 'ViewingAccessState', example: 'issued' })
+  state!: ViewingAccessStateName;
+
+  @ApiProperty({
+    format: 'date-time',
+    example: '2026-11-07T09:55:00+07:00',
+    description: 'The code opens the door from (slot start − `viewing.self.code_early_minutes`).',
+  })
+  validFrom!: string;
+
+  @ApiProperty({
+    format: 'date-time',
+    example: '2026-11-07T10:30:00+07:00',
+    description: 'The code stops working (slot start + `viewing.self.code_minutes`).',
+  })
+  validTo!: string;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
+  enteredAt!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: null,
+    description: '`prospect` (confirmed in the app) or `lock_log` (a successful unlock with the code).',
+  })
+  enteredSource!: string | null;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
+  exitedAt!: string | null;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
+  closedAt!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: null, description: 'Why the window closed.' })
+  closeReason!: string | null;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
+  incidentAt!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: null, description: 'What the visitor reported.' })
+  incidentNote!: string | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: null,
+    description: 'The work order opened for the incident.',
+  })
+  workOrderId!: string | null;
+}
+
+export const VIEWING_ACCESS_EXAMPLE: ViewingAccessSummaryDto = {
+  state: ViewingAccessStateName.Issued,
+  validFrom: '2026-11-07T09:55:00+07:00',
+  validTo: '2026-11-07T10:30:00+07:00',
+  enteredAt: null,
+  enteredSource: null,
+  exitedAt: null,
+  closedAt: null,
+  closeReason: null,
+  incidentAt: null,
+  incidentNote: null,
+  workOrderId: null,
+};
+
 // ------------------------------------------------------------------------------------------------- read models
 
 export class LeadMessageDto {
@@ -101,6 +175,22 @@ export class LeadViewingDto {
 
   @ApiProperty({ enum: ListingViewingStateName, enumName: 'ListingViewingState', example: 'requested' })
   state!: ListingViewingStateName;
+
+  @ApiProperty({
+    enum: ViewingModeName,
+    enumName: 'ViewingMode',
+    example: 'accompanied',
+    description: 'G7 (D-295): accompanied, or self-viewing with a time-boxed door code.',
+  })
+  mode!: ViewingModeName;
+
+  @ApiProperty({
+    type: () => ViewingAccessSummaryDto,
+    nullable: true,
+    example: null,
+    description: 'G7: the door-code window once the owner confirmed a self viewing (null otherwise).',
+  })
+  access!: ViewingAccessSummaryDto | null;
 
   @ApiProperty({ type: String, nullable: true, example: 'จะมากับแฟนค่ะ' })
   note!: string | null;
@@ -308,6 +398,17 @@ export class OwnerViewingDto {
   @ApiProperty({ enum: ListingViewingStateName, enumName: 'ListingViewingState', example: 'confirmed' })
   state!: ListingViewingStateName;
 
+  @ApiProperty({ enum: ViewingModeName, enumName: 'ViewingMode', example: 'accompanied' })
+  mode!: ViewingModeName;
+
+  @ApiProperty({
+    type: () => ViewingAccessSummaryDto,
+    nullable: true,
+    example: null,
+    description: 'G7 (D-295): the door-code window of a confirmed self viewing (entry / exit / incident).',
+  })
+  access!: ViewingAccessSummaryDto | null;
+
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   leadId!: string;
 
@@ -391,11 +492,25 @@ export class ViewingSlotDto {
 
   @ApiProperty({ format: 'date-time', example: AT_END })
   endsAt!: string;
+
+  @ApiProperty({
+    enum: ViewingModeName,
+    enumName: 'ViewingMode',
+    example: 'accompanied',
+    description: 'G7 (D-295): `self` slots need a verified prospect (e-KYC + phone + visitor terms).',
+  })
+  mode!: ViewingModeName;
 }
 
 export class ViewingSlotsDto {
   @ApiProperty({ type: 'integer', example: 30 })
   slotMinutes!: number;
+
+  @ApiProperty({
+    example: false,
+    description: 'G7 (D-295): the listing offers self-viewing slots now (setting on, own unit lock, vacant).',
+  })
+  selfViewing!: boolean;
 
   @ApiProperty({ type: [ViewingSlotDto], description: 'Free slots in time order (Asia/Bangkok offsets).' })
   slots!: ViewingSlotDto[];
@@ -486,6 +601,29 @@ export class ViewingRequestDto extends EnquiryTermsDto {
   @IsString()
   @MaxLength(2000)
   message?: string | null;
+
+  @ApiPropertyOptional({
+    enum: ViewingModeName,
+    enumName: 'ViewingMode',
+    example: 'accompanied',
+    description:
+      'G7 (D-295): `self` books a self-viewing slot — needs a verified identity (e-KYC), a verified phone and `visitorTermsVersion` (the terms of `GET /v1/prospect/me/self-viewing`). Default accompanied.',
+  })
+  @IsOptional()
+  @IsEnum(ViewingModeName)
+  mode?: ViewingModeName;
+
+  @ApiPropertyOptional({
+    type: 'integer',
+    nullable: true,
+    minimum: 1,
+    example: null,
+    description: 'G7: the visitor-terms version I accepted (required for `mode: self`).',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  visitorTermsVersion?: number | null;
 }
 
 export class LeadMessageCreateDto {
@@ -593,4 +731,65 @@ export class LeadStateDto {
   @IsString()
   @MaxLength(500)
   lostNote?: string | null;
+}
+
+// ------------------------------------------------------------------------------------------- G7 self-viewing
+
+export class ViewingAccessCredentialDto {
+  @ApiProperty({ example: 'ประตูห้อง A-102' })
+  lockName!: string;
+
+  @ApiProperty({ enum: LockScopeName, enumName: 'LockScope', example: 'unit' })
+  lockScope!: LockScopeName;
+
+  @ApiProperty({ enum: CredentialStatusName, enumName: 'CredentialStatus', example: 'active' })
+  status!: CredentialStatusName;
+
+  @ApiProperty({ format: 'date-time', example: '2026-11-07T09:55:00+07:00' })
+  validFrom!: string;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: '2026-11-07T10:30:00+07:00' })
+  validTo!: string | null;
+}
+
+export class ViewingAccessEventDto {
+  @ApiProperty({ format: 'date-time', example: '2026-11-07T10:01:00+07:00' })
+  time!: string;
+
+  @ApiProperty({ example: 'ประตูห้อง A-102' })
+  lockName!: string;
+
+  @ApiProperty({ enum: AccessResultName, enumName: 'AccessResult', example: 'success' })
+  result!: AccessResultName;
+
+  @ApiProperty({ enum: AccessSourceName, enumName: 'AccessSource', example: 'pin' })
+  source!: AccessSourceName;
+}
+
+/** `GET /v1/owner/listing-viewings/{id}/access-log` (G7, D-295) — no door code. */
+export class ViewingAccessLogDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  viewingId!: string;
+
+  @ApiProperty({ type: () => ViewingAccessSummaryDto })
+  access!: ViewingAccessSummaryDto;
+
+  @ApiProperty({
+    type: [ViewingAccessCredentialDto],
+    description: 'The visitor codes (unit lock + building doors).',
+  })
+  credentials!: ViewingAccessCredentialDto[];
+
+  @ApiProperty({
+    type: [ViewingAccessEventDto],
+    description: 'Door events of those codes (lock log), oldest first.',
+  })
+  events!: ViewingAccessEventDto[];
+}
+
+export class ViewingEndAccessDto {
+  @ApiProperty({ example: 'ผู้เข้าชมโทรแจ้งว่าออกจากห้องแล้ว', minLength: 3, maxLength: 300 })
+  @IsString()
+  @Length(3, 300)
+  reason!: string;
 }

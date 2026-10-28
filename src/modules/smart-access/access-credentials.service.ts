@@ -40,6 +40,8 @@ export interface IssueInput {
   holderName: string;
   leaseId?: string | null;
   workOrderId?: string | null;
+  /** G7 (D-295): the self viewing of a visitor credential (the database refuses it for an occupied unit). */
+  viewingId?: string | null;
   type?: CredentialType;
   validFrom: Date;
   validTo: Date | null;
@@ -103,6 +105,7 @@ export class AccessCredentialsService extends TenantScopedRepository {
         holderName: input.holderName.slice(0, 200),
         leaseId: input.leaseId ?? null,
         workOrderId: input.workOrderId ?? null,
+        viewingId: input.viewingId ?? null,
         type: input.type ?? 'pin',
         vendor: lock.vendor,
         pinEnc,
@@ -123,6 +126,7 @@ export class AccessCredentialsService extends TenantScopedRepository {
         holderKind: row.holderKind,
         leaseId: row.leaseId,
         workOrderId: row.workOrderId,
+        viewingId: row.viewingId,
         validTo: row.validTo?.toISOString() ?? null,
       },
     });
@@ -142,7 +146,7 @@ export class AccessCredentialsService extends TenantScopedRepository {
     tx: Tx,
     cred: AccessCredential,
     reason: string,
-    origin: 'owner' | 'lease_end' | 'work_order' | 'system',
+    origin: 'owner' | 'lease_end' | 'work_order' | 'viewing' | 'system',
   ): Promise<AccessCredential> {
     if (!LIVE_STATUSES.includes(cred.status))
       throw new DomainException('access.invalid_state', { params: { status: cred.status } });
@@ -231,6 +235,7 @@ export class AccessCredentialsService extends TenantScopedRepository {
       holderUserId: row.holderUserId,
       leaseId: row.leaseId,
       workOrderId: row.workOrderId,
+      viewingId: row.viewingId,
       status: row.status,
       validFrom: row.validFrom.toISOString(),
       validTo: row.validTo?.toISOString() ?? null,

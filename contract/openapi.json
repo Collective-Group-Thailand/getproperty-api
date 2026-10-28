@@ -2857,6 +2857,94 @@
           "type": "https://errors.getproperty.co/validation.failed"
         }
       },
+      "problem.viewing.access_invalid_state": {
+        "summary": "viewing.access_invalid_state",
+        "value": {
+          "code": "viewing.access_invalid_state",
+          "detail": "การเข้าชมนี้อยู่ในสถานะที่ทำรายการนี้ไม่ได้",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ทำรายการนี้ไม่ได้ตอนนี้",
+          "type": "https://errors.getproperty.co/viewing.access_invalid_state"
+        }
+      },
+      "problem.viewing.access_open_elsewhere": {
+        "summary": "viewing.access_open_elsewhere",
+        "value": {
+          "code": "viewing.access_open_elsewhere",
+          "detail": "ยืนยันการออกจากห้องที่ดูอยู่ก่อน แล้วจึงเปิดรหัสห้องถัดไป",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "คุณยังอยู่ในห้องอื่น",
+          "type": "https://errors.getproperty.co/viewing.access_open_elsewhere"
+        }
+      },
+      "problem.viewing.access_overlap": {
+        "summary": "viewing.access_overlap",
+        "value": {
+          "code": "viewing.access_overlap",
+          "detail": "คุณมีนัดดูห้องด้วยตัวเองที่ช่วงเวลาซ้อนกันอยู่ โปรดเลือกเวลาอื่น",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "มีนัดดูห้องเองช่วงเวลาเดียวกันแล้ว",
+          "type": "https://errors.getproperty.co/viewing.access_overlap"
+        }
+      },
+      "problem.viewing.code_not_available": {
+        "summary": "viewing.code_not_available",
+        "value": {
+          "code": "viewing.code_not_available",
+          "detail": "รหัสประตูจะแสดงเฉพาะช่วงเวลานัดเท่านั้น",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ยังดูรหัสประตูไม่ได้",
+          "type": "https://errors.getproperty.co/viewing.code_not_available"
+        }
+      },
+      "problem.viewing.requirements_missing": {
+        "summary": "viewing.requirements_missing",
+        "value": {
+          "code": "viewing.requirements_missing",
+          "detail": "การดูห้องด้วยตัวเองต้องยืนยันตัวตน ยืนยันเบอร์โทร และยอมรับเงื่อนไขผู้เข้าชมก่อน",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 422,
+          "title": "ยืนยันตัวตนก่อนดูห้องด้วยตัวเอง",
+          "type": "https://errors.getproperty.co/viewing.requirements_missing"
+        }
+      },
+      "problem.viewing.self_unavailable": {
+        "summary": "viewing.self_unavailable",
+        "value": {
+          "code": "viewing.self_unavailable",
+          "detail": "ห้องนี้ยังไม่เปิดให้ดูห้องด้วยตัวเอง โปรดนัดดูพร้อมเจ้าของหรือเจ้าหน้าที่",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ห้องนี้ดูเองไม่ได้",
+          "type": "https://errors.getproperty.co/viewing.self_unavailable"
+        }
+      },
+      "problem.viewing.terms_outdated": {
+        "summary": "viewing.terms_outdated",
+        "value": {
+          "code": "viewing.terms_outdated",
+          "detail": "โปรดอ่านและยอมรับเงื่อนไขผู้เข้าชมฉบับล่าสุดก่อนจอง",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 422,
+          "title": "เงื่อนไขผู้เข้าชมเปลี่ยนแล้ว",
+          "type": "https://errors.getproperty.co/viewing.terms_outdated"
+        }
+      },
+      "problem.viewing.unit_occupied": {
+        "summary": "viewing.unit_occupied",
+        "value": {
+          "code": "viewing.unit_occupied",
+          "detail": "ดูห้องด้วยตัวเองได้เฉพาะห้องที่ว่างเท่านั้น",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ห้องนี้มีผู้เช่าแล้ว",
+          "type": "https://errors.getproperty.co/viewing.unit_occupied"
+        }
+      },
       "problem.webhook.malformed": {
         "summary": "webhook.malformed",
         "value": {
@@ -15542,6 +15630,21 @@
         ],
         "type": "object"
       },
+      "IncidentReportDto": {
+        "properties": {
+          "note": {
+            "description": "What is wrong at the unit (damage, a door that does not lock, someone inside).",
+            "example": "ก๊อกน้ำในห้องน้ำรั่ว น้ำนองพื้น",
+            "maxLength": 2000,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "type": "object"
+      },
       "IncomeExpenseItemDto": {
         "properties": {
           "amount": {
@@ -18880,6 +18983,18 @@
       },
       "LeadViewingDto": {
         "properties": {
+          "access": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ViewingAccessSummaryDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "G7: the door-code window once the owner confirmed a self viewing (null otherwise).",
+            "example": null
+          },
           "cancelledBy": {
             "anyOf": [
               {
@@ -18900,6 +19015,15 @@
             "example": "3b241101-e2bb-4255-8caf-4136c566a962",
             "format": "uuid",
             "type": "string"
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ViewingMode"
+              }
+            ],
+            "description": "G7 (D-295): accompanied, or self-viewing with a time-boxed door code.",
+            "example": "accompanied"
           },
           "note": {
             "example": "จะมากับแฟนค่ะ",
@@ -18944,6 +19068,8 @@
           "startsAt",
           "endsAt",
           "state",
+          "mode",
+          "access",
           "note",
           "reason",
           "cancelledBy",
@@ -27156,6 +27282,18 @@
       },
       "OwnerViewingDto": {
         "properties": {
+          "access": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ViewingAccessSummaryDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "G7 (D-295): the door-code window of a confirmed self viewing (entry / exit / incident).",
+            "example": null
+          },
           "endsAt": {
             "example": "2026-11-07T10:30:00+07:00",
             "format": "date-time",
@@ -27173,6 +27311,14 @@
           },
           "listing": {
             "$ref": "#/components/schemas/OwnerViewingListingDto"
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ViewingMode"
+              }
+            ],
+            "example": "accompanied"
           },
           "prospectName": {
             "example": "สมศรี ใจดี",
@@ -27197,6 +27343,8 @@
           "startsAt",
           "endsAt",
           "state",
+          "mode",
+          "access",
           "leadId",
           "prospectName",
           "listing"
@@ -30689,6 +30837,18 @@
             "example": "compliance.tariff_cap",
             "type": "string"
           },
+          "codeValidFrom": {
+            "description": "`viewing.code_not_available` only (G7): when the door code starts to work",
+            "example": "2026-11-07T09:55:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "codeValidTo": {
+            "description": "`viewing.code_not_available` only (G7): when the door code stops working",
+            "example": "2026-11-07T10:30:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
           "detail": {
             "description": "Localised by `Accept-Language` (`th` default, `en`).",
             "example": "ค่าไฟฟ้าต่อหน่วยสูงกว่าอัตราของการไฟฟ้า ไม่สามารถออกบิลได้",
@@ -30736,6 +30896,17 @@
             "example": 1,
             "type": "integer"
           },
+          "missingRequirements": {
+            "description": "`viewing.requirements_missing` only (G7, D-295): what the prospect still has to do before a self viewing — `identity` (e-KYC), `phone` (verified phone), `terms` (visitor terms)",
+            "example": [
+              "identity",
+              "phone"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "requestId": {
             "example": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
             "type": "string"
@@ -30743,6 +30914,11 @@
           "ruleId": {
             "description": "`compliance.*` only: the rule id in the compliance registry",
             "example": "compliance.tariff_cap",
+            "type": "string"
+          },
+          "selfViewingReason": {
+            "description": "`viewing.self_unavailable` only (G7, D-295): `disabled` (setting off, O-024), `no_lock` (no active unit lock with an adapter), `not_operated` (agency listing — the lock is the owner tenant’s, O-031)",
+            "example": "no_lock",
             "type": "string"
           },
           "shown": {
@@ -30776,6 +30952,11 @@
           "type": {
             "example": "https://errors.getproperty.co/compliance.tariff_cap",
             "type": "string"
+          },
+          "visitorTermsVersion": {
+            "description": "`viewing.terms_outdated` only (G7): the visitor-terms version in force",
+            "example": 2,
+            "type": "integer"
           }
         },
         "required": [
@@ -31080,6 +31261,24 @@
           "user",
           "openEnquiries",
           "upcomingViewings"
+        ],
+        "type": "object"
+      },
+      "ProspectPhoneDto": {
+        "properties": {
+          "phoneMasked": {
+            "description": "My verified phone, masked.",
+            "example": "08•-•••-1234",
+            "type": "string"
+          },
+          "phoneVerified": {
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "phoneMasked",
+          "phoneVerified"
         ],
         "type": "object"
       },
@@ -37883,6 +38082,86 @@
         },
         "required": [
           "data"
+        ],
+        "type": "object"
+      },
+      "SelfViewingLockDto": {
+        "properties": {
+          "name": {
+            "example": "ประตูห้อง A-102",
+            "type": "string"
+          },
+          "ready": {
+            "description": "The vendor confirmed the code on this lock.",
+            "example": true,
+            "type": "boolean"
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LockScope"
+              }
+            ],
+            "example": "unit"
+          }
+        },
+        "required": [
+          "name",
+          "scope",
+          "ready"
+        ],
+        "type": "object"
+      },
+      "SelfViewingStatusDto": {
+        "properties": {
+          "codeMinutes": {
+            "description": "`viewing.self.code_minutes` (platform default).",
+            "example": 30,
+            "type": "integer"
+          },
+          "earlyMinutes": {
+            "description": "`viewing.self.code_early_minutes` (platform default).",
+            "example": 5,
+            "type": "integer"
+          },
+          "enabled": {
+            "description": "Self-viewing is switched on platform-wide (`viewing.self.enabled`; a tenant may differ).",
+            "example": true,
+            "type": "boolean"
+          },
+          "identityVerified": {
+            "description": "My identity is verified (e-KYC, D-267).",
+            "example": true,
+            "type": "boolean"
+          },
+          "missing": {
+            "description": "What I still need before booking a self viewing: `identity`, `phone`; `terms` is always listed — accept the terms below with each booking.",
+            "example": [
+              "phone",
+              "terms"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "phoneVerified": {
+            "description": "My account has a verified phone.",
+            "example": false,
+            "type": "boolean"
+          },
+          "visitorTerms": {
+            "$ref": "#/components/schemas/VisitorTermsDto"
+          }
+        },
+        "required": [
+          "enabled",
+          "identityVerified",
+          "phoneVerified",
+          "missing",
+          "visitorTerms",
+          "codeMinutes",
+          "earlyMinutes"
         ],
         "type": "object"
       },
@@ -46779,6 +47058,272 @@
         ],
         "type": "object"
       },
+      "ViewingAccessCodeDto": {
+        "properties": {
+          "doorCode": {
+            "description": "The keypad code (same on the unit lock and the building doors).",
+            "example": "482913",
+            "type": "string"
+          },
+          "locks": {
+            "items": {
+              "$ref": "#/components/schemas/SelfViewingLockDto"
+            },
+            "type": "array"
+          },
+          "validFrom": {
+            "example": "2026-11-07T09:55:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "validTo": {
+            "example": "2026-11-07T10:30:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "viewingId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "viewingId",
+          "doorCode",
+          "validFrom",
+          "validTo",
+          "locks"
+        ],
+        "type": "object"
+      },
+      "ViewingAccessCredentialDto": {
+        "properties": {
+          "lockName": {
+            "example": "ประตูห้อง A-102",
+            "type": "string"
+          },
+          "lockScope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LockScope"
+              }
+            ],
+            "example": "unit"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CredentialStatus"
+              }
+            ],
+            "example": "active"
+          },
+          "validFrom": {
+            "example": "2026-11-07T09:55:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "validTo": {
+            "example": "2026-11-07T10:30:00+07:00",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "lockName",
+          "lockScope",
+          "status",
+          "validFrom",
+          "validTo"
+        ],
+        "type": "object"
+      },
+      "ViewingAccessEventDto": {
+        "properties": {
+          "lockName": {
+            "example": "ประตูห้อง A-102",
+            "type": "string"
+          },
+          "result": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccessResult"
+              }
+            ],
+            "example": "success"
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccessSource"
+              }
+            ],
+            "example": "pin"
+          },
+          "time": {
+            "example": "2026-11-07T10:01:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "time",
+          "lockName",
+          "result",
+          "source"
+        ],
+        "type": "object"
+      },
+      "ViewingAccessLogDto": {
+        "properties": {
+          "access": {
+            "$ref": "#/components/schemas/ViewingAccessSummaryDto"
+          },
+          "credentials": {
+            "description": "The visitor codes (unit lock + building doors).",
+            "items": {
+              "$ref": "#/components/schemas/ViewingAccessCredentialDto"
+            },
+            "type": "array"
+          },
+          "events": {
+            "description": "Door events of those codes (lock log), oldest first.",
+            "items": {
+              "$ref": "#/components/schemas/ViewingAccessEventDto"
+            },
+            "type": "array"
+          },
+          "viewingId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "viewingId",
+          "access",
+          "credentials",
+          "events"
+        ],
+        "type": "object"
+      },
+      "ViewingAccessState": {
+        "enum": [
+          "issued",
+          "entered",
+          "exited",
+          "expired",
+          "no_show",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "ViewingAccessSummaryDto": {
+        "properties": {
+          "closeReason": {
+            "description": "Why the window closed.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "closedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enteredAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enteredSource": {
+            "description": "`prospect` (confirmed in the app) or `lock_log` (a successful unlock with the code).",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "exitedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "incidentAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "incidentNote": {
+            "description": "What the visitor reported.",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ViewingAccessState"
+              }
+            ],
+            "example": "issued"
+          },
+          "validFrom": {
+            "description": "The code opens the door from (slot start − `viewing.self.code_early_minutes`).",
+            "example": "2026-11-07T09:55:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "validTo": {
+            "description": "The code stops working (slot start + `viewing.self.code_minutes`).",
+            "example": "2026-11-07T10:30:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "workOrderId": {
+            "description": "The work order opened for the incident.",
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "state",
+          "validFrom",
+          "validTo",
+          "enteredAt",
+          "enteredSource",
+          "exitedAt",
+          "closedAt",
+          "closeReason",
+          "incidentAt",
+          "incidentNote",
+          "workOrderId"
+        ],
+        "type": "object"
+      },
       "ViewingCancelDto": {
         "properties": {
           "reason": {
@@ -46822,6 +47367,28 @@
         ],
         "type": "object"
       },
+      "ViewingEndAccessDto": {
+        "properties": {
+          "reason": {
+            "example": "ผู้เข้าชมโทรแจ้งว่าออกจากห้องแล้ว",
+            "maxLength": 300,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "ViewingMode": {
+        "description": "G7 (D-295): `self` = a self-viewing window — verified prospects enter alone with a time-boxed door code (vacant units with a lock, when `viewing.self.enabled`); `accompanied` (default) = someone shows the unit. Date exceptions are accompanied-only.",
+        "enum": [
+          "accompanied",
+          "self"
+        ],
+        "type": "string"
+      },
       "ViewingOutcome": {
         "enum": [
           "completed",
@@ -46855,6 +47422,15 @@
               "string",
               "null"
             ]
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ViewingMode"
+              }
+            ],
+            "description": "G7 (D-295): `self` books a self-viewing slot — needs a verified identity (e-KYC), a verified phone and `visitorTermsVersion` (the terms of `GET /v1/prospect/me/self-viewing`). Default accompanied.",
+            "example": "accompanied"
           },
           "moveInDate": {
             "example": "2026-12-01",
@@ -46903,6 +47479,15 @@
               "integer",
               "null"
             ]
+          },
+          "visitorTermsVersion": {
+            "description": "G7: the visitor-terms version I accepted (required for `mode: self`).",
+            "example": null,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
           }
         },
         "required": [
@@ -46932,6 +47517,15 @@
             "format": "date-time",
             "type": "string"
           },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ViewingMode"
+              }
+            ],
+            "description": "G7 (D-295): `self` slots need a verified prospect (e-KYC + phone + visitor terms).",
+            "example": "accompanied"
+          },
           "startsAt": {
             "example": "2026-11-07T10:00:00+07:00",
             "format": "date-time",
@@ -46940,12 +47534,18 @@
         },
         "required": [
           "startsAt",
-          "endsAt"
+          "endsAt",
+          "mode"
         ],
         "type": "object"
       },
       "ViewingSlotsDto": {
         "properties": {
+          "selfViewing": {
+            "description": "G7 (D-295): the listing offers self-viewing slots now (setting on, own unit lock, vacant).",
+            "example": false,
+            "type": "boolean"
+          },
           "slotMinutes": {
             "example": 30,
             "type": "integer"
@@ -46960,6 +47560,7 @@
         },
         "required": [
           "slotMinutes",
+          "selfViewing",
           "slots"
         ],
         "type": "object"
@@ -47016,6 +47617,29 @@
         "required": [
           "allowed",
           "maxHours"
+        ],
+        "type": "object"
+      },
+      "VisitorTermsDto": {
+        "properties": {
+          "en": {
+            "example": "Draft visitor terms (pending legal review): …",
+            "type": "string"
+          },
+          "th": {
+            "example": "ร่างเงื่อนไขผู้เข้าชม (รอตรวจทางกฎหมาย): …",
+            "type": "string"
+          },
+          "version": {
+            "description": "Send it back as `visitorTermsVersion` when booking.",
+            "example": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "th",
+          "en"
         ],
         "type": "object"
       },
@@ -47144,6 +47768,15 @@
           "from": {
             "example": "10:00",
             "type": "string"
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ViewingMode"
+              }
+            ],
+            "description": "G7 (D-295): `self` = a self-viewing window — verified prospects enter alone with a time-boxed door code (vacant units with a lock, when `viewing.self.enabled`); `accompanied` (default) = someone shows the unit. Date exceptions are accompanied-only.",
+            "example": "accompanied"
           },
           "to": {
             "example": "16:00",
@@ -133149,9 +133782,11 @@
                       "unitId": "3b241101-e2bb-4255-8caf-4136c566a962"
                     },
                     "nextViewing": {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -133393,9 +134028,11 @@
                   "moveInDate": "2026-12-01",
                   "nationality": null,
                   "nextViewing": {
+                    "access": null,
                     "cancelledBy": null,
                     "endsAt": "2026-11-07T10:30:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "mode": "accompanied",
                     "note": null,
                     "reason": null,
                     "rescheduledTo": null,
@@ -133435,9 +134072,11 @@
                   "version": 2,
                   "viewings": [
                     {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -133704,9 +134343,11 @@
                   "moveInDate": "2026-12-01",
                   "nationality": null,
                   "nextViewing": {
+                    "access": null,
                     "cancelledBy": null,
                     "endsAt": "2026-11-07T10:30:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "mode": "accompanied",
                     "note": null,
                     "reason": null,
                     "rescheduledTo": null,
@@ -133746,9 +134387,11 @@
                   "version": 2,
                   "viewings": [
                     {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -134021,9 +134664,11 @@
                   "moveInDate": "2026-12-01",
                   "nationality": null,
                   "nextViewing": {
+                    "access": null,
                     "cancelledBy": null,
                     "endsAt": "2026-11-07T10:30:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "mode": "accompanied",
                     "note": null,
                     "reason": null,
                     "rescheduledTo": null,
@@ -134063,9 +134708,11 @@
                   "version": 2,
                   "viewings": [
                     {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -134359,9 +135006,11 @@
                     "moveInDate": "2026-12-01",
                     "nationality": null,
                     "nextViewing": {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -134401,9 +135050,11 @@
                     "version": 2,
                     "viewings": [
                       {
+                        "access": null,
                         "cancelledBy": null,
                         "endsAt": "2026-11-07T10:30:00+07:00",
                         "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                        "mode": "accompanied",
                         "note": null,
                         "reason": null,
                         "rescheduledTo": null,
@@ -134730,9 +135381,11 @@
                   "moveInDate": "2026-12-01",
                   "nationality": null,
                   "nextViewing": {
+                    "access": null,
                     "cancelledBy": null,
                     "endsAt": "2026-11-07T10:30:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "mode": "accompanied",
                     "note": null,
                     "reason": null,
                     "rescheduledTo": null,
@@ -134772,9 +135425,11 @@
                   "version": 2,
                   "viewings": [
                     {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -143849,6 +144504,7 @@
               "application/json": {
                 "example": [
                   {
+                    "access": null,
                     "endsAt": "2026-11-07T10:30:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "leadId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -143857,6 +144513,7 @@
                       "slug": "condo-1br-0193f2a4b1",
                       "title": "คอนโด 1 ห้องนอน ใกล้ BTS อารีย์"
                     },
+                    "mode": "accompanied",
                     "prospectName": "สมศรี ใจดี",
                     "startsAt": "2026-11-07T10:00:00+07:00",
                     "state": "confirmed"
@@ -144034,6 +144691,252 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/listing-viewings/{viewingId}/access-log": {
+      "get": {
+        "description": "The door-code window of a confirmed self viewing: state, entry (app or lock log) and exit, incident and its work order, the visitor codes on the unit lock and building doors, and their door events. Never the code itself. Visible only to the listing tenant (owner or agency); each read is audited (D-295, D-025). A viewing without a self-viewing window, or of another tenant, is a 404.\n\nImplements: D-295, D-289, D-025.",
+        "operationId": "owner.listingViewings.accessLog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "viewingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "access": {
+                    "closeReason": null,
+                    "closedAt": null,
+                    "enteredAt": "2026-11-07T10:01:00+07:00",
+                    "enteredSource": "lock_log",
+                    "exitedAt": null,
+                    "incidentAt": null,
+                    "incidentNote": null,
+                    "state": "entered",
+                    "validFrom": "2026-11-07T09:55:00+07:00",
+                    "validTo": "2026-11-07T10:30:00+07:00",
+                    "workOrderId": null
+                  },
+                  "credentials": [
+                    {
+                      "lockName": "ประตูห้อง A-102",
+                      "lockScope": "unit",
+                      "status": "active",
+                      "validFrom": "2026-11-07T09:55:00+07:00",
+                      "validTo": "2026-11-07T10:30:00+07:00"
+                    }
+                  ],
+                  "events": [
+                    {
+                      "lockName": "ประตูห้อง A-102",
+                      "result": "success",
+                      "source": "pin",
+                      "time": "2026-11-07T10:01:00+07:00"
+                    }
+                  ],
+                  "viewingId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ViewingAccessLogDto"
+                }
+              }
+            },
+            "description": "Entry log",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Self-viewing entry log",
+        "tags": [
+          "owner.leads"
+        ],
+        "x-required-permissions": [
+          "listing.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/listing-viewings/{viewingId}/actions/complete": {
       "post": {
         "description": "After a confirmed viewing has started: `completed` (the lead becomes `viewed`) or `no_show` (D-252).\n\nImplements: D-252.",
@@ -144105,9 +145008,11 @@
                   "moveInDate": "2026-12-01",
                   "nationality": null,
                   "nextViewing": {
+                    "access": null,
                     "cancelledBy": null,
                     "endsAt": "2026-11-07T10:30:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "mode": "accompanied",
                     "note": null,
                     "reason": null,
                     "rescheduledTo": null,
@@ -144147,9 +145052,11 @@
                   "version": 2,
                   "viewings": [
                     {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -144372,7 +145279,7 @@
     },
     "/v1/owner/listing-viewings/{viewingId}/actions/confirm": {
       "post": {
-        "description": "Confirms a requested viewing that has not started; the prospect is told in LINE and both sides are reminded `listing.viewing.reminder_hours_before` (D-252).\n\nImplements: D-252.",
+        "description": "Confirms a requested viewing that has not started; the prospect is told in LINE and both sides are reminded `listing.viewing.reminder_hours_before` (D-252). Confirming a **self** viewing (G7, D-295) opens its door-code window: one PIN as visitor codes on the unit lock and the building doors (created at the lock vendor after the commit), valid `viewing.self.code_early_minutes` before to `viewing.self.code_minutes` after the start — re-checked first: still vacant (`viewing.unit_occupied`), lock and setting (`viewing.self_unavailable`), no overlapping window of the prospect (`viewing.access_overlap`).\n\nImplements: D-252, D-295.",
         "operationId": "owner.listingViewings.confirm",
         "parameters": [
           {
@@ -144423,9 +145330,11 @@
                   "moveInDate": "2026-12-01",
                   "nationality": null,
                   "nextViewing": {
+                    "access": null,
                     "cancelledBy": null,
                     "endsAt": "2026-11-07T10:30:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "mode": "accompanied",
                     "note": null,
                     "reason": null,
                     "rescheduledTo": null,
@@ -144465,9 +145374,11 @@
                   "version": 2,
                   "viewings": [
                     {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -144592,6 +145503,15 @@
                 "examples": {
                   "listing.viewing_invalid_state": {
                     "$ref": "#/components/examples/problem.listing.viewing_invalid_state"
+                  },
+                  "viewing.access_overlap": {
+                    "$ref": "#/components/examples/problem.viewing.access_overlap"
+                  },
+                  "viewing.self_unavailable": {
+                    "$ref": "#/components/examples/problem.viewing.self_unavailable"
+                  },
+                  "viewing.unit_occupied": {
+                    "$ref": "#/components/examples/problem.viewing.unit_occupied"
                   }
                 },
                 "schema": {
@@ -144599,7 +145519,7 @@
                 }
               }
             },
-            "description": "Problem: `listing.viewing_invalid_state`",
+            "description": "Problem: `listing.viewing_invalid_state`, `viewing.access_overlap`, `viewing.self_unavailable`, `viewing.unit_occupied`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -144756,9 +145676,11 @@
                   "moveInDate": "2026-12-01",
                   "nationality": null,
                   "nextViewing": {
+                    "access": null,
                     "cancelledBy": null,
                     "endsAt": "2026-11-07T10:30:00+07:00",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "mode": "accompanied",
                     "note": null,
                     "reason": null,
                     "rescheduledTo": null,
@@ -144798,9 +145720,11 @@
                   "version": 2,
                   "viewings": [
                     {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -145012,6 +145936,291 @@
           }
         ],
         "summary": "Decline a viewing",
+        "tags": [
+          "owner.leads"
+        ],
+        "x-required-permissions": [
+          "listing.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/listing-viewings/{viewingId}/actions/end-access": {
+      "post": {
+        "description": "Revokes the visitor codes of a self viewing at once (unit lock and building doors) with a reason, and closes its window (`cancelled`). Resident codes are never touched (D-295, D-071).\n\nImplements: D-295, D-071.",
+        "operationId": "owner.listingViewings.endAccess",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "viewingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "reason": "ผู้เข้าชมโทรแจ้งว่าออกจากห้องแล้ว"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ViewingEndAccessDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "closeReason": "ended by the owner: ผู้เข้าชมโทรแจ้งว่าออกจากห้องแล้ว",
+                  "closedAt": "2026-11-07T10:10:00+07:00",
+                  "enteredAt": null,
+                  "enteredSource": null,
+                  "exitedAt": null,
+                  "incidentAt": null,
+                  "incidentNote": null,
+                  "state": "cancelled",
+                  "validFrom": "2026-11-07T09:55:00+07:00",
+                  "validTo": "2026-11-07T10:30:00+07:00",
+                  "workOrderId": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ViewingAccessSummaryDto"
+                }
+              }
+            },
+            "description": "Ended",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "viewing.access_invalid_state": {
+                    "$ref": "#/components/examples/problem.viewing.access_invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `viewing.access_invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "End a self viewing’s door codes now",
         "tags": [
           "owner.leads"
         ],
@@ -147734,7 +148943,7 @@
     },
     "/v1/owner/listings/{listingId}/availability": {
       "put": {
-        "description": "Weekly windows (Asia/Bangkok) and date exceptions in which viewings can be booked (D-252, B7.3).\n\nImplements: D-252.",
+        "description": "Weekly windows (Asia/Bangkok) and date exceptions in which viewings can be booked (D-252, B7.3). A weekly window with `mode: self` offers self-viewing slots (G7, D-295): verified prospects enter alone with a door code valid `viewing.self.code_minutes` around the slot — only for a vacant unit with an active unit lock of this tenant and while `viewing.self.enabled` (O-024). Date exceptions are accompanied-only.\n\nImplements: D-252, D-295.",
         "operationId": "owner.listings.setAvailability",
         "parameters": [
           {
@@ -147766,6 +148975,12 @@
                         "from": "10:00",
                         "to": "16:00",
                         "weekday": 6
+                      },
+                      {
+                        "from": "09:00",
+                        "mode": "self",
+                        "to": "18:00",
+                        "weekday": 0
                       }
                     ]
                   }
@@ -202137,9 +203352,11 @@
                     "updatedAt": "2026-11-01T09:15:00+07:00",
                     "viewings": [
                       {
+                        "access": null,
                         "cancelledBy": null,
                         "endsAt": "2026-11-07T10:30:00+07:00",
                         "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                        "mode": "accompanied",
                         "note": null,
                         "reason": null,
                         "rescheduledTo": null,
@@ -202342,9 +203559,11 @@
                   "updatedAt": "2026-11-01T09:15:00+07:00",
                   "viewings": [
                     {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -202581,9 +203800,11 @@
                   "updatedAt": "2026-11-01T09:15:00+07:00",
                   "viewings": [
                     {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -203083,9 +204304,11 @@
                   "updatedAt": "2026-11-01T09:15:00+07:00",
                   "viewings": [
                     {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -203305,7 +204528,7 @@
     },
     "/v1/prospect/listings/{slug}/viewings": {
       "post": {
-        "description": "Requests a free slot of the listing’s availability (`GET /v1/public/listings/{slug}/viewing-slots`; notice and horizon are settings) — the owner confirms or declines. Opens the enquiry when there is none (same consent rule as asking). One live viewing per enquiry (`listing.viewing_exists`: change its time instead); a slot taken a moment ago answers `listing.viewing_slot_taken` (D-252).\n\nImplements: D-252, D-025.",
+        "description": "Requests a free slot of the listing’s availability (`GET /v1/public/listings/{slug}/viewing-slots`; notice and horizon are settings) — the owner confirms or declines. Opens the enquiry when there is none (same consent rule as asking). One live viewing per enquiry (`listing.viewing_exists`: change its time instead); a slot taken a moment ago answers `listing.viewing_slot_taken` (D-252). `mode: self` (G7, D-295) books a self-viewing slot: the listing must offer it (`viewing.self_unavailable` with the reason, `viewing.unit_occupied`), I must have a verified identity and phone and accept the visitor terms in force (`viewing.requirements_missing` with what is missing, `viewing.terms_outdated`), and no other self viewing of mine may overlap its code window (`viewing.access_overlap`).\n\nImplements: D-252, D-025, D-295.",
         "operationId": "prospect.viewings.request",
         "parameters": [
           {
@@ -203328,6 +204551,7 @@
                   "summary": "Example",
                   "value": {
                     "consent": true,
+                    "mode": "accompanied",
                     "moveInDate": "2026-12-01",
                     "note": "จะมากับแฟนค่ะ",
                     "occupants": 2,
@@ -203376,9 +204600,11 @@
                   "updatedAt": "2026-11-01T09:15:00+07:00",
                   "viewings": [
                     {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -203503,6 +204729,15 @@
                   },
                   "listing.viewing_slot_taken": {
                     "$ref": "#/components/examples/problem.listing.viewing_slot_taken"
+                  },
+                  "viewing.access_overlap": {
+                    "$ref": "#/components/examples/problem.viewing.access_overlap"
+                  },
+                  "viewing.self_unavailable": {
+                    "$ref": "#/components/examples/problem.viewing.self_unavailable"
+                  },
+                  "viewing.unit_occupied": {
+                    "$ref": "#/components/examples/problem.viewing.unit_occupied"
                   }
                 },
                 "schema": {
@@ -203510,7 +204745,7 @@
                 }
               }
             },
-            "description": "Problem: `http.conflict`, `listing.viewing_exists`, `listing.viewing_slot_taken`",
+            "description": "Problem: `http.conflict`, `listing.viewing_exists`, `listing.viewing_slot_taken`, `viewing.access_overlap`, `viewing.self_unavailable`, `viewing.unit_occupied`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -203532,6 +204767,12 @@
                   },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
+                  },
+                  "viewing.requirements_missing": {
+                    "$ref": "#/components/examples/problem.viewing.requirements_missing"
+                  },
+                  "viewing.terms_outdated": {
+                    "$ref": "#/components/examples/problem.viewing.terms_outdated"
                   }
                 },
                 "schema": {
@@ -203539,7 +204780,7 @@
                 }
               }
             },
-            "description": "Problem: `listing.bank_account_in_message`, `listing.consent_required`, `listing.viewing_slot_unavailable`, `validation.failed`",
+            "description": "Problem: `listing.bank_account_in_message`, `listing.consent_required`, `listing.viewing_slot_unavailable`, `validation.failed`, `viewing.requirements_missing`, `viewing.terms_outdated`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -204158,6 +205399,451 @@
         "x-surface": "prospect"
       }
     },
+    "/v1/prospect/me/phone": {
+      "post": {
+        "description": "Checks the SMS code; the phone becomes my account’s verified phone (a later phone sign-in opens this same account). `auth.identity_in_use` when another account already has the number — sign in with it instead (D-295, D-255).\n\nImplements: D-295, D-255.",
+        "operationId": "prospect.phone.verify",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "challengeId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "code": "123456"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/OtpVerifyDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "phoneMasked": "+66•••••1234",
+                  "phoneVerified": true
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProspectPhoneDto"
+                }
+              }
+            },
+            "description": "Verified",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.otp_expired": {
+                    "$ref": "#/components/examples/problem.auth.otp_expired"
+                  },
+                  "auth.otp_invalid": {
+                    "$ref": "#/components/examples/problem.auth.otp_invalid"
+                  },
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.otp_expired`, `auth.otp_invalid`, `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.identity_in_use": {
+                    "$ref": "#/components/examples/problem.auth.identity_in_use"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.identity_in_use`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.otp_attempts_exceeded": {
+                    "$ref": "#/components/examples/problem.auth.otp_attempts_exceeded"
+                  },
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.otp_attempts_exceeded`, `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "Verify my phone",
+        "tags": [
+          "prospect.selfViewing"
+        ],
+        "x-surface": "prospect"
+      }
+    },
+    "/v1/prospect/me/phone/otp": {
+      "post": {
+        "description": "Sends an SMS code (purpose `phone_verify`) bound to my account — self-viewing needs a verified phone (D-295); a LINE sign-in has none. Rate limits as for every OTP.\n\nImplements: D-295, D-255.",
+        "operationId": "prospect.phone.requestCode",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "language": "th",
+                    "phone": "+66810001234"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/OtpRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "challengeId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "expiresAt": "2026-11-01T00:20:00+07:00",
+                  "resendAvailableAt": "2026-11-01T00:16:00+07:00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/OtpChallengeDto"
+                }
+              }
+            },
+            "description": "Code sent",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.otp_rate_limited": {
+                    "$ref": "#/components/examples/problem.auth.otp_rate_limited"
+                  },
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.otp_rate_limited`, `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "provider.unavailable": {
+                    "$ref": "#/components/examples/problem.provider.unavailable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `provider.unavailable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "Send a code to verify my phone",
+        "tags": [
+          "prospect.selfViewing"
+        ],
+        "x-surface": "prospect"
+      }
+    },
     "/v1/prospect/me/rent-record": {
       "get": {
         "description": "My rent record (D-256): months paid on time, late or still outstanding, from payments getproperty confirmed (gateway or verified slip) — facts, no score — and everything I shared, with its state.\n\nImplements: D-256.",
@@ -204690,6 +206376,175 @@
         "x-surface": "prospect"
       }
     },
+    "/v1/prospect/me/self-viewing": {
+      "get": {
+        "description": "Whether self-viewing is on (`viewing.self.enabled`, off until the insurance partner and visitor terms are settled — O-024), whether my identity (e-KYC, D-267) and phone are verified, the visitor terms in force (draft, pending legal review) and the door-code window rules (D-295).\n\nImplements: D-295, D-289, D-267.",
+        "operationId": "prospect.selfViewing.status",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "codeMinutes": 30,
+                  "earlyMinutes": 5,
+                  "enabled": true,
+                  "identityVerified": true,
+                  "missing": [
+                    "phone",
+                    "terms"
+                  ],
+                  "phoneVerified": false,
+                  "visitorTerms": {
+                    "en": "Draft visitor terms (pending legal review): I will view the unit only during my booked time …",
+                    "th": "ร่างเงื่อนไขผู้เข้าชม (รอตรวจทางกฎหมาย): ฉันจะเข้าชมห้องเฉพาะช่วงเวลาที่นัดไว้ …",
+                    "version": 1
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SelfViewingStatusDto"
+                }
+              }
+            },
+            "description": "Status",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "What I need for self-viewing",
+        "tags": [
+          "prospect.selfViewing"
+        ],
+        "x-surface": "prospect"
+      }
+    },
     "/v1/prospect/ping": {
       "get": {
         "description": "Answers with the surface name, the server time (Asia/Bangkok) and the API version. Placeholder operation of the `prospect` surface until its real endpoints land. Anonymous or with an `prospect` token (checked from B1.3: wrong audience → 403 `auth.wrong_audience`).\n\nImplements: D-002, ADR-0002.",
@@ -204829,9 +206684,486 @@
         "x-surface": "prospect"
       }
     },
+    "/v1/prospect/viewings/{viewingId}/access-code": {
+      "get": {
+        "description": "The keypad code of my confirmed self viewing — **only inside its window** (`viewing.self.code_early_minutes` before to `viewing.self.code_minutes` after the slot start; `viewing.code_not_available` with the window otherwise), only while the unit is vacant (`viewing.unit_occupied`) and while no other self viewing of mine is open inside a unit (`viewing.access_open_elsewhere`). `Cache-Control: no-store`; fetch it on tap, never store it. Each reveal is audited (D-295, D-148).\n\nImplements: D-295, D-289, D-070.",
+        "operationId": "prospect.selfViewing.accessCode",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "viewingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "doorCode": "482913",
+                  "locks": [
+                    {
+                      "name": "ประตูห้อง A-102",
+                      "ready": true,
+                      "scope": "unit"
+                    },
+                    {
+                      "name": "ประตูหน้าอาคาร",
+                      "ready": true,
+                      "scope": "building_door"
+                    }
+                  ],
+                  "validFrom": "2026-11-07T09:55:00+07:00",
+                  "validTo": "2026-11-07T10:30:00+07:00",
+                  "viewingId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ViewingAccessCodeDto"
+                }
+              }
+            },
+            "description": "Door code",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "viewing.access_open_elsewhere": {
+                    "$ref": "#/components/examples/problem.viewing.access_open_elsewhere"
+                  },
+                  "viewing.code_not_available": {
+                    "$ref": "#/components/examples/problem.viewing.code_not_available"
+                  },
+                  "viewing.unit_occupied": {
+                    "$ref": "#/components/examples/problem.viewing.unit_occupied"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `viewing.access_open_elsewhere`, `viewing.code_not_available`, `viewing.unit_occupied`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "My door code",
+        "tags": [
+          "prospect.selfViewing"
+        ],
+        "x-surface": "prospect"
+      }
+    },
+    "/v1/prospect/viewings/{viewingId}/actions/arrive": {
+      "post": {
+        "description": "Inside the code window: records my entry (also recorded when the lock log shows my code opened the door); the owner and staff are alerted at once (D-295). Repeating it changes nothing.\n\nImplements: D-295.",
+        "operationId": "prospect.selfViewing.arrive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "viewingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "closeReason": null,
+                  "closedAt": null,
+                  "enteredAt": "2026-11-07T10:01:00+07:00",
+                  "enteredSource": "prospect",
+                  "exitedAt": null,
+                  "incidentAt": null,
+                  "incidentNote": null,
+                  "state": "entered",
+                  "validFrom": "2026-11-07T09:55:00+07:00",
+                  "validTo": "2026-11-07T10:30:00+07:00",
+                  "workOrderId": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ViewingAccessSummaryDto"
+                }
+              }
+            },
+            "description": "Entered",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "viewing.access_invalid_state": {
+                    "$ref": "#/components/examples/problem.viewing.access_invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `viewing.access_invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "I have arrived",
+        "tags": [
+          "prospect.selfViewing"
+        ],
+        "x-surface": "prospect"
+      }
+    },
     "/v1/prospect/viewings/{viewingId}/actions/cancel": {
       "post": {
-        "description": "Cancels a requested or confirmed viewing that has not started; the owner is told (D-252).\n\nImplements: D-252.",
+        "description": "Cancels a requested or confirmed viewing that has not started; the owner is told (D-252). A self viewing’s door codes are revoked at once (D-295).\n\nImplements: D-252, D-295.",
         "operationId": "prospect.viewings.cancel",
         "parameters": [
           {
@@ -204897,9 +207229,11 @@
                   "updatedAt": "2026-11-01T09:15:00+07:00",
                   "viewings": [
                     {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -205108,9 +207442,531 @@
         "x-surface": "prospect"
       }
     },
+    "/v1/prospect/viewings/{viewingId}/actions/leave": {
+      "post": {
+        "description": "Ends my self viewing: the door codes are revoked at once (unit lock and building doors), the viewing is completed and my enquiry becomes `viewed` (D-295).\n\nImplements: D-295, D-070.",
+        "operationId": "prospect.selfViewing.leave",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "viewingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "closeReason": "left",
+                  "closedAt": "2026-11-07T10:20:00+07:00",
+                  "enteredAt": "2026-11-07T10:01:00+07:00",
+                  "enteredSource": "lock_log",
+                  "exitedAt": "2026-11-07T10:20:00+07:00",
+                  "incidentAt": null,
+                  "incidentNote": null,
+                  "state": "exited",
+                  "validFrom": "2026-11-07T09:55:00+07:00",
+                  "validTo": "2026-11-07T10:30:00+07:00",
+                  "workOrderId": null
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ViewingAccessSummaryDto"
+                }
+              }
+            },
+            "description": "Left",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "viewing.access_invalid_state": {
+                    "$ref": "#/components/examples/problem.viewing.access_invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `viewing.access_invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "I have left",
+        "tags": [
+          "prospect.selfViewing"
+        ],
+        "x-surface": "prospect"
+      }
+    },
+    "/v1/prospect/viewings/{viewingId}/actions/report-incident": {
+      "post": {
+        "description": "Once per self viewing, from the window start to the end of that Bangkok day: what is wrong (damage, a door that does not lock, someone inside). A high-priority inspection work order is opened on the unit and the owner and staff are alerted at once (D-295, D-072).\n\nImplements: D-295, D-072.",
+        "operationId": "prospect.selfViewing.reportIncident",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "viewingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "note": "ก๊อกน้ำในห้องน้ำรั่ว น้ำนองพื้น"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/IncidentReportDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "closeReason": null,
+                  "closedAt": null,
+                  "enteredAt": "2026-11-07T10:01:00+07:00",
+                  "enteredSource": "prospect",
+                  "exitedAt": null,
+                  "incidentAt": "2026-11-07T10:05:00+07:00",
+                  "incidentNote": "ก๊อกน้ำในห้องน้ำรั่ว น้ำนองพื้น",
+                  "state": "entered",
+                  "validFrom": "2026-11-07T09:55:00+07:00",
+                  "validTo": "2026-11-07T10:30:00+07:00",
+                  "workOrderId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ViewingAccessSummaryDto"
+                }
+              }
+            },
+            "description": "Reported",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "viewing.access_invalid_state": {
+                    "$ref": "#/components/examples/problem.viewing.access_invalid_state"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`, `viewing.access_invalid_state`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "prospectBearer": []
+          }
+        ],
+        "summary": "Report a problem at the unit",
+        "tags": [
+          "prospect.selfViewing"
+        ],
+        "x-surface": "prospect"
+      }
+    },
     "/v1/prospect/viewings/{viewingId}/actions/reschedule": {
       "post": {
-        "description": "Moves a requested or confirmed viewing to another free slot in one step: the old one is cancelled and points to the new request, which the owner confirms again (D-252).\n\nImplements: D-252.",
+        "description": "Moves a requested or confirmed viewing to another free slot in one step: the old one is cancelled and points to the new request, which the owner confirms again (D-252). A self viewing stays a self viewing: the new slot must be a self slot and the checks of booking apply again; the old door-code window closes at once (D-295).\n\nImplements: D-252, D-295.",
         "operationId": "prospect.viewings.reschedule",
         "parameters": [
           {
@@ -205176,9 +208032,11 @@
                   "updatedAt": "2026-11-01T09:15:00+07:00",
                   "viewings": [
                     {
+                      "access": null,
                       "cancelledBy": null,
                       "endsAt": "2026-11-07T10:30:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "mode": "accompanied",
                       "note": null,
                       "reason": null,
                       "rescheduledTo": null,
@@ -205300,6 +208158,15 @@
                   },
                   "listing.viewing_slot_taken": {
                     "$ref": "#/components/examples/problem.listing.viewing_slot_taken"
+                  },
+                  "viewing.access_overlap": {
+                    "$ref": "#/components/examples/problem.viewing.access_overlap"
+                  },
+                  "viewing.self_unavailable": {
+                    "$ref": "#/components/examples/problem.viewing.self_unavailable"
+                  },
+                  "viewing.unit_occupied": {
+                    "$ref": "#/components/examples/problem.viewing.unit_occupied"
                   }
                 },
                 "schema": {
@@ -205307,7 +208174,7 @@
                 }
               }
             },
-            "description": "Problem: `listing.viewing_invalid_state`, `listing.viewing_slot_taken`",
+            "description": "Problem: `listing.viewing_invalid_state`, `listing.viewing_slot_taken`, `viewing.access_overlap`, `viewing.self_unavailable`, `viewing.unit_occupied`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -205323,6 +208190,12 @@
                   },
                   "validation.failed": {
                     "$ref": "#/components/examples/problem.validation.failed"
+                  },
+                  "viewing.requirements_missing": {
+                    "$ref": "#/components/examples/problem.viewing.requirements_missing"
+                  },
+                  "viewing.terms_outdated": {
+                    "$ref": "#/components/examples/problem.viewing.terms_outdated"
                   }
                 },
                 "schema": {
@@ -205330,7 +208203,7 @@
                 }
               }
             },
-            "description": "Problem: `listing.viewing_slot_unavailable`, `validation.failed`",
+            "description": "Problem: `listing.viewing_slot_unavailable`, `validation.failed`, `viewing.requirements_missing`, `viewing.terms_outdated`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"
@@ -206599,7 +209472,7 @@
     },
     "/v1/public/listings/{slug}/viewing-slots": {
       "get": {
-        "description": "Free slots of a published listing’s viewing availability from `from` (`YYYY-MM-DD`, default today in Bangkok) for `days` days (default 14), leaving out times already requested or confirmed and those inside `listing.viewing.min_notice_hours` or beyond `listing.viewing.horizon_days` (D-252). No personal data.\n\nImplements: D-252.",
+        "description": "Free slots of a published listing’s viewing availability from `from` (`YYYY-MM-DD`, default today in Bangkok) for `days` days (default 14), leaving out times already requested or confirmed and those inside `listing.viewing.min_notice_hours` or beyond `listing.viewing.horizon_days` (D-252). Each slot has a `mode`; `self` slots (G7, D-295) appear only while the listing can offer self-viewing (`viewing.self.enabled`, an active unit lock of the listing tenant, the unit vacant) and need a verified prospect. No personal data.\n\nImplements: D-252, D-295.",
         "operationId": "public.listings.viewingSlots",
         "parameters": [
           {
@@ -206638,11 +209511,18 @@
             "content": {
               "application/json": {
                 "example": {
+                  "selfViewing": true,
                   "slotMinutes": 30,
                   "slots": [
                     {
                       "endsAt": "2026-11-07T10:30:00+07:00",
+                      "mode": "accompanied",
                       "startsAt": "2026-11-07T10:00:00+07:00"
+                    },
+                    {
+                      "endsAt": "2026-11-08T09:30:00+07:00",
+                      "mode": "self",
+                      "startsAt": "2026-11-08T09:00:00+07:00"
                     }
                   ]
                 },
@@ -255726,6 +258606,10 @@
     {
       "description": "My rent record, shared with an enquiry or as a letter (D-256).",
       "name": "prospect.rentRecord"
+    },
+    {
+      "description": "Self-viewing (G7, D-295): what I need (verified identity and phone, visitor terms), my door code inside its window only, arrive / leave / report a problem.",
+      "name": "prospect.selfViewing"
     },
     {
       "description": "Prospects (getproperty-liff and the public listing pages of getproperty-web, B7.3) — people looking for a place to rent: enquiries about a listing, viewings, my enquiries (`prospect` audience, D-252, D-255). System: ping.",

@@ -8,6 +8,7 @@ import { ProspectRentRecordController } from '../shared/rent-record.controllers'
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import { ProspectEnquiriesController } from './prospect.controller';
+import { ProspectSelfViewingController } from './self-viewing.controller';
 
 /** `/v1/prospect/*` (contract §2): people looking for a place to rent — me, enquiries, viewings (B7.3, D-252). */
 @Module({
@@ -18,6 +19,7 @@ import { ProspectEnquiriesController } from './prospect.controller';
     ProspectIdentityVerificationController,
     ProspectRentRecordController,
     ProspectContractsController,
+    ProspectSelfViewingController,
   ],
   providers: [MeService],
 })

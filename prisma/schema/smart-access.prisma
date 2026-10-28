@@ -107,6 +107,7 @@ model Lock {
   device      Device             @relation(fields: [deviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lock_device_id_fkey")
   assetItem   AssetItem          @relation("LockAssetItem", fields: [assetItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lock_asset_item_id_fkey")
   credentials AccessCredential[]
+  viewingAccesses ViewingAccess[]
 
   @@unique([vendor, vendorLockId], map: "lock_vendor_vendor_lock_id_key")
   @@index([tenantId, buildingId], map: "lock_tenant_id_building_id_idx")
@@ -130,6 +131,8 @@ model AccessCredential {
   holderName          String           @map("holder_name")
   leaseId             String?          @map("lease_id") @db.Uuid
   workOrderId         String?          @map("work_order_id") @db.Uuid
+  /// D-295 (G7): the self viewing a visitor credential belongs to.
+  viewingId           String?          @map("viewing_id") @db.Uuid
   type                CredentialType
   vendor              LockVendor
   vendorCredentialRef String?          @map("vendor_credential_ref")
@@ -159,10 +162,12 @@ model AccessCredential {
   holderUser  UserAccount? @relation("AccessCredentialHolderUser", fields: [holderUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "access_credential_holder_user_id_fkey")
   lease       Lease?       @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "access_credential_lease_id_fkey")
   workOrder   WorkOrder?   @relation(fields: [workOrderId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "access_credential_work_order_id_fkey")
+  viewing     ListingViewing? @relation(fields: [viewingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "access_credential_viewing_id_fkey")
 
   @@index([deviceId, status], map: "access_credential_device_id_status_idx")
   @@index([leaseId], map: "access_credential_lease_id_idx")
   @@index([workOrderId], map: "access_credential_work_order_id_idx")
+  @@index([viewingId], map: "access_credential_viewing_id_idx")
   @@index([lockId], map: "access_credential_lock_id_idx")
   @@index([tenantId, buildingId, status], map: "access_credential_tenant_id_building_id_status_idx")
   @@index([buildingId], map: "access_credential_building_id_idx")

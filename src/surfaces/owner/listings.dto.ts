@@ -22,6 +22,7 @@ import {
 
 import { MoneyInput, MoneyOutput } from '../shared/fields';
 import { ListingUtilityDto } from '../shared/listing-insights.dto';
+import { ViewingModeName } from '../shared/status.enums';
 import { FurnishingName, PortfolioUnitKindName } from './portfolio.controller';
 
 export enum ListingStateName {
@@ -240,6 +241,17 @@ export class WeeklySlotDto {
   @ApiProperty({ example: '16:00' })
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
   to!: string;
+
+  @ApiPropertyOptional({
+    enum: ViewingModeName,
+    enumName: 'ViewingMode',
+    example: 'accompanied',
+    description:
+      'G7 (D-295): `self` = a self-viewing window — verified prospects enter alone with a time-boxed door code (vacant units with a lock, when `viewing.self.enabled`); `accompanied` (default) = someone shows the unit. Date exceptions are accompanied-only.',
+  })
+  @IsOptional()
+  @IsEnum(ViewingModeName)
+  mode?: ViewingModeName;
 }
 
 export class AvailabilityExceptionDto {

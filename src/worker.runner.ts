@@ -22,6 +22,7 @@ import { LeasesService } from '@modules/ops-leases/leases.service';
 import { ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
 import { ListingModerationService } from '@modules/ops-listings/listing-moderation.service';
 import { MandatesService } from '@modules/ops-listings/mandates.service';
+import { SelfViewingService } from '@modules/ops-listings/self-viewing.service';
 import { SettlementsService } from '@modules/ops-payments/settlements.service';
 import { ReceivablesService } from '@modules/ops-receivables/receivables.service';
 import { MaintenancePlansService } from '@modules/ops-service/maintenance-plans.service';
@@ -95,7 +96,7 @@ export const MAINTENANCE_JOBS = {
   'messaging-health': 900_000,
   // D-252 / O-018: ownership evidence deleted after its retention
   'listing-evidence-purge': 3_600_000,
-  // B7.3: viewing reminders (both sides) and the owner's nudge on unanswered enquiries
+  // B7.3: viewing reminders (both sides) and the owner's nudge on unanswered enquiries; G7 self-viewing sweep
   'listing-reminders': 300_000,
 } as const;
 type MaintenanceJob = keyof typeof MAINTENANCE_JOBS;
@@ -150,6 +151,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly messagingChannels: MessagingChannelsService,
     private readonly listingModeration: ListingModerationService,
     private readonly listingLeads: ListingLeadsService,
+    private readonly selfViewing: SelfViewingService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -289,6 +291,8 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'listing-reminders':
         await this.listingLeads.remind();
+        // G7 (D-295): self-viewing windows — no-shows, overstays, log retention
+        await this.selfViewing.sweep();
         break;
       default:
         this.logger.warn(`unknown maintenance job ${job.name}`);

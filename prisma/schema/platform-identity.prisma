@@ -470,6 +470,7 @@ model IdentityVerification {
   updatedAt         DateTime                  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   user UserAccount @relation("IdentityVerificationUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "identity_verification_user_id_fkey")
+  viewings ListingViewing[]
 
   @@unique([provider, providerSessionId], map: "identity_verification_provider_session_key")
   @@unique([userId], map: "identity_verification_user_pending_key", where: raw("(state = 'pending'::platform.identity_verification_state)"))

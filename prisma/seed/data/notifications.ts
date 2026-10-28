@@ -438,6 +438,43 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     ],
   },
   {
+    key: 'listing.self_viewing_entered',
+    description: 'Owner / manager / staff: a self-viewing visitor entered the unit (G7, D-295)',
+    th: [
+      '{{lead.name}} เข้าดูห้อง {{listing.unitNo}} แล้ว',
+      '{{lead.name}} (ยืนยันตัวตนแล้ว) เข้าดู "{{listing.title}}" ด้วยตัวเองเมื่อ {{viewing.at}} น. รหัสประตูใช้ได้ถึง {{viewing.until}} น. ดูบันทึกเข้า-ออกได้ในปฏิทินนัดดูห้อง',
+    ],
+    en: [
+      '{{lead.name}} entered unit {{listing.unitNo}}',
+      '{{lead.name}} (verified) entered "{{listing.titleEn}}" for a self-viewing at {{viewing.atEn}}; the door code works until {{viewing.untilEn}}. The entry log is in your viewing calendar.',
+    ],
+  },
+  {
+    key: 'listing.self_viewing_incident',
+    description:
+      'Owner / manager / staff: a self-viewing visitor reported an incident; a work order is open (G7, D-295)',
+    th: [
+      'แจ้งปัญหาระหว่างดูห้อง {{listing.unitNo}}',
+      '{{lead.name}} แจ้งปัญหาระหว่างดูห้อง "{{listing.title}}": {{incident.note}} — เปิดใบงานให้แล้ว',
+    ],
+    en: [
+      'Incident during a viewing of {{listing.unitNo}}',
+      '{{lead.name}} reported an incident while viewing "{{listing.titleEn}}": {{incident.note}} — a work order is open.',
+    ],
+  },
+  {
+    key: 'listing.self_viewing_overstayed',
+    description: 'Owner / manager / staff: a self-viewing visitor has not confirmed leaving (G7, D-295)',
+    th: [
+      'ผู้เข้าชมห้อง {{listing.unitNo}} ยังไม่ยืนยันการออก',
+      '{{lead.name}} เข้าดู "{{listing.title}}" และยังไม่ยืนยันการออกจากห้องหลังหมดเวลา {{viewing.until}} น. โปรดตรวจสอบห้อง',
+    ],
+    en: [
+      'The visitor of {{listing.unitNo}} has not left',
+      '{{lead.name}} entered "{{listing.titleEn}}" and has not confirmed leaving since the window ended at {{viewing.untilEn}}. Please check the unit.',
+    ],
+  },
+  {
     key: 'listing.viewing_cancelled',
     description: 'Owner: the prospect cancelled a viewing (B7.3, D-252)',
     th: [
@@ -547,7 +584,8 @@ const operatorAudiences = (key: string): string[] =>
         key === 'billing_cycle.readings_requested' ||
         key === 'reading.requested' ||
         key === 'service_request.created' ||
-        key === 'work_order.assigned'
+        key === 'work_order.assigned' ||
+        key.startsWith('listing.self_viewing_')
       ? ['owner', 'manager', 'staff']
       : key === 'foreign_stay.due'
         ? ['owner', 'manager']
@@ -595,7 +633,10 @@ export const NOTIFICATION_ROUTES: {
         eventType: e.key,
         audience,
         channel,
-        urgent: e.key === 'tenant.bank_account.changed' || e.key === 'support_grant.requested',
+        urgent:
+          e.key === 'tenant.bank_account.changed' ||
+          e.key === 'support_grant.requested' ||
+          e.key.startsWith('listing.self_viewing_'),
       })),
     ),
   ),

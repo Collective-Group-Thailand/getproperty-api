@@ -29,6 +29,9 @@ export const REDACTED_FIELDS = [
   'bankAccountNumber',
   'provisioningCode',
   'taxId',
+  // door codes (D-070, G7 D-295): never in a log line
+  'pin',
+  'doorCode',
 ] as const;
 
 const REDACT_DEPTH = 5;

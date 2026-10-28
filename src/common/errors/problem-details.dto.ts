@@ -38,6 +38,15 @@ export interface ProblemExtensions {
   storage?: { usedBytes: string; allowanceBytes: string; packagesUrl: string };
   /** `storage.legal_hold` only (D-286): the requested documents that are held until their retention date. */
   heldDocumentIds?: string[];
+  /** `viewing.requirements_missing` only (G7, D-295): what the prospect still has to do (identity, phone, terms). */
+  missingRequirements?: string[];
+  /** `viewing.self_unavailable` only (G7): why the listing offers no self-viewing. */
+  selfViewingReason?: string;
+  /** `viewing.terms_outdated` only (G7): the visitor-terms version in force. */
+  visitorTermsVersion?: number;
+  /** `viewing.code_not_available` only (G7): the door-code window. */
+  codeValidFrom?: string;
+  codeValidTo?: string;
 }
 
 /** The storage position sent with `storage.allowance_exceeded` (G1). */
@@ -157,6 +166,42 @@ export class ProblemDetails {
     description: '`storage.legal_hold` only (D-286): the requested documents held until their retention date',
   })
   heldDocumentIds?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['identity', 'phone'],
+    description:
+      '`viewing.requirements_missing` only (G7, D-295): what the prospect still has to do before a self viewing — `identity` (e-KYC), `phone` (verified phone), `terms` (visitor terms)',
+  })
+  missingRequirements?: string[];
+
+  @ApiPropertyOptional({
+    example: 'no_lock',
+    description:
+      '`viewing.self_unavailable` only (G7, D-295): `disabled` (setting off, O-024), `no_lock` (no active unit lock with an adapter), `not_operated` (agency listing — the lock is the owner tenant’s, O-031)',
+  })
+  selfViewingReason?: string;
+
+  @ApiPropertyOptional({
+    type: 'integer',
+    example: 2,
+    description: '`viewing.terms_outdated` only (G7): the visitor-terms version in force',
+  })
+  visitorTermsVersion?: number;
+
+  @ApiPropertyOptional({
+    format: 'date-time',
+    example: '2026-11-07T09:55:00+07:00',
+    description: '`viewing.code_not_available` only (G7): when the door code starts to work',
+  })
+  codeValidFrom?: string;
+
+  @ApiPropertyOptional({
+    format: 'date-time',
+    example: '2026-11-07T10:30:00+07:00',
+    description: '`viewing.code_not_available` only (G7): when the door code stops working',
+  })
+  codeValidTo?: string;
 
   @ApiProperty({ example: '6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e' })
   requestId!: string;
