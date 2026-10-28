@@ -271,6 +271,13 @@ export const AUDIT_ACTIONS = [
   'access.credential_revoked',
   'access.credential_revealed',
   'access.log_read',
+  'listing.self_viewing_access_issued',
+  'listing.self_viewing_entered',
+  'listing.self_viewing_exited',
+  'listing.self_viewing_closed',
+  'listing.self_viewing_incident',
+  'listing.self_viewing_log_read',
+  'auth.phone_verified',
   // B6.2 e-Tax & TM30
   'etax.queued',
   'etax.signed',

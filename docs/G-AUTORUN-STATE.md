@@ -9,22 +9,26 @@ How it runs: each step in its own subagent on the sandbox copies (Node 24, embed
 |---|---|---|---|---|---|---|
 | G0 | api | done | aabd83b | unchanged (650 paths) | O-022…O-029 | D-284…D-291; docs only |
 | G1 | api | done | f44bf20 | 661 paths (+11) | — | D-292; unit 547, e2e 35, int 441; core.document guard deferred (needs asset-core) |
-| G2 | api + asset-core | running | | | | |
-| G3 | api | todo | | | | |
-| G7 | api | todo | | | | |
+| G2 | api + asset-core | done | api 5931568, core 6049a1a (0.7.0) | 678 paths (+17) | — | D-293; core legal-hold guard on core.document added; unit 551, e2e 35, int 451, core 80; smart-metering 3.3 clock fix |
+| G3 | api | done | 36c7c79 | 712 paths (+34) | O-030 | D-294; unit 555, e2e 35, int 463 |
+| G7 | api | done | (this merge) | 721 paths (+9) | O-031 | D-295; migration 0061; unit 562, e2e 35, int 472 (65 suites); self-viewing off by default (O-024); prospect phone OTP added |
 | G4 | api | todo | | | | |
 | G5 | api | todo | | | | |
 | G8 | api | todo | | | | |
 | G6 | api | todo | | | | |
 | G9 | api | todo | | | | |
-| GW1 | web | todo | | | | |
-| GW2 | web | todo | | | | |
-| GW3 | web | todo | | | | |
+| GW1 | web | done | web a115699 | adopted api 5931568 | — | unit 1,130, e2e 192 |
+| GW2 | web | done | web d326a41 | — | — | unit 1,138, e2e 196 (2 flaky on retry: admin-tenants:166, owner-settings:180); contract-request AgencyDto details |
+| GW3 | web | done | web b65047e (7e73385) | adopted api 36c7c79 | — | unit 1,152, e2e 202 (1 flaky on retry: owner-settings), storybook, Lighthouse owner budgets; contract-requests: owner menu `contracts` key, admin `contract_library` key (admin legal-review page not built), unit/lessee labels on RenewalOfferDto/ContractDto |
 | GW4 | web | todo | | | | |
 | GW5 | web | todo | | | | |
 | GW6 | web | todo | | | | |
 | GL1 | liff | todo | | | | |
 | GL2 | liff | todo | | | | |
-| GL3 | liff | todo | | | | |
+| GL3 | liff | running | | | | redo from Mac main cf6dcce by session_0168nuZ6 (2026-10-28 10:30) |
 | GL4 | liff | todo | | | | |
 | Review | all | todo | | | | |
+
+**2026-10-28 10:20 Bangkok** — taken over by Claude session `session_0168nuZ6jHAs2SKQZX8MK5kb` (piyapan.pa@abbon.co.th). Previous session idle since 2026-10-27 19:48; its GW3/GL3 were never merged and are redone from Mac main. asset-core main is now 2065010 (v0.7.0, re-pushed by the founder; same release as 6049a1a).
+
+**2026-10-28 12:34 Bangkok — founder change:** web/LIFF Playwright e2e is no longer run per step (specs are still written, linted and typechecked; `pnpm build` runs on its own). Deferred e2e runs — all to be run together before the Review: GL3 onward (GW3 was run: 202). api `test:e2e` and integration still run per step.

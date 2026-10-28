@@ -42,7 +42,7 @@ import { ResidentLeasesService } from './ops-leases/resident-leases.service';
 import { CoBrokeService } from './ops-listings/co-broke.service';
 import { DealsService } from './ops-listings/deals.service';
 import { ListingNotifications } from './ops-listings/listing.notifications';
-import { ListingLeaseHooks } from './ops-listings/listing.subscribers';
+import { ListingLeaseHooks, SelfViewingDoorHook } from './ops-listings/listing.subscribers';
 import { ListingInsightsService } from './ops-listings/listing-insights.service';
 import { ListingLeadsService } from './ops-listings/listing-leads.service';
 import { ListingModerationService } from './ops-listings/listing-moderation.service';
@@ -50,6 +50,7 @@ import { ListingShareService } from './ops-listings/listing-share.service';
 import { ListingsService } from './ops-listings/listings.service';
 import { MandatesService } from './ops-listings/mandates.service';
 import { PublicListingsService } from './ops-listings/public-listings.service';
+import { SelfViewingService } from './ops-listings/self-viewing.service';
 import { PartiesService } from './ops-parties/parties.service';
 import { PartyNotifications } from './ops-parties/party-notifications';
 import { ResidentDocumentsService } from './ops-parties/resident-documents.service';
@@ -97,6 +98,8 @@ const SERVICES = [
   ListingsService,
   ListingModerationService,
   ListingLeadsService,
+  SelfViewingService,
+  SelfViewingDoorHook,
   ListingNotifications,
   ListingLeaseHooks,
   MandatesService,

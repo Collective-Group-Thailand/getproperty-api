@@ -56,4 +56,24 @@ describe('viewing slots (B7.3, D-252)', () => {
       '2026-11-10T11:30:00.000Z',
     ]);
   });
+
+  it('keeps self-viewing windows apart from accompanied ones (G7, D-295)', () => {
+    const both: Availability = {
+      ...AVAILABILITY,
+      weekly: [...AVAILABILITY.weekly, { weekday: 6, from: '14:00', to: '15:00', mode: 'self' }],
+    };
+    expect(windowsOn('2026-11-07', both)).toEqual([{ from: 600, to: 675 }]);
+    expect(windowsOn('2026-11-07', both, 'self')).toEqual([{ from: 840, to: 900 }]);
+    expect(slotAt(at('2026-11-07T14:00:00+07:00'), both, RULES)).toBeNull();
+    expect(slotAt(at('2026-11-07T14:00:00+07:00'), both, RULES, 'self')?.endsAt.toISOString()).toBe(
+      '2026-11-07T07:30:00.000Z',
+    );
+    expect(slotAt(at('2026-11-07T10:00:00+07:00'), both, RULES, 'self')).toBeNull();
+    // a date exception is accompanied-only: no self-viewing that day
+    expect(windowsOn('2026-11-10', both, 'self')).toEqual([]);
+    expect(freeSlots(both, RULES, '2026-11-07', 1, [], 'self').map((x) => x.startsAt.toISOString())).toEqual([
+      '2026-11-07T07:00:00.000Z',
+      '2026-11-07T07:30:00.000Z',
+    ]);
+  });
 });

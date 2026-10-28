@@ -267,3 +267,19 @@ export enum EstimatePolicyName {
   Allow = 'allow',
   Block = 'block',
 }
+
+/** `ops.viewing_mode` (G7, D-295): accompanied (B7.3) or self-viewing with a time-boxed door code. */
+export enum ViewingModeName {
+  Accompanied = 'accompanied',
+  Self = 'self',
+}
+
+/** `ops.viewing_access_state` (G7, D-295): the life of a self-viewing door-code window. */
+export enum ViewingAccessStateName {
+  Issued = 'issued',
+  Entered = 'entered',
+  Exited = 'exited',
+  Expired = 'expired',
+  NoShow = 'no_show',
+  Cancelled = 'cancelled',
+}

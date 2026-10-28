@@ -2,19 +2,28 @@ import { CurrentTenant, TenantScoped } from '@common/auth/auth.decorators';
 import { Can } from '@common/auth/can.decorator';
 import { type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
+import { Idempotent } from '@common/idempotency/idempotent.decorator';
 import { ApiEndpoint, ApiJsonBody, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { FAKE } from '@common/openapi/examples';
 import { toBangkokIso } from '@common/time/bangkok';
 import { IdentityVerificationService } from '@core/identity/identity-verification.service';
-import { type ListingLeadMessage, type ListingViewing } from '@generated/prisma/client';
+import { type ListingLeadMessage, type ListingViewing, type ViewingAccess } from '@generated/prisma/client';
 import { type RentRecordFacts } from '@modules/ops-leases/rent-record';
 import { RentRecordService } from '@modules/ops-leases/rent-record.service';
 import { type LeadWithParts, ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
+import { SelfViewingService } from '@modules/ops-listings/self-viewing.service';
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { RENT_RECORD_EXAMPLE, rentRecordDto } from '../shared/rent-record.dto';
+import { ViewingAccessStateName, ViewingModeName } from '../shared/status.enums';
 import { ApiSurface, SURFACES } from '../surfaces';
+import {
+  type AccessResultName,
+  type AccessSourceName,
+  type CredentialStatusName,
+  type LockScopeName,
+} from './access.dto';
 import {
   LeadLeaseDraftCreateDto,
   LeadLeaseDraftDto,
@@ -32,8 +41,12 @@ import {
   OwnerLeadSummaryDto,
   OwnerViewingDto,
   type ProspectEnquiryDto,
+  VIEWING_ACCESS_EXAMPLE,
+  ViewingAccessLogDto,
+  ViewingAccessSummaryDto,
   ViewingCompleteDto,
   ViewingDeclineDto,
+  ViewingEndAccessDto,
 } from './leads.dto';
 
 const T = ['tenant.context_required', 'tenant.context_invalid', 'tenant.not_in_scope'] as const;
@@ -50,12 +63,32 @@ export function leadMessageDto(m: ListingLeadMessage): LeadMessageDto {
   };
 }
 
-export function leadViewingDto(v: ListingViewing): LeadViewingDto {
+/** G7 (D-295): the door-code window of a self viewing — never the code. */
+export function viewingAccessDto(a: ViewingAccess | null | undefined): ViewingAccessSummaryDto | null {
+  if (!a) return null;
+  return {
+    state: a.state as ViewingAccessStateName,
+    validFrom: toBangkokIso(a.validFrom),
+    validTo: toBangkokIso(a.validTo),
+    enteredAt: iso(a.enteredAt),
+    enteredSource: a.enteredSource,
+    exitedAt: iso(a.exitedAt),
+    closedAt: iso(a.closedAt),
+    closeReason: a.closeReason,
+    incidentAt: iso(a.incidentAt),
+    incidentNote: a.incidentNote,
+    workOrderId: a.workOrderId,
+  };
+}
+
+export function leadViewingDto(v: ListingViewing & { access?: ViewingAccess | null }): LeadViewingDto {
   return {
     id: v.id,
     startsAt: toBangkokIso(v.startsAt),
     endsAt: toBangkokIso(v.endsAt),
     state: v.state as ListingViewingStateName,
+    mode: v.mode as ViewingModeName,
+    access: viewingAccessDto(v.access),
     note: v.note,
     reason: v.declineReason,
     cancelledBy: v.cancelledBy as ListingLeadAuthorName | null,
@@ -155,6 +188,8 @@ const VIEWING_EXAMPLE: LeadViewingDto = {
   startsAt: '2026-11-07T10:00:00+07:00',
   endsAt: '2026-11-07T10:30:00+07:00',
   state: 'requested' as ListingViewingStateName,
+  mode: ViewingModeName.Accompanied,
+  access: null,
   note: null,
   reason: null,
   cancelledBy: null,
@@ -240,6 +275,7 @@ export class OwnerLeadsController {
     private readonly leads: ListingLeadsService,
     private readonly identity: IdentityVerificationService,
     private readonly records: RentRecordService,
+    private readonly selfViewing: SelfViewingService,
   ) {}
 
   /** One lead with whether its prospect verified their identity (D-267). */
@@ -454,6 +490,8 @@ export class OwnerLeadsController {
         startsAt: '2026-11-07T10:00:00+07:00',
         endsAt: '2026-11-07T10:30:00+07:00',
         state: 'confirmed' as ListingViewingStateName,
+        mode: ViewingModeName.Accompanied,
+        access: null,
         leadId: FAKE.uuid,
         prospectName: 'สมศรี ใจดี',
         listing: { id: FAKE.uuid, title: 'คอนโด 1 ห้องนอน ใกล้ BTS อารีย์', slug: 'condo-1br-0193f2a4b1' },
@@ -482,6 +520,8 @@ export class OwnerLeadsController {
       startsAt: toBangkokIso(v.startsAt),
       endsAt: toBangkokIso(v.endsAt),
       state: v.state as ListingViewingStateName,
+      mode: v.mode as ViewingModeName,
+      access: viewingAccessDto(v.access),
       leadId: v.lead.id,
       prospectName: v.lead.party.displayName,
       listing: { id: v.listing.id, title: v.listing.titleTh, slug: v.listing.slug },
@@ -496,11 +536,19 @@ export class OwnerLeadsController {
     id: 'owner.listingViewings.confirm',
     summary: 'Confirm a viewing',
     description:
-      'Confirms a requested viewing that has not started; the prospect is told in LINE and both sides are reminded `listing.viewing.reminder_hours_before` (D-252).',
-    implements: ['D-252'],
+      'Confirms a requested viewing that has not started; the prospect is told in LINE and both sides are reminded `listing.viewing.reminder_hours_before` (D-252). Confirming a **self** viewing (G7, D-295) opens its door-code window: one PIN as visitor codes on the unit lock and the building doors (created at the lock vendor after the commit), valid `viewing.self.code_early_minutes` before to `viewing.self.code_minutes` after the start — re-checked first: still vacant (`viewing.unit_occupied`), lock and setting (`viewing.self_unavailable`), no overlapping window of the prospect (`viewing.access_overlap`).',
+    implements: ['D-252', 'D-295'],
   })
   @ApiSuccess(200, { description: 'Confirmed', type: OwnerLeadDto, example: OWNER_LEAD_EXAMPLE })
-  @ApiStandardErrors('validation.failed', 'http.not_found', 'listing.viewing_invalid_state', ...T)
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.not_found',
+    'listing.viewing_invalid_state',
+    'viewing.unit_occupied',
+    'viewing.self_unavailable',
+    'viewing.access_overlap',
+    ...T,
+  )
   async confirm(
     @CurrentTenant() ctx: TenantContext,
     @Param('viewingId', ParseUUIDPipe) id: string,
@@ -562,5 +610,108 @@ export class OwnerLeadsController {
     @Body() body: ViewingCompleteDto,
   ): Promise<OwnerLeadDto> {
     return this.one(await this.leads.completeViewing(ctx, id, body.outcome));
+  }
+
+  @Get('listing-viewings/:viewingId/access-log')
+  @TenantScoped()
+  @Can('listing.manage')
+  @ApiEndpoint({
+    id: 'owner.listingViewings.accessLog',
+    summary: 'Self-viewing entry log',
+    description:
+      'The door-code window of a confirmed self viewing: state, entry (app or lock log) and exit, incident and its work order, the visitor codes on the unit lock and building doors, and their door events. Never the code itself. Visible only to the listing tenant (owner or agency); each read is audited (D-295, D-025). A viewing without a self-viewing window, or of another tenant, is a 404.',
+    implements: ['D-295', 'D-289', 'D-025'],
+  })
+  @ApiSuccess(200, {
+    description: 'Entry log',
+    type: ViewingAccessLogDto,
+    example: {
+      viewingId: FAKE.uuid,
+      access: {
+        ...VIEWING_ACCESS_EXAMPLE,
+        state: 'entered' as ViewingAccessStateName,
+        enteredAt: '2026-11-07T10:01:00+07:00',
+        enteredSource: 'lock_log',
+      },
+      credentials: [
+        {
+          lockName: 'ประตูห้อง A-102',
+          lockScope: 'unit' as LockScopeName,
+          status: 'active' as CredentialStatusName,
+          validFrom: '2026-11-07T09:55:00+07:00',
+          validTo: '2026-11-07T10:30:00+07:00',
+        },
+      ],
+      events: [
+        {
+          time: '2026-11-07T10:01:00+07:00',
+          lockName: 'ประตูห้อง A-102',
+          result: 'success' as AccessResultName,
+          source: 'pin' as AccessSourceName,
+        },
+      ],
+    },
+  })
+  @ApiStandardErrors('validation.failed', 'http.not_found', ...T)
+  async accessLog(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('viewingId', ParseUUIDPipe) id: string,
+  ): Promise<ViewingAccessLogDto> {
+    const log = await this.selfViewing.accessLog(ctx, id);
+    return {
+      viewingId: id,
+      access: viewingAccessDto(log.access)!,
+      credentials: log.credentials.map((c) => ({
+        lockName: c.lockName,
+        lockScope: c.lockScope as LockScopeName,
+        status: c.status as CredentialStatusName,
+        validFrom: toBangkokIso(c.validFrom),
+        validTo: iso(c.validTo),
+      })),
+      events: log.events.map((e) => ({
+        time: toBangkokIso(e.time),
+        lockName: e.lockName,
+        result: e.result as AccessResultName,
+        source: e.source as AccessSourceName,
+      })),
+    };
+  }
+
+  @Post('listing-viewings/:viewingId/actions/end-access')
+  @HttpCode(200)
+  @TenantScoped()
+  @Can('listing.manage')
+  @Idempotent()
+  @ApiEndpoint({
+    id: 'owner.listingViewings.endAccess',
+    summary: 'End a self viewing’s door codes now',
+    description:
+      'Revokes the visitor codes of a self viewing at once (unit lock and building doors) with a reason, and closes its window (`cancelled`). Resident codes are never touched (D-295, D-071).',
+    implements: ['D-295', 'D-071'],
+  })
+  @ApiJsonBody(ViewingEndAccessDto, { reason: 'ผู้เข้าชมโทรแจ้งว่าออกจากห้องแล้ว' })
+  @ApiSuccess(200, {
+    description: 'Ended',
+    type: ViewingAccessSummaryDto,
+    example: {
+      ...VIEWING_ACCESS_EXAMPLE,
+      state: 'cancelled' as ViewingAccessStateName,
+      closedAt: '2026-11-07T10:10:00+07:00',
+      closeReason: 'ended by the owner: ผู้เข้าชมโทรแจ้งว่าออกจากห้องแล้ว',
+    },
+  })
+  @ApiStandardErrors(
+    'validation.failed',
+    'http.bad_request',
+    'http.not_found',
+    'viewing.access_invalid_state',
+    ...T,
+  )
+  async endAccess(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('viewingId', ParseUUIDPipe) id: string,
+    @Body() body: ViewingEndAccessDto,
+  ): Promise<ViewingAccessSummaryDto> {
+    return viewingAccessDto(await this.selfViewing.endAccess(ctx, id, body.reason))!;
   }
 }

@@ -229,6 +229,7 @@ model WorkOrder {
   lastOfPlans      MaintenancePlan[]  @relation("MaintenancePlanLastWorkOrder")
   accessCredentials AccessCredential[]
   messages         ServiceMessage[]
+  viewingAccesses  ViewingAccess[]
 
   @@index([tenantId, buildingId, status], map: "work_order_tenant_id_building_id_status_idx")
   @@index([buildingId], map: "work_order_building_id_idx")

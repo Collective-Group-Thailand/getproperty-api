@@ -26,7 +26,15 @@ import { Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
 import { type AvailabilityException, type WeeklySlot } from './listings.service';
-import { type Availability, freeSlots, type Slot, slotAt, type SlotRules } from './viewing-slots';
+import { SelfViewingService } from './self-viewing.service';
+import {
+  type Availability,
+  freeSlots,
+  type Slot,
+  slotAt,
+  type SlotRules,
+  type ViewingMode,
+} from './viewing-slots';
 
 export const PROSPECT_CONSENT_PURPOSE = 'prospect.enquiry';
 
@@ -48,6 +56,10 @@ export interface ViewingInput extends Omit<EnquiryInput, 'message'> {
   startsAt: Date;
   note?: string | null;
   message?: string | null;
+  /** G7 (D-295): `self` books a self-viewing slot (verified prospect, door code). */
+  mode?: ViewingMode;
+  /** G7: the visitor-terms version the prospect accepted (required for `self`). */
+  visitorTermsVersion?: number | null;
 }
 
 /** States of an enquiry the owner may set (`new` and `viewing_booked` follow from what happens). */
@@ -80,7 +92,7 @@ const leadInclude = {
   },
   party: { select: { id: true, displayName: true, phoneE164: true, lineUserId: true, language: true } },
   messages: { orderBy: { createdAt: 'asc' } },
-  viewings: { orderBy: { startsAt: 'desc' } },
+  viewings: { orderBy: { startsAt: 'desc' }, include: { access: true } },
 } satisfies Prisma.ListingLeadInclude;
 
 export type LeadWithParts = Prisma.ListingLeadGetPayload<{ include: typeof leadInclude }>;
@@ -104,6 +116,7 @@ export class ListingLeadsService {
     private readonly events: DomainEvents,
     private readonly hasher: LookupHasher,
     private readonly leases: LeasesService,
+    private readonly selfViewing: SelfViewingService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
@@ -465,16 +478,36 @@ export class ListingLeadsService {
         select: { startsAt: true, endsAt: true },
       });
       const availability = this.availabilityOf(listing.availability);
+      const tag =
+        (mode: ViewingMode) =>
+        (x: Slot): Slot & { mode: ViewingMode } => ({ ...x, mode });
+      const accompanied = freeSlots(availability, rules, start, span, taken).map(tag('accompanied'));
+      // G7 (D-295): self-viewing slots only while the listing can offer them (setting, own lock, vacant)
+      const selfWindows = availability.weekly.some((w) => w.mode === 'self');
+      const self =
+        selfWindows && (await this.selfViewing.eligibility(tx, listing, now)).available
+          ? freeSlots(availability, rules, start, span, taken, 'self').map(tag('self'))
+          : [];
       return {
         slotMinutes: availability.slotMinutes,
-        slots: freeSlots(availability, rules, start, span, taken),
+        selfViewing: self.length > 0,
+        slots: [...accompanied, ...self].sort(
+          (a, b) => a.startsAt.getTime() - b.startsAt.getTime() || (a.mode === 'self' ? 1 : -1),
+        ),
       };
     });
   }
 
   private async insertViewing(
     tx: Tx,
-    data: { tenantId: string; listingId: string; leadId: string; slot: Slot; note?: string | null },
+    data: {
+      tenantId: string;
+      listingId: string;
+      leadId: string;
+      slot: Slot;
+      note?: string | null;
+      self?: { identityVerificationId: string; visitorTermsVersion: number } | null;
+    },
   ): Promise<string> {
     const id = uuidv7(this.clock.now().getTime());
     try {
@@ -487,6 +520,13 @@ export class ListingLeadsService {
           startsAt: data.slot.startsAt,
           endsAt: data.slot.endsAt,
           note: data.note?.trim() || null,
+          ...(data.self
+            ? {
+                mode: 'self' as const,
+                identityVerificationId: data.self.identityVerificationId,
+                visitorTermsVersion: data.self.visitorTermsVersion,
+              }
+            : {}),
         },
       });
     } catch (error) {
@@ -503,8 +543,14 @@ export class ListingLeadsService {
     const rules = await this.rules(now);
     return this.db.platform(async (tx) => {
       const listing = await this.published(tx, slug);
-      const slot = slotAt(input.startsAt, this.availabilityOf(listing.availability), rules);
+      const mode: ViewingMode = input.mode === 'self' ? 'self' : 'accompanied';
+      const slot = slotAt(input.startsAt, this.availabilityOf(listing.availability), rules, mode);
       if (!slot) throw new DomainException('listing.viewing_slot_unavailable');
+      // G7 (D-295): a self viewing needs an eligible unit and a verified prospect who accepted the visitor terms
+      const self =
+        mode === 'self'
+          ? await this.selfViewing.checkBooking(tx, userId, listing, slot, input.visitorTermsVersion)
+          : null;
       const { leadId, partyId, created } = await this.openLead(tx, userId, listing, input);
       const live = await tx.listingViewing.count({ where: { leadId, state: { in: LIVE_VIEWING } } });
       if (live) throw new DomainException('listing.viewing_exists');
@@ -516,6 +562,7 @@ export class ListingLeadsService {
         leadId,
         slot,
         note: input.note,
+        self,
       });
       await tx.listingLead.updateMany({
         where: { id: leadId, state: { in: ['new', 'contacted', 'viewed'] } },
@@ -527,7 +574,7 @@ export class ListingLeadsService {
         buildingId: listing.buildingId,
         subjectType: 'ops.listing_viewing',
         subjectId: viewingId,
-        after: { leadId, startsAt: slot.startsAt.toISOString() },
+        after: { leadId, startsAt: slot.startsAt.toISOString(), mode },
       });
       if (created)
         await this.event(tx, 'listing.lead_received', listing, {
@@ -542,6 +589,7 @@ export class ListingLeadsService {
         viewingId,
         startsAt: slot.startsAt.toISOString(),
         rescheduledFrom: null,
+        mode,
       });
       return this.lead(tx, leadId);
     });
@@ -583,6 +631,7 @@ export class ListingLeadsService {
           version: { increment: 1 },
         },
       });
+      await this.selfViewing.closeIn(tx, viewing.id, 'cancelled', 'cancelled by the prospect');
       await this.unbook(tx, viewing.leadId);
       await this.audit.record(tx, {
         action: 'listing.viewing_cancelled',
@@ -617,18 +666,32 @@ export class ListingLeadsService {
       const availability = await tx.listingAvailability.findUnique({
         where: { listingId: viewing.listingId },
       });
-      const slot = slotAt(startsAt, this.availabilityOf(availability), rules);
+      const slot = slotAt(startsAt, this.availabilityOf(availability), rules, viewing.mode);
       if (!slot) throw new DomainException('listing.viewing_slot_unavailable');
+      // G7: a self viewing keeps its mode — re-checked for the new slot (the terms accepted then must still be in force)
+      const self =
+        viewing.mode === 'self'
+          ? await this.selfViewing.checkBooking(
+              tx,
+              userId,
+              viewing.listing,
+              slot,
+              viewing.visitorTermsVersion,
+              viewing.id,
+            )
+          : null;
       await tx.listingViewing.update({
         where: { id: viewing.id },
         data: { state: 'cancelled', cancelledBy: 'prospect', version: { increment: 1 } },
       });
+      await this.selfViewing.closeIn(tx, viewing.id, 'cancelled', 'rescheduled');
       const newId = await this.insertViewing(tx, {
         tenantId: viewing.tenantId,
         listingId: viewing.listingId,
         leadId: viewing.leadId,
         slot,
         note: viewing.note,
+        self,
       });
       await tx.listingViewing.update({ where: { id: viewing.id }, data: { rescheduledTo: newId } });
       await this.audit.record(tx, {
@@ -783,6 +846,7 @@ export class ListingLeadsService {
             where: { id: v.id },
             data: { state: 'cancelled', cancelledBy: 'owner', version: { increment: 1 } },
           });
+          await this.selfViewing.closeIn(tx, v.id, 'cancelled', 'enquiry closed');
           await this.event(
             tx,
             'listing.viewing_cancelled',
@@ -845,6 +909,7 @@ export class ListingLeadsService {
         include: {
           lead: { select: { id: true, party: { select: { displayName: true } } } },
           listing: { select: { id: true, titleTh: true, slug: true } },
+          access: true,
         },
         orderBy: { startsAt: 'asc' },
         take: 500,
@@ -875,7 +940,12 @@ export class ListingLeadsService {
           version: { increment: 1 },
         },
       });
-      if (state === 'declined') await this.unbook(tx, viewing.leadId);
+      if (state === 'declined') {
+        await this.selfViewing.closeIn(tx, viewing.id, 'cancelled', 'declined by the owner');
+        await this.unbook(tx, viewing.leadId);
+      }
+      // G7 (D-295): confirming a self viewing opens its door-code window (re-checked: vacant, lock, setting)
+      if (state === 'confirmed' && viewing.mode === 'self') await this.selfViewing.issueIn(tx, viewing);
       await tx.listingLead.update({
         where: { id: viewing.leadId },
         data: { lastOwnerAt: now, updatedBy: by },
@@ -916,6 +986,14 @@ export class ListingLeadsService {
         where: { id: viewing.id },
         data: { state: outcome, version: { increment: 1 } },
       });
+      const open = await tx.viewingAccess.findFirst({ where: { viewingId: viewing.id, closedAt: null } });
+      if (open)
+        await this.selfViewing.closeIn(
+          tx,
+          viewing.id,
+          open.enteredAt ? 'expired' : 'no_show',
+          'recorded by the owner',
+        );
       if (outcome === 'completed')
         await tx.listingLead.updateMany({
           where: { id: viewing.leadId, state: { in: ['new', 'contacted', 'viewing_booked'] } },
@@ -1098,6 +1176,8 @@ export class ListingLeadsService {
       if (winner) won += 1;
       else lost += 1;
     }
+    // G7 (D-289 (1), D-071): the unit is let — every self-viewing door code of it ends now
+    await this.selfViewing.closeForUnit(tx, lease.unitId, 'unit let');
     return { closed: live.length, won, lost };
   }
 

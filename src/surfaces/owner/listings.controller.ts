@@ -387,11 +387,14 @@ export class OwnerListingsController {
     id: 'owner.listings.setAvailability',
     summary: 'Set viewing availability',
     description:
-      'Weekly windows (Asia/Bangkok) and date exceptions in which viewings can be booked (D-252, B7.3).',
-    implements: ['D-252'],
+      'Weekly windows (Asia/Bangkok) and date exceptions in which viewings can be booked (D-252, B7.3). A weekly window with `mode: self` offers self-viewing slots (G7, D-295): verified prospects enter alone with a door code valid `viewing.self.code_minutes` around the slot — only for a vacant unit with an active unit lock of this tenant and while `viewing.self.enabled` (O-024). Date exceptions are accompanied-only.',
+    implements: ['D-252', 'D-295'],
   })
   @ApiJsonBody(ListingAvailabilityDto, {
-    weekly: [{ weekday: 6, from: '10:00', to: '16:00' }],
+    weekly: [
+      { weekday: 6, from: '10:00', to: '16:00' },
+      { weekday: 0, from: '09:00', to: '18:00', mode: 'self' },
+    ],
     exceptions: [],
     slotMinutes: 30,
   })

@@ -114,6 +114,19 @@ export const DOMAIN_EVENT_TYPES = {
     'A lease that came from a listing ends within listing.relist.remind_days_before; the owner is reminded to re-list (B7.4).',
   'listing.viewing_reminder':
     'A confirmed viewing is near; the prospect and the owner are reminded once (B7.3).',
+  // G7 self-viewing (D-289 (1), D-295) — no door code in any payload
+  'listing.self_viewing_access_issued':
+    'A confirmed self viewing got its access window and visitor credentials (unit lock + building doors) (G7, D-295).',
+  'listing.self_viewing_entered':
+    'A self-viewing visitor entered (confirmed in the app or seen in the lock log); owner and staff are alerted (G7).',
+  'listing.self_viewing_exited':
+    'A self-viewing visitor confirmed leaving; the door code was revoked (G7, D-295).',
+  'listing.self_viewing_closed':
+    'A self-viewing access window closed (cancelled, declined, ended by the owner, expired, no show, unit let) (G7).',
+  'listing.self_viewing_incident':
+    'A self-viewing visitor reported an incident; a work order was opened and the owner alerted (G7, D-295).',
+  'listing.self_viewing_overstayed':
+    'A self-viewing visitor entered and did not confirm leaving viewing.self.overstay_minutes after the window (G7).',
   'messaging.allowance_threshold':
     "The shared getproperty OA reached 80 % or 100 % of a tenant's free messages this month (D-254, once per month).",
   'messaging.quota_fallback':
@@ -346,6 +359,8 @@ export const DOMAIN_EVENT_TYPES = {
     'An access credential was issued (resident at lease activation, visitor / staff / technician time-boxed).',
   'access.credential_revoked':
     'An access credential was revoked (lease end or termination, owner with a reason, work order end) — never for arrears (D-071).',
+  'access.viewing_door_opened':
+    'The lock log shows a successful unlock with a self-viewing credential (G7, D-295); the viewing records the entry.',
   // B6.2 e-Tax & TM30 (D-050, D-052, D-215, D-216)
   'etax.queued': 'A receipt / tax invoice was queued for its e-Tax service provider (D-215).',
   'etax.signed':

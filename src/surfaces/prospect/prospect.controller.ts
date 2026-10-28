@@ -58,10 +58,15 @@ export class ProspectEnquiriesController {
     id: 'prospect.viewings.request',
     summary: 'Book a viewing',
     description:
-      'Requests a free slot of the listing’s availability (`GET /v1/public/listings/{slug}/viewing-slots`; notice and horizon are settings) — the owner confirms or declines. Opens the enquiry when there is none (same consent rule as asking). One live viewing per enquiry (`listing.viewing_exists`: change its time instead); a slot taken a moment ago answers `listing.viewing_slot_taken` (D-252).',
-    implements: ['D-252', 'D-025'],
+      'Requests a free slot of the listing’s availability (`GET /v1/public/listings/{slug}/viewing-slots`; notice and horizon are settings) — the owner confirms or declines. Opens the enquiry when there is none (same consent rule as asking). One live viewing per enquiry (`listing.viewing_exists`: change its time instead); a slot taken a moment ago answers `listing.viewing_slot_taken` (D-252). `mode: self` (G7, D-295) books a self-viewing slot: the listing must offer it (`viewing.self_unavailable` with the reason, `viewing.unit_occupied`), I must have a verified identity and phone and accept the visitor terms in force (`viewing.requirements_missing` with what is missing, `viewing.terms_outdated`), and no other self viewing of mine may overlap its code window (`viewing.access_overlap`).',
+    implements: ['D-252', 'D-025', 'D-295'],
   })
-  @ApiJsonBody(ViewingRequestDto, { ...TERMS, startsAt: '2026-11-07T10:00:00+07:00', note: 'จะมากับแฟนค่ะ' })
+  @ApiJsonBody(ViewingRequestDto, {
+    ...TERMS,
+    startsAt: '2026-11-07T10:00:00+07:00',
+    note: 'จะมากับแฟนค่ะ',
+    mode: 'accompanied',
+  })
   @ApiSuccess(201, { description: 'Requested', type: ProspectEnquiryDto, example: PROSPECT_ENQUIRY_EXAMPLE })
   @ApiStandardErrors(
     'listing.bank_account_in_message',
@@ -74,6 +79,11 @@ export class ProspectEnquiriesController {
     'listing.viewing_slot_unavailable',
     'listing.viewing_slot_taken',
     'listing.viewing_exists',
+    'viewing.self_unavailable',
+    'viewing.unit_occupied',
+    'viewing.requirements_missing',
+    'viewing.terms_outdated',
+    'viewing.access_overlap',
   )
   async requestViewing(
     @Param('slug') slug: string,
@@ -144,8 +154,9 @@ export class ProspectEnquiriesController {
   @ApiEndpoint({
     id: 'prospect.viewings.cancel',
     summary: 'Cancel my viewing',
-    description: 'Cancels a requested or confirmed viewing that has not started; the owner is told (D-252).',
-    implements: ['D-252'],
+    description:
+      'Cancels a requested or confirmed viewing that has not started; the owner is told (D-252). A self viewing’s door codes are revoked at once (D-295).',
+    implements: ['D-252', 'D-295'],
   })
   @ApiJsonBody(ViewingCancelDto, { reason: 'ได้ห้องแล้วค่ะ' })
   @ApiSuccess(200, { description: 'Cancelled', type: ProspectEnquiryDto, example: PROSPECT_ENQUIRY_EXAMPLE })
@@ -168,8 +179,8 @@ export class ProspectEnquiriesController {
     id: 'prospect.viewings.reschedule',
     summary: 'Change my viewing time',
     description:
-      'Moves a requested or confirmed viewing to another free slot in one step: the old one is cancelled and points to the new request, which the owner confirms again (D-252).',
-    implements: ['D-252'],
+      'Moves a requested or confirmed viewing to another free slot in one step: the old one is cancelled and points to the new request, which the owner confirms again (D-252). A self viewing stays a self viewing: the new slot must be a self slot and the checks of booking apply again; the old door-code window closes at once (D-295).',
+    implements: ['D-252', 'D-295'],
   })
   @ApiJsonBody(ViewingRescheduleDto, { startsAt: '2026-11-08T14:00:00+07:00' })
   @ApiSuccess(200, { description: 'Moved', type: ProspectEnquiryDto, example: PROSPECT_ENQUIRY_EXAMPLE })
@@ -180,6 +191,11 @@ export class ProspectEnquiriesController {
     'listing.viewing_invalid_state',
     'listing.viewing_slot_unavailable',
     'listing.viewing_slot_taken',
+    'viewing.self_unavailable',
+    'viewing.unit_occupied',
+    'viewing.requirements_missing',
+    'viewing.terms_outdated',
+    'viewing.access_overlap',
   )
   async reschedule(
     @Param('viewingId', ParseUUIDPipe) id: string,

@@ -132,6 +132,8 @@ export const API_TAGS: Record<string, string> = {
   'prospect.me': 'Who I am as a prospect: open enquiries and upcoming viewings (B7.3, D-252).',
   'prospect.enquiries':
     'My enquiries about listings and my viewings: ask, book, reschedule, cancel, write to the owner (D-252).',
+  'prospect.selfViewing':
+    'Self-viewing (G7, D-295): what I need (verified identity and phone, visitor terms), my door code inside its window only, arrive / leave / report a problem.',
   'technician.me': 'Who I am as a technician and the work orders my token covers (B5.1, D-154).',
   'technician.workOrders':
     'My work orders in the technician app (B5.1, D-072, D-154): accept, check in, before / after photos, parts and labour, complete.',

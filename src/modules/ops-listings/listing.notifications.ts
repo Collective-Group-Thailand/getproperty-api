@@ -249,6 +249,27 @@ export class ListingNotifications implements OnModuleInit {
       };
     });
 
+    // --- G7 (D-295): self-viewing — owner, managers and staff on entry, incident and a visitor not leaving (urgent)
+    const selfViewing = async (tx: Tx, e: DomainEventEnvelope): Promise<NotificationPlanInput | null> => {
+      const base = await this.base(tx, e);
+      if (!base) return null;
+      const at = viewingTime(e.payload.enteredAt ?? e.payload.startsAt);
+      const until = viewingTime(e.payload.validTo);
+      return {
+        recipients: await operators(tx, e.tenantId!, ['owner', 'manager', 'staff'], 'owner'),
+        data: {
+          ...base,
+          lead: { id: e.payload.leadId, name: await partyName(tx, e.payload.partyId) },
+          viewing: { at: at.th, atEn: at.en, until: until.th, untilEn: until.en },
+          incident: { note: (e.payload.note as string | undefined) ?? '' },
+        },
+        urgent: true,
+      };
+    };
+    registerNotifiable('listing.self_viewing_entered', selfViewing);
+    registerNotifiable('listing.self_viewing_incident', selfViewing);
+    registerNotifiable('listing.self_viewing_overstayed', selfViewing);
+
     // --- both sides
     const toOwner = this.toOwner(viewing);
     const toProspect = this.toProspect(viewing);

@@ -82,6 +82,10 @@ model ListingViewing {
   decidedBy     String?             @map("decided_by") @db.Uuid
   decidedAt     DateTime?           @map("decided_at") @db.Timestamptz(6)
   remindedAt    DateTime?           @map("reminded_at") @db.Timestamptz(6)
+  /// D-289 (1) / D-295: accompanied (B7.3) or self (time-boxed door code for a verified prospect).
+  mode                   ViewingMode @default(accompanied)
+  identityVerificationId String?     @map("identity_verification_id") @db.Uuid
+  visitorTermsVersion    Int?        @map("visitor_terms_version") @db.SmallInt
   version       Int                 @default(1)
   createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -91,11 +95,15 @@ model ListingViewing {
   lead        ListingLead      @relation(fields: [leadId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "listing_viewing_lead_id_fkey")
   replacement ListingViewing?  @relation("ListingViewingReschedule", fields: [rescheduledTo], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "listing_viewing_rescheduled_to_fkey")
   replaces    ListingViewing[] @relation("ListingViewingReschedule")
+  identityVerification IdentityVerification? @relation(fields: [identityVerificationId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "listing_viewing_identity_verification_id_fkey")
+  access               ViewingAccess?
+  accessCredentials    AccessCredential[]
 
   @@index([tenantId, startsAt], map: "listing_viewing_tenant_id_starts_at_idx")
   @@index([listingId, startsAt], map: "listing_viewing_listing_id_starts_at_idx")
   @@index([leadId], map: "listing_viewing_lead_id_idx")
   @@index([rescheduledTo], map: "listing_viewing_rescheduled_to_idx")
+  @@index([identityVerificationId], map: "listing_viewing_identity_verification_id_idx")
   @@index([startsAt], map: "listing_viewing_reminder_idx", where: raw("((state = 'confirmed'::ops.listing_viewing_state) AND (reminded_at IS NULL))"))
   @@map("listing_viewing")
   @@schema("ops")
@@ -145,5 +153,78 @@ enum ListingViewingState {
   no_show
 
   @@map("listing_viewing_state")
+  @@schema("ops")
+}
+
+/// D-289 (1) / D-295: how a viewing happens.
+enum ViewingMode {
+  accompanied
+  self
+
+  @@map("viewing_mode")
+  @@schema("ops")
+}
+
+/// D-295: the life of a self-viewing access window.
+enum ViewingAccessState {
+  issued
+  entered
+  exited
+  expired
+  no_show
+  cancelled
+
+  @@map("viewing_access_state")
+  @@schema("ops")
+}
+
+/// D-289 (1) / D-295 (G7): the door-code window of one self viewing. The code lives only encrypted on the visitor
+/// credentials (`smart.access_credential.viewing_id`); one open window per person at a time (EXCLUDE, SQL only).
+model ViewingAccess {
+  id                String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String             @map("tenant_id") @db.Uuid
+  viewingId         String             @unique(map: "viewing_access_viewing_id_key") @map("viewing_id") @db.Uuid
+  listingId         String             @map("listing_id") @db.Uuid
+  unitId            String             @map("unit_id") @db.Uuid
+  buildingId        String             @map("building_id") @db.Uuid
+  prospectUserId    String             @map("prospect_user_id") @db.Uuid
+  lockId            String             @map("lock_id") @db.Uuid
+  state             ViewingAccessState @default(issued)
+  validFrom         DateTime           @map("valid_from") @db.Timestamptz(6)
+  validTo           DateTime           @map("valid_to") @db.Timestamptz(6)
+  enteredAt         DateTime?          @map("entered_at") @db.Timestamptz(6)
+  enteredSource     String?            @map("entered_source")
+  exitedAt          DateTime?          @map("exited_at") @db.Timestamptz(6)
+  closedAt          DateTime?          @map("closed_at") @db.Timestamptz(6)
+  closeReason       String?            @map("close_reason")
+  codeRevealedAt    DateTime?          @map("code_revealed_at") @db.Timestamptz(6)
+  revealCount       Int                @default(0) @map("reveal_count")
+  incidentNote      String?            @map("incident_note")
+  incidentAt        DateTime?          @map("incident_at") @db.Timestamptz(6)
+  workOrderId       String?            @map("work_order_id") @db.Uuid
+  overstayAlertedAt DateTime?          @map("overstay_alerted_at") @db.Timestamptz(6)
+  version           Int                @default(1)
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant       Tenant         @relation("ViewingAccessTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "viewing_access_tenant_id_fkey")
+  viewing      ListingViewing @relation(fields: [viewingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "viewing_access_viewing_id_fkey")
+  listing      Listing        @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "viewing_access_listing_id_fkey")
+  unit         Unit           @relation("ViewingAccessUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "viewing_access_unit_id_fkey")
+  building     Building       @relation("ViewingAccessBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "viewing_access_building_id_fkey")
+  prospectUser UserAccount    @relation("ViewingAccessProspectUser", fields: [prospectUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "viewing_access_prospect_user_id_fkey")
+  lock         Lock           @relation(fields: [lockId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "viewing_access_lock_id_fkey")
+  workOrder    WorkOrder?     @relation(fields: [workOrderId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "viewing_access_work_order_id_fkey")
+
+  @@index([tenantId, state], map: "viewing_access_tenant_id_state_idx")
+  @@index([listingId], map: "viewing_access_listing_id_idx")
+  @@index([unitId], map: "viewing_access_unit_id_idx")
+  @@index([buildingId], map: "viewing_access_building_id_idx")
+  @@index([prospectUserId], map: "viewing_access_prospect_user_id_idx")
+  @@index([lockId], map: "viewing_access_lock_id_idx")
+  @@index([workOrderId], map: "viewing_access_work_order_id_idx")
+  @@index([validTo], map: "viewing_access_open_idx", where: raw("(closed_at IS NULL)"))
+  @@index([closedAt], map: "viewing_access_closed_at_idx", where: raw("(closed_at IS NOT NULL)"))
+  @@map("viewing_access")
   @@schema("ops")
 }

@@ -927,6 +927,10 @@
     "visitor_codes_disabled": {
       "title": "Visitor codes are not available",
       "detail": "The building does not let residents create visitor codes in the app. Ask the building office."
+    },
+    "unit_occupied": {
+      "title": "No visitor code for this unit",
+      "detail": "The unit is occupied; a viewing door code is never issued for an occupied unit."
     }
   },
   "lock": {
@@ -1255,6 +1259,40 @@
     "invalid_state": {
       "title": "Renewal offer cannot change now",
       "detail": "This renewal offer was already answered, withdrawn or has expired, or the lease can no longer be renewed."
+    }
+  },
+  "viewing": {
+    "self_unavailable": {
+      "title": "Self-viewing is not available",
+      "detail": "This unit does not offer self-viewing. Book a viewing with the owner or staff instead."
+    },
+    "unit_occupied": {
+      "title": "The unit is occupied",
+      "detail": "Self-viewing is only for vacant units."
+    },
+    "requirements_missing": {
+      "title": "Verify yourself first",
+      "detail": "Self-viewing needs a verified identity, a verified phone and the accepted visitor terms."
+    },
+    "terms_outdated": {
+      "title": "The visitor terms changed",
+      "detail": "Read and accept the latest visitor terms before booking."
+    },
+    "access_overlap": {
+      "title": "You already have a self-viewing then",
+      "detail": "Another self-viewing of yours overlaps this time. Pick another time."
+    },
+    "code_not_available": {
+      "title": "The door code is not available",
+      "detail": "The door code is shown only during your viewing window."
+    },
+    "access_open_elsewhere": {
+      "title": "You are still in another unit",
+      "detail": "Confirm you have left the unit you are viewing before opening the next code."
+    },
+    "access_invalid_state": {
+      "title": "Not possible right now",
+      "detail": "This viewing access is in a state that does not allow this."
     }
   }
 }

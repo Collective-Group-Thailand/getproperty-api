@@ -57,6 +57,8 @@ export interface WeeklySlot {
   weekday: number;
   from: string;
   to: string;
+  /** D-295 (G7): `self` = a self-viewing window (no one on site); accompanied when absent. */
+  mode?: 'accompanied' | 'self';
 }
 export interface AvailabilityException {
   date: string;
@@ -389,6 +391,8 @@ export class ListingsService {
         throw invalid(`weekly.${i}.weekday`, 'weekday is 0 (Sunday) … 6');
       if (!HHMM.test(slot.from) || !HHMM.test(slot.to) || slot.from >= slot.to)
         throw invalid(`weekly.${i}`, 'from and to are HH:MM with from before to');
+      if (slot.mode !== undefined && slot.mode !== 'accompanied' && slot.mode !== 'self')
+        throw invalid(`weekly.${i}.mode`, 'mode is accompanied or self');
     }
     for (const [i, ex] of (input.exceptions ?? []).entries()) {
       if (!DAY.test(ex.date)) throw invalid(`exceptions.${i}.date`, 'date is YYYY-MM-DD');
@@ -400,7 +404,12 @@ export class ListingsService {
       await tx.listingAvailability.update({
         where: { listingId: id },
         data: {
-          weekly: input.weekly as unknown as Prisma.InputJsonValue,
+          weekly: input.weekly.map((w) => ({
+            weekday: w.weekday,
+            from: w.from,
+            to: w.to,
+            ...(w.mode === 'self' ? { mode: 'self' } : {}),
+          })),
           exceptions: (input.exceptions ?? []) as unknown as Prisma.InputJsonValue,
           ...(input.slotMinutes ? { slotMinutes: input.slotMinutes } : {}),
           updatedBy: userIdOf(RequestContext.actor()),

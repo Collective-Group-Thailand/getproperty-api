@@ -353,9 +353,10 @@ export class LocksService extends TenantScopedRepository {
         const creds = refs.length
           ? await tx.accessCredential.findMany({
               where: { lockId: lock.id, vendorCredentialRef: { in: refs } },
-              select: { id: true, vendorCredentialRef: true, holderPartyId: true },
+              select: { id: true, vendorCredentialRef: true, holderPartyId: true, viewingId: true },
             })
           : [];
+        const opened = new Map<string, Date>();
         let inserted = 0;
         const months = new Set<string>();
         for (const e of events) {
@@ -374,6 +375,20 @@ export class LocksService extends TenantScopedRepository {
                     ${JSON.stringify(e.detail ?? {})}::jsonb)
             ON CONFLICT (device_id, vendor_event_id, time) DO NOTHING`;
           inserted += result;
+          // G7 (D-295): the first successful unlock with a self-viewing code records the visitor's entry
+          if (result && e.result === 'success' && cred?.viewingId && !opened.has(cred.id))
+            opened.set(cred.id, e.at);
+        }
+        for (const [credentialId, at] of opened) {
+          const cred = creds.find((c) => c.id === credentialId)!;
+          await this.events.record(tx, {
+            type: 'access.viewing_door_opened',
+            aggregateType: 'access_credential',
+            aggregateId: credentialId,
+            tenantId: lock.tenantId,
+            buildingId: lock.buildingId,
+            payload: { credentialId, viewingId: cred.viewingId, lockId: lock.id, at: at.toISOString() },
+          });
         }
         await tx.lock.update({ where: { id: lock.id }, data: { lastLogSyncAt: now } });
         return inserted;

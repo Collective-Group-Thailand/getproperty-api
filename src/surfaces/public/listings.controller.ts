@@ -28,6 +28,7 @@ import { FurnishingName, PortfolioUnitKindName } from '../owner/portfolio.contro
 import { MoneyOutput } from '../shared/fields';
 import { ListingUtilityDto, PublicAreasDto } from '../shared/listing-insights.dto';
 import { PublicShareLinkDto } from '../shared/listing-share.dto';
+import { ViewingModeName } from '../shared/status.enums';
 import { ApiSurface, SURFACES } from '../surfaces';
 
 const CACHE = 'public, max-age=300, stale-while-revalidate=600';
@@ -515,8 +516,8 @@ export class PublicListingsController {
     id: 'public.listings.viewingSlots',
     summary: 'Free viewing times',
     description:
-      'Free slots of a published listing’s viewing availability from `from` (`YYYY-MM-DD`, default today in Bangkok) for `days` days (default 14), leaving out times already requested or confirmed and those inside `listing.viewing.min_notice_hours` or beyond `listing.viewing.horizon_days` (D-252). No personal data.',
-    implements: ['D-252'],
+      'Free slots of a published listing’s viewing availability from `from` (`YYYY-MM-DD`, default today in Bangkok) for `days` days (default 14), leaving out times already requested or confirmed and those inside `listing.viewing.min_notice_hours` or beyond `listing.viewing.horizon_days` (D-252). Each slot has a `mode`; `self` slots (G7, D-295) appear only while the listing can offer self-viewing (`viewing.self.enabled`, an active unit lock of the listing tenant, the unit vacant) and need a verified prospect. No personal data.',
+    implements: ['D-252', 'D-295'],
   })
   @ApiQuery({ name: 'from', required: false, schema: { type: 'string', format: 'date' } })
   @ApiQuery({ name: 'days', required: false, schema: { type: 'integer', minimum: 1, maximum: 60 } })
@@ -525,7 +526,11 @@ export class PublicListingsController {
     type: ViewingSlotsDto,
     example: {
       slotMinutes: 30,
-      slots: [{ startsAt: '2026-11-07T10:00:00+07:00', endsAt: '2026-11-07T10:30:00+07:00' }],
+      selfViewing: true,
+      slots: [
+        { startsAt: '2026-11-07T10:00:00+07:00', endsAt: '2026-11-07T10:30:00+07:00', mode: 'accompanied' },
+        { startsAt: '2026-11-08T09:00:00+07:00', endsAt: '2026-11-08T09:30:00+07:00', mode: 'self' },
+      ],
     },
   })
   @ApiStandardErrors('validation.failed', 'http.not_found', 'http.too_many_requests')
@@ -538,9 +543,11 @@ export class PublicListingsController {
     const result = await this.leads.slots(slug.slice(0, 80), from, span);
     return {
       slotMinutes: result.slotMinutes,
+      selfViewing: result.selfViewing,
       slots: result.slots.map((s) => ({
         startsAt: toBangkokIso(s.startsAt),
         endsAt: toBangkokIso(s.endsAt),
+        mode: s.mode as ViewingModeName,
       })),
     };
   }

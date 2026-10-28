@@ -771,6 +771,88 @@ export const SETTINGS: readonly SettingDef[] = [
     value: 3,
     reason: 'seed: B7.3',
   },
+  // --- G7 self-viewing (D-289 (1), D-295; O-024 insurance + visitor terms, O-031) ----------------------------
+  {
+    key: 'viewing.self.enabled',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-295 / O-024: self-viewing with a time-boxed door code is offered at all (platform) or for one tenant. Off until the insurance partner and the visitor terms are settled (O-024).',
+    editableBy: ADMIN,
+    value: false,
+    reason: 'seed: O-024 (no insurance partner yet — off)',
+  },
+  {
+    key: 'viewing.self.code_minutes',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-295 (G7): how long a self-viewing door code opens the door after the slot starts, in minutes (D-289 (1): 30).',
+    editableBy: ADMIN,
+    value: 30,
+    reason: 'seed: G-README item 6 (30 minutes)',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 10 && (value as number) <= 120
+        ? []
+        : ['10–120 minutes'],
+  },
+  {
+    key: 'viewing.self.code_early_minutes',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-295 (G7): minutes before the slot start from which the door code is shown and opens the door.',
+    editableBy: ADMIN,
+    value: 5,
+    reason: 'seed: D-295',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 30 ? [] : ['0–30 minutes'],
+  },
+  {
+    key: 'viewing.self.overstay_minutes',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-295 (G7): minutes after the code window ends when a visitor who entered and did not confirm leaving is reported to the owner and staff (once).',
+    editableBy: ADMIN,
+    value: 30,
+    reason: 'seed: D-295',
+  },
+  {
+    key: 'viewing.self.log_retention_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-295 / O-031: days a closed self-viewing access record (entry / exit times, incident) is kept before it is deleted (PDPA minimisation; ⚖ pending legal confirmation).',
+    editableBy: ADMIN_COMPLIANCE,
+    value: 365,
+    reason: 'seed: schema-design G7-b (log kept 1 year)',
+  },
+  {
+    key: 'viewing.self.visitor_terms',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-295 / O-024: the visitor terms a prospect accepts before booking a self viewing ({"version": n, "th": …, "en": …}); draft wording pending legal review and the insurance partner (O-024). A new version needs a new acceptance.',
+    editableBy: ADMIN_COMPLIANCE,
+    value: {
+      version: 1,
+      th: 'ร่างเงื่อนไขผู้เข้าชม (รอตรวจทางกฎหมาย): ฉันจะเข้าชมห้องเฉพาะช่วงเวลาที่นัดไว้ ไม่ให้รหัสประตูกับผู้อื่น ไม่นำทรัพย์สินออกจากห้อง ปิดประตูเมื่อออก และแจ้งปัญหาในแอปทันทีหากพบความเสียหาย ระบบบันทึกเวลาเข้าและออกจากห้อง',
+      en: 'Draft visitor terms (pending legal review): I will view the unit only during my booked time, never share the door code, take nothing out of the unit, close the door when I leave and report any damage in the app at once. Entry and exit times are recorded.',
+    },
+    reason: 'seed: D-295 draft (O-024)',
+    check: (value: unknown) => {
+      const v = value as Record<string, unknown> | null;
+      return v &&
+        typeof v === 'object' &&
+        Number.isInteger(v.version) &&
+        (v.version as number) > 0 &&
+        (v.version as number) < 32_000 &&
+        ['th', 'en'].every((k) => typeof v[k] === 'string' && v[k].trim().length > 0)
+        ? []
+        : ['{"version": positive integer, "th": text, "en": text}'];
+    },
+  },
   {
     key: 'lease.end.remind_days_before',
     valueType: 'int',

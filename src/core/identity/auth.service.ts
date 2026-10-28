@@ -170,6 +170,51 @@ export class AuthService {
     });
   }
 
+  /**
+   * `POST /v1/prospect/me/phone/otp` (G7, D-295): a code to verify a phone on my prospect account (a LINE sign-in has
+   * none; self-viewing needs one). The challenge is bound to my account.
+   */
+  prospectPhoneOtpRequest(userId: string, phone: string, language?: string): Promise<OtpRequestResult> {
+    return this.otp.request({
+      purpose: 'phone_verify',
+      phone,
+      send: true,
+      language,
+      subjectType: 'core.user_account',
+      subjectId: userId,
+    });
+  }
+
+  /**
+   * `POST /v1/prospect/me/phone`: the verified phone becomes my account's phone (`auth.identity_in_use` when another
+   * login holds it — sign in with that phone instead). Audited `auth.phone_verified` (no phone in the metadata).
+   */
+  async prospectPhoneVerify(userId: string, challengeId: string, code: string): Promise<UserAccount> {
+    const challenge = await this.otp.verify({ challengeId, code, purpose: 'phone_verify' });
+    if (challenge.subjectType !== 'core.user_account' || challenge.subjectId !== userId)
+      throw new DomainException('auth.otp_invalid');
+    return this.db.platform(async (tx) => {
+      const holder = await this.userByPhone(tx, challenge.phoneE164);
+      if (holder && holder.id !== userId) throw new DomainException('auth.identity_in_use');
+      const user = await tx.userAccount.update({
+        where: { id: userId },
+        data: {
+          phoneE164: challenge.phoneE164,
+          phoneHash: this.hasher.phone(challenge.phoneE164),
+          phoneVerifiedAt: this.clock.now(),
+        },
+      });
+      await this.audit.record(tx, {
+        action: 'auth.phone_verified',
+        tenantId: null,
+        subjectType: 'core.user_account',
+        subjectId: userId,
+        metadata: { audience: 'prospect' },
+      });
+      return user;
+    });
+  }
+
   /** `POST /v1/public/signup/landlord/otp`: a sign-up code for any phone (D-251: no account or invitation needed). */
   landlordOtpRequest(phone: string, language?: string): Promise<OtpRequestResult> {
     return this.otp.request({ purpose: 'landlord_signup', phone, send: true, language });
