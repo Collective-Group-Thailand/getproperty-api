@@ -1356,5 +1356,35 @@
       "title": "Already disputed",
       "detail": "A credit note for this fee is waiting for approval or was issued."
     }
+  },
+  "handoff": {
+    "invalid_state": {
+      "title": "This invitation cannot be used now",
+      "detail": "The invitation was already used, declined or has expired."
+    },
+    "landlord_required": {
+      "title": "A landlord account is needed",
+      "detail": "Sign up as a landlord (free) to add the unit you bought and list it for rent."
+    }
+  },
+  "employer": {
+    "invalid_state": {
+      "title": "Not possible in this state",
+      "detail": "The employer agreement has ended, or the lease is no longer open."
+    },
+    "building_mismatch": {
+      "title": "Different building",
+      "detail": "The lease is in a building the employer agreement does not cover."
+    }
+  },
+  "relocation": {
+    "consent_required": {
+      "title": "Consent needed",
+      "detail": "Turn on “Help finding my next home” in your privacy settings to see places in your destination."
+    },
+    "invalid_state": {
+      "title": "This offer is closed",
+      "detail": "The relocation offer was dismissed, withdrawn or has closed."
+    }
   }
 }

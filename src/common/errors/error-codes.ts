@@ -217,6 +217,13 @@ export const ERROR_CODES = {
   'media_service.invalid_state': HttpStatus.CONFLICT,
   'fee.not_invoiced': HttpStatus.CONFLICT,
   'fee.already_disputed': HttpStatus.CONFLICT,
+  // G8 (D-299): getbuild rental handoff, employer housing, relocation network
+  'handoff.invalid_state': HttpStatus.CONFLICT,
+  'handoff.landlord_required': HttpStatus.UNPROCESSABLE_ENTITY,
+  'employer.invalid_state': HttpStatus.CONFLICT,
+  'employer.building_mismatch': HttpStatus.UNPROCESSABLE_ENTITY,
+  'relocation.consent_required': HttpStatus.CONFLICT,
+  'relocation.invalid_state': HttpStatus.CONFLICT,
   'mandate.exclusive_conflict': HttpStatus.CONFLICT,
   'mandate.agency_required': HttpStatus.UNPROCESSABLE_ENTITY,
   'co_broke.invalid_state': HttpStatus.CONFLICT,

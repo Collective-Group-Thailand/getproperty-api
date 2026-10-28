@@ -662,6 +662,7 @@ export const NOTIFICATION_ROUTES: {
     'service_request.cost_settled',
     'lease.end_approaching',
     'contract.sent_for_signature',
+    'relocation.offer_ready',
   ].map((eventType) => ({
     eventType,
     audience: 'resident',
@@ -862,6 +863,25 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
         language: 'en',
         subject: null,
         body: 'Your lease of unit {{unit.unitNo}} with {{tenant.name}} ends {{lease.endDateEn}}. If you would like to stay, tell your landlord, or watch for a renewal offer here.\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'relocation.offer_ready',
+    channel: 'line',
+    audience: 'resident',
+    description:
+      'Moving out: rooms in the place I am moving to, because I asked for them (G8, D-299, consent resident.relocation)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'กำลังจะย้ายออกจากห้อง {{unit.unitNo}} ใช่ไหม บอกเราว่าจะย้ายไปแถวไหน แล้วดูห้องว่างที่นั่นได้เลย ส่งประวัติการจ่ายค่าเช่าให้เจ้าของใหม่ได้ด้วยถ้าต้องการ (เลิกรับได้ทุกเมื่อ)\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'Moving out of unit {{unit.unitNo}}? Tell us where you are moving to and see vacant places there. You can share your rent record with the new landlord if you want (stop any time).\n{{link}}',
       },
     ],
   },

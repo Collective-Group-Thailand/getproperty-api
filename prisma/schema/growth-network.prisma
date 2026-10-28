@@ -1,0 +1,183 @@
+// G8 getbuild rental handoff, employer housing, relocation network (D-289 (2) (4) (5), D-299); migration 0064,
+// schema-design §7.5 rows 181–188. `ops.lease.employer_agreement_id` / `payer_party_id` live in ops-leases.prisma,
+// `ops.listing.campaign_tag` in ops-listings.prisma.
+
+enum RentalHandoffState {
+  invited
+  accepted
+  listed
+  declined
+  expired
+
+  @@map("rental_handoff_state")
+  @@schema("ops")
+}
+
+enum EmployerSplitRule {
+  per_occupant
+  per_unit
+
+  @@map("employer_split_rule")
+  @@schema("ops")
+}
+
+enum EmployerAgreementState {
+  active
+  ended
+
+  @@map("employer_agreement_state")
+  @@schema("ops")
+}
+
+enum RelocationOfferState {
+  open
+  dismissed
+  withdrawn
+  closed
+
+  @@map("relocation_offer_state")
+  @@schema("ops")
+}
+
+/// A getbuild buyer with rental intent invited to the landlord tier (G8, D-299): once per transfer; platform-only until claimed.
+model RentalHandoff {
+  id                 String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String?            @map("tenant_id") @db.Uuid
+  integrationEventId String             @map("integration_event_id") @db.Uuid
+  developerRef       String             @map("developer_ref")
+  buildingRef        String             @map("building_ref")
+  unitRef            String             @map("unit_ref")
+  transferDate       DateTime           @map("transfer_date") @db.Date
+  buyerRef           String             @map("buyer_ref")
+  buyerDisplayName   String             @map("buyer_display_name")
+  buyerLanguage      String?            @map("buyer_language") @db.Char(2)
+  buyerLineHash      Bytes?             @map("buyer_line_hash")
+  campaignTag        String             @map("campaign_tag")
+  facts              Json               @default("{}")
+  state              RentalHandoffState @default(invited)
+  tokenHash          Bytes?             @map("token_hash")
+  deliveredAt        DateTime?          @map("delivered_at") @db.Timestamptz(6)
+  deliveryAttempts   Int                @default(0) @map("delivery_attempts") @db.SmallInt
+  lastDeliveryError  String?            @map("last_delivery_error")
+  expiresAt          DateTime           @map("expires_at") @db.Timestamptz(6)
+  unitId             String?            @map("unit_id") @db.Uuid
+  listingId          String?            @map("listing_id") @db.Uuid
+  claimedBy          String?            @map("claimed_by") @db.Uuid
+  acceptedAt         DateTime?          @map("accepted_at") @db.Timestamptz(6)
+  listedAt           DateTime?          @map("listed_at") @db.Timestamptz(6)
+  declinedAt         DateTime?          @map("declined_at") @db.Timestamptz(6)
+  expiredAt          DateTime?          @map("expired_at") @db.Timestamptz(6)
+  version            Int                @default(1)
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          String?            @map("created_by") @db.Uuid
+  updatedAt          DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy          String?            @map("updated_by") @db.Uuid
+
+  tenant           Tenant?          @relation("RentalHandoffTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rental_handoff_tenant_id_fkey")
+  integrationEvent IntegrationEvent @relation(fields: [integrationEventId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rental_handoff_integration_event_id_fkey")
+  unit             Unit?            @relation("RentalHandoffUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rental_handoff_unit_id_fkey")
+  listing          Listing?         @relation(fields: [listingId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "rental_handoff_listing_id_fkey")
+  claimer          UserAccount?     @relation("RentalHandoffClaimedBy", fields: [claimedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rental_handoff_claimed_by_fkey")
+
+  @@unique([integrationEventId], map: "rental_handoff_integration_event_id_key")
+  @@unique([developerRef, unitRef, transferDate], map: "rental_handoff_transfer_key")
+  @@unique([tokenHash], map: "rental_handoff_token_hash_key", where: raw("(token_hash IS NOT NULL)"))
+  @@index([state, expiresAt], map: "rental_handoff_state_idx")
+  @@index([tenantId], map: "rental_handoff_tenant_id_idx", where: raw("(tenant_id IS NOT NULL)"))
+  @@index([unitId], map: "rental_handoff_unit_id_idx")
+  @@index([listingId], map: "rental_handoff_listing_id_idx")
+  @@index([claimedBy], map: "rental_handoff_claimed_by_idx")
+  @@map("rental_handoff")
+  @@schema("ops")
+}
+
+/// An employer pays the leases of its workers (G8, D-299): invoices addressed to the employer party, statement, payroll export.
+model EmployerAgreement {
+  id                  String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String                 @map("tenant_id") @db.Uuid
+  employerPartyId     String                 @map("employer_party_id") @db.Uuid
+  buildingId          String?                @map("building_id") @db.Uuid
+  reference           String?
+  splitRule           EmployerSplitRule      @default(per_occupant) @map("split_rule")
+  deductPercent       Decimal                @default(100) @map("deduct_percent") @db.Decimal(5, 2)
+  payrollExportFormat String                 @default("generic_csv") @map("payroll_export_format")
+  validFrom           DateTime               @map("valid_from") @db.Date
+  validTo             DateTime?              @map("valid_to") @db.Date
+  state               EmployerAgreementState @default(active)
+  endedAt             DateTime?              @map("ended_at") @db.Timestamptz(6)
+  version             Int                    @default(1)
+  createdAt           DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy           String?                @map("created_by") @db.Uuid
+  updatedAt           DateTime               @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy           String?                @map("updated_by") @db.Uuid
+
+  tenant   Tenant           @relation("EmployerAgreementTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "employer_agreement_tenant_id_fkey")
+  employer Party            @relation("EmployerAgreementEmployer", fields: [employerPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "employer_agreement_employer_party_id_fkey")
+  building Building?        @relation("EmployerAgreementBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "employer_agreement_building_id_fkey")
+  workers  EmployerWorker[]
+  leases   Lease[]
+
+  @@index([tenantId, state], map: "employer_agreement_tenant_id_state_idx")
+  @@index([employerPartyId], map: "employer_agreement_employer_party_id_idx")
+  @@index([buildingId], map: "employer_agreement_building_id_idx")
+  @@map("employer_agreement")
+  @@schema("ops")
+}
+
+/// The employer's payroll number of a worker under an employer agreement (G8, D-299).
+model EmployerWorker {
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  agreementId String   @map("agreement_id") @db.Uuid
+  partyId     String   @map("party_id") @db.Uuid
+  employeeNo  String   @map("employee_no")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy   String?  @map("updated_by") @db.Uuid
+
+  tenant    Tenant            @relation("EmployerWorkerTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "employer_worker_tenant_id_fkey")
+  agreement EmployerAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "employer_worker_agreement_id_fkey")
+  party     Party             @relation("EmployerWorkerParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "employer_worker_party_id_fkey")
+
+  @@unique([agreementId, partyId], map: "employer_worker_agreement_id_party_id_key")
+  @@index([tenantId], map: "employer_worker_tenant_id_idx")
+  @@index([partyId], map: "employer_worker_party_id_idx")
+  @@map("employer_worker")
+  @@schema("ops")
+}
+
+/// Listings in a leaving resident's destination (G8, D-299): only with consent `resident.relocation`; platform-only.
+model RelocationOffer {
+  id                String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String               @map("tenant_id") @db.Uuid
+  leaseId           String               @map("lease_id") @db.Uuid
+  userId            String               @map("user_id") @db.Uuid
+  consentId         String               @map("consent_id") @db.Uuid
+  moveOutDate       DateTime?            @map("move_out_date") @db.Date
+  areaSlug          String?              @map("area_slug")
+  province          String?
+  district          String?
+  maxRent           Decimal?             @map("max_rent") @db.Decimal(14, 2)
+  state             RelocationOfferState @default(open)
+  clickedListingIds String[]             @default([]) @map("clicked_listing_ids") @db.Uuid
+  notifiedAt        DateTime?            @map("notified_at") @db.Timestamptz(6)
+  closedAt          DateTime?            @map("closed_at") @db.Timestamptz(6)
+  version           Int                  @default(1)
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?              @map("created_by") @db.Uuid
+  updatedAt         DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?              @map("updated_by") @db.Uuid
+
+  tenant  Tenant      @relation("RelocationOfferTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "relocation_offer_tenant_id_fkey")
+  lease   Lease       @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "relocation_offer_lease_id_fkey")
+  user    UserAccount @relation("RelocationOfferUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "relocation_offer_user_id_fkey")
+  consent Consent     @relation(fields: [consentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "relocation_offer_consent_id_fkey")
+
+  @@unique([leaseId, userId], map: "relocation_offer_lease_id_user_id_key")
+  @@index([userId, state], map: "relocation_offer_user_id_state_idx")
+  @@index([tenantId], map: "relocation_offer_tenant_id_idx")
+  @@index([consentId], map: "relocation_offer_consent_id_idx")
+  @@map("relocation_offer")
+  @@schema("ops")
+}

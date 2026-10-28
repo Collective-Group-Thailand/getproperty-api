@@ -207,6 +207,15 @@ export class Tm30ListQuery extends PageQuery {
   @IsOptional()
   @IsEnum(Tm30StatusName)
   status?: Tm30StatusName;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'G8 (D-299): only the foreign workers of the leases attached to this employer agreement (an unknown or other tenant’s agreement lists nothing).',
+  })
+  @IsOptional()
+  @IsUUID()
+  employerAgreementId?: string;
 }
 
 export class Tm30ExportDto {

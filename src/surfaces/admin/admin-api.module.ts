@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { AdminComplianceController } from '../owner/compliance.controller';
 import { AdminDocumentTemplatesController } from '../owner/documents.controller';
+import { AdminRentalHandoffsController } from '../shared/growth-network.controllers';
 import { AdminMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
 import {
@@ -53,6 +54,7 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
     AdminSettingsController,
     AdminStorageController,
     AdminFeeAccrualsController,
+    AdminRentalHandoffsController,
     AdminMediaServicesController,
     AdminTenantStorageQuotaController,
     AdminMessagingRatesController,

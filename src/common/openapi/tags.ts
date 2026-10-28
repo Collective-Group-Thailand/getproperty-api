@@ -290,6 +290,15 @@ export const API_TAGS: Record<string, string> = {
   'resident.identityVerification': 'Verify my identity at the licensed e-KYC provider (optional, D-267).',
   'prospect.identityVerification': 'Verify my identity so owners see it on my enquiries (optional, D-267).',
   'resident.rentRecord': 'My rent record and what I share of it (D-256).',
+  'resident.relocationOffers':
+    'Moving out: places in my destination area and my rent record sent to a new landlord — only with consent resident.relocation (G8, D-299).',
+  'public.handoffs':
+    'A getbuild buyer’s invitation to rent out the unit they bought: preview or decline (G8, D-299).',
+  'owner.rentalHandoffs':
+    'Claim a getbuild rental handoff: the bought unit joins the portfolio with a prefilled listing draft (G8, D-299).',
+  'owner.employerAgreements':
+    'Employer housing: the employer pays its workers’ leases — statement per occupant, payroll-deduction export, TM30 of its foreign workers (G8, D-299).',
+  'admin.rentalHandoffs': 'getbuild rental handoffs: state, delivery to getbuild, resend (G8, D-299, O-033).',
   'prospect.rentRecord': 'My rent record, shared with an enquiry or as a letter (D-256).',
   'prospect.contracts':
     'Contract documents I sign as a prospect (reservation): read and e-sign (D-062, D-294).',

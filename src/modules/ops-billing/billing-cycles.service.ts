@@ -295,7 +295,8 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
         kind: 'lease',
         unitId: l.unitId,
         buildingId: l.buildingId,
-        partyId: l.lesseePartyId,
+        // G8 (D-299): an employer agreement addresses the lease's invoices to the payer
+        partyId: l.payerPartyId ?? l.lesseePartyId,
         lease: l,
       });
     }
@@ -924,7 +925,7 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
       kind: 'lease',
       unitId: lease.unitId,
       buildingId: lease.buildingId,
-      partyId: lease.lesseePartyId,
+      partyId: lease.payerPartyId ?? lease.lesseePartyId,
       lease,
     };
     const m = await this.meterInputs(
@@ -960,7 +961,7 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
       lease: this.leaseInput(billable.lease!),
       meters: m.meters,
       unitRatePlans: [],
-      charges: await this.pendingCharges(tx, lease.unitId, lease.lesseePartyId),
+      charges: await this.pendingCharges(tx, lease.unitId, lease.payerPartyId ?? lease.lesseePartyId),
       estimateSettlements: m.settlements,
       advanceRent: advance,
       vat: await this.vatOf(tx, lease.tenantId, moveOutAt),
@@ -972,7 +973,7 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
         tenantId: lease.tenantId,
         buildingId: lease.buildingId,
         unitId: lease.unitId,
-        billedPartyId: lease.lesseePartyId,
+        billedPartyId: lease.payerPartyId ?? lease.lesseePartyId,
         leaseId,
         billingCycleId: null,
         isFinal: true,

@@ -15,6 +15,7 @@ enum ExportKind {
   tax_annual_summary
   loss_report_csv
   etax_monthly_xlsx
+  payroll_deduction
 
   @@map("export_kind")
   @@schema("ops")

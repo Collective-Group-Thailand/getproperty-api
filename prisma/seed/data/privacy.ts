@@ -33,6 +33,19 @@ export const CONSENT_PURPOSES: ConsentPurposeSeed[] = [
     en: { title: 'News and offers', body: 'Draft ⚖ — receive news and offers from the lessor (optional).' },
   },
   {
+    key: 'resident.relocation',
+    audience: 'resident',
+    required: false,
+    th: {
+      title: 'ช่วยหาที่อยู่ใหม่เมื่อย้ายออก',
+      body: 'ร่าง ⚖ — เมื่อท่านแจ้งย้ายออก getproperty (Collective Group) จะแสดงห้องว่างในพื้นที่ที่ท่านบอกว่าจะย้ายไป ใช้เฉพาะพื้นที่ปลายทางและงบที่ท่านกรอก ไม่ส่งให้ผู้ให้เช่าปัจจุบัน และประวัติการจ่ายค่าเช่าจะส่งให้เจ้าของใหม่เฉพาะเมื่อท่านกดส่งเอง เลิกรับได้ทุกเมื่อ (ข้อมูลปลายทางถูกลบทันที)',
+    },
+    en: {
+      title: 'Help finding my next home when I move out',
+      body: 'Draft ⚖ — when you give notice, getproperty (Collective Group) shows vacant places in the area you say you are moving to, using only that destination and budget. Your current landlord does not see it, and your rent record goes to a new landlord only when you send it. Withdraw any time (the destination is erased at once).',
+    },
+  },
+  {
     key: 'prospect.enquiry',
     audience: 'prospect',
     required: true,

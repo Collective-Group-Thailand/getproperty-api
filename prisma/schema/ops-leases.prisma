@@ -204,6 +204,9 @@ model Lease {
   stampDutyReference             String?            @map("stamp_duty_reference")
   stampDutyPaidAt                DateTime?          @map("stamp_duty_paid_at") @db.Timestamptz(6)
   stampDutyDocumentId            String?            @map("stamp_duty_document_id") @db.Uuid
+  /// G8 (D-299): an employer pays the lease — invoices are addressed to payer_party_id.
+  employerAgreementId            String?            @map("employer_agreement_id") @db.Uuid
+  payerPartyId                   String?            @map("payer_party_id") @db.Uuid
   createdAt                      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy                      String?            @map("created_by") @db.Uuid
   updatedAt                      DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -222,6 +225,9 @@ model Lease {
   notices          LeaseNotice[]
   rentCertificates RentCertificate[]
   stampDutyDocument Document?           @relation("LeaseStampDutyDocument", fields: [stampDutyDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_stamp_duty_document_id_fkey")
+  employerAgreement EmployerAgreement?  @relation(fields: [employerAgreementId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_employer_agreement_id_fkey")
+  payer            Party?               @relation("LeasePayer", fields: [payerPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_payer_party_id_fkey")
+  relocationOffers RelocationOffer[]
   parties          LeaseParty[]
   lines            LeaseLine[]
   signatures       LeaseSignature[]
@@ -261,6 +267,8 @@ model Lease {
   @@index([renewedFromLeaseId], map: "lease_renewed_from_lease_id_idx")
   @@index([powerRatePlanId], map: "lease_power_rate_plan_id_idx")
   @@index([waterRatePlanId], map: "lease_water_rate_plan_id_idx")
+  @@index([employerAgreementId], map: "lease_employer_agreement_id_idx", where: raw("(employer_agreement_id IS NOT NULL)"))
+  @@index([payerPartyId], map: "lease_payer_party_id_idx", where: raw("(payer_party_id IS NOT NULL)"))
   @@map("lease")
   @@schema("ops")
 }

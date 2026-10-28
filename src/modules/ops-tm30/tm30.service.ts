@@ -199,10 +199,17 @@ export class Tm30Service extends TenantScopedRepository implements EventSubscrib
 
   // ------------------------------------------------------------------------------------------------- operators
 
-  list(ctx: TenantContext, q: { buildingId?: string; status?: Tm30Status; skip: number; take: number }) {
+  list(
+    ctx: TenantContext,
+    q: { buildingId?: string; status?: Tm30Status; employerAgreementId?: string; skip: number; take: number },
+  ) {
     const where: Prisma.Tm30ExportWhereInput = this.own(ctx, {
       ...(q.buildingId ? { buildingId: q.buildingId } : {}),
       ...(q.status ? { status: q.status } : {}),
+      // G8 (D-299): the foreign workers of an employer agreement's leases
+      ...(q.employerAgreementId
+        ? { lease: { tenantId: ctx.tenantId, employerAgreementId: q.employerAgreementId } }
+        : {}),
     });
     return this.db.tenant(ctx, async (tx) => ({
       rows: await tx.tm30Export.findMany({

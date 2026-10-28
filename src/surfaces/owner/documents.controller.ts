@@ -84,7 +84,7 @@ export function exportDto(
     version: j.version,
   };
 }
-const EXPORT_EXAMPLE: ExportJobDto = {
+export const EXPORT_EXAMPLE: ExportJobDto = {
   id: FAKE.uuid,
   kind: 'document_archive_zip' as ExportKindName,
   status: 'done' as ExportStatusName,

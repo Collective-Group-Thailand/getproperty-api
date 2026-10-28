@@ -157,6 +157,7 @@ export enum ExportKindName {
   TaxAnnualSummary = 'tax_annual_summary',
   LossReportCsv = 'loss_report_csv',
   EtaxMonthlyXlsx = 'etax_monthly_xlsx',
+  PayrollDeduction = 'payroll_deduction',
 }
 
 /** `ops.job_status`. */
@@ -199,6 +200,14 @@ export class ExportParamsDto {
   @IsOptional()
   @IsEnum(UtilityName)
   utility?: UtilityName;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'The employer agreement of a `payroll_deduction` export (with `period`, G8 / D-299).',
+  })
+  @IsOptional()
+  @IsUUID()
+  employerAgreementId?: string;
 }
 
 export class ExportCreateDto {

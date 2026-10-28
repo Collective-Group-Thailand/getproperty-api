@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 
 import { IntegrationDeliveryService } from './bridge-integrations/integration-delivery.service';
 import { IntegrationEventsService } from './bridge-integrations/integration-events.service';
+import { RentalHandoffsService } from './bridge-integrations/rental-handoffs.service';
 import { BillingCyclesService } from './ops-billing/billing-cycles.service';
 import { BillingInputs } from './ops-billing/billing-inputs';
 import { InvoiceScoreSource } from './ops-billing/invoice-score.source';
@@ -31,6 +32,7 @@ import { EtaxService } from './ops-etax/etax.service';
 import { ContractLibraryService } from './ops-leases/contract-library.service';
 import { ContractRenderer } from './ops-leases/contract-renderer';
 import { ContractsService } from './ops-leases/contracts.service';
+import { EmployerHousingService } from './ops-leases/employer-housing.service';
 import { IncomeSummariesService } from './ops-leases/income-summaries.service';
 import { LeaseNoticesService } from './ops-leases/lease-notices.service';
 import { LeaseRenewalsService } from './ops-leases/lease-renewals.service';
@@ -52,6 +54,7 @@ import { ListingSocialService } from './ops-listings/listing-social.service';
 import { ListingsService } from './ops-listings/listings.service';
 import { MandatesService } from './ops-listings/mandates.service';
 import { PublicListingsService } from './ops-listings/public-listings.service';
+import { RelocationService } from './ops-listings/relocation.service';
 import { SelfViewingService } from './ops-listings/self-viewing.service';
 import { SocialChannelsService } from './ops-listings/social-channels.service';
 import { PartiesService } from './ops-parties/parties.service';
@@ -170,6 +173,9 @@ const SERVICES = [
   FinanceExports,
   IntegrationEventsService,
   IntegrationDeliveryService,
+  RentalHandoffsService,
+  EmployerHousingService,
+  RelocationService,
   ServiceCategoriesService,
   ServiceRequestsService,
   ServiceCostsService,
@@ -195,7 +201,7 @@ const SERVICES = [
 
 /**
  * Group A business modules (master plan §4: `modules/ops-*`), shared by the HTTP and worker processes so their
- * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4); B4: rate plans, billing cycles, invoices (4.2); documents, Flex, exports (4.3); payments, slips, receipts (4.4); receivables, dunning, penalties, dashboard, finance exports (4.5); B5: service requests, work orders, preventive maintenance, warranty bridge (5.1); access lives in smart (5.2); community (5.3); staff tasks (5.4); B6.2: e-Tax submissions, TM30 notifications.
+ * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4); B4: rate plans, billing cycles, invoices (4.2); documents, Flex, exports (4.3); payments, slips, receipts (4.4); receivables, dunning, penalties, dashboard, finance exports (4.5); B5: service requests, work orders, preventive maintenance, warranty bridge (5.1); access lives in smart (5.2); community (5.3); staff tasks (5.4); B6.2: e-Tax submissions, TM30 notifications; G8: getbuild rental handoffs, employer housing, relocation offers.
  */
 @Global()
 @Module({ providers: SERVICES, exports: SERVICES })

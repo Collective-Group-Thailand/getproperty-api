@@ -942,6 +942,62 @@ export const SETTINGS: readonly SettingDef[] = [
     value: false,
     reason: 'seed: D-297 (no free boost until decided, O-027)',
   },
+  // --- G8 getbuild handoff, relocation network (D-289, D-299; O-033) ----------------------------------------------
+  {
+    key: 'getbuild.handoff.valid_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-299 (G8): days a getbuild rental handoff invitation stays open for the buyer before it expires (counted from the transfer event).',
+    editableBy: ADMIN,
+    value: 30,
+    reason: 'seed: D-299',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 365 ? [] : ['1–365 days'],
+  },
+  {
+    key: 'getbuild.handoff.campaign_tags',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-299 / O-033 (G8): campaign tag per getbuild developer ({"<developer tenant id>": "<tag>"}) put on the listing drafted from a rental handoff; a developer not listed gets "getbuild:<developer tenant id>".',
+    editableBy: ADMIN,
+    value: {},
+    reason: 'seed: D-299 (no developer campaign yet, O-033)',
+    check: (value: unknown) =>
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      Object.values(value as Record<string, unknown>).every(
+        (v) => typeof v === 'string' && v.trim().length > 0 && v.length <= 100,
+      )
+        ? []
+        : ['an object of developer id → tag (1–100 characters)'],
+  },
+  {
+    key: 'relocation.offer.max_listings',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-299 (G8): how many public listings in the destination a relocation offer shows to a resident who consented (resident.relocation).',
+    editableBy: ADMIN,
+    value: 10,
+    reason: 'seed: D-299',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 50 ? [] : ['1–50 listings'],
+  },
+  {
+    key: 'relocation.offer.keep_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-299 (G8): days after the lease ended until an open relocation offer closes (its destination is then erased, PDPA minimisation).',
+    editableBy: ADMIN,
+    value: 30,
+    reason: 'seed: D-299',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 180 ? [] : ['0–180 days'],
+  },
   {
     key: 'listing.comparables.min',
     valueType: 'int',

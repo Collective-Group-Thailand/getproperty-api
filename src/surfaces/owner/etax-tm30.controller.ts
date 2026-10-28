@@ -254,8 +254,8 @@ export class OwnerTm30Controller {
     id: 'owner.tm30.list',
     summary: 'TM30 notifications (export log)',
     description:
-      'Every foreign occupant who moved in, with the 24-hour deadline (Immigration Act B.E. 2522 s.38, `tm30.notify_within_hours`), the data still missing for the Immigration Bureau, the upload file it went into and the recorded submission — the building’s export log (D-052, D-216).',
-    implements: ['D-052', 'D-216'],
+      'Every foreign occupant who moved in, with the 24-hour deadline (Immigration Act B.E. 2522 s.38, `tm30.notify_within_hours`), the data still missing for the Immigration Bureau, the upload file it went into and the recorded submission — the building’s export log (D-052, D-216). `employerAgreementId` narrows it to the foreign workers of an employer’s leases (G8, D-299).',
+    implements: ['D-052', 'D-216', 'D-299'],
   })
   @ApiPaginated(Tm30ExportDto, { example: TM30_EXAMPLE })
   @ApiStandardErrors('validation.failed', ...T)
@@ -263,6 +263,7 @@ export class OwnerTm30Controller {
     const { rows, total } = await this.tm30.list(ctx, {
       buildingId: q.building,
       status: q.status,
+      employerAgreementId: q.employerAgreementId,
       ...toSkipTake(q),
     });
     return paginated(
