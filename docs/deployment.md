@@ -34,7 +34,7 @@ network `collective`:
 | `liff` | `getproperty/liff:${LIFF_IMAGE_TAG}` | 3000 | `/api/healthz` | 256M | 192M |
 | `api` | `getproperty/api:${IMAGE_TAG}` · `node dist/src/main.js` | 3000 | `/health` (+ `/metrics`) | 640M | 512M |
 | `worker` | same · `node dist/src/worker.js` | 3001 | `/health` (+ `/metrics`) | 1536M (own Chromium, ADR-0012) | 512M once `pdf-render` is consumed (D-236, D-242); **1.5G until then** (ADR-0012) |
-| `ingest` | same · `node dist/src/ingest.js` | 3001 (`INGEST_HEALTH_PORT=3001` in its own container; image default 3002) | `/health` (+ `/metrics`) | 192M | 192M |
+| `ingest` | same · `node dist/src/ingest.js` | 3001 (`INGEST_HEALTH_PORT=3001` in its own container; image default 3002) | `/health` (+ `/metrics`) | 512M | 512M (O-037; was 192M) |
 | `clamav` | — (shared platform service `platform-clamav-1:3310`, T-2) | — | — | 0 | 0 |
 | `migrate` | same · `node dist/src/migrate.js` (one-shot, profile `tools`) | — | exit code | 512M | 512M one-shot (outside the steady state) |
 | **Total** | | | | **≈ 2.8 GB while ADR-0012 is active** | **1,792 MB ≈ 1.8 GB** |
@@ -302,9 +302,9 @@ applies only to overwritten versions — never overwrite a published version, bu
 ## 6. Sizing
 
 **Budget (locked decision 14, D-233)**: on the 16 GB prod box platform ≈ 6 GB, getpack 3.2 GB, **getproperty ≈ 1.8 GB**,
-getpop ≈ 1.5 GB, hard limits in compose. getproperty's line: api 512M · worker 512M · ingest 192M · web 384M · liff
-192M = 1,792 MB (migrate 512M one-shot). ClamAV is a shared platform service (T-2); while ADR-0012 is active the worker
-runs its own Chromium at 1.5 GB (≈ 2.8 GB in total) until getpack's `pdf-render` consumer is deployed (D-242); the
+getpop ≈ 1.5 GB, hard limits in compose. getproperty's line: api 512M · worker 512M · ingest 512M (O-037: 192M OOM-killed it at boot) · web 384M · liff
+192M = 2,112 MB (migrate 512M one-shot). ClamAV is a shared platform service (T-2); while ADR-0012 is active the worker
+runs its own Chromium at 1.5 GB (≈ 3.1 GB in total) until getpack's `pdf-render` consumer is deployed (D-242); the
 300-meter / 300-unit load test is re-run under the limits on UAT (T-11). On **uat** (8 GB) the limits over-commit (they are ceilings): set
 `POSTGRES_MEMORY_LIMIT=2g` for uat and watch `container_memory_working_set_bytes` in Grafana. The R1 load target
 (300 meters / 300 units, D-207) is a single-box workload; the telemetry volumes per KPI and the trigger for a DB box
