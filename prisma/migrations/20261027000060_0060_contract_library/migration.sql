@@ -21,9 +21,12 @@ CREATE TYPE ops.renewal_rent_source AS ENUM ('benchmark', 'comparables', 'curren
 
 -- Library columns ------------------------------------------------------------------------------------------------
 ALTER TABLE ops.lease_template ADD COLUMN kind ops.contract_kind NOT NULL DEFAULT 'lease_apartment_ocpb';
+-- Platform templates (tenant_id NULL) are not writable through RLS: run as gp_platform (BYPASSRLS), as in 0059.
+SET ROLE gp_platform;
 UPDATE ops.lease_template SET kind = 'lease_condo_private' WHERE tenant_id IS NULL AND key = 'landlord_condo_unit';
 UPDATE ops.lease_template SET kind = 'lease_house' WHERE tenant_id IS NULL AND key = 'landlord_house';
 UPDATE ops.lease_template SET kind = 'lease_room' WHERE tenant_id IS NULL AND key = 'landlord_room';
+RESET ROLE;
 CREATE INDEX lease_template_kind_idx ON ops.lease_template (kind);
 COMMENT ON COLUMN ops.lease_template.kind IS 'D-290 / D-294: contract library kind (lease kinds sign through ops.lease, others through ops.contract_document, notices are B7.5 letters).';
 

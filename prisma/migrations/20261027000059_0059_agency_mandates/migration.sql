@@ -247,6 +247,9 @@ COMMENT ON FUNCTION platform.document_legal_hold_mirror() IS 'D-286 / G2: keeps 
 CREATE TRIGGER document_legal_hold_mirror AFTER INSERT OR UPDATE OF retain_until, released_at ON platform.document_legal_hold
   FOR EACH ROW EXECUTE FUNCTION platform.document_legal_hold_mirror();
 
+-- Data backfills run as gp_platform (BYPASSRLS; the migrating login is a member, asset-core 0001): under FORCE RLS
+-- the owner login of a deployed database would see no rows here and may not write the platform catalogue.
+SET ROLE gp_platform;
 UPDATE core.document d
    SET legal_hold = (h.released_at IS NULL),
        legal_hold_until = CASE WHEN h.released_at IS NULL AND h.retain_until IS NOT NULL
@@ -263,3 +266,4 @@ SELECT v.setting_id, v.value || jsonb_build_object('agency', CASE WHEN s.key = '
   JOIN platform.setting_version v ON v.setting_id = s.id AND v.effective_from <= now() AND (v.effective_to IS NULL OR v.effective_to > now())
  WHERE s.key IN ('storage.free_gb', 'storage.price_per_gb_month')
    AND jsonb_typeof(v.value) = 'object' AND NOT v.value ? 'agency';
+RESET ROLE;
