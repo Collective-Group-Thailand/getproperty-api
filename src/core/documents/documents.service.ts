@@ -459,17 +459,24 @@ export class DocumentsService extends TenantScopedRepository {
   }
 
   /**
-   * Removes a document's objects (file, thumbnail, renditions) and marks the row deleted, inside the caller's
-   * transaction; the quota drops by what it occupied (G1). Callers check legal holds first (D-286).
+   * Marks a document deleted inside the caller's transaction and returns the keys of its objects (file, thumbnail,
+   * renditions) for `deleteObjects` **after that transaction commits**; the quota drops by what it occupied (G1).
+   * The row is locked and its legal hold checked first — the core column and the app's hold record — so a held
+   * document (also one already soft-deleted, where the database guard does not fire again) is refused with
+   * `storage.legal_hold` before anything is touched; the guarded UPDATE runs before any object goes (G review #7,
+   * D-286).
    */
   async purgeStored(
     tx: Tx,
     doc: Pick<Document, 'id' | 'storageKey' | 'thumbnailKey' | 'deletedAt'>,
     data: { at: Date; reason: string; by?: string | null },
-  ): Promise<void> {
+  ): Promise<string[]> {
+    const [row] = await tx.$queryRaw<{ legal_hold: boolean; legal_hold_until: Date | null }[]>`
+      SELECT legal_hold, legal_hold_until FROM core.document WHERE id = ${doc.id}::uuid FOR UPDATE`;
+    const heldByCore = row?.legal_hold === true && (!row.legal_hold_until || row.legal_hold_until > data.at);
+    if (heldByCore || (await this.legalHolds.heldAmong(tx, [doc.id], data.at)).length)
+      throw new DomainException('storage.legal_hold', { extensions: { heldDocumentIds: [doc.id] } });
     const derivatives = await this.ledger.uncount(tx, doc.id);
-    const keys = new Set([doc.storageKey, ...(doc.thumbnailKey ? [doc.thumbnailKey] : []), ...derivatives]);
-    for (const key of keys) await this.storage.delete(key).catch(() => undefined);
     await tx.document.update({
       where: { id: doc.id },
       data: {
@@ -479,6 +486,12 @@ export class DocumentsService extends TenantScopedRepository {
         ...(data.by ? { deletedBy: data.by } : {}),
       },
     });
+    return [...new Set([doc.storageKey, ...(doc.thumbnailKey ? [doc.thumbnailKey] : []), ...derivatives])];
+  }
+
+  /** Deletes objects whose document rows were already marked deleted and committed (best effort, idempotent). */
+  async deleteObjects(keys: Iterable<string>): Promise<void> {
+    for (const key of new Set(keys)) await this.storage.delete(key).catch(() => undefined);
   }
 
   /** The stored bytes of a document the caller may already see (inside its transaction). */

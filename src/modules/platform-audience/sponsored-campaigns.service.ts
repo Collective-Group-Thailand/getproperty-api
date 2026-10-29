@@ -779,8 +779,27 @@ export class SponsoredCampaignsService {
         }),
       );
     }
-    // complete when nothing waits and nothing more can be sent
-    const done = await this.db.platform(async (tx) => {
+    const done = await this.finishPass(id, {
+      hadPending: plan.hadPending,
+      allTaken: plan.allTaken,
+      windowOver: plan.windowOver,
+      messages: plan.messages !== null,
+      cap,
+    });
+    return { sent, completed: done };
+  }
+
+  /**
+   * Completes the campaign when nothing waits and nothing more can be sent (the end of a pass). The campaign row is
+   * locked first and its state read again under the lock, so two overlapping passes never complete (and invoice) it
+   * twice (G review #5).
+   */
+  async finishPass(
+    id: string,
+    plan: { hadPending: boolean; allTaken: boolean; windowOver: boolean; messages: boolean; cap: number },
+  ): Promise<boolean> {
+    return this.db.platform(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM platform.sponsored_campaign WHERE id = ${id}::uuid FOR UPDATE`;
       const c = await tx.sponsoredCampaign.findUniqueOrThrow({ where: { id } });
       if (c.state !== 'sending') return false;
       const pending = await tx.sponsoredDelivery.count({ where: { campaignId: id, state: 'pending' } });
@@ -788,11 +807,10 @@ export class SponsoredCampaignsService {
       const full = c.delivered >= c.maxRecipients;
       // nobody left: this pass took everyone who fits (or found nobody) and nothing waits for quiet hours
       const exhausted = !plan.hadPending && plan.allTaken;
-      if (!(full || exhausted || plan.windowOver || !plan.messages || cap <= 0)) return false;
+      if (!(full || exhausted || plan.windowOver || !plan.messages || plan.cap <= 0)) return false;
       await this.complete(tx, c);
       return true;
     });
-    return { sent, completed: done };
   }
 
   /**

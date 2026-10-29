@@ -6,14 +6,16 @@ import { bangkokDate } from '@common/time/bangkok';
 import { AuditService } from '@core/audit/audit.service';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { DomainEvents } from '@core/events/domain-events';
+import { type DomainEventEnvelope } from '@core/events/domain-events';
 import { type DomainEventType } from '@core/events/event-types';
+import { type EventSubscriber, EventSubscriberRegistry } from '@core/events/subscribers';
 import { ConsentService } from '@core/privacy/consent.service';
 import { SettingsService } from '@core/settings/settings.service';
 import { type Tx } from '@database/prisma.service';
 import { TenantTx } from '@database/tenant-tx';
 import { type BuildingReview, type BuildingReviewState, type Prisma } from '@generated/prisma/client';
 import { ResidentLeasesService } from '@modules/ops-leases/resident-leases.service';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
 
 import {
   cleanText,
@@ -68,7 +70,10 @@ export type ReviewRow = Prisma.BuildingReviewGetPayload<{ include: typeof REVIEW
  * rating, text, tenure months and "verified tenant" — never the name, unit or exact dates.
  */
 @Injectable()
-export class BuildingReviewsService {
+export class BuildingReviewsService implements EventSubscriber, OnModuleInit {
+  readonly name = 'building-reviews';
+  readonly eventTypes = ['consent.changed'] as const;
+
   constructor(
     private readonly db: TenantTx,
     private readonly residents: ResidentLeasesService,
@@ -76,8 +81,36 @@ export class BuildingReviewsService {
     private readonly settings: SettingsService,
     private readonly audit: AuditService,
     private readonly events: DomainEvents,
+    private readonly registry: EventSubscriberRegistry,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
+
+  onModuleInit(): void {
+    this.registry.register(this);
+  }
+
+  /**
+   * `consent.changed` (G review #1, D-301 (1), D-025): a withdrawal of `review.publish` — from the consent screen or
+   * any other channel — withdraws every review the person submitted under an earlier grant (text erased), like their
+   * own withdrawal. A review submitted after the withdrawal carries its own, newer grant and stays.
+   */
+  async handle(event: DomainEventEnvelope, tx: Tx): Promise<void> {
+    const p = event.payload;
+    if (p.purposeKey !== REVIEW_PURPOSE || p.subjectType !== 'user' || p.granted !== false) return;
+    const consent = await tx.consent.findUnique({
+      where: { id: event.aggregateId },
+      select: { capturedAt: true },
+    });
+    if (!consent) return;
+    const rows = await tx.buildingReview.findMany({
+      where: {
+        authorUserId: String(p.subjectId),
+        state: { not: 'withdrawn' },
+        submittedAt: { lte: consent.capturedAt },
+      },
+    });
+    for (const row of rows) await this.withdrawIn(tx, row, 'consent');
+  }
 
   private userId(): string {
     const id = userIdOf(RequestContext.actor());
@@ -206,10 +239,13 @@ export class BuildingReviewsService {
     });
   }
 
-  /** The reviewer withdraws their review: the text is erased at once; the row stays (one per lease). */
+  /**
+   * The reviewer withdraws their review: the text is erased at once; the row stays (one per lease). Authorised by the
+   * review's author alone (G review #1, D-301 (5)): the author keeps this right after the owner unlinked their login
+   * from the lease party or the lease left their token — anyone else gets 404.
+   */
   async withdraw(leaseId: string): Promise<BuildingReview> {
     const userId = this.userId();
-    await this.residents.access(leaseId);
     return this.db.platform(async (tx) => {
       const row = await tx.buildingReview.findUnique({ where: { leaseId } });
       if (!row || row.authorUserId !== userId) throw new DomainException('http.not_found');
@@ -218,7 +254,11 @@ export class BuildingReviewsService {
     });
   }
 
-  private async withdrawIn(tx: Tx, row: BuildingReview, by: 'author' | 'dsr'): Promise<BuildingReview> {
+  private async withdrawIn(
+    tx: Tx,
+    row: BuildingReview,
+    by: 'author' | 'consent' | 'dsr',
+  ): Promise<BuildingReview> {
     const updated = await tx.buildingReview.update({
       where: { id: row.id },
       data: {
@@ -488,7 +528,26 @@ export class BuildingReviewsService {
         select: { buildingId: true },
       });
       if (!listing) throw new DomainException('http.not_found');
-      const where: Prisma.BuildingReviewWhereInput = { buildingId: listing.buildingId, state: 'published' };
+      // defence in depth (G review #1): a review whose author withdrew `review.publish` is never served, even before
+      // the `consent.changed` subscriber withdrew it
+      const authors = await tx.buildingReview.findMany({
+        where: { buildingId: listing.buildingId, state: 'published', authorUserId: { not: null } },
+        distinct: ['authorUserId'],
+        select: { authorUserId: true },
+      });
+      const withdrawn = authors.length
+        ? (
+            await tx.$queryRaw<{ subject_id: string }[]>`
+              SELECT subject_id::text FROM platform.v_consent_state
+               WHERE subject_type = 'user' AND purpose_key = ${REVIEW_PURPOSE} AND NOT granted
+                 AND subject_id = ANY(${authors.map((a) => a.authorUserId!)}::uuid[])`
+          ).map((r) => r.subject_id)
+        : [];
+      const where: Prisma.BuildingReviewWhereInput = {
+        buildingId: listing.buildingId,
+        state: 'published',
+        ...(withdrawn.length ? { OR: [{ authorUserId: null }, { authorUserId: { notIn: withdrawn } }] } : {}),
+      };
       const ratings = await tx.buildingReview.findMany({ where, select: { rating: true } });
       return {
         summary: summarise(ratings.map((r) => r.rating)),

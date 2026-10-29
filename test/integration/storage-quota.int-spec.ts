@@ -617,4 +617,41 @@ describe('G1 storage quota, legal hold, packages and reclaim (real PostgreSQL)',
     ).toEqual({ document_kind: 'tm30_export' });
     await expectExact('end');
   });
+
+  // G review #7: the guarded DB update (and an explicit hold check) come before any object is deleted
+  it('purging a held document refuses before its file is touched, also when it is already soft-deleted', async () => {
+    const documents = t.app.get(DocumentsService);
+    const tx = t.app.get(TenantTx);
+    const doc = await tx.tenant({ tenantId: DEV.tenantId, source: 'path' }, (x) =>
+      documents.storeGenerated(x, {
+        tenantId: DEV.tenantId,
+        kind: 'export',
+        scopeType: 'tenant',
+        scopeId: DEV.tenantId,
+        buildingId: null,
+        title: 'tm30-held.xlsx',
+        mimeType: 'application/octet-stream',
+        body: Buffer.alloc(1024, 7),
+        holdPolicyKey: 'tm30_export',
+      }),
+    );
+    const purge = (deletedAt: Date | null) =>
+      tx.platform((x) =>
+        documents.purgeStored(x, { ...doc, deletedAt }, { at: t.clock.now(), reason: 'G review test' }),
+      );
+    await expect(purge(null)).rejects.toThrow();
+    expect(fakeS3().objects.has(doc.storageKey)).toBe(true);
+    // a document already soft-deleted: the database guard does not fire again, the service still checks the hold
+    await db.admin.query(`SET session_replication_role = replica`);
+    await db.admin.query(`UPDATE core.document SET deleted_at = now() WHERE id = $1`, [doc.id]);
+    await db.admin.query(`SET session_replication_role = origin`);
+    await expect(purge(new Date())).rejects.toThrow();
+    expect(fakeS3().objects.has(doc.storageKey)).toBe(true);
+    expect(await q('SELECT upload_state::text FROM core.document WHERE id = $1', [doc.id])).toEqual([
+      { upload_state: 'verified' },
+    ]);
+    await db.admin.query(`SET session_replication_role = replica`);
+    await db.admin.query(`UPDATE core.document SET deleted_at = NULL WHERE id = $1`, [doc.id]);
+    await db.admin.query(`SET session_replication_role = origin`);
+  });
 });

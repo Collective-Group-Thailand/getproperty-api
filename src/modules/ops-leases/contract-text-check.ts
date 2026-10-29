@@ -69,31 +69,88 @@ const HELPERS = new Set(['if', 'unless', 'each', 'with']);
 const DATA_VARS = new Set(['index', 'first', 'last', 'key']);
 const MAX_BODY = 200_000;
 
+/** Private-use markers standing in for a Handlebars expression while the HTML is checked (G review #3). */
+const VALUE_MARK = '\uE000';
+const BLOCK_MARK = '\uE001';
+const MUSTACHE = /\{\{\{[\s\S]*?\}\}\}|\{\{[\s\S]*?\}\}/g;
+const BLOCK = /^\{\{~?\s*(?:[#/^]|else\b)/;
+const SIGNATURE_SRC = /^\{\{\s*signatures\.[a-z_]+\.imageDataUrl\s*\}\}$/;
+/** A start or end tag with quote-aware attributes: a ">" inside a quoted value does not end it (as in a browser). */
+const TAG = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
+/** One attribute: name, then an optional double-, single- or un-quoted value. */
+const ATTR = /\s*([^\s"'<>/=`]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'<>=`]+)))?/y;
+
+/**
+ * The HTML whitelist (D-294), checked the way a browser parses the text: every `{{…}}` is first replaced by a marker
+ * (a value marker, or a block marker for `{{#…}}` / `{{/…}}` / `{{else}}`), so a quote or `>` written next to a
+ * variable cannot end a tag or a value for the checker while Chromium reads it as markup (G review #3). A Handlebars
+ * expression may not carry quotes or angle brackets; a variable may not stand where an attribute name is; a tag that
+ * does not parse, a comment or a declaration is refused; an image needs the signature source.
+ */
 function htmlProblems(body: string): TemplateProblem[] {
   const out: TemplateProblem[] = [];
   const bad = (code: string, message: string) => out.push({ path: 'bodyHtml', code, message });
-  if (/<\s*[!?](?!--)/.test(body)) bad('tag', 'declarations and processing instructions are not allowed');
-  for (const m of body.matchAll(/<\/?\s*([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g)) {
-    const tag = m[1]!.toLowerCase();
+  const originals: string[] = [];
+  const text = body.replace(MUSTACHE, (m) => {
+    if (/["'<>`]/.test(m)) bad('attribute', 'a {{…}} expression may not contain quotes or angle brackets');
+    if (BLOCK.test(m)) return BLOCK_MARK;
+    originals.push(m);
+    return `${VALUE_MARK}${originals.length - 1}${VALUE_MARK}`;
+  });
+  if (/<\s*[!?]/.test(text)) bad('tag', 'comments, declarations and processing instructions are not allowed');
+  const starts = new Set<number>();
+  for (const m of text.matchAll(TAG)) {
+    starts.add(m.index);
+    const closing = m[1] === '/';
+    const tag = m[2]!.toLowerCase();
     if (!TAGS.has(tag)) {
       bad('tag', `<${tag}> is not allowed in a contract text`);
       continue;
     }
-    const attrs = m[2] ?? '';
-    for (const a of attrs.matchAll(/([^\s=/]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'>]+))?/g)) {
-      const name = a[1]!.toLowerCase();
-      const value = (a[2] ?? '').replace(/^["']|["']$/g, '');
-      if (name.startsWith('{{') || name.endsWith('}}')) continue;
+    const attrs = m[3] ?? '';
+    let pos = 0;
+    let src: string | null = null;
+    for (;;) {
+      ATTR.lastIndex = pos;
+      const a = ATTR.exec(attrs);
+      if (!a) break;
+      pos = ATTR.lastIndex;
+      const name = a[1]!.replaceAll(BLOCK_MARK, '').toLowerCase();
+      const raw = a[2] ?? a[3] ?? a[4] ?? '';
+      if (!name) continue; // only {{#if}} / {{/if}} around attributes
+      if (name.includes(VALUE_MARK)) {
+        bad('attribute', `a variable cannot be an attribute name (<${tag}>)`);
+        continue;
+      }
+      const value = raw.replace(new RegExp(`${VALUE_MARK}(\\d+)${VALUE_MARK}`, 'g'), (_, i: string) =>
+        originals[Number(i)]!.replace(/[{}]/g, ''),
+      );
       if (!ATTRS.has(name)) bad('attribute', `attribute "${name}" is not allowed (<${tag}>)`);
-      else if (name === 'src' && (tag !== 'img' || !/^\{\{[^{}]+\}\}$/.test(value.trim())))
-        bad(
-          'attribute',
-          'an image source may only be a signature variable ({{signatures.<role>.imageDataUrl}})',
-        );
-      else if (/javascript:|url\s*\(|expression\s*\(/i.test(value))
+      else if (name === 'src') {
+        const whole = /^\uE000(\d+)\uE000$/.exec(raw.trim());
+        src = whole ? originals[Number(whole[1])]! : '';
+        if (tag !== 'img' || !SIGNATURE_SRC.test(src))
+          bad(
+            'attribute',
+            'an image source may only be a signature variable ({{signatures.<role>.imageDataUrl}})',
+          );
+      } else if (/javascript:|url\s*\(|expression\s*\(/i.test(value))
         bad('attribute', `unsafe value of "${name}"`);
     }
+    if (
+      attrs
+        .slice(pos)
+        .replaceAll(BLOCK_MARK, '')
+        .replace(/\s*\/?\s*$/, '') !== ''
+    )
+      bad('attribute', `malformed attributes in <${tag}>`);
+    // without its signature source an image would show its alt text, which the compliance check never reads
+    if (tag === 'img' && !closing && src === null)
+      bad('attribute', 'an image needs a signature source ({{signatures.<role>.imageDataUrl}})');
   }
+  // a "<" that starts something tag-like but did not parse as a whole tag (an unclosed quote, a missing ">")
+  for (const m of text.matchAll(/<\/?[a-zA-Z]/g))
+    if (!starts.has(m.index)) bad('tag', 'a tag is not closed or not well formed');
   return out;
 }
 
@@ -292,6 +349,15 @@ function hits(re: RegExp, text: string): string[] {
   return out;
 }
 
+/** Puts the alt text of every image after it as text, so the clause checks read it (G review #3). */
+function withAltText(html: string): string {
+  return html.replace(/<img\b((?:[^>"']|"[^"]*"|'[^']*')*)>/gi, (tag: string, attrs: string) => {
+    const alt = /\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i.exec(attrs);
+    const value = alt ? (alt[1] ?? alt[2] ?? alt[3] ?? '') : '';
+    return value ? `${tag} ${value} ` : tag;
+  });
+}
+
 /**
  * Forbidden clause types in an edited text compared with its base (D-020, D-294): protective wording of the base
  * that is gone, and forbidden wording that is new (not negated, not already in the same clause of the base). Only for
@@ -304,6 +370,9 @@ export function forbiddenFindings(
   inScope: boolean,
 ): ClauseFinding[] {
   if (!CHECKED_KINDS.includes(kind)) return [];
+  // an image's alt text reaches the PDF when the image does not load: read it like visible text (G review #3)
+  base = withAltText(base);
+  edited = withAltText(edited);
   const severity = inScope ? 'block' : 'warn';
   const out: ClauseFinding[] = [];
   const baseText = htmlToText(base);

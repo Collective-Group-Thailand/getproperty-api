@@ -24,7 +24,12 @@ export interface AiUsageInput {
   outcome?: 'ok' | 'error';
   subjectType?: string | null;
   subjectId?: string | null;
+  /** The reservation of this call (`reserve`), removed in the same transaction as the record. */
+  reservationId?: string | null;
 }
+
+/** How long a reservation counts when its call never gets recorded (a crashed process). */
+const RESERVATION_TTL_MS = 5 * 60_000;
 
 export interface AiUsageMonth {
   month: string;
@@ -56,8 +61,10 @@ export class AiUsageService {
       const now = this.clock.now();
       const costs = await this.settings.valueAt<AiUnitCosts>('ai.unit_costs', now);
       const unitCost = costs[input.feature]?.costPerUnitThb ?? '0';
-      await this.db.platform((tx) =>
-        tx.aiUsageRecord.create({
+      await this.db.platform(async (tx) => {
+        if (input.reservationId)
+          await tx.aiUsageReservation.deleteMany({ where: { id: input.reservationId } });
+        await tx.aiUsageRecord.create({
           data: {
             tenantId: input.tenantId,
             buildingId: input.buildingId ?? null,
@@ -75,11 +82,60 @@ export class AiUsageService {
             subjectId: input.subjectId ?? null,
             occurredAt: now,
           },
-        }),
-      );
+        });
+      });
     } catch (error) {
       this.logger.error(`AI usage not recorded for ${input.feature}: ${(error as Error).message}`);
     }
+  }
+
+  /**
+   * Takes one place in a monthly limit before an AI call (G review #6, D-301 (6), O-009): under a lock per tenant and
+   * feature, the month's `ok` records plus the live reservations must stay below `limit`. Returns the reservation id
+   * (hand it to `record`, or `release` it), or null when the limit is reached. Concurrent calls therefore never
+   * exceed the limit; a reservation whose call is never recorded stops counting after a few minutes.
+   */
+  async reserve(input: {
+    tenantId: string;
+    feature: AiFeature;
+    limit: number;
+    since: Date;
+    requestRef?: string | null;
+  }): Promise<string | null> {
+    const now = this.clock.now();
+    return this.db.platform(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`ai-quota:${input.tenantId}:${input.feature}`}))`;
+      const used = await tx.aiUsageRecord.count({
+        where: {
+          tenantId: input.tenantId,
+          feature: input.feature,
+          outcome: 'ok',
+          occurredAt: { gte: input.since },
+        },
+      });
+      const reserved = await tx.aiUsageReservation.count({
+        where: { tenantId: input.tenantId, feature: input.feature, expiresAt: { gt: now } },
+      });
+      if (used + reserved >= input.limit) return null;
+      const row = await tx.aiUsageReservation.create({
+        data: {
+          tenantId: input.tenantId,
+          feature: input.feature,
+          requestRef: input.requestRef ?? null,
+          reservedAt: now,
+          expiresAt: new Date(now.getTime() + RESERVATION_TTL_MS),
+        },
+        select: { id: true },
+      });
+      return row.id;
+    });
+  }
+
+  /** Gives a reservation back without a record (the call was not made). */
+  async release(reservationId: string): Promise<void> {
+    await this.db
+      .platform((tx) => tx.aiUsageReservation.deleteMany({ where: { id: reservationId } }))
+      .catch((error: Error) => this.logger.error(`AI reservation not released: ${error.message}`));
   }
 
   /** Monthly totals per feature of a tenant (Bangkok months), newest first. */

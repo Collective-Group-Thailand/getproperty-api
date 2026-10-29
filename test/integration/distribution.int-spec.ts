@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 
 import { fakeLineIdToken } from '@collective/integrations/line';
+import { type FakeObjectStorage, OBJECT_STORAGE } from '@collective/integrations/storage';
 import { bangkokDate } from '@common/time/bangkok';
 import { FACEBOOK_PAGES } from '@integrations/facebook/facebook-pages.port';
 import { type FakeFacebookPages } from '@integrations/facebook/fake-facebook-pages';
@@ -211,6 +212,47 @@ describe('G4 distribution (real PostgreSQL)', () => {
     );
     expect(docs[0]!.n).toBe(1);
     await t.http.get('/v1/public/listings/no-such-listing/og-image').expect(404);
+  });
+
+  // G review #4: one render per listing at a time; the superseded card is purged (it counted to the quota)
+  it('parallel renders after a change leave one live card; the old card is purged', async () => {
+    const ref = `listing:${listing.id}:og-image`;
+    const cards = () =>
+      q<{ storage_key: string; deleted_at: Date | null }>(
+        `SELECT storage_key, deleted_at FROM core.document WHERE source_ref = $1 ORDER BY created_at`,
+        [ref],
+      );
+    const storage = t.app.get<FakeObjectStorage>(OBJECT_STORAGE);
+    const [first] = await cards();
+    const rent = (
+      await q<{ rent: string }>('SELECT rent::text FROM ops.listing WHERE id = $1', [listing.id])
+    )[0]!.rent;
+    try {
+      await q(`UPDATE ops.listing SET rent = rent + 100 WHERE id = $1`, [listing.id]);
+      const answers = await Promise.all(
+        Array.from({ length: 4 }, () =>
+          t.http.get(`/v1/public/listings/${listing.slug}/og-image`).buffer(true),
+        ),
+      );
+      expect(answers.map((a) => a.status)).toEqual([200, 200, 200, 200]);
+      let rows = await cards();
+      expect(rows).toHaveLength(2);
+      expect(rows.filter((r) => r.deleted_at === null)).toHaveLength(1);
+      expect(rows[0]!.deleted_at).not.toBeNull();
+      expect(storage.objects.has(first!.storage_key)).toBe(false);
+      // a second change: still one live card, the previous one gone from storage
+      await q(`UPDATE ops.listing SET rent = rent + 100 WHERE id = $1`, [listing.id]);
+      await t.http.get(`/v1/public/listings/${listing.slug}/og-image`).expect(200);
+      rows = await cards();
+      expect(rows).toHaveLength(3);
+      expect(rows.filter((r) => r.deleted_at === null).map((r) => r.storage_key)).toEqual([
+        rows[2]!.storage_key,
+      ]);
+      expect(storage.objects.has(rows[1]!.storage_key)).toBe(false);
+      expect(storage.objects.has(rows[2]!.storage_key)).toBe(true);
+    } finally {
+      await q('UPDATE ops.listing SET rent = $2 WHERE id = $1', [listing.id, rent]);
+    }
   });
 
   it('share kit: the image bundle; a direct listing says "no agent fee"', async () => {

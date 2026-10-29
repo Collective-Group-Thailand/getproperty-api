@@ -94,6 +94,20 @@ export class ListingAssistantService {
       }
     }
     const facts = listingFacts(listing);
+    // the place in the monthly limit is taken atomically before the AI call (G review #6): concurrent drafts at
+    // limit − 1 cannot all pass the count above
+    const reservationId = await this.usage.reserve({
+      tenantId: ctx.tenantId,
+      feature: 'listing_assistant',
+      limit,
+      since: startOfBangkokMonth(now),
+      requestRef: RequestContext.current()?.requestId ?? null,
+    });
+    if (!reservationId)
+      throw new DomainException('assistant.limit_reached', {
+        params: { limit },
+        headers: { 'Retry-After': String(Math.max(60, secondsToNextMonth(now))) },
+      });
     const record = (
       outcome: 'ok' | 'error',
       model: string,
@@ -113,6 +127,7 @@ export class ListingAssistantService {
         outcome,
         subjectType: 'ops.listing',
         subjectId: listing.id,
+        reservationId,
       });
     let response;
     try {

@@ -373,14 +373,21 @@ export class ListingModerationService {
     );
     for (const row of due) {
       try {
+        const keys: string[] = [];
         await this.db.platform(async (tx) => {
-          // G1: objects removed and the quota drops (the rows were only marked before)
+          // G1: objects removed and the quota drops (the rows were only marked before); the objects go after the
+          // commit (G review #7)
           const docs = await tx.document.findMany({
             where: { id: { in: row.evidenceDocumentIds }, deletedAt: null },
             select: { id: true, storageKey: true, thumbnailKey: true, deletedAt: true },
           });
           for (const doc of docs)
-            await this.documents.purgeStored(tx, doc, { at: now, reason: 'listing_evidence_retention' });
+            keys.push(
+              ...(await this.documents.purgeStored(tx, doc, {
+                at: now,
+                reason: 'listing_evidence_retention',
+              })),
+            );
           await tx.listingVerification.update({ where: { id: row.id }, data: { evidencePurgedAt: now } });
           await this.audit.record(tx, {
             action: 'listing.verification_evidence_purged',
@@ -390,6 +397,7 @@ export class ListingModerationService {
             after: { documents: row.evidenceDocumentIds.length },
           });
         });
+        await this.documents.deleteObjects(keys);
       } catch (error) {
         this.logger.error(`evidence purge of ${row.id} failed: ${(error as Error).message}`);
       }

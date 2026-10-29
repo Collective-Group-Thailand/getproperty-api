@@ -72,7 +72,7 @@ const addressPart = (b: BuildingRef, key: 'province' | 'district') => {
 @Injectable()
 export class EnergyInsightService implements EventSubscriber, OnModuleInit {
   readonly name = 'energy-insight';
-  readonly eventTypes = ['energy_insight.opted_in', 'energy_insight.opted_out'] as const;
+  readonly eventTypes = ['energy_insight.opted_in', 'energy_insight.opted_out', 'consent.changed'] as const;
   private readonly logger = new Logger(EnergyInsightService.name);
 
   constructor(
@@ -265,52 +265,98 @@ export class EnergyInsightService implements EventSubscriber, OnModuleInit {
         { purposeKey: ENERGY_PURPOSE, version: current, granted: false },
         { channel: 'web', language: language === 'en' ? 'en' : 'th', tenantId: ctx.tenantId },
       );
-      const now = this.clock.now();
-      const updated = await tx.energyInsightOptin.update({
-        where: { id: row.id },
-        data: {
-          state: 'opted_out',
-          optedOutAt: now,
-          optedOutBy: userId,
-          version: { increment: 1 },
-          updatedBy: userId,
-        },
-      });
-      // stop at once: whatever was not delivered yet never leaves
-      const parked = await tx.integrationEvent.updateMany({
-        where: {
-          platform: 'getenergy',
-          direction: 'outbound',
-          buildingId,
-          eventType: 'energy.insight.shared',
-          status: { in: ['pending', 'failed'] },
-        },
-        data: { status: 'dead', lastError: 'owner opted out (D-301)', nextAttemptAt: null },
-      });
-      await this.audit.record(tx, {
-        action: 'energy_insight.opted_out',
-        tenantId: ctx.tenantId,
-        buildingId,
-        subjectType: SUBJECT,
-        subjectId: row.id,
-        before: { state: row.state },
-        after: { state: updated.state, parkedEvents: parked.count },
-      });
-      await this.events.record(tx, {
-        type: 'energy_insight.opted_out',
-        aggregateType: 'energy_insight_optin',
-        aggregateId: row.id,
-        tenantId: ctx.tenantId,
-        buildingId,
-        payload: { optinId: row.id, buildingId, everShared: row.lastSharedAt !== null || parked.count > 0 },
-      });
+      await this.stopIn(tx, row, { by: userId, reason: 'owner opted out (D-301)' });
     });
     return this.view(ctx, buildingId, language);
+  }
+
+  /**
+   * The opt-out in the caller's transaction (the owner's opt-out, a withdrawn consent, a share that finds the consent
+   * gone): state `opted_out`, every unsent getenergy snapshot of the building parked, audited, and
+   * `energy_insight.opted_out` (its subscriber sends `energy.insight.withdrawn` when something may have left).
+   */
+  private async stopIn(
+    tx: Tx,
+    row: EnergyInsightOptin,
+    input: { by: string | null; reason: string },
+  ): Promise<void> {
+    const now = this.clock.now();
+    const updated = await tx.energyInsightOptin.update({
+      where: { id: row.id },
+      data: {
+        state: 'opted_out',
+        optedOutAt: now,
+        optedOutBy: input.by,
+        version: { increment: 1 },
+        updatedBy: input.by,
+      },
+    });
+    // stop at once: whatever was not delivered yet never leaves
+    const parked = await tx.integrationEvent.updateMany({
+      where: {
+        platform: 'getenergy',
+        direction: 'outbound',
+        buildingId: row.buildingId,
+        eventType: 'energy.insight.shared',
+        status: { in: ['pending', 'failed'] },
+      },
+      data: { status: 'dead', lastError: input.reason, nextAttemptAt: null },
+    });
+    await this.audit.record(tx, {
+      action: 'energy_insight.opted_out',
+      tenantId: row.tenantId,
+      buildingId: row.buildingId,
+      subjectType: SUBJECT,
+      subjectId: row.id,
+      before: { state: row.state },
+      after: { state: updated.state, parkedEvents: parked.count, reason: input.reason },
+    });
+    await this.events.record(tx, {
+      type: 'energy_insight.opted_out',
+      aggregateType: 'energy_insight_optin',
+      aggregateId: row.id,
+      tenantId: row.tenantId,
+      buildingId: row.buildingId,
+      payload: {
+        optinId: row.id,
+        buildingId: row.buildingId,
+        everShared: row.lastSharedAt !== null || parked.count > 0,
+      },
+    });
+  }
+
+  /** Whose consent an opt-in rests on: the subject of its consent row, else the user who opted in. */
+  private async subjectOf(tx: Tx, row: EnergyInsightOptin): Promise<string | null> {
+    if (row.consentId) {
+      const c = await tx.consent.findUnique({ where: { id: row.consentId }, select: { subjectId: true } });
+      if (c) return c.subjectId;
+    }
+    return row.optedInBy;
+  }
+
+  /**
+   * True when the subject withdrew `energy.insight` for the purpose as a whole (the consent page: a row without a
+   * tenant) after this opt-in and did not grant it again since (G review #2). A building's own opt-out / opt-in rows
+   * carry the owner tenant and speak for that building only.
+   */
+  private async withdrawnSince(tx: Tx, subjectId: string, since: Date): Promise<boolean> {
+    const [latest] = await tx.$queryRaw<{ granted: boolean }[]>`
+      SELECT c.granted FROM platform.consent c
+        JOIN platform.consent_purpose_version v ON v.id = c.purpose_version_id
+        JOIN platform.consent_purpose p ON p.id = v.purpose_id
+       WHERE c.subject_type = 'user' AND c.subject_id = ${subjectId}::uuid AND p.key = ${ENERGY_PURPOSE}
+         AND c.tenant_id IS NULL AND c.captured_at >= ${since}
+       ORDER BY c.captured_at DESC, c.id DESC LIMIT 1`;
+    return latest?.granted === false;
   }
 
   // ------------------------------------------------------------------------------------------- subscriber + job
 
   async handle(event: DomainEventEnvelope, tx: Tx): Promise<void> {
+    if (event.type === 'consent.changed') {
+      await this.consentChanged(event, tx);
+      return;
+    }
     const optinId = typeof event.payload.optinId === 'string' ? event.payload.optinId : '';
     if (event.type === 'energy_insight.opted_in') {
       await this.share(tx, optinId, event.id);
@@ -346,6 +392,34 @@ export class EnergyInsightService implements EventSubscriber, OnModuleInit {
   }
 
   /**
+   * `consent.changed` (G review #2, D-301 (8)/(9)): `energy.insight` withdrawn on the owner consent page (a row
+   * without a tenant) opts out every building whose opt-in rests on that person's earlier grant — exactly as the
+   * opt-out does. The building's own opt-out records its withdrawal with the tenant and is handled there.
+   */
+  private async consentChanged(event: DomainEventEnvelope, tx: Tx): Promise<void> {
+    const p = event.payload;
+    if (p.purposeKey !== ENERGY_PURPOSE || p.subjectType !== 'user' || p.granted !== false) return;
+    const consent = await tx.consent.findUnique({
+      where: { id: event.aggregateId },
+      select: { capturedAt: true, tenantId: true, subjectId: true },
+    });
+    if (!consent || consent.tenantId !== null) return;
+    const rows = await tx.energyInsightOptin.findMany({
+      where: {
+        state: 'opted_in',
+        optedInAt: { lte: consent.capturedAt },
+        OR: [{ optedInBy: consent.subjectId }, { consent: { subjectId: consent.subjectId } }],
+      },
+    });
+    for (const row of rows) {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`energy-insight:${row.buildingId}`}))`;
+      const fresh = await tx.energyInsightOptin.findUnique({ where: { id: row.id } });
+      if (fresh?.state !== 'opted_in' || fresh.optedInAt > consent.capturedAt) continue;
+      await this.stopIn(tx, fresh, { by: null, reason: 'consent energy.insight withdrawn (D-301)' });
+    }
+  }
+
+  /**
    * Shares the current snapshot of an opted-in building (in the caller's transaction): nothing when the opt-in is no
    * longer active or the building has no score (insufficient data); one event per opt-in and window end day.
    */
@@ -356,6 +430,12 @@ export class EnergyInsightService implements EventSubscriber, OnModuleInit {
       include: { consentPurposeVersion: { select: { version: true } } },
     });
     if (!row || row.state !== 'opted_in') return false;
+    // the consent is checked again at send time (G review #2): withdrawn since the opt-in → opted out, nothing sent
+    const subject = await this.subjectOf(tx, row);
+    if (!subject || (await this.withdrawnSince(tx, subject, row.optedInAt))) {
+      await this.stopIn(tx, row, { by: null, reason: 'consent energy.insight withdrawn (D-301)' });
+      return false;
+    }
     const b = await tx.building.findUnique({
       where: { id: row.buildingId },
       select: {

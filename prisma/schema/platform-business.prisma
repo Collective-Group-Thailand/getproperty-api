@@ -711,6 +711,22 @@ model AiUsageRecord {
   @@schema("platform")
 }
 
+/// A place in a monthly AI limit taken before the call (G review #6, D-301 (6)); removed when the call is recorded.
+model AiUsageReservation {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  feature    AiFeature
+  requestRef String?   @map("request_ref")
+  reservedAt DateTime  @map("reserved_at") @db.Timestamptz(6)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation("AiUsageReservationTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "ai_usage_reservation_tenant_id_fkey")
+
+  @@index([tenantId, feature, expiresAt], map: "ai_usage_reservation_tenant_id_feature_expires_at_idx")
+  @@map("ai_usage_reservation")
+  @@schema("platform")
+}
+
 /// Pilot KPIs of a tenant per day and window (D-083).
 model KpiSnapshot {
   id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid

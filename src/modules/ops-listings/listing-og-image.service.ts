@@ -3,9 +3,10 @@ import { createHash } from 'node:crypto';
 import { OBJECT_STORAGE, type ObjectStorage } from '@collective/integrations/storage';
 import { systemTenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
+import { CLOCK, type Clock } from '@core/clock/clock';
 import { DocumentsService } from '@core/documents/documents.service';
 import { TenantTx } from '@database/tenant-tx';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { ListingShareService } from './listing-share.service';
 import { ListingsService } from './listings.service';
@@ -16,10 +17,12 @@ import { renderOgCard } from './share-card';
  * The Open Graph card of a public listing (G4, D-296): 1200 × 630 PNG rendered with the share-card renderer
  * (sharp / Pango, Sarabun — no headless browser, D-236's aim), stored as a document of the listing tenant (counted to
  * its quota, D-286) and rendered again only when what it shows changes (content hash). A listing that is not public
- * is a 404.
+ * is a 404. One render per listing at a time (advisory lock); the superseded card is purged (G review #4).
  */
 @Injectable()
 export class ListingOgImageService {
+  private readonly logger = new Logger(ListingOgImageService.name);
+
   constructor(
     private readonly db: TenantTx,
     private readonly listings: ListingsService,
@@ -27,6 +30,7 @@ export class ListingOgImageService {
     private readonly publicListings: PublicListingsService,
     private readonly documents: DocumentsService,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   async image(slug: string): Promise<{ body: Buffer; etag: string }> {
@@ -53,34 +57,81 @@ export class ListingOgImageService {
         // the stored card is gone: render it again below
       }
     }
-    const body = await renderOgCard({
-      photo: cover?.body ?? null,
-      rent: t.rent,
-      perMonth: '/ เดือน',
-      title: t.title,
-      place: t.place,
-      facts: t.facts,
-      badges,
-    });
-    const uploaded = await this.documents.uploadGenerated({
-      tenantId: listing.tenantId,
-      kind: 'other',
-      scopeType: 'unit',
-      scopeId: listing.unitId,
-      buildingId: listing.buildingId,
-      title: `og-image-${listing.slug}.png`,
-      mimeType: 'image/png',
-      body,
-      sourceRef: `listing:${listing.id}:og-image`,
-    });
-    await this.db.tenant(ctx, async (tx) => {
-      const doc = await this.documents.recordGenerated(tx, uploaded);
-      await tx.listing.update({
-        where: { id: listing.id },
-        data: { ogImageDocumentId: doc.id, ogImageHash: hash },
-      });
-    });
-    return { body, etag: hash.slice(0, 32) };
+    // single flight per listing (G review #4): concurrent requests wait here; whoever comes second finds the card the
+    // first one rendered for the same content and serves it
+    const rendered = await this.db.tenant(
+      ctx,
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`og-image:${listing.id}`}))`;
+        const current = await tx.listing.findUniqueOrThrow({
+          where: { id: listing.id },
+          select: { ogImageHash: true, ogImageDocumentId: true },
+        });
+        const previous = current.ogImageDocumentId
+          ? await tx.document.findUnique({
+              where: { id: current.ogImageDocumentId },
+              select: { id: true, storageKey: true, deletedAt: true },
+            })
+          : null;
+        if (previous && !previous.deletedAt && current.ogImageHash === hash) {
+          try {
+            return { body: await this.read(previous.storageKey), supersededId: null };
+          } catch {
+            // the stored card is gone: render it again below
+          }
+        }
+        const body = await renderOgCard({
+          photo: cover?.body ?? null,
+          rent: t.rent,
+          perMonth: '/ เดือน',
+          title: t.title,
+          place: t.place,
+          facts: t.facts,
+          badges,
+        });
+        const uploaded = await this.documents.uploadGenerated({
+          tenantId: listing.tenantId,
+          kind: 'other',
+          scopeType: 'unit',
+          scopeId: listing.unitId,
+          buildingId: listing.buildingId,
+          title: `og-image-${listing.slug}.png`,
+          mimeType: 'image/png',
+          body,
+          sourceRef: `listing:${listing.id}:og-image`,
+        });
+        const doc = await this.documents.recordGenerated(tx, uploaded);
+        await tx.listing.update({
+          where: { id: listing.id },
+          data: { ogImageDocumentId: doc.id, ogImageHash: hash },
+        });
+        return { body, supersededId: previous && previous.id !== doc.id ? previous.id : null };
+      },
+      { timeout: 30_000 },
+    );
+    // the superseded card is not a legal document: purge it (file gone, quota freed) once the new one is committed
+    if (rendered.supersededId) await this.purgeSuperseded(listing.tenantId, rendered.supersededId);
+    return { body: rendered.body, etag: hash.slice(0, 32) };
+  }
+
+  private async purgeSuperseded(tenantId: string, documentId: string): Promise<void> {
+    try {
+      const keys = await this.db.platform(
+        async (tx) => {
+          const doc = await tx.document.findUnique({
+            where: { id: documentId },
+            select: { id: true, storageKey: true, thumbnailKey: true, deletedAt: true, uploadState: true },
+          });
+          if (!doc || doc.uploadState === 'deleted') return [];
+          return this.documents.purgeStored(tx, doc, { at: this.clock.now(), reason: 'og_image_superseded' });
+        },
+        { tenantId },
+      );
+      await this.documents.deleteObjects(keys);
+    } catch (error) {
+      // the new card is served either way; storage reconciliation reports what stays behind
+      this.logger.warn(`superseded OG card ${documentId} not purged: ${(error as Error).message}`);
+    }
   }
 
   private async read(key: string): Promise<Buffer> {

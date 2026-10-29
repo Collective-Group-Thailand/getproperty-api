@@ -4,6 +4,7 @@ import { bangkokDate } from '@common/time/bangkok';
 import { type FakeLineMulticast } from '@integrations/line-multicast/fake-line-multicast';
 import { LINE_MULTICAST } from '@integrations/line-multicast/line-multicast.port';
 import { SponsoredCampaignsService } from '@modules/platform-audience/sponsored-campaigns.service';
+import { Client } from 'pg';
 import sharp from 'sharp';
 
 import { createIntApp, type IntApp } from '../support/int-app';
@@ -665,5 +666,49 @@ describe('G6 audience, consent & sponsored broadcast (real PostgreSQL)', () => {
       .send({ listingIds: [listing.id], segment: {}, maxRecipients: 100 })
       .expect(200);
     expect(estimate.body).toMatchObject({ estimated: null, belowMinimum: true });
+  });
+
+  // G review #5: the completion locks the campaign row, so an overlapping pass never invoices it a second time
+  it('two overlapping completions of one campaign issue one invoice', async () => {
+    const [row] = await q<{ id: string }>(
+      `INSERT INTO platform.sponsored_campaign (tenant_id, name, listing_ids, max_recipients, price_plan_version_id,
+                                               price_per_recipient, vat_rate, minimum_recipients, scheduled_at, state,
+                                               delivered, sending_started_at)
+       SELECT tenant_id, 'G review overlap', listing_ids, 10, price_plan_version_id, price_per_recipient, vat_rate,
+              minimum_recipients, scheduled_at, 'sending', 2, now()
+         FROM platform.sponsored_campaign WHERE price_plan_version_id IS NOT NULL LIMIT 1 RETURNING id`,
+    );
+    const invoices = async () =>
+      (await q<{ n: number }>('SELECT count(*)::int AS n FROM platform.platform_invoice'))[0]!.n;
+    const before = await invoices();
+    // pass A holds the row while it completes; pass B reaches its completion meanwhile
+    const a = new Client({ connectionString: db.url });
+    await a.connect();
+    try {
+      await a.query('BEGIN');
+      await a.query('SELECT id FROM platform.sponsored_campaign WHERE id = $1 FOR UPDATE', [row!.id]);
+      const b = t.app.get(SponsoredCampaignsService).finishPass(row!.id, {
+        hadPending: false,
+        allTaken: true,
+        windowOver: false,
+        messages: true,
+        cap: 2,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await a.query(
+        `UPDATE platform.sponsored_campaign SET state = 'sent', completed_at = now() WHERE id = $1`,
+        [row!.id],
+      );
+      await a.query('COMMIT');
+      expect(await b).toBe(false);
+    } finally {
+      await a.end();
+    }
+    expect(await invoices()).toBe(before);
+    expect(
+      await q('SELECT state::text, platform_invoice_id FROM platform.sponsored_campaign WHERE id = $1', [
+        row!.id,
+      ]),
+    ).toEqual([{ state: 'sent', platform_invoice_id: null }]);
   });
 });
