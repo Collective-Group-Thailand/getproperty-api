@@ -79,7 +79,11 @@ FROM ${NODE_IMAGE} AS runtime
 # (business rules use Asia/Bangkok explicitly either way).
 RUN apt-get update \
   && apt-get install -y --no-install-recommends tini ca-certificates tzdata chromium fonts-thai-tlwg fonts-noto-core \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /usr/local/bin/npm /usr/local/bin/npx \
+    /usr/local/bin/corepack
+# ↑ the runtime only runs `node` (entrypoint.sh): the base image's bundled npm / corepack (and their own undici,
+#   brace-expansion…) are dead weight that the image scan flags.
 ARG GIT_COMMIT=
 ENV NODE_ENV=production PROCESS=main GIT_COMMIT=${GIT_COMMIT} TZ=Asia/Bangkok \
     PDF_RENDERER_MODE=real PDF_CHROMIUM_EXECUTABLE=/usr/bin/chromium
