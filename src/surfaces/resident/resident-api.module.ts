@@ -22,6 +22,7 @@ import { ResidentLinkController, ResidentMeController } from '../shared/me.contr
 import { MeService } from '../shared/me.service';
 import { ResidentConsentsController, ResidentDsrController } from '../shared/privacy.controllers';
 import { ResidentRentRecordController } from '../shared/rent-record.controllers';
+import { ResidentReviewsController } from '../shared/reviews.controllers';
 import {
   notificationsController,
   pushSubscriptionsController,
@@ -42,6 +43,7 @@ import { ResidentCsatSurveyController } from './resident-survey.controller';
     ResidentCsatSurveyController,
     systemPingController(SURFACES.resident),
     ResidentMeController,
+    ResidentReviewsController,
     ResidentIdentitiesController,
     ResidentIdentityVerificationController,
     ResidentRentRecordController,

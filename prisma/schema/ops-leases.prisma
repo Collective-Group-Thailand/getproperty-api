@@ -224,6 +224,7 @@ model Lease {
   signedDocument   Document?            @relation("LeaseSignedDocument", fields: [signedDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_signed_document_id_fkey")
   notices          LeaseNotice[]
   rentCertificates RentCertificate[]
+  buildingReview   BuildingReview?
   stampDutyDocument Document?           @relation("LeaseStampDutyDocument", fields: [stampDutyDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_stamp_duty_document_id_fkey")
   employerAgreement EmployerAgreement?  @relation(fields: [employerAgreementId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_employer_agreement_id_fkey")
   payer            Party?               @relation("LeasePayer", fields: [payerPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "lease_payer_party_id_fkey")

@@ -667,6 +667,7 @@ enum AiFeature {
   stt
   minutes
   other
+  listing_assistant
 
   @@map("ai_feature")
   @@schema("platform")

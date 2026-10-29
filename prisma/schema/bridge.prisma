@@ -11,6 +11,7 @@ enum IntegrationDirection {
 enum IntegrationPlatform {
   getbuild
   getpack
+  getenergy
 
   @@map("integration_platform")
   @@schema("bridge")
@@ -64,6 +65,7 @@ model IntegrationEvent {
   tenant   Tenant?   @relation("IntegrationEventTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "integration_event_tenant_id_fkey")
   building Building? @relation("IntegrationEventBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "integration_event_building_id_fkey")
   rentalHandoff RentalHandoff?
+  energyInsightOptins EnergyInsightOptin[]
 
   @@unique([platform, direction, idempotencyKey], map: "integration_event_platform_direction_idempotency_key_key")
   @@index([status, nextAttemptAt], map: "integration_event_status_next_attempt_at_idx")

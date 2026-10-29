@@ -307,6 +307,16 @@ export const API_TAGS: Record<string, string> = {
     'Claim a getbuild rental handoff: the bought unit joins the portfolio with a prefilled listing draft (G8, D-299).',
   'owner.employerAgreements':
     'Employer housing: the employer pays its workers’ leases — statement per occupant, payroll-deduction export, TM30 of its foreign workers (G8, D-299).',
+  'resident.reviews':
+    'Verified review of the building of my lease — after moving out or after 3 months of tenure; consent review.publish; withdraw any time (G9, D-301).',
+  'owner.reviews':
+    'Verified reviews of my buildings: read, reply publicly and report abuse to the moderators — never hide or delete (G9, D-301).',
+  'admin.reviews':
+    'Moderation of verified building reviews: approve, reject, hide, restore, dismiss owner reports (G9, D-301, O-035).',
+  'owner.listingAssistant':
+    'AI listing assistant: title and description drafts in th / en / zh from the listing’s facts and photos; usage recorded per tenant (G9, D-301, D-161).',
+  'owner.energyInsight':
+    'Building energy score from electricity rollups and the owner’s opt-in to share aggregate figures with getenergy (G9, D-289 (6), D-301, O-028).',
   'admin.rentalHandoffs': 'getbuild rental handoffs: state, delivery to getbuild, resend (G8, D-299, O-033).',
   'prospect.rentRecord': 'My rent record, shared with an enquiry or as a letter (D-256).',
   'prospect.contracts':

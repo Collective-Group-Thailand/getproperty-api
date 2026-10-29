@@ -36,7 +36,7 @@ describe('seeds (reference + dev)', () => {
       'platform.utility_tariff': 8,
       'platform.utility_tariff_version': 20,
       'platform.business_calendar': 46,
-      'platform.consent_purpose': 8,
+      'platform.consent_purpose': 10,
       'platform.notification_template': NOTIFICATION_TEMPLATES.length,
       'platform.notification_template_version': NOTIFICATION_TEMPLATES.reduce(
         (n, t) => n + t.versions.length,

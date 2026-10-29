@@ -10,6 +10,8 @@ import { TenantTx } from '@database/tenant-tx';
 import { type IntegrationEvent, type IntegrationPlatform, type Prisma } from '@generated/prisma/client';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
+import { GETENERGY_CONTRACT_VERSION, parseGetenergyEvent } from './getenergy-contract';
+
 /** Canonical JSON (sorted keys) for the payload hash. */
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
@@ -113,10 +115,14 @@ export class IntegrationEventsService {
       causationEventId?: string | null;
     },
   ): Promise<IntegrationEvent> {
-    const parsed = safeParseIntegrationEvent(input.envelope);
+    // G9 (O-028): getenergy events follow the provisional local contract until asset-core carries them
+    const local = input.platform === 'getenergy';
+    const parsed = local ? parseGetenergyEvent(input.envelope) : safeParseIntegrationEvent(input.envelope);
     if (!parsed.success)
       throw new Error(
-        `integration event ${input.envelope.type} breaks its contract: ${parsed.error.message}`,
+        `integration event ${input.envelope.type} breaks its contract: ${
+          typeof parsed.error === 'string' ? parsed.error : parsed.error.message
+        }`,
       );
     const existing = await tx.integrationEvent.findUnique({
       where: {
@@ -134,13 +140,13 @@ export class IntegrationEventsService {
         direction: 'outbound',
         platform: input.platform,
         eventType: input.envelope.type,
-        contractVersion: PACKAGE_VERSION,
+        contractVersion: local ? GETENERGY_CONTRACT_VERSION : PACKAGE_VERSION,
         idempotencyKey: input.envelope.idempotencyKey,
         tenantId: input.tenantId,
         buildingId: input.buildingId ?? null,
         subjectType: input.subjectType ?? null,
         subjectId: input.subjectId ?? null,
-        payload: parsed.data,
+        payload: parsed.data as Prisma.InputJsonValue,
         payloadSha256: payloadSha256(parsed.data),
         correlationId: (input.envelope.correlationId as string | undefined) ?? null,
         causationEventId: input.causationEventId ?? null,

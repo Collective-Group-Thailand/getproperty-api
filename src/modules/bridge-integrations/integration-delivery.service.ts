@@ -5,6 +5,7 @@ import { CLOCK, type Clock } from '@core/clock/clock';
 import { TenantTx } from '@database/tenant-tx';
 import { type IntegrationEvent, type IntegrationPlatform } from '@generated/prisma/client';
 import {
+  FakeIntegrationTransport,
   type IntegrationTransport,
   IntegrationTransportError,
   SnsIntegrationTransport,
@@ -12,7 +13,7 @@ import {
 } from '@integrations/integration-webhooks/integration-transport';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
-export const INTEGRATION_PLATFORMS: readonly IntegrationPlatform[] = ['getbuild', 'getpack'];
+export const INTEGRATION_PLATFORMS: readonly IntegrationPlatform[] = ['getbuild', 'getpack', 'getenergy'];
 /** Attempts before an event is parked `dead` (≈ 26 h with the backoff below — past the 24-h ack window). */
 export const MAX_DELIVERY_ATTEMPTS = 12;
 /** A claimed row is invisible to other replicas for this long (a crashed sender's rows come back). */
@@ -23,7 +24,7 @@ export function deliveryBackoffMs(attempts: number): number {
   return Math.min(30_000 * 2 ** Math.max(0, attempts - 1), 4 * 3_600_000);
 }
 
-const upper = (p: IntegrationPlatform) => p.toUpperCase() as 'GETBUILD' | 'GETPACK';
+const upper = (p: IntegrationPlatform) => p.toUpperCase() as 'GETBUILD' | 'GETPACK' | 'GETENERGY';
 export const keysOf = (value: string | undefined): string[] =>
   (value ?? '')
     .split(',')
@@ -55,7 +56,11 @@ export class IntegrationDeliveryService {
   transportFor(platform: IntegrationPlatform): IntegrationTransport | null {
     if (this.transports.has(platform)) return this.transports.get(platform)!;
     const p = upper(platform);
-    const kind = this.config.get(`INTEGRATION_${p}_TRANSPORT`);
+    // G9 (O-028): getenergy has no agreed endpoint yet — the in-memory fake with the fakes, else the events wait
+    const kind =
+      p === 'GETENERGY'
+        ? (this.config.get('INTEGRATION_GETENERGY_TRANSPORT') ?? (this.config.useFakes ? 'fake' : 'none'))
+        : this.config.get(`INTEGRATION_${p}_TRANSPORT`);
     let transport: IntegrationTransport | null = null;
     if (kind === 'webhook') {
       const url = this.config.get(`INTEGRATION_${p}_WEBHOOK_URL`);
@@ -70,8 +75,10 @@ export class IntegrationDeliveryService {
         source: 'getproperty',
         timeoutMs: this.config.get('INTEGRATION_WEBHOOK_TIMEOUT_MS'),
       });
-    } else if (kind === 'sns') {
+    } else if (kind === 'sns' && p !== 'GETENERGY') {
       transport = new SnsIntegrationTransport(this.config.get(`INTEGRATION_${p}_SNS_TOPIC_ARN`));
+    } else if (kind === 'fake') {
+      transport = new FakeIntegrationTransport();
     }
     this.transports.set(platform, transport);
     return transport;

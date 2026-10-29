@@ -290,6 +290,14 @@ export class DsrService extends TenantScopedRepository {
           orderBy: { createdAt: 'desc' },
         })
       : [];
+    // G9 (D-301): the person's building reviews (Collective is the controller of the public review)
+    const reviews = dsr.subjectId
+      ? await tx.buildingReview.findMany({
+          where: { authorUserId: dsr.subjectId },
+          include: { building: { select: { name: true } } },
+          orderBy: { submittedAt: 'asc' },
+        })
+      : [];
     const body = Buffer.from(
       JSON.stringify(
         {
@@ -328,6 +336,16 @@ export class DsrService extends TenantScopedRepository {
                 updatedAt: preference.updatedAt,
               }
             : null,
+          buildingReviews: reviews.map((r) => ({
+            building: r.building.name,
+            rating: r.rating,
+            text: r.body,
+            state: r.state,
+            tenureFrom: r.tenureFrom,
+            tenureTo: r.tenureTo,
+            submittedAt: r.submittedAt,
+            ownerReply: r.ownerReply,
+          })),
           sponsoredMessages: sponsored.map((d) => ({
             state: d.state,
             sentAt: d.sentAt,
@@ -399,6 +417,11 @@ export class DsrService extends TenantScopedRepository {
     // G6 (D-300): recommendation preferences and per-person delivery rows go (campaign totals stay)
     await tx.audiencePreference.deleteMany({ where: { userId: dsr.subjectId } });
     await tx.sponsoredDelivery.deleteMany({ where: { userId: dsr.subjectId } });
+    // G9 (D-301): reviews are withdrawn (text erased); the rows stay one per lease, the rating leaves the averages
+    await tx.buildingReview.updateMany({
+      where: { authorUserId: dsr.subjectId, state: { not: 'withdrawn' } },
+      data: { state: 'withdrawn', body: null, withdrawnAt: now },
+    });
     const identities = await tx.userIdentity.findMany({ where: { userId: dsr.subjectId } });
     for (const i of identities)
       await tx.userIdentity.update({

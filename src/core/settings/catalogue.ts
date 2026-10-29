@@ -1098,6 +1098,157 @@ export const SETTINGS: readonly SettingDef[] = [
     check: (value: unknown) =>
       Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 90 ? [] : ['0–90 days'],
   },
+  // --- G9 verified reviews, listing assistant, energy insight (D-301, D-289 (6), D-161; O-035, O-036, O-028) -------
+  {
+    key: 'review.min_tenure_months',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-301 (G9): a person still living under a lease may review the building after this many months of tenure (from move-in, else the lease start); after move-out they may review at once (LIFF GL4: after move-out or after 3 months).',
+    editableBy: ADMIN,
+    value: 3,
+    reason: 'seed: D-301 (G-growth-liff GL4)',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 24 ? [] : ['1–24 months'],
+  },
+  {
+    key: 'review.window_after_end_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-301 (G9): a former resident may review the building up to this many days after their tenure ended (move-out, else the lease end).',
+    editableBy: ADMIN,
+    value: 365,
+    reason: 'seed: D-301',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 30 && (value as number) <= 1095 ? [] : ['30–1095 days'],
+  },
+  {
+    key: 'review.moderation.premoderate',
+    valueType: 'bool',
+    scopeAllowed: ['platform'],
+    description:
+      'D-301 / O-035 (G9): true = every review waits for a platform moderator before it is public (conservative while the defamation / notice-and-takedown policy is open, O-035); false = published at once after the automatic screening and moderated afterwards.',
+    editableBy: ADMIN,
+    value: true,
+    reason: 'seed: D-301 (O-035 open — conservative)',
+  },
+  {
+    key: 'listing.assistant.enabled',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-301 / D-161 (G9): the AI listing assistant (title and description drafts in th / en / zh from the listing’s facts) is offered.',
+    editableBy: ADMIN,
+    value: true,
+    reason: 'seed: D-301',
+  },
+  {
+    key: 'listing.assistant.monthly_limit',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-301 / D-161 (G9): AI listing-assistant calls per tenant per Bangkok month (cost guard until the AI unit costs and any price are set, O-009); 0 = none.',
+    editableBy: ADMIN,
+    value: 30,
+    reason: 'seed: D-301 (O-009 open)',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 10000
+        ? []
+        : ['0–10000 calls'],
+  },
+  {
+    key: 'listing.assistant.max_photos',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-301 (G9): how many of the listing’s first photos the assistant may read (sent to the AI gateway, never changed or stored again); 0 = text facts only.',
+    editableBy: ADMIN,
+    value: 3,
+    reason: 'seed: D-301',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 10 ? [] : ['0–10 photos'],
+  },
+  {
+    key: 'energy.insight.window_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-301 (G9): the energy score reads the building’s hourly electricity rollups of this many full Bangkok days before today.',
+    editableBy: ADMIN,
+    value: 30,
+    reason: 'seed: D-301',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 7 && (value as number) <= 90 ? [] : ['7–90 days'],
+  },
+  {
+    key: 'energy.insight.min_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-301 (G9): fewer days with electricity data than this in the window → no score (`insufficient_data`) and nothing is shared with getenergy.',
+    editableBy: ADMIN,
+    value: 14,
+    reason: 'seed: D-301',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 90 ? [] : ['1–90 days'],
+  },
+  {
+    key: 'energy.insight.share_every_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      'D-301 / D-289 (6) (G9): while a building owner is opted in, a fresh energy snapshot is shared with getenergy at most this often.',
+    editableBy: ADMIN,
+    value: 30,
+    reason: 'seed: D-301',
+    check: (value: unknown) =>
+      Number.isInteger(value) && (value as number) >= 7 && (value as number) <= 365 ? [] : ['7–365 days'],
+  },
+  {
+    key: 'energy.insight.score_model',
+    valueType: 'json',
+    scopeAllowed: ['platform'],
+    description:
+      'D-301 / O-036 (G9): the energy score = 100 − penalties; each penalty grows linearly from 0 at `from` to `points` at `to` — common-area share of the building’s electricity, 1 − load factor (average ÷ peak hourly demand), pump running hours per day (common-area meters whose label matches `pumpLabelPattern`, an hour counts when it used ≥ `pumpOnKwhPerHour`). Assumed values until getenergy confirms its model (O-036).',
+    editableBy: ADMIN,
+    value: {
+      version: 'v1',
+      commonShare: { from: 0.2, to: 0.5, points: 40 },
+      lowLoadFactor: { from: 0.5, to: 0.85, points: 30 },
+      pumpHoursPerDay: { from: 8, to: 20, points: 30 },
+      pumpLabelPattern: 'pump|ปั๊ม|ปั้ม',
+      pumpOnKwhPerHour: 0.1,
+    },
+    reason: 'seed: D-301 (O-036 open)',
+    check: (value: unknown) => {
+      const v = value as Record<string, unknown> | null;
+      const band = (b: unknown) => {
+        const x = b as { from?: unknown; to?: unknown; points?: unknown } | null;
+        return (
+          !!x &&
+          typeof x.from === 'number' &&
+          typeof x.to === 'number' &&
+          typeof x.points === 'number' &&
+          x.to > x.from &&
+          x.points >= 0 &&
+          x.points <= 100
+        );
+      };
+      return v &&
+        typeof v === 'object' &&
+        band(v.commonShare) &&
+        band(v.lowLoadFactor) &&
+        band(v.pumpHoursPerDay) &&
+        typeof v.pumpLabelPattern === 'string' &&
+        typeof v.pumpOnKwhPerHour === 'number' &&
+        v.pumpOnKwhPerHour >= 0
+        ? []
+        : [
+            '{commonShare, lowLoadFactor, pumpHoursPerDay: {from, to, points}, pumpLabelPattern, pumpOnKwhPerHour}',
+          ];
+    },
+  },
   {
     key: 'listing.comparables.min',
     valueType: 'int',

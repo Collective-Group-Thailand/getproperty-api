@@ -5,6 +5,7 @@ import { AdminDocumentTemplatesController } from '../owner/documents.controller'
 import { AdminRentalHandoffsController } from '../shared/growth-network.controllers';
 import { AdminMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
+import { AdminReviewsController } from '../shared/reviews.controllers';
 import {
   notificationsController,
   pushSubscriptionsController,
@@ -48,6 +49,7 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
     ...ADMIN_BUSINESS_CONTROLLERS,
     systemPingController(SURFACES.admin),
     AdminSponsoredCampaignsController,
+    AdminReviewsController,
     AdminBroadcastController,
     AdminSystemController,
     AdminMeController,

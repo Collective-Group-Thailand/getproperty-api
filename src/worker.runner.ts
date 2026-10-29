@@ -41,6 +41,7 @@ import { AccessCredentialsService } from '@modules/smart-access/access-credentia
 import { LocksService } from '@modules/smart-access/locks.service';
 import { DeviceCommandsService } from '@modules/smart-devices/commands.service';
 import { GatewayConfigService } from '@modules/smart-devices/gateway-config.service';
+import { EnergyInsightService } from '@modules/smart-energy/energy-insight.service';
 import { MeterHealthService } from '@modules/smart-health/meter-health.service';
 import { UtilityLossService } from '@modules/smart-health/utility-loss.service';
 import { TelemetryMaintenanceService } from '@modules/smart-ingest/telemetry-maintenance.service';
@@ -112,6 +113,8 @@ export const MAINTENANCE_JOBS = {
   'relocation-offers': 3_600_000,
   // G6 (D-300): sponsored campaigns start / send (only while broadcast.sponsored.enabled), withdrawn preferences purged
   'sponsored-broadcasts': 60_000,
+  // G9 (D-301): opted-in buildings share a fresh energy snapshot with getenergy every energy.insight.share_every_days
+  'energy-insight': 86_400_000,
   // D-252 / O-018: ownership evidence deleted after its retention
   'listing-evidence-purge': 3_600_000,
   // B7.3: viewing reminders (both sides) and the owner's nudge on unanswered enquiries; G7 self-viewing sweep
@@ -177,6 +180,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly rentalHandoffs: RentalHandoffsService,
     private readonly relocation: RelocationService,
     private readonly sponsored: SponsoredCampaignsService,
+    private readonly energyInsight: EnergyInsightService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -331,6 +335,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'sponsored-broadcasts':
         await this.sponsored.run();
+        break;
+      case 'energy-insight':
+        await this.energyInsight.run();
         break;
       case 'listing-evidence-purge':
         await this.listingModeration.purgeEvidence();
