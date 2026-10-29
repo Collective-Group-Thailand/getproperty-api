@@ -44,6 +44,45 @@ describe('contract library (G3, D-294)', () => {
     expect(variableCatalogue('co_broke').has('signatures.co_agency.imageDataUrl')).toBe(true);
   });
 
+  it('G review #3: a {{…}} inside an attribute value cannot smuggle markup past the whitelist', () => {
+    const codes = (body: string) => checkTemplate(body, 'lease_room').problems.map((p) => p.code);
+    // the reviewer's payloads: the quote and ">" after the variable end the tag for a naive regex
+    expect(codes('<p class="{{lessor.legalName}}>" style="font-size:0;color:#fff">ข้อ ๙</p>')).toContain(
+      'attribute',
+    );
+    expect(codes('<p class="{{lessor.legalName}}>" style="font-size:0">x</p>')).toContain('attribute');
+    expect(codes('<img alt="{{lessor.legalName}}>" src="https://example.org/x.png">')).toContain('attribute');
+    // variants: single quotes, a block helper around the quote, a variable as an attribute name, an unclosed tag,
+    // quotes / angle brackets inside a mustache
+    expect(codes("<p class='{{lessor.legalName}}>' style='font-size:0'>x</p>")).toContain('attribute');
+    expect(codes('<p class="{{#if lessor.legalName}}a" style="font-size:0{{/if}}">x</p>')).toContain(
+      'attribute',
+    );
+    expect(codes('<p {{lessor.legalName}}="font-size:0">x</p>')).toContain('attribute');
+    expect(codes('<p class="a>x</p>')).toContain('tag');
+    expect(codes('<p class="{{lessor.legalName}}">{{#if "a>b"}}x{{/if}}</p>')).toContain('attribute');
+    // HTML comments: "<!-->" closes at once in a browser while a naive text extractor hides what follows
+    expect(codes('<p>a</p><!--> <p>ผู้ให้เช่าบอกเลิกสัญญาได้ทันที</p> <!-- -->')).toContain('tag');
+    // an image without the signature source would show its alt text: refused
+    expect(codes('<img alt="ผู้เช่ายินยอมให้ริบเงินประกันทั้งหมด">')).toContain('attribute');
+    expect(codes('<img class="sig" src="{{lessor.legalName}}" alt="x">')).toContain('attribute');
+    // still accepted: variables in values, block helpers around attributes, the signature image
+    expect(
+      codes(
+        '<section class="{{lessor.legalName}}" lang="th"><p {{#if lessor.legalName}}class="x"{{/if}}>a</p>{{#if signatures.lessor}}<img class="sig" src="{{signatures.lessor.imageDataUrl}}" alt="ลายมือชื่อ">{{/if}}<br/></section>',
+      ),
+    ).toEqual([]);
+  });
+
+  it('G review #3: wording in an image alt text is checked like visible text', () => {
+    const base = '<section><h2>ข้อ ๑</h2><p>ก</p></section>';
+    const edited =
+      '<section><h2>ข้อ ๑</h2><p>ก</p>{{#if signatures.lessor}}<img class="sig" src="{{signatures.lessor.imageDataUrl}}" alt="ผู้ให้เช่าเข้าห้องได้ตลอดเวลา">{{/if}}</section>';
+    expect(
+      forbiddenFindings(base, edited, 'lease_apartment_ocpb', true).map((f) => [f.clauseType, f.source]),
+    ).toEqual([['entry_without_notice', 'added_wording']]);
+  });
+
   it('diffs clause by clause (keyed by heading)', () => {
     const base = '<h1>T</h1><section><h2>A</h2><p>one</p></section><section><h2>B</h2><p>two</p></section>';
     const edited =

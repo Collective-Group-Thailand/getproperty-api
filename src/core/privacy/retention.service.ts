@@ -141,20 +141,17 @@ export class RetentionService {
             continue;
           }
           for (const d of docs) {
-            await this.db.platform(async (tx) => {
-              // G1: the quota drops by the file and its derivatives
+            // G1: the quota drops by the file and its derivatives; G review #7: the row update (where the legal-hold
+            // guard fires) commits first, the objects go after
+            const keys = await this.db.platform(async (tx) => {
               const derivatives = await this.ledger.uncount(tx, d.id);
-              for (const key of new Set([
-                d.storageKey,
-                ...(d.thumbnailKey ? [d.thumbnailKey] : []),
-                ...derivatives,
-              ]))
-                await this.storage.delete(key).catch(() => undefined);
               await tx.document.update({
                 where: { id: d.id },
                 data: { deletedAt: now, deleteReason: 'retention', uploadState: 'deleted' },
               });
+              return [d.storageKey, ...(d.thumbnailKey ? [d.thumbnailKey] : []), ...derivatives];
             });
+            for (const key of new Set(keys)) await this.storage.delete(key).catch(() => undefined);
           }
           report.push({
             target: p.target,

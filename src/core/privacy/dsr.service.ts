@@ -163,7 +163,9 @@ export class DsrService extends TenantScopedRepository {
 
   /** Owner moves the request through the workflow; fulfilment does the export or the erasure. */
   async transition(ctx: TenantContext, id: string, event: DsrEvent, notes?: string | null) {
-    return this.db.tenant(ctx, async (tx) => {
+    // erased files leave object storage only once the guarded row updates committed (G review #7)
+    const objects: string[] = [];
+    const result = await this.db.tenant(ctx, async (tx) => {
       const dsr = this.found(await tx.dataSubjectRequest.findFirst({ where: this.own(ctx, { id }) }));
       const instance = await tx.workflowInstance.findFirst({
         where: { tenantId: ctx.tenantId, subjectType: SUBJECT_TYPE, subjectId: id, closedAt: null },
@@ -175,7 +177,7 @@ export class DsrService extends TenantScopedRepository {
       if (event === 'fulfil') {
         if (dsr.kind === 'access' || dsr.kind === 'portability')
           exportDocumentId = await this.export(tx, ctx, dsr);
-        if (dsr.kind === 'erasure') await this.erase(tx, ctx, dsr);
+        if (dsr.kind === 'erasure') await this.erase(tx, ctx, dsr, objects);
       }
       const updated = await tx.dataSubjectRequest.update({
         where: { id },
@@ -205,6 +207,8 @@ export class DsrService extends TenantScopedRepository {
       });
       return updated;
     });
+    for (const key of new Set(objects)) await this.storage.delete(key).catch(() => undefined);
+    return result;
   }
 
   /**
@@ -298,6 +302,13 @@ export class DsrService extends TenantScopedRepository {
           orderBy: { submittedAt: 'asc' },
         })
       : [];
+    // G8 (D-299) / G review #8: relocation offers (destination and budget the person typed; Collective controls them)
+    const relocation = dsr.subjectId
+      ? await tx.relocationOffer.findMany({
+          where: { userId: dsr.subjectId },
+          orderBy: { createdAt: 'asc' },
+        })
+      : [];
     const body = Buffer.from(
       JSON.stringify(
         {
@@ -345,6 +356,22 @@ export class DsrService extends TenantScopedRepository {
             tenureTo: r.tenureTo,
             submittedAt: r.submittedAt,
             ownerReply: r.ownerReply,
+          })),
+          relocationOffers: relocation.map((o) => ({
+            state: o.state,
+            moveOutDate: o.moveOutDate,
+            destination:
+              o.areaSlug || o.province || o.district || o.maxRent
+                ? {
+                    areaSlug: o.areaSlug,
+                    province: o.province,
+                    district: o.district,
+                    maxRent: o.maxRent?.toFixed(2) ?? null,
+                  }
+                : null,
+            clickedListingIds: o.clickedListingIds,
+            createdAt: o.createdAt,
+            closedAt: o.closedAt,
           })),
           sponsoredMessages: sponsored.map((d) => ({
             state: d.state,
@@ -421,6 +448,15 @@ export class DsrService extends TenantScopedRepository {
     await tx.buildingReview.updateMany({
       where: { authorUserId: dsr.subjectId, state: { not: 'withdrawn' } },
       data: { state: 'withdrawn', body: null, withdrawnAt: now },
+    });
+    // G8 (D-299) / G review #8: open relocation offers are withdrawn; every offer loses its destination and clicks
+    await tx.relocationOffer.updateMany({
+      where: { userId: dsr.subjectId },
+      data: { areaSlug: null, province: null, district: null, maxRent: null, clickedListingIds: [] },
+    });
+    await tx.relocationOffer.updateMany({
+      where: { userId: dsr.subjectId, state: 'open' },
+      data: { state: 'withdrawn', closedAt: now },
     });
     const identities = await tx.userIdentity.findMany({ where: { userId: dsr.subjectId } });
     for (const i of identities)
@@ -536,7 +572,7 @@ export class DsrService extends TenantScopedRepository {
     return id;
   }
 
-  private async erase(tx: Tx, ctx: TenantContext, dsr: DataSubjectRequest): Promise<void> {
+  private async erase(tx: Tx, ctx: TenantContext, dsr: DataSubjectRequest, objects: string[]): Promise<void> {
     const now = this.clock.now();
     for (const p of await this.subjectParties(tx, ctx, dsr)) {
       await tx.party.update({
@@ -575,16 +611,11 @@ export class DsrService extends TenantScopedRepository {
       });
       for (const d of docs) {
         const derivatives = await this.ledger.uncount(tx, d.id);
-        for (const key of new Set([
-          d.storageKey,
-          ...(d.thumbnailKey ? [d.thumbnailKey] : []),
-          ...derivatives,
-        ]))
-          await this.storage.delete(key).catch(() => undefined);
         await tx.document.update({
           where: { id: d.id },
           data: { deletedAt: now, deleteReason: `dsr erasure ${dsr.id}`, uploadState: 'deleted' },
         });
+        objects.push(d.storageKey, ...(d.thumbnailKey ? [d.thumbnailKey] : []), ...derivatives);
       }
     }
   }

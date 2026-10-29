@@ -752,6 +752,72 @@ describe('G8 getbuild handoff, employer housing, relocation network (real Postgr
     expect(row[0]).toEqual({ state: 'withdrawn', province: null });
   });
 
+  // G review #8: a platform DSR exports the person's relocation offers and erasure erases their destination
+  it('platform DSR: relocation offers are exported, and erasure withdraws them with the destination erased', async () => {
+    const [user] = await q<{ user_id: string }>(
+      'SELECT user_id FROM core.user_identity WHERE provider_subject = $1',
+      [STRANGER_SUB],
+    );
+    const [offer] = await q<{ id: string }>(
+      `INSERT INTO ops.relocation_offer (tenant_id, lease_id, user_id, consent_id, area_slug, province, district, max_rent, state)
+       SELECT tenant_id, lease_id, $1, consent_id, 'chatuchak', 'กรุงเทพมหานคร', 'จตุจักร', 9000, 'open'
+         FROM ops.relocation_offer LIMIT 1 RETURNING id`,
+      [user!.user_id],
+    );
+    const dsr = async (kind: string) =>
+      (
+        await q<{ id: string }>(
+          `INSERT INTO platform.data_subject_request (tenant_id, subject_type, subject_id, requester_contact_enc, kind, due_at)
+           VALUES (NULL, 'user', $1, '\\x00', $2::platform.dsr_kind, now() + interval '30 days') RETURNING id`,
+          [user!.user_id, kind],
+        )
+      )[0]!.id;
+    const act = (id: string, action: string) =>
+      t.http
+        .post(`/v1/admin/data-subject-requests/${id}/actions/${action}`)
+        .set(bearer(admin))
+        .send({ notes: 'ok' });
+    const access = await dsr('access');
+    await act(access, 'verify').expect(200);
+    await act(access, 'start').expect(200);
+    const fulfilled = await act(access, 'fulfil').expect(200);
+    const [doc] = await q<{ storage_key: string }>(`SELECT storage_key FROM core.document WHERE id = $1`, [
+      fulfilled.body.exportDocumentId,
+    ]);
+    const exported = JSON.parse(
+      t.app.get<FakeObjectStorage>(OBJECT_STORAGE).objects.get(doc!.storage_key)!.body.toString('utf8'),
+    ) as { relocationOffers?: unknown[] };
+    expect(exported.relocationOffers).toEqual([
+      expect.objectContaining({
+        state: 'open',
+        destination: {
+          areaSlug: 'chatuchak',
+          province: 'กรุงเทพมหานคร',
+          district: 'จตุจักร',
+          maxRent: '9000.00',
+        },
+      }),
+    ]);
+    const erase = await dsr('erasure');
+    await act(erase, 'start').expect(200);
+    await act(erase, 'fulfil').expect(200);
+    expect(
+      await q(
+        `SELECT state::text, area_slug, province, district, max_rent, clicked_listing_ids FROM ops.relocation_offer WHERE id = $1`,
+        [offer!.id],
+      ),
+    ).toEqual([
+      {
+        state: 'withdrawn',
+        area_slug: null,
+        province: null,
+        district: null,
+        max_rent: null,
+        clicked_listing_ids: [],
+      },
+    ]);
+  });
+
   // ------------------------------------------------------------------------------------------- expiry (clock moves)
 
   it('an unused invitation expires after getbuild.handoff.valid_days; the buyer may decline before', async () => {

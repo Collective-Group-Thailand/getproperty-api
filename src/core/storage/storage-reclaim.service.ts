@@ -295,10 +295,12 @@ export class StorageReclaimService {
     await RequestContext.run({ actor: systemActor('storage-reclaim') }, async () => {
       for (const doc of due) {
         try {
+          // the objects go only after the guarded row update committed (G review #7)
+          const keys: string[] = [];
           await this.db.platform(
             async (tx) => {
               if ((await this.holds.heldAmong(tx, [doc.id], now)).length) return;
-              await this.documents.purgeStored(tx, doc, { at: now, reason: RECLAIM_REASON });
+              keys.push(...(await this.documents.purgeStored(tx, doc, { at: now, reason: RECLAIM_REASON })));
               await this.events.record(tx, {
                 type: 'storage.file_purged',
                 aggregateType: 'document',
@@ -310,6 +312,7 @@ export class StorageReclaimService {
             },
             { tenantId: doc.tenantId! },
           );
+          await this.documents.deleteObjects(keys);
         } catch (error) {
           this.logger.error(`purge of ${doc.id} failed: ${(error as Error).message}`);
         }

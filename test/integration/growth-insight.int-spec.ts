@@ -381,6 +381,123 @@ describe('G9 reviews, listing assistant & energy insight (real PostgreSQL)', () 
     await setting('review.moderation.premoderate', true);
   });
 
+  // G review #9: only the platform moderation role (and the author's withdrawal through it) changes a review's state
+  it('the owner tenant database role cannot change a review state or its moderation', async () => {
+    const [published] = await q<{ id: string }>(
+      `SELECT id FROM ops.building_review WHERE state = 'published' ORDER BY submitted_at DESC LIMIT 1`,
+    );
+    // every attempt rolls back (the sentinel error), so a refused-or-not update never changes the review
+    const asOwnerRole = (sql: string) =>
+      db.prisma().withTenant({ tenantId: DEV.tenantId, actorKind: 'operator' }, async (tx) => {
+        const n = await tx.$executeRawUnsafe(sql, published!.id);
+        throw new Error(`rolled back after ${n} row(s)`);
+      });
+    await expect(
+      asOwnerRole(
+        `UPDATE ops.building_review SET state = 'hidden', moderation_reason = 'x', moderated_at = now() WHERE id = $1::uuid`,
+      ),
+    ).rejects.toThrow(/moderation/);
+    await expect(
+      asOwnerRole(
+        `UPDATE ops.building_review SET state = 'withdrawn', body = NULL, withdrawn_at = now() WHERE id = $1::uuid`,
+      ),
+    ).rejects.toThrow(/moderation/);
+    // the owner's own columns stay writable for its role (reply, report)
+    await expect(
+      asOwnerRole(
+        `UPDATE ops.building_review SET owner_reply = 'ขอบคุณครับ', owner_replied_at = now() WHERE id = $1::uuid`,
+      ),
+    ).rejects.toThrow('rolled back after 1 row(s)');
+    expect(await q('SELECT state::text FROM ops.building_review WHERE id = $1', [published!.id])).toEqual([
+      { state: 'published' },
+    ]);
+  });
+
+  // G review #1: withdrawing `review.publish` on the consent screen takes the person's reviews down
+  it('withdrawing the review.publish consent withdraws the published review (text erased, not public)', async () => {
+    const before = await t.http.get(`/v1/public/listings/${listing.slug}/reviews`).expect(200);
+    expect(before.body.summary.count).toBe(1);
+    t.clock.advance(60_000);
+    await t.http
+      .post('/v1/resident/consents')
+      .set(resident)
+      .send({ items: [{ purposeKey: 'review.publish', version: 1, granted: false }] })
+      .expect(201);
+    // public at once (the read honours the consent), then the subscriber withdraws the rows
+    const now = await t.http.get(`/v1/public/listings/${listing.slug}/reviews`).expect(200);
+    expect(now.body).toMatchObject({ summary: { count: 0 }, data: [] });
+    await settle();
+    expect(
+      await q<{ state: string; body: string | null }>(
+        `SELECT state::text, body FROM ops.building_review WHERE author_user_id =
+           (SELECT user_id FROM core.user_identity WHERE provider_subject = $1) ORDER BY submitted_at`,
+        [RESIDENT_SUB],
+      ),
+    ).toEqual([
+      { state: 'withdrawn', body: null },
+      { state: 'withdrawn', body: null },
+    ]);
+  });
+
+  // G review #1: the author withdraws by identity, even after the owner unlinked the login from the lease party
+  it('the author can still withdraw after the owner unlinks their login', async () => {
+    const lease = await q<{ id: string }>(
+      `INSERT INTO ops.lease (tenant_id, building_id, unit_id, lessee_party_id, template_version_id, number, status,
+                              start_date, end_date, months, move_in_at, move_out_at, rent, activated_at, ended_at)
+       SELECT l.tenant_id, l.building_id, u.id, l.lessee_party_id, l.template_version_id, 'CTR-G9-3', 'ended',
+              '2026-06-01', '2026-10-15', 4, '2026-06-01T10:00:00+07:00', '2026-10-15T10:00:00+07:00', 4500,
+              '2026-05-30T10:00:00+07:00', '2026-10-15T10:00:00+07:00'
+         FROM ops.lease l JOIN core.unit u ON u.building_id = l.building_id AND u.unit_no = 'A-104'
+        WHERE l.id = $1 RETURNING id`,
+      [DEV.leaseId],
+    );
+    const leaseId = lease[0]!.id;
+    await q(
+      `INSERT INTO ops.lease_party (tenant_id, lease_id, party_id, role, is_signer) VALUES ($1, $2, $3, 'lessee', true)`,
+      [DEV.tenantId, leaseId, DEV.residentPartyId],
+    );
+    t.clock.advance(60_000);
+    const fresh = await residentLogin(RESIDENT_SUB, 'Somchai');
+    await setting('review.moderation.premoderate', false);
+    const created = await t.http
+      .post(`/v1/resident/leases/${leaseId}/review`)
+      .set(fresh)
+      .set(idem())
+      .send({ rating: 1, body: 'แอร์เสียบ่อย ซ่อมช้ามาก', language: 'th', consentVersion: 1 })
+      .expect(201);
+    await setting('review.moderation.premoderate', true);
+    expect(created.body.state).toBe('published');
+    await settle();
+    expect(
+      (await t.http.get(`/v1/public/listings/${listing.slug}/reviews`).expect(200)).body.summary.count,
+    ).toBe(1);
+    // the owner unlinks the login from the party (the lease leaves the token at the next refresh)
+    const [link] = await q<{ id: string }>(
+      `SELECT l.id FROM core.party_user_link l JOIN core.user_identity i ON i.user_id = l.user_id
+        WHERE l.party_id = $1 AND l.state = 'active' AND i.provider_subject = $2`,
+      [DEV.residentPartyId, RESIDENT_SUB],
+    );
+    await t.http
+      .post(`/v1/owner/parties/${DEV.residentPartyId}/links/${link!.id}/actions/unlink`)
+      .set(dev())
+      .send({ unlinkReason: 'ผู้เช่าย้ายออก' })
+      .expect(204);
+    const unlinked = await residentLogin(RESIDENT_SUB, 'Somchai');
+    const gone = await t.http
+      .post(`/v1/resident/leases/${leaseId}/review/actions/withdraw`)
+      .set(unlinked)
+      .expect(200);
+    expect(gone.body).toMatchObject({ state: 'withdrawn', body: null });
+    expect(
+      (await t.http.get(`/v1/public/listings/${listing.slug}/reviews`).expect(200)).body.summary.count,
+    ).toBe(0);
+    // someone else still gets 404
+    await t.http
+      .post(`/v1/resident/leases/${leaseId}/review/actions/withdraw`)
+      .set(otherResident)
+      .expect(404);
+  });
+
   // ------------------------------------------------------------------------------------------- listing assistant
 
   it('the listing assistant drafts th/en/zh, records AI usage, reads photos without touching them', async () => {
@@ -505,6 +622,55 @@ describe('G9 reviews, listing assistant & energy insight (real PostgreSQL)', () 
       .set(idem())
       .send({ languages: ['th'] })
       .expect(404);
+  });
+
+  // G review #6: the monthly limit is reserved before the AI call, so concurrent drafts cannot exceed it
+  it('concurrent drafts at limit − 1: exactly one succeeds, the others get assistant.limit_reached', async () => {
+    const used = (await t.http.get('/v1/owner/listing-assistant').set(dev()).expect(200)).body
+      .usedThisMonth as number;
+    await setting('listing.assistant.monthly_limit', used + 1);
+    // a slow gateway: every request is inside the AI call at the same time
+    const fake = writer();
+    const original = fake.draft.bind(fake);
+    fake.draft = async (request) => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return original(request);
+    };
+    try {
+      const answers = await Promise.all(
+        Array.from({ length: 5 }, () =>
+          t.http
+            .post(`/v1/owner/listings/${listing.id}/assistant`)
+            .set(dev())
+            .set(idem())
+            .send({ languages: ['th'] }),
+        ),
+      );
+      expect(answers.map((a) => a.status).sort()).toEqual([200, 429, 429, 429, 429]);
+      expect(
+        answers.filter((a) => a.status === 429).every((a) => a.body.code === 'assistant.limit_reached'),
+      ).toBe(true);
+    } finally {
+      fake.draft = original;
+    }
+    const quota = await t.http.get('/v1/owner/listing-assistant').set(dev()).expect(200);
+    expect(quota.body).toMatchObject({ usedThisMonth: used + 1, monthlyLimit: used + 1 });
+    // a failed call gives its reservation back
+    await setting('listing.assistant.monthly_limit', used + 2);
+    writer().failNext = true;
+    await t.http
+      .post(`/v1/owner/listings/${listing.id}/assistant`)
+      .set(dev())
+      .set(idem())
+      .send({ languages: ['th'] })
+      .expect(503);
+    await t.http
+      .post(`/v1/owner/listings/${listing.id}/assistant`)
+      .set(dev())
+      .set(idem())
+      .send({ languages: ['th'] })
+      .expect(200);
+    expect(await q('SELECT count(*)::int AS n FROM platform.ai_usage_reservation')).toEqual([{ n: 0 }]);
   });
 
   // ------------------------------------------------------------------------------------------- energy insight
@@ -703,5 +869,69 @@ describe('G9 reviews, listing assistant & energy insight (real PostgreSQL)', () 
       .set(dev())
       .expect(409);
     expect(again.body.code).toBe('energy.invalid_state');
+  });
+
+  // G review #2: withdrawing `energy.insight` on the owner consent page stops the sharing like an opt-out
+  it('withdrawing the energy.insight consent opts the building out and withdraws the lead', async () => {
+    t.clock.advance(60_000);
+    owner = await ownerToken(t);
+    await t.http
+      .post(`/v1/owner/buildings/${DEV.buildingId}/energy-insight/actions/opt-in`)
+      .set(dev())
+      .set(idem())
+      .send({ consentVersion: 1 })
+      .expect(200);
+    await settle();
+    await t.app.get(IntegrationDeliveryService).sweep();
+    const shared = getenergy().received.length;
+    t.clock.advance(60_000);
+    await t.http
+      .post('/v1/owner/consents')
+      .set(dev())
+      .send({ items: [{ purposeKey: 'energy.insight', version: 1, granted: false }] })
+      .expect(201);
+    await settle();
+    await t.app.get(IntegrationDeliveryService).sweep();
+    expect(
+      await q('SELECT state::text FROM platform.energy_insight_optin WHERE building_id = $1', [
+        DEV.buildingId,
+      ]),
+    ).toEqual([{ state: 'opted_out' }]);
+    expect(
+      getenergy()
+        .received.slice(shared)
+        .map((r) => (r.envelope as { type: string }).type),
+    ).toEqual(['energy.insight.withdrawn']);
+    // a due snapshot is not shared any more
+    await q(`UPDATE platform.energy_insight_optin SET last_shared_at = now() - interval '40 days'`);
+    expect(await t.app.get(EnergyInsightService).run()).toBe(0);
+  });
+
+  // G review #2: share() re-checks the consent itself, even when no subscriber ran (a withdrawal row only)
+  it('the share job re-checks the consent at send time and parks what waits', async () => {
+    t.clock.advance(60_000);
+    owner = await ownerToken(t);
+    await t.http
+      .post(`/v1/owner/buildings/${DEV.buildingId}/energy-insight/actions/opt-in`)
+      .set(dev())
+      .set(idem())
+      .send({ consentVersion: 1 })
+      .expect(200);
+    await settle();
+    // a withdrawal recorded without its event (as if the subscriber had not run yet)
+    t.clock.advance(60_000);
+    await q(
+      `INSERT INTO platform.consent (tenant_id, subject_type, subject_id, purpose_version_id, granted, captured_at, channel)
+       SELECT NULL, 'user', o.opted_in_by, o.consent_purpose_version_id, false, o.opted_in_at + interval '1 second', 'web'
+         FROM platform.energy_insight_optin o WHERE o.building_id = $1`,
+      [DEV.buildingId],
+    );
+    await q(`UPDATE platform.energy_insight_optin SET last_shared_at = now() - interval '40 days'`);
+    expect(await t.app.get(EnergyInsightService).run()).toBe(0);
+    expect(
+      await q('SELECT state::text FROM platform.energy_insight_optin WHERE building_id = $1', [
+        DEV.buildingId,
+      ]),
+    ).toEqual([{ state: 'opted_out' }]);
   });
 });
