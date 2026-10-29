@@ -21,7 +21,7 @@ export class IntegrationTransportError extends Error {
 }
 
 export interface IntegrationTransport {
-  readonly kind: 'webhook' | 'sns';
+  readonly kind: 'webhook' | 'sns' | 'fake';
   /** Resolves once the partner stored the event (its 2xx is the acknowledgement); rejects otherwise. */
   send(event: OutboundIntegration): Promise<void>;
 }
@@ -89,5 +89,27 @@ export class SnsIntegrationTransport implements IntegrationTransport {
         true,
       ),
     );
+  }
+}
+
+/**
+ * In-memory partner for dev / tests / demos (G9: getenergy until O-028 names its endpoint): acknowledges every event,
+ * keeps what it received (envelopes only — the same validated payload a real partner would get) and can be told to
+ * refuse the next one. Never leaves the process.
+ */
+export class FakeIntegrationTransport implements IntegrationTransport {
+  readonly kind = 'fake' as const;
+  readonly received: OutboundIntegration[] = [];
+  /** Tests: the next send fails with this error. */
+  failNext: IntegrationTransportError | null = null;
+
+  send(event: OutboundIntegration): Promise<void> {
+    if (this.failNext) {
+      const error = this.failNext;
+      this.failNext = null;
+      return Promise.reject(error);
+    }
+    this.received.push(structuredClone(event));
+    return Promise.resolve();
   }
 }

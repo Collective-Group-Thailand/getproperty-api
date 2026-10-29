@@ -15,15 +15,15 @@ How it runs: each step in its own subagent on the sandbox copies (Node 24, embed
 | G4 | api | done | api 65e874d (f8ad203) | 730 paths (+9) | — (notes on O-027, O-029) | D-296; migration 0062; unit 569, int 478 (66 suites); test:e2e deferred; FB Page via fake (FACEBOOK_MODE off in uat/prod); LIFF /link/oa must use prospect confirm endpoint |
 | G5 | api | done | api 8195e78 (9761cdb) | 746 paths (+16) | O-032 | D-297, D-298; migration 0063; unit 577, int 482 (67 suites); test:e2e deferred; all G5 products seeded without price (O-027) |
 | G8 | api | done | api 3dbf3be (3a6c9f8) | 762 paths (+16) | O-033, O-034 | D-299; migration 0064; unit 587, int 489 (68 suites); consent purpose `resident.relocation` (G6 must reuse); GETBUILD_MODE off until O-033 |
-| G6 | api | done | (this merge) | 779 paths (+17) | — (O-023, O-027 updated) | D-300; migration 0065; unit 599, int 494 (69 suites; batch m–r re-run by orchestrator on final code: 105 passed); broadcast.sponsored.enabled=false; consent purpose platform.recommendations; DSR erasure 500 fixed |
-| G9 | api | todo | | | | |
+| G6 | api | done | api b22571d (8b6c493) | 779 paths (+17) | — (O-023, O-027 updated) | D-300; migration 0065; unit 599, int 494 (69 suites; batch m–r re-run by orchestrator on final code: 105 passed); broadcast.sponsored.enabled=false; consent purpose platform.recommendations; DSR erasure 500 fixed |
+| G9 | api | done | (this merge) | 798 paths (+19) | O-035, O-036 | D-301; migration 0066; unit 612, int 502 (70 suites); AI + getenergy on fakes (INTEGRATION_GETENERGY_TRANSPORT none until O-028); reviews pre-moderated, owner can't hide/delete |
 | GW1 | web | done | web a115699 | adopted api 5931568 | — | unit 1,130, e2e 192 |
 | GW2 | web | done | web d326a41 | — | — | unit 1,138, e2e 196 (2 flaky on retry: admin-tenants:166, owner-settings:180); contract-request AgencyDto details |
 | GW3 | web | done | web b65047e (7e73385) | adopted api 36c7c79 | — | unit 1,152, e2e 202 (1 flaky on retry: owner-settings), storybook, Lighthouse owner budgets; contract-requests: owner menu `contracts` key, admin `contract_library` key (admin legal-review page not built), unit/lessee labels on RenewalOfferDto/ContractDto |
 | GW4 | web | done | web dfafe19 (b108536) | adopted api 8195e78 | — | unit 1,166, build, storybook, Lighthouse owner+admin within budget; e2e owner-growth/admin-growth/marketing written, deferred; CRs: owner menu `promotion`, media deliverable files, saved FB group links (not built), boost stats |
-| GW5 | web | running | | | | adopts api G6 |
+| GW5 | web | done | web 6ef2c24 (3d70ef7) | adopted api b22571d | — | unit 1,180, build, storybook, Lighthouse owner+admin within budget (agent report lost after a session outage; orchestrator re-ran gen:api --check, lint, format, typecheck, unit 1,180 and build: green); e2e owner-broadcast/admin-broadcast written, deferred |
 | GW6 | web | todo | | | | |
-| GL1 | liff | running | | | | adopts api G6 |
+| GL1 | liff | done | liff 510d4f1 (be0532c) | adopted api b22571d | — | unit 747, build, storybook, lhci ≤180 KB (recommendations set); /recommendations + /rent/recommendations, /link/oa prospect fix (G4 note); e2e recommendations/oa-link written, deferred; CLS 0.42 seen by hand on /recommendations — placeholder enlarged, not re-measured |
 | GL2 | liff | done | liff e97e41f (52e9d65) | adopted api d69d6c8 | — | unit 729, build, storybook, lhci ≤180 KB (new prospect set); e2e self-viewing/prospect/rent-record written, deferred; CR #35 contact for accompanied viewings (PDPA question) |
 | GL3 | liff | done | liff 0e341e9 (ba4e437) | adopted api 36c7c79 | — | unit 717, build, storybook, lhci ≤180 KB (notification prefs moved to /profile/notifications); contracts.spec ran green, later edits e2e deferred; CR #34 lease legal-review fields; question: lease sign screen still cites the OCPB standard lease for own templates |
 | GL4 | liff | todo | | | | |
@@ -34,3 +34,5 @@ How it runs: each step in its own subagent on the sandbox copies (Node 24, embed
 **2026-10-28 12:34 Bangkok — founder change:** web/LIFF Playwright e2e is no longer run per step (specs are still written, linted and typechecked; `pnpm build` runs on its own). Deferred e2e runs — all to be run together before the Review: GL3 onward (GW3 was run: 202). api `test:e2e` and integration still run per step.
 
 **2026-10-28 14:05 Bangkok — founder change:** api `test:e2e` is not run per step either (specs still written). api integration still runs.
+
+**2026-10-29 00:40–08:40 Bangkok** — session outage (server stopped, sandbox rebooted). GW5 had committed in the sandbox (report lost; gates re-run by the orchestrator); GL1 merged after clearing a stale .git/HEAD.lock; G9 resumed from its uncommitted tree.

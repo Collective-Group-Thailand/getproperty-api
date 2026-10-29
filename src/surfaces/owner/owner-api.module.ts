@@ -6,6 +6,7 @@ import { OwnerIdentityVerificationController } from '../shared/identity-verifica
 import { OwnerMeController } from '../shared/me.controllers';
 import { MeService } from '../shared/me.service';
 import { OwnerConsentsController } from '../shared/privacy.controllers';
+import { OwnerReviewsController } from '../shared/reviews.controllers';
 import {
   notificationsController,
   pushSubscriptionsController,
@@ -56,6 +57,7 @@ import {
   OwnerSupportGrantsController,
 } from './governance.controller';
 import { OwnerBoostsController, OwnerMediaServicesController } from './growth.controller';
+import { OwnerEnergyInsightController, OwnerListingAssistantController } from './growth-insight.controller';
 import { OwnerEmployerHousingController, OwnerRentalHandoffsController } from './growth-network.controller';
 import { OwnerInsightsController } from './insights.controller';
 import { OwnerLeaseStampDutyController, OwnerUnitDocumentsController } from './landlord-documents.controller';
@@ -120,6 +122,9 @@ import {
     OwnerSubscriptionController,
     OwnerStorageController,
     OwnerInsightsController,
+    OwnerReviewsController,
+    OwnerListingAssistantController,
+    OwnerEnergyInsightController,
     OwnerEtaxController,
     OwnerTm30Controller,
     OwnerServiceCategoriesController,

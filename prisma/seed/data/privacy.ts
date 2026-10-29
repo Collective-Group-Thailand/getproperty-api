@@ -140,6 +140,68 @@ export const CONSENT_PURPOSES: ConsentPurposeSeed[] = [
       body: 'Draft ⚖ — anonymised data for statistics and benchmarks (D-083).',
     },
   },
+  {
+    // G9 (D-301): the reviewer's own consent to publish a review on getproperty (Collective is the controller of the
+    // public review → consent rows with tenant NULL); asked with every review, never pre-ticked.
+    key: 'review.publish',
+    audience: 'resident',
+    required: false,
+    th: {
+      title: 'เผยแพร่รีวิวอาคารของฉัน',
+      body: [
+        'ร่าง ⚖ — เลือกได้ ไม่มีผลต่อการเช่าหรือบริการอื่น',
+        '',
+        'getproperty (บริษัท Collective Group (Thailand) จำกัด ผู้ควบคุมข้อมูล) จะแสดงคะแนนและข้อความรีวิวของคุณต่อสาธารณะในหน้าประกาศของอาคารนี้ พร้อมป้าย "ผู้เช่าที่ยืนยันแล้ว" และช่วงเดือน-ปีที่คุณพักอยู่',
+        '',
+        '**ไม่แสดง** ชื่อ เลขห้อง เบอร์โทร หรือบัญชี LINE ของคุณ เจ้าของอาคารเห็นรีวิวแบบเดียวกับสาธารณะ ตอบกลับได้ แต่ลบรีวิวไม่ได้',
+        '',
+        'ทีมงาน getproperty ตรวจรีวิวก่อนเผยแพร่และซ่อนข้อความที่ไม่เหมาะสมได้ คุณถอนรีวิวได้ทุกเมื่อ (ข้อความจะถูกลบ)',
+      ].join('\n'),
+    },
+    en: {
+      title: 'Publish my building review',
+      body: [
+        'Draft ⚖ — optional; saying no changes nothing about your lease or any other service.',
+        '',
+        'getproperty (Collective Group (Thailand) Co., Ltd., the data controller) shows your rating and review publicly on this building’s listing pages, labelled "Verified tenant", with the months and years you lived there.',
+        '',
+        '**Never shown:** your name, unit number, phone or LINE account. The building owner sees the review as the public does, may reply, but cannot delete it.',
+        '',
+        'The getproperty team checks reviews before they are published and may hide abusive ones. You can withdraw your review at any time (its text is deleted).',
+      ].join('\n'),
+    },
+  },
+  {
+    // G9 (D-289 (6), D-301): the building owner's opt-in to share aggregate energy figures with getenergy (Collective);
+    // consent rows carry the tenant (the operator user consents on behalf of the building owner tenant).
+    key: 'energy.insight',
+    audience: 'owner',
+    required: false,
+    th: {
+      title: 'ส่งข้อมูลพลังงานของอาคารให้ getenergy',
+      body: [
+        'ร่าง ⚖ — เลือกได้ ปิดได้ทุกเมื่อ',
+        '',
+        'getproperty จะส่ง **ตัวเลขรวมของอาคาร** ได้แก่ คะแนนพลังงาน การใช้ไฟรวมและส่วนกลาง ความต้องการไฟสูงสุด ชั่วโมงการทำงานของปั๊ม จำนวนห้องโดยประมาณ และจังหวัด/อำเภอ ให้ getenergy (บริการด้านพลังงานในเครือ Collective Group) เพื่อเสนอวิธีลดค่าไฟให้คุณ',
+        '',
+        '**ไม่ส่ง** ชื่อ เบอร์โทร ข้อมูลผู้เช่า เลขห้อง หรือการใช้ไฟรายห้อง',
+        '',
+        'ระบบส่งตัวเลขชุดใหม่ประมาณเดือนละครั้งขณะที่เปิดอยู่ เมื่อปิด getproperty จะหยุดส่งทันทีและแจ้ง getenergy ให้ลบข้อมูลของอาคารนี้',
+      ].join('\n'),
+    },
+    en: {
+      title: 'Share my building’s energy figures with getenergy',
+      body: [
+        'Draft ⚖ — optional; switch it off at any time.',
+        '',
+        'getproperty sends **building-level figures**: an energy score, total and common-area electricity use, peak demand, pump running hours, an approximate number of units and the province / district, to getenergy (Collective Group’s energy service) so it can offer you ways to lower your power bill.',
+        '',
+        '**Never sent:** names, phone numbers, residents’ data, unit numbers or per-unit use.',
+        '',
+        'A fresh set of figures is sent about once a month while it is on. When you switch it off, getproperty stops at once and asks getenergy to delete this building’s data.',
+      ].join('\n'),
+    },
+  },
 ];
 
 export interface RetentionSeed {

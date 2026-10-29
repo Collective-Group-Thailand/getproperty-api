@@ -121,6 +121,26 @@ export const DOMAIN_EVENT_TYPES = {
     'A resident under notice who consented (`resident.relocation`) got a relocation offer (D-299).',
   'relocation.offer_withdrawn':
     'The resident withdrew consent `resident.relocation`: open offers stopped and their destination was erased.',
+  // G9 verified reviews, listing assistant, energy insight (D-301)
+  'building_review.submitted':
+    'A resident with verified tenure reviewed the building of their lease (consent `review.publish`; D-301).',
+  'building_review.published': 'A building review became public (moderator approval or no pre-moderation).',
+  'building_review.rejected': 'A platform moderator rejected a building review (reason recorded).',
+  'building_review.hidden':
+    'A platform moderator hid a published building review for abuse (reason recorded).',
+  'building_review.restored': 'A platform moderator restored a hidden building review.',
+  'building_review.replied': 'The building owner published / changed its reply to a review (right of reply).',
+  'building_review.reported':
+    'The building owner reported a review to the platform moderators (it is not removed).',
+  'building_review.withdrawn': 'The reviewer withdrew their review (text erased, D-025).',
+  'listing.assistant_drafted':
+    'The AI listing assistant drafted titles / descriptions for a listing (nothing saved; usage recorded, D-161).',
+  'energy_insight.opted_in':
+    'A building owner opted in to share aggregate energy figures with getenergy (consent `energy.insight`; D-289 (6)).',
+  'energy_insight.opted_out':
+    'A building owner opted out of getenergy sharing: nothing more is sent and getenergy is asked to delete the lead.',
+  'energy_insight.shared':
+    'An energy snapshot of an opted-in building was queued for getenergy (`energy.insight.shared`).',
   // G6 audience, marketing consent, sponsored broadcast (D-300)
   'audience.preferences_updated':
     'A person who consented to `platform.recommendations` set what they want to hear about (D-300).',

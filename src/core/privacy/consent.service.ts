@@ -1,5 +1,6 @@
 import { RequestContext } from '@common/context/request-context';
 import { DomainException } from '@common/errors/domain.exception';
+import { type Tx } from '@database/prisma.service';
 import { TenantTx } from '@database/tenant-tx';
 import { type ConsentChannel, type NotificationAudience } from '@generated/prisma/client';
 import { Inject, Injectable } from '@nestjs/common';
@@ -103,66 +104,90 @@ export class ConsentService {
     items: { purposeKey: string; version: number; granted: boolean }[],
     input: { channel: ConsentChannel; language: string; tenantIds: (string | null)[] },
   ): Promise<number> {
-    const request = RequestContext.current();
-    const now = this.clock.now();
     return this.db.platform(async (tx) => {
       let written = 0;
-      for (const item of items) {
-        const version = await tx.consentPurposeVersion.findFirst({
-          where: { purpose: { key: item.purposeKey }, version: item.version, language: input.language },
-        });
-        const fallback =
-          version ??
-          (await tx.consentPurposeVersion.findFirst({
-            where: { purpose: { key: item.purposeKey }, version: item.version },
-          }));
-        if (!fallback) throw new DomainException('consent.unknown_purpose');
+      for (const item of items)
         for (const tenantId of input.tenantIds) {
-          if (subject.type === 'party' && !tenantId) throw new DomainException('consent.unknown_purpose');
-          const row = await tx.consent.create({
-            data: {
-              tenantId,
-              subjectType: subject.type,
-              subjectId: subject.id,
-              purposeVersionId: fallback.id,
-              granted: item.granted,
-              capturedAt: now,
-              channel: input.channel,
-              ip: request?.ip ?? null,
-              userAgent: request?.userAgent ?? null,
-            },
-          });
+          await this.recordIn(tx, subject, item, { ...input, tenantId });
           written += 1;
-          await this.audit.record(tx, {
-            action: 'consent.changed',
-            tenantId,
-            subjectType: 'platform.consent',
-            subjectId: row.id,
-            after: {
-              subjectType: subject.type,
-              subjectId: subject.id,
-              purpose: item.purposeKey,
-              version: item.version,
-              granted: item.granted,
-              channel: input.channel,
-            },
-          });
-          await this.events.record(tx, {
-            type: 'consent.changed',
-            aggregateType: 'consent',
-            aggregateId: row.id,
-            tenantId,
-            payload: {
-              subjectType: subject.type,
-              subjectId: subject.id,
-              purposeKey: item.purposeKey,
-              version: item.version,
-              granted: item.granted,
-            },
-          });
         }
-      }
       return written;
     });
+  }
+
+  /**
+   * Writes one consent row (+ audit + `consent.changed`) inside the caller's transaction and returns its id — for
+   * flows that store the consent with what it allows (a review, an energy opt-in; G9, D-301).
+   */
+  async recordIn(
+    tx: Tx,
+    subject: ConsentSubjectRef,
+    item: { purposeKey: string; version: number; granted: boolean },
+    input: { channel: ConsentChannel; language: string; tenantId: string | null },
+  ): Promise<{ id: string; purposeVersionId: string }> {
+    const request = RequestContext.current();
+    const now = this.clock.now();
+    const version = await tx.consentPurposeVersion.findFirst({
+      where: { purpose: { key: item.purposeKey }, version: item.version, language: input.language },
+    });
+    const fallback =
+      version ??
+      (await tx.consentPurposeVersion.findFirst({
+        where: { purpose: { key: item.purposeKey }, version: item.version },
+      }));
+    if (!fallback) throw new DomainException('consent.unknown_purpose');
+    const tenantId = input.tenantId;
+    if (subject.type === 'party' && !tenantId) throw new DomainException('consent.unknown_purpose');
+    const row = await tx.consent.create({
+      data: {
+        tenantId,
+        subjectType: subject.type,
+        subjectId: subject.id,
+        purposeVersionId: fallback.id,
+        granted: item.granted,
+        capturedAt: now,
+        channel: input.channel,
+        ip: request?.ip ?? null,
+        userAgent: request?.userAgent ?? null,
+      },
+    });
+    await this.audit.record(tx, {
+      action: 'consent.changed',
+      tenantId,
+      subjectType: 'platform.consent',
+      subjectId: row.id,
+      after: {
+        subjectType: subject.type,
+        subjectId: subject.id,
+        purpose: item.purposeKey,
+        version: item.version,
+        granted: item.granted,
+        channel: input.channel,
+      },
+    });
+    await this.events.record(tx, {
+      type: 'consent.changed',
+      aggregateType: 'consent',
+      aggregateId: row.id,
+      tenantId,
+      payload: {
+        subjectType: subject.type,
+        subjectId: subject.id,
+        purposeKey: item.purposeKey,
+        version: item.version,
+        granted: item.granted,
+      },
+    });
+    return { id: row.id, purposeVersionId: fallback.id };
+  }
+
+  /** The current (effective) version number of a purpose, or null when it has none yet. */
+  async currentVersion(tx: Tx, purposeKey: string): Promise<number | null> {
+    const v = await tx.consentPurposeVersion.findFirst({
+      where: { purpose: { key: purposeKey }, effectiveFrom: { lte: this.clock.now() } },
+      orderBy: { version: 'desc' },
+      select: { version: true },
+    });
+    return v?.version ?? null;
   }
 }

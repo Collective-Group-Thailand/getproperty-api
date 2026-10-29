@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { PublicHandoffsController } from '../shared/growth-network.controllers';
 import { PublicRentRecordsController } from '../shared/rent-record.controllers';
+import { PublicListingReviewsController } from '../shared/reviews.controllers';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import { PublicGuidesController } from './guides.controller';
@@ -32,6 +33,7 @@ import { PublicAgencySignupController, PublicSignupController } from './signup.c
     PublicRentRecordsController,
     PublicGuidesController,
     PublicHandoffsController,
+    PublicListingReviewsController,
   ],
 })
 export class PublicApiModule {}

@@ -71,6 +71,9 @@ import { LINE_CHANNEL_API, type LineChannelApiPort } from './line-channels/line-
 import { FakeLineMulticast } from './line-multicast/fake-line-multicast';
 import { LineMulticastAdapter } from './line-multicast/line-multicast.adapter';
 import { LINE_MULTICAST, type LineMulticastPort } from './line-multicast/line-multicast.port';
+import { FakeListingWriter } from './listing-writer/fake-listing-writer';
+import { HttpListingWriter, UnconfiguredListingWriter } from './listing-writer/http-listing-writer.adapter';
+import { LISTING_WRITER, type ListingWriterPort } from './listing-writer/listing-writer.port';
 import { FakeLockVendors } from './locks/fake-lock-vendors';
 import { LOCK_VENDORS } from './locks/lock-vendor.port';
 import { RealLockVendors } from './locks/real-lock-vendors';
@@ -206,6 +209,24 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
               timeoutMs: config.get('AI_GATEWAY_TIMEOUT_MS'),
             })
           : new UnconfiguredAiGateway();
+      },
+    },
+    {
+      // G9 / D-301: the AI listing assistant — fake in dev / tests; the gateway adapter is UNVERIFIED (D-161)
+      provide: LISTING_WRITER,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig): ListingWriterPort => {
+        if (config.useFakes) return new FakeListingWriter();
+        const url = config.get('AI_GATEWAY_URL');
+        const key = config.get('AI_GATEWAY_API_KEY');
+        return url && key
+          ? new HttpListingWriter({
+              baseUrl: url,
+              apiKey: key,
+              model: config.get('AI_TEXT_MODEL'),
+              timeoutMs: config.get('AI_GATEWAY_TIMEOUT_MS'),
+            })
+          : new UnconfiguredListingWriter();
       },
     },
     {
@@ -439,6 +460,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
     LINE_MESSAGING,
     LINE_CHANNEL_API,
     LINE_MULTICAST,
+    LISTING_WRITER,
     FACEBOOK_PAGES,
     GETBUILD_HANDOFF,
     FIREBASE_VERIFIER,

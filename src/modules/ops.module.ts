@@ -41,10 +41,12 @@ import { LeasesService } from './ops-leases/leases.service';
 import { RentCertificatesService } from './ops-leases/rent-certificates.service';
 import { RentRecordService } from './ops-leases/rent-record.service';
 import { ResidentLeasesService } from './ops-leases/resident-leases.service';
+import { BuildingReviewsService } from './ops-listings/building-reviews.service';
 import { CoBrokeService } from './ops-listings/co-broke.service';
 import { DealsService } from './ops-listings/deals.service';
 import { ListingNotifications } from './ops-listings/listing.notifications';
 import { ListingLeaseHooks, SelfViewingDoorHook } from './ops-listings/listing.subscribers';
+import { ListingAssistantService } from './ops-listings/listing-assistant.service';
 import { ListingInsightsService } from './ops-listings/listing-insights.service';
 import { ListingLeadsService } from './ops-listings/listing-leads.service';
 import { ListingModerationService } from './ops-listings/listing-moderation.service';
@@ -96,6 +98,7 @@ import { SearchService } from './ops-units/search.service';
 import { StructureService } from './ops-units/structure.service';
 import { UnitImportService } from './ops-units/unit-import.service';
 import { UnitsService } from './ops-units/units.service';
+import { EnergyInsightService } from './smart-energy/energy-insight.service';
 
 const SERVICES = [
   StructureService,
@@ -176,6 +179,9 @@ const SERVICES = [
   RentalHandoffsService,
   EmployerHousingService,
   RelocationService,
+  BuildingReviewsService,
+  ListingAssistantService,
+  EnergyInsightService,
   ServiceCategoriesService,
   ServiceRequestsService,
   ServiceCostsService,
@@ -201,7 +207,7 @@ const SERVICES = [
 
 /**
  * Group A business modules (master plan §4: `modules/ops-*`), shared by the HTTP and worker processes so their
- * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4); B4: rate plans, billing cycles, invoices (4.2); documents, Flex, exports (4.3); payments, slips, receipts (4.4); receivables, dunning, penalties, dashboard, finance exports (4.5); B5: service requests, work orders, preventive maintenance, warranty bridge (5.1); access lives in smart (5.2); community (5.3); staff tasks (5.4); B6.2: e-Tax submissions, TM30 notifications; G8: getbuild rental handoffs, employer housing, relocation offers.
+ * event subscribers run in the worker. B2: units (2.1), parties (2.2), leases (2.3), deposits & inspections (2.4); B4: rate plans, billing cycles, invoices (4.2); documents, Flex, exports (4.3); payments, slips, receipts (4.4); receivables, dunning, penalties, dashboard, finance exports (4.5); B5: service requests, work orders, preventive maintenance, warranty bridge (5.1); access lives in smart (5.2); community (5.3); staff tasks (5.4); B6.2: e-Tax submissions, TM30 notifications; G8: getbuild rental handoffs, employer housing, relocation offers; G9: verified building reviews, the AI listing assistant, energy insight → getenergy.
  */
 @Global()
 @Module({ providers: SERVICES, exports: SERVICES })

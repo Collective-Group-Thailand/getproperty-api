@@ -841,6 +841,26 @@ export class EnvironmentVariables {
   @IsString()
   INTEGRATION_GETPACK_SNS_TOPIC_ARN?: string;
 
+  /**
+   * G9 / D-301 / O-028: how energy-insight events reach getenergy (Collective's energy product): `none` (they wait —
+   * no getenergy endpoint agreed yet), `webhook` (signed like the other partners), `fake` (in-memory acknowledgement,
+   * dev / tests / demos). Unset: `fake` with the in-memory fakes, else `none`.
+   */
+  @IsOptional()
+  @IsIn(['none', 'webhook', 'fake'])
+  INTEGRATION_GETENERGY_TRANSPORT?: 'none' | 'webhook' | 'fake';
+
+  /** getenergy's receiver over the docker network (O-028). */
+  @IsOptional()
+  @IsString()
+  @Matches(/^https?:\/\/\S+$/, { message: 'INTEGRATION_GETENERGY_WEBHOOK_URL must be an http(s) URL' })
+  INTEGRATION_GETENERGY_WEBHOOK_URL?: string;
+
+  /** HMAC keys (≥ 32 characters, comma-separated) getproperty signs its events to getenergy with; the first is current. */
+  @IsOptional()
+  @IsString()
+  INTEGRATION_GETENERGY_SIGNING_KEYS?: string;
+
   /** Per-request timeout of the webhook transport. */
   @Transform(toNumber)
   @IsInt()
@@ -863,6 +883,10 @@ export class EnvironmentVariables {
   /** Vision model name requested from the gateway. */
   @IsString()
   AI_VISION_MODEL = 'vision-default';
+
+  /** G9 (D-301): model name the AI listing assistant requests from the gateway (text drafts from facts and photos). */
+  @IsString()
+  AI_TEXT_MODEL = 'text-default';
 
   @Transform(toNumber)
   @IsInt()

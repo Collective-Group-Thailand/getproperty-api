@@ -49,6 +49,8 @@ export interface ProblemExtensions {
   codeValidTo?: string;
   /** `messaging.addon_terms_required` only (G4, D-287): the OA integration prices in force to accept. */
   addon?: { versionId: string; monthlyFee: string; setupFee: string; vatRate: string; currency: string };
+  /** `review.not_eligible` only (G9, D-301): the first day a review of this lease is possible (null = not anymore). */
+  reviewEligibleFrom?: string | null;
 }
 
 /** The storage position sent with `storage.allowance_exceeded` (G1). */
@@ -233,6 +235,16 @@ export class ProblemDetails {
       '`messaging.addon_terms_required` only (G4, D-287): the LINE OA integration prices in force; connect again with `acceptAddonVersionId`',
   })
   addon?: ProblemAddonTerms;
+
+  @ApiPropertyOptional({
+    type: 'string',
+    format: 'date',
+    nullable: true,
+    example: '2026-12-01',
+    description:
+      '`review.not_eligible` only (G9, D-301): the first day this lease may be reviewed (after `review.min_tenure_months` of tenure); null = no longer (the review window after move-out closed, or the lease never started)',
+  })
+  reviewEligibleFrom?: string | null;
 
   @ApiProperty({ example: '6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e' })
   requestId!: string;

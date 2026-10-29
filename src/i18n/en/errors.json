@@ -1418,5 +1418,59 @@
       "title": "Not possible in this campaign state",
       "detail": "The campaign was already scheduled, sent, cancelled or rejected."
     }
+  },
+  "review": {
+    "not_eligible": {
+      "title": "You cannot review this building yet",
+      "detail": "You can review after you move out, or after {months} months of tenure (from {eligibleFrom})."
+    },
+    "consent_required": {
+      "title": "Consent to publish is needed",
+      "detail": "Please read and confirm the latest consent to publish your review."
+    },
+    "already_submitted": {
+      "title": "Already reviewed",
+      "detail": "Each lease can be reviewed once."
+    },
+    "personal_data": {
+      "title": "The text contains personal data",
+      "detail": "Please remove phone numbers, e-mail addresses, LINE ids, bank accounts, links and ID numbers."
+    },
+    "invalid_state": {
+      "title": "Not possible in this review state",
+      "detail": "The review was withdrawn, hidden or is not published."
+    }
+  },
+  "assistant": {
+    "disabled": {
+      "title": "Listing assistant is off",
+      "detail": "The AI listing assistant is switched off for this account."
+    },
+    "limit_reached": {
+      "title": "Monthly limit reached",
+      "detail": "The assistant can be used {limit} times a month; it resets next month."
+    },
+    "unavailable": {
+      "title": "Listing assistant unavailable",
+      "detail": "The AI service is not available; please write it yourself or try later."
+    },
+    "output_rejected": {
+      "title": "The assistant’s text was not usable",
+      "detail": "The generated text did not pass our checks; please try again."
+    }
+  },
+  "energy": {
+    "consent_required": {
+      "title": "Consent is needed first",
+      "detail": "Please read and confirm the latest consent to share energy figures with getenergy."
+    },
+    "owner_required": {
+      "title": "Building owner only",
+      "detail": "Only the building’s owner can choose to share its energy figures with getenergy."
+    },
+    "invalid_state": {
+      "title": "Sharing is not on",
+      "detail": "This building does not share energy figures with getenergy."
+    }
   }
 }
