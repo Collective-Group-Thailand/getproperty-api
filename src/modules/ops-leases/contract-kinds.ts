@@ -127,7 +127,7 @@ export interface ContractDocData {
 
 const PARTY: PartyBlock = {
   legalName: 'บริษัท ตัวอย่าง จำกัด',
-  taxId: '0105500000000',
+  taxId: '0000000000000',
   address: 'กรุงเทพมหานคร',
 };
 const PREMISES: PremisesBlock = {
