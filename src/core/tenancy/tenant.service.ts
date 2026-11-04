@@ -1,3 +1,4 @@
+import { normaliseTenantType } from '@collective/asset-core';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
@@ -65,6 +66,8 @@ export class TenantService extends TenantScopedRepository {
   }
 
   async onboard(input: OnboardInput): Promise<{ tenant: Tenant; invitation: CreatedInvitation }> {
+    // asset-core 0.8.0 (D-J01): the deprecated condo_juristic is accepted and stored as juristic
+    input = { ...input, type: normaliseTenantType(input.type) };
     const result = await this.db.platform(async (tx) => {
       if (await tx.tenant.findFirst({ where: { slug: input.slug } }))
         throw new DomainException('http.conflict');

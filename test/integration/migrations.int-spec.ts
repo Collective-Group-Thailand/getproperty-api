@@ -25,12 +25,12 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
     await db.drop();
   });
 
-  it('applies the package migrations (0.6.0: twelve), then every app migration', async () => {
+  it('applies the package migrations (0.8.0: fifteen), then every app migration', async () => {
     const core = await assetCoreMigrate({ client: db.admin });
-    expect(core.applied).toHaveLength(13);
+    expect(core.applied).toHaveLength(15);
     const applied = await applyPrismaMigrations(db.admin);
     expect(applied).toEqual(listMigrations().map((m) => m.name));
-    expect(applied).toHaveLength(67);
+    expect(applied).toHaveLength(68);
   });
 
   it('creates exactly the tables of schema-design §7.1–§7.3 (+ §7.5): core 18, platform 77 (+ B4.1 compliance_score, D-203 topic preferences, B6.1 platform business 17, B6.3 analytics 4, D-240 provider_credential, D-276 storage 2, B7.2 listing verification + report 2, B7.7 own LINE OA 3, B7.7 metering 3, B7.10 identity verification 1, B7.11 rent record share 1, B7.13 guide 1, G1 storage quota 5, G4 social channel 1, G5 media service order 1, G6 audience preference, sponsored campaign, delivery, campaign link 4, G9 energy insight opt-in 1, G review AI usage reservation 1), ops 75 (B2.1–B4.5, B5.1 service 5, B5.3 community 8, B6.2 e-Tax / TM30 2, D-218 service messages 1, D-226 link requests 1, B7.2 listings 3, B7.3 leads, messages, viewings 3, B7.9 share links 1, G2 mandates, co-broke, deals, fee accruals 4, G3 contract documents, signatures, renewal offers 3, G7 viewing access 1, G4 listing social posts 1, G5 listing boost 1, G8 rental handoff, employer agreement / worker, relocation offer 4, G9 building review 1), bridge 1, smart 28 (B1.3 + B3 + D-208 reading requests + B5.2 access 3 − T-14 telemetry_15m, partitioned parents counted once), juristic empty', async () => {
@@ -53,6 +53,21 @@ describe('migrations (asset-core + prisma/migrations) from an empty database', (
               (SELECT reloptions FROM pg_class WHERE oid = 'ops.staff_task'::regclass) AS options`,
     );
     expect(view.rows[0]).toEqual({ present: true, staff_task: true, options: ['security_invoker=true'] });
+  });
+
+  it('0068 (asset-core 0.8.0, D-J01): the deprecated condo_juristic is stored as juristic in core.tenant and platform.price_plan', async () => {
+    const tenant = await db.admin.query(
+      `INSERT INTO core.tenant (type, slug, display_name, legal_name, legal_form)
+       VALUES ('condo_juristic', 'ja-alias', 'JA', 'JA Juristic Person', 'juristic_person') RETURNING type::text AS type`,
+    );
+    expect(tenant.rows[0]).toEqual({ type: 'juristic' });
+    const plan = await db.admin.query(
+      `INSERT INTO platform.price_plan (key, tenant_type, name_th, name_en, kind)
+       VALUES ('ja_alias_plan', 'condo_juristic', 'ทดสอบ', 'Test', 'software') RETURNING tenant_type::text AS tenant_type`,
+    );
+    expect(plan.rows[0]).toEqual({ tenant_type: 'juristic' });
+    await db.admin.query(`DELETE FROM platform.price_plan WHERE key = 'ja_alias_plan'`);
+    await db.admin.query(`DELETE FROM core.tenant WHERE slug = 'ja-alias'`);
   });
 
   it('enables and forces row-level security on every table of every schema', async () => {

@@ -22,12 +22,12 @@ const LABELS: Record<string, { name: string; summary: string; tenantType: Tenant
   condo_juristic: {
     name: 'Condo Juristic',
     summary: 'นิติบุคคลอาคารชุด: ค่าส่วนกลาง ประกาศ พัสดุ และการเงิน',
-    tenantType: TenantTypeName.CondoJuristic,
+    tenantType: TenantTypeName.Juristic,
   },
   juristic_pro: {
     name: 'Juristic Pro',
     summary: 'นิติบุคคลพร้อมระบบประชุมใหญ่และลงคะแนนออนไลน์',
-    tenantType: TenantTypeName.CondoJuristic,
+    tenantType: TenantTypeName.Juristic,
   },
   pm_portfolio: {
     name: 'PM Portfolio',

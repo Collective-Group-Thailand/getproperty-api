@@ -1,3 +1,4 @@
+import { isJuristicTenantType } from '@collective/asset-core';
 import { Semaphore } from '@common/concurrency/semaphore';
 import { systemActor, userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
@@ -300,7 +301,7 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
         lease: l,
       });
     }
-    if (tenant.type === 'condo_juristic') {
+    if (isJuristicTenantType(tenant.type)) {
       const owners = await tx.unitOwnership.findMany({
         where: {
           buildingId: { in: buildingIds },

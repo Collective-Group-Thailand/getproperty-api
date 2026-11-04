@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { isJuristicTenantType } from '@collective/asset-core';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
@@ -455,13 +456,17 @@ export async function claimStub(
     select: { id: true, type: true },
   });
   const type = (id: string) => tenants.find((t) => t.id === id)?.type;
-  if (type(input.ownerTenantId) !== 'condo_juristic') throw new DomainException('portfolio.claimant_invalid');
-  const operator = type(input.operatorTenantId);
-  if (operator !== 'condo_juristic' && operator !== 'pm_company')
+  if (!isJuristicTenantType(type(input.ownerTenantId)))
     throw new DomainException('portfolio.claimant_invalid');
+  const operator = type(input.operatorTenantId);
+  if (!isJuristicTenantType(operator) && operator !== 'pm_company')
+    throw new DomainException('portfolio.claimant_invalid');
+  // a stub is a condominium (D-251) claimed by its condo juristic person: property kind condo, legal form condo_act
+  // (asset-core 0.8.0 requires a legal form on a building a juristic tenant operates)
+  const property = await tx.property.findUniqueOrThrow({ where: { id: building.propertyId } });
   await tx.property.update({
     where: { id: building.propertyId },
-    data: { tenantId: input.operatorTenantId, updatedBy: input.by },
+    data: { tenantId: input.operatorTenantId, kind: property.kind ?? 'condo', updatedBy: input.by },
   });
   const claimed = await tx.building.update({
     where: { id: building.id },
@@ -469,6 +474,7 @@ export async function claimStub(
       tenantId: input.operatorTenantId,
       ownerTenantId: input.ownerTenantId,
       operatorTenantId: input.operatorTenantId,
+      legalForm: building.legalForm ?? 'condo_act',
       status: 'active',
       updatedBy: input.by,
       version: { increment: 1 },

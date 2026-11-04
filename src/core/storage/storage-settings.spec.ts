@@ -5,6 +5,7 @@ import {
   noticeProblems,
   packsProblems,
   perTenantTypeProblems,
+  perTypeValue,
   recordBytesProblems,
 } from './storage-settings';
 
@@ -17,6 +18,7 @@ describe('storage metering settings (D-276)', () => {
       pm_company: '5',
       landlord: '5',
       agency: '5',
+      juristic: '5',
     });
     expect(v['storage.price_per_gb_month']!.value).toEqual({
       apartment: null,
@@ -24,6 +26,7 @@ describe('storage metering settings (D-276)', () => {
       pm_company: null,
       landlord: null,
       agency: null,
+      juristic: null,
     });
     expect(v['storage.packs']!.value).toEqual([]);
     expect(v['storage.notice_at_percent']!.value).toEqual([80, 100]);
@@ -35,6 +38,14 @@ describe('storage metering settings (D-276)', () => {
       'storage.record_bytes',
     ])
       expect(v[key]!.check!(v[key]!.value)).toEqual([]);
+  });
+
+  it('reads a juristic tenant from the juristic key, else from the deprecated condo_juristic key (asset-core 0.8.0)', () => {
+    expect(perTypeValue({ juristic: '7', condo_juristic: '5' }, 'juristic')).toBe('7');
+    expect(perTypeValue({ condo_juristic: '5' }, 'juristic')).toBe('5');
+    expect(perTypeValue({ juristic: null, condo_juristic: '5' }, 'juristic')).toBeNull();
+    expect(perTypeValue({ condo_juristic: '5' }, 'apartment')).toBeUndefined();
+    expect(perTypeValue(undefined, 'juristic')).toBeUndefined();
   });
 
   it('validates the shapes', () => {

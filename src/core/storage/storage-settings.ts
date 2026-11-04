@@ -4,8 +4,28 @@
  * metering not active for that type (usage is still snapshotted, nothing is held, no notice is sent); a null price =
  * overage not sold.
  */
-export const TENANT_TYPES = ['apartment', 'condo_juristic', 'pm_company', 'landlord', 'agency'] as const;
+// `juristic` (asset-core 0.8.0, D-J01) beside the deprecated `condo_juristic`: settings stored before 0.8.0 carry the
+// old key; `perTypeValue` reads `juristic` first and falls back to it.
+export const TENANT_TYPES = [
+  'apartment',
+  'condo_juristic',
+  'pm_company',
+  'landlord',
+  'agency',
+  'juristic',
+] as const;
 export type StorageTenantType = (typeof TENANT_TYPES)[number];
+
+/**
+ * The value of a per-tenant-type setting for a tenant type. A juristic tenant (stored as `juristic` since asset-core
+ * 0.8.0) falls back to the `condo_juristic` key of settings written before.
+ */
+export function perTypeValue<T>(value: Record<string, T> | undefined, tenantType: string): T | undefined {
+  if (!value) return undefined;
+  const own = value[tenantType];
+  if (own !== undefined) return own;
+  return tenantType === 'juristic' ? value.condo_juristic : undefined;
+}
 
 const DECIMAL = /^\d{1,6}(\.\d{1,4})?$/;
 

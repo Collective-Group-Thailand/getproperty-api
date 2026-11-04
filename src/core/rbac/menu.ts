@@ -3,7 +3,9 @@
  * permissions (D-090/D-091), the tenant type (D-150) and feature flags. Keys are stable identifiers the web maps to
  * routes; adding an entry is additive.
  */
-export type TenantTypeKey = 'apartment' | 'condo_juristic' | 'pm_company' | 'landlord' | 'agency';
+/** `condo_juristic` is the deprecated alias of `juristic` (asset-core 0.8.0 stores `juristic`, D-J01). */
+export type TenantTypeKey =
+  'apartment' | 'condo_juristic' | 'juristic' | 'pm_company' | 'landlord' | 'agency';
 
 export interface MenuEntry {
   key: string;
@@ -15,7 +17,12 @@ export interface MenuEntry {
 }
 
 /** Operator tenants that run buildings (everything but the landlord's portfolio-first console, D-251). */
-const BUILDING_OPERATORS: readonly TenantTypeKey[] = ['apartment', 'condo_juristic', 'pm_company'];
+const BUILDING_OPERATORS: readonly TenantTypeKey[] = [
+  'apartment',
+  'juristic',
+  'condo_juristic',
+  'pm_company',
+];
 
 export const OWNER_MENU: readonly MenuEntry[] = [
   // D-251: a landlord's home is the portfolio of its units across projects, not a building
@@ -41,7 +48,11 @@ export const OWNER_MENU: readonly MenuEntry[] = [
   { key: 'invoices', anyOf: ['invoice.read'] },
   { key: 'payments', anyOf: ['payment.read'] },
   { key: 'reports', anyOf: ['report.read', 'export.create'] },
-  { key: 'utility_loss', anyOf: ['report.read'], tenantTypes: ['apartment', 'condo_juristic', 'pm_company'] },
+  {
+    key: 'utility_loss',
+    anyOf: ['report.read'],
+    tenantTypes: ['apartment', 'juristic', 'condo_juristic', 'pm_company'],
+  },
   { key: 'service_requests', anyOf: ['service_request.read'], flag: 'module.service_requests' },
   { key: 'access', anyOf: ['access.read'], flag: 'module.smart_access', tenantTypes: BUILDING_OPERATORS },
   { key: 'parcels', anyOf: ['parcel.manage'], flag: 'module.community', tenantTypes: BUILDING_OPERATORS },

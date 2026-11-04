@@ -50041,7 +50041,8 @@
           "condo_juristic",
           "pm_company",
           "landlord",
-          "agency"
+          "agency",
+          "juristic"
         ],
         "type": "string"
       },
