@@ -1,0 +1,173 @@
+{
+  "a": {
+    "lines": [
+      {
+        "lineNo": 1,
+        "sourceType": "common_fee",
+        "quantity": "34.770",
+        "unit": "sqm",
+        "unitPrice": "35.5000",
+        "periodFrom": "2026-11-01",
+        "periodTo": "2026-11-30",
+        "sourceId": "rpv-cf",
+        "leaseLineId": null,
+        "chargeId": null,
+        "estimateSettlementId": null,
+        "meter": null,
+        "ratePlanVersionId": "rpv-cf",
+        "utilityTariffVersionId": null,
+        "capPerUnit": null,
+        "aboveCap": false,
+        "acknowledgementId": null,
+        "tierBreakdown": [
+          {
+            "label": "per_sqm",
+            "units": "34.770",
+            "pricePerUnit": "35.50",
+            "amount": "1234.335"
+          },
+          {
+            "label": "ownership_share",
+            "units": "33.3333",
+            "pricePerUnit": null,
+            "amount": "411.45"
+          }
+        ],
+        "proRata": {
+          "days": 30,
+          "daysInPeriod": 30,
+          "factor": "1.000000",
+          "from": "2026-11-01",
+          "to": "2026-11-30"
+        },
+        "vatApplicable": false,
+        "complianceRuleIds": ["compliance.bill_disclosure"],
+        "lineKind": "common_fee",
+        "description": "ค่าส่วนกลาง (ส่วนกรรมสิทธิ์ 33.3333%)",
+        "amount": "411.45"
+      }
+    ],
+    "subtotal": "411.45",
+    "vatAmount": "0.00",
+    "total": "411.45",
+    "hasEstimate": false,
+    "hasAboveCapLine": false,
+    "reviewFlags": [],
+    "complianceFlags": [],
+    "advanceRent": null
+  },
+  "b": {
+    "lines": [
+      {
+        "lineNo": 1,
+        "sourceType": "common_fee",
+        "quantity": "34.770",
+        "unit": "sqm",
+        "unitPrice": "35.5000",
+        "periodFrom": "2026-11-01",
+        "periodTo": "2026-11-30",
+        "sourceId": "rpv-cf",
+        "leaseLineId": null,
+        "chargeId": null,
+        "estimateSettlementId": null,
+        "meter": null,
+        "ratePlanVersionId": "rpv-cf",
+        "utilityTariffVersionId": null,
+        "capPerUnit": null,
+        "aboveCap": false,
+        "acknowledgementId": null,
+        "tierBreakdown": [
+          {
+            "label": "per_sqm",
+            "units": "34.770",
+            "pricePerUnit": "35.50",
+            "amount": "1234.335"
+          },
+          {
+            "label": "ownership_share",
+            "units": "33.3333",
+            "pricePerUnit": null,
+            "amount": "411.45"
+          }
+        ],
+        "proRata": {
+          "days": 30,
+          "daysInPeriod": 30,
+          "factor": "1.000000",
+          "from": "2026-11-01",
+          "to": "2026-11-30"
+        },
+        "vatApplicable": false,
+        "complianceRuleIds": ["compliance.bill_disclosure"],
+        "lineKind": "common_fee",
+        "description": "ค่าส่วนกลาง (ส่วนกรรมสิทธิ์ 33.3333%)",
+        "amount": "411.45"
+      }
+    ],
+    "subtotal": "411.45",
+    "vatAmount": "0.00",
+    "total": "411.45",
+    "hasEstimate": false,
+    "hasAboveCapLine": false,
+    "reviewFlags": [],
+    "complianceFlags": [],
+    "advanceRent": null
+  },
+  "c": {
+    "lines": [
+      {
+        "lineNo": 1,
+        "sourceType": "common_fee",
+        "quantity": "34.770",
+        "unit": "sqm",
+        "unitPrice": "35.5000",
+        "periodFrom": "2026-11-01",
+        "periodTo": "2026-11-30",
+        "sourceId": "rpv-cf",
+        "leaseLineId": null,
+        "chargeId": null,
+        "estimateSettlementId": null,
+        "meter": null,
+        "ratePlanVersionId": "rpv-cf",
+        "utilityTariffVersionId": null,
+        "capPerUnit": null,
+        "aboveCap": false,
+        "acknowledgementId": null,
+        "tierBreakdown": [
+          {
+            "label": "per_sqm",
+            "units": "34.770",
+            "pricePerUnit": "35.50",
+            "amount": "1234.335"
+          },
+          {
+            "label": "ownership_share",
+            "units": "33.3334",
+            "pricePerUnit": null,
+            "amount": "411.44"
+          }
+        ],
+        "proRata": {
+          "days": 30,
+          "daysInPeriod": 30,
+          "factor": "1.000000",
+          "from": "2026-11-01",
+          "to": "2026-11-30"
+        },
+        "vatApplicable": false,
+        "complianceRuleIds": ["compliance.bill_disclosure"],
+        "lineKind": "common_fee",
+        "description": "ค่าส่วนกลาง (ส่วนกรรมสิทธิ์ 33.3334%)",
+        "amount": "411.44"
+      }
+    ],
+    "subtotal": "411.44",
+    "vatAmount": "0.00",
+    "total": "411.44",
+    "hasEstimate": false,
+    "hasAboveCapLine": false,
+    "reviewFlags": [],
+    "complianceFlags": [],
+    "advanceRent": null
+  }
+}

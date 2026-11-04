@@ -1,0 +1,57 @@
+{
+  "lines": [
+    {
+      "lineNo": 1,
+      "sourceType": "common_fee",
+      "quantity": "0.003",
+      "unit": "ratio",
+      "unitPrice": "6430000.0000",
+      "periodFrom": "2027-01-01",
+      "periodTo": "2027-06-30",
+      "sourceId": "rpv-cf-2027",
+      "leaseLineId": null,
+      "chargeId": null,
+      "estimateSettlementId": null,
+      "meter": null,
+      "ratePlanVersionId": "rpv-cf-2027",
+      "utilityTariffVersionId": null,
+      "capPerUnit": null,
+      "aboveCap": false,
+      "acknowledgementId": null,
+      "tierBreakdown": [
+        {
+          "label": "ownership_ratio",
+          "units": "0.003215",
+          "pricePerUnit": "1000000.0000",
+          "amount": "3215"
+        },
+        {
+          "label": "ownership_share",
+          "units": "100.0000",
+          "pricePerUnit": null,
+          "amount": "19290.00"
+        }
+      ],
+      "proRata": {
+        "days": 181,
+        "daysInPeriod": 181,
+        "factor": "1.000000",
+        "from": "2027-01-01",
+        "to": "2027-06-30"
+      },
+      "vatApplicable": false,
+      "complianceRuleIds": ["compliance.bill_disclosure"],
+      "lineKind": "common_fee",
+      "description": "ค่าส่วนกลาง",
+      "amount": "19290.00"
+    }
+  ],
+  "subtotal": "19290.00",
+  "vatAmount": "0.00",
+  "total": "19290.00",
+  "hasEstimate": false,
+  "hasAboveCapLine": false,
+  "reviewFlags": [],
+  "complianceFlags": [],
+  "advanceRent": null
+}

@@ -211,6 +211,18 @@ export const SETTINGS: readonly SettingDef[] = [
     reason: 'seed: B2.3 standard contract default due day (D-191)',
   },
   {
+    key: 'billing.advance_open_days',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-303 / D-323 (J1.1a): quarterly, semiannual and annual cycles (common fees and funds billed in advance) open and compute this many days before their calendar start (0 = on the first day); monthly cycles keep the cut-off of billing.cutoff.',
+    editableBy: OWNER_BILLING,
+    value: 0,
+    reason: 'seed: D-323 (pack J, J1.1a)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 60 ? [] : ['an integer 0–60'],
+  },
+  {
     key: 'billing.auto_issue',
     valueType: 'json',
     scopeAllowed: ['platform', 'tenant', 'property'],

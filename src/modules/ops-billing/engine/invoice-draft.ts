@@ -3,6 +3,7 @@ import { type UtilityTariffStructure } from '@core/utility-tariffs/tariff-struct
 import Decimal from 'decimal.js';
 
 import { LEASE_LINE_KIND, type LineKind, type SourceType, sourceTypeOf } from './line-kinds';
+import { allocateByOwnership, type OwnershipRow } from './ownership-shares';
 import { type ProRata, proRata, proRataAmount, rentSegments } from './periods';
 import { chargeFor, type RateVersionLike, type TierPart } from './rate-tiers';
 import { type MeterSegment, segmentUnits } from './readings';
@@ -136,6 +137,14 @@ export interface DraftInput {
   /** Received advance rent applied to a final invoice (D-177). */
   advanceRent: string | null;
   vat: { registered: boolean; rate: string; applicableKinds: string[] };
+  /**
+   * Owner billing (J1.1a, D-307, D-323): the billed party and **every** ownership row of the unit that overlaps the
+   * period — the unit rate plans are split by share and by ownership days (`ownership-shares.ts`); the occupancy is
+   * not used for them. Absent = the unit rate plans bill the whole occupancy (unchanged).
+   */
+  ownership?: { partyId: string; rows: OwnershipRow[] };
+  /** Months the period stands for (monthly 1, quarterly 3, semiannual 6, annual 12): rate amounts are per month. */
+  cycleMonths?: number;
 }
 
 export interface DraftLine {
@@ -456,9 +465,10 @@ export function computeInvoiceDraft(input: DraftInput): DraftResult {
     if (aboveCap && !s.acknowledgementId) reviewFlags.push(`acknowledgement_required:${s.utility}`);
   }
 
-  // 5. unit rate plans (common fee / fund by m² or ownership ratio — condos, D-151), pro-rata
+  // 5. unit rate plans (common fee / fund by m² or ownership ratio — condos, D-151): amounts per month × the months of
+  //    the cycle; pro-rata by occupancy, or split by ownership share and days when the billed party is an owner
+  const months = input.cycleMonths ?? 1;
   for (const p of input.unitRatePlans) {
-    if (!pr) continue;
     const charge = chargeFor(p.version, {
       areaSqm: input.unit.areaSqm,
       ownershipRatio: input.unit.ownershipRatio,
@@ -466,14 +476,55 @@ export function computeInvoiceDraft(input: DraftInput): DraftResult {
     });
     const kind: LineKind =
       p.kind === 'fund' ? 'fund' : p.kind === 'common_fee' ? 'common_fee' : 'other_fixed';
+    const periodExact = new Decimal(charge.exact).times(months);
+    const periodAmount = months === 1 ? charge.amount : m2(periodExact);
+    const unitPrice =
+      months === 1 || new Decimal(charge.quantity).isZero()
+        ? charge.unitPrice
+        : periodExact.div(charge.quantity).toDecimalPlaces(4, Decimal.ROUND_HALF_UP).toFixed(4);
+    if (input.ownership) {
+      const shares = allocateByOwnership(periodAmount, period, input.ownership.rows);
+      if (shares.incomplete) reviewFlags.push('ownership_shares_incomplete');
+      for (const slice of shares.slices.filter((x) => x.partyId === input.ownership!.partyId)) {
+        const slicePr = proRata(period, { from: slice.from, to: slice.to })!;
+        const notes = [
+          ...(new Decimal(slice.sharePct).eq(100)
+            ? []
+            : [`ส่วนกรรมสิทธิ์ ${new Decimal(slice.sharePct).toString()}%`]),
+          ...(slice.days === slice.daysInPeriod ? [] : [`${slice.days}/${slice.daysInPeriod} วัน`]),
+        ];
+        lines.push(
+          base({
+            lineKind: kind,
+            description: notes.length ? `${p.name} (${notes.join(', ')})` : p.name,
+            quantity: charge.quantity,
+            unit: charge.unit,
+            unitPrice,
+            amount: slice.amount,
+            periodFrom: slice.from,
+            periodTo: slice.to,
+            sourceId: p.version.id,
+            ratePlanVersionId: p.version.id,
+            tierBreakdown: [
+              ...charge.tierBreakdown,
+              { label: 'ownership_share', units: slice.sharePct, pricePerUnit: null, amount: slice.amount },
+            ],
+            proRata: slicePr,
+            complianceRuleIds: ['compliance.bill_disclosure'],
+          }),
+        );
+      }
+      continue;
+    }
+    if (!pr) continue;
     lines.push(
       base({
         lineKind: kind,
         description: pr.days === pr.daysInPeriod ? p.name : `${p.name} (${pr.days}/${pr.daysInPeriod} วัน)`,
         quantity: charge.quantity,
         unit: charge.unit,
-        unitPrice: charge.unitPrice,
-        amount: proRataAmount(charge.amount, pr),
+        unitPrice,
+        amount: proRataAmount(periodAmount, pr),
         periodFrom: pr.from,
         periodTo: pr.to,
         sourceId: p.version.id,

@@ -33,7 +33,7 @@ import Decimal from 'decimal.js';
 
 import { type DraftLine, type DraftResult } from './engine/invoice-draft';
 import { sourceTypeOf } from './engine/line-kinds';
-import { dueDateFor } from './engine/periods';
+import { addDays, dueDateFor } from './engine/periods';
 import { type MeterSegment } from './engine/readings';
 
 const by = () => userIdOf(RequestContext.actor());
@@ -500,8 +500,13 @@ export class InvoicesService extends TenantScopedRepository {
     const scope = { tenantId: inv.tenantId };
     const minLeadDays = await this.settings.valueAt<number>('invoice.min_lead_days', now, scope);
     const defaultDueDay = await this.settings.valueAt<number>('billing.default_due_day', now, scope);
+    // an advance cycle (quarterly / semiannual / annual, D-303) falls due on the first due day of its period, not after it
+    const advance =
+      inv.billingCycleId !== null &&
+      (await tx.billingCycle.findUnique({ where: { id: inv.billingCycleId }, select: { frequency: true } }))
+        ?.frequency !== 'monthly';
     const dueDate = dueDateFor({
-      periodEnd: day(inv.periodEnd),
+      periodEnd: advance ? addDays(day(inv.periodStart), -1) : day(inv.periodEnd),
       issuedOn,
       dueDay: inv.lease?.billingDay ?? defaultDueDay,
       minLeadDays,
