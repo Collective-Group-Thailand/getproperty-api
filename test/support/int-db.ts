@@ -75,3 +75,19 @@ export function intConfig(url: string): AppConfig {
   };
   return { useFakeDataStores: false, get: (key: string) => values[key] } as unknown as AppConfig;
 }
+
+/**
+ * Clock-pinned suites (JR part 0): the seed starts setting and consent-purpose versions at the seeding instant (the
+ * real wall clock), so a suite whose fake clock sits before that day finds no version in force. Moves the seeded
+ * versions to `at` so a fixed test date is covered on any real date (test setup only: the append-only triggers are
+ * bypassed with the replication role for these statements).
+ */
+export async function backdateSeededVersions(admin: Client, at = '2026-01-01T00:00:00+07:00'): Promise<void> {
+  await admin.query('SET session_replication_role = replica');
+  try {
+    await admin.query(`UPDATE platform.setting_version SET effective_from = $1, created_at = $1`, [at]);
+    await admin.query(`UPDATE platform.consent_purpose_version SET effective_from = $1`, [at]);
+  } finally {
+    await admin.query('SET session_replication_role = origin');
+  }
+}

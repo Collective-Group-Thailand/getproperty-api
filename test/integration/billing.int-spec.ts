@@ -8,7 +8,7 @@ import type request from 'supertest';
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';
 import { adminToken, bearer, idem, onboardTenant, operatorToken, ownerToken } from '../support/int-auth';
-import { createIntDatabase, type IntDatabase } from '../support/int-db';
+import { backdateSeededVersions, createIntDatabase, type IntDatabase } from '../support/int-db';
 import { uploadFile } from '../support/int-files';
 
 const LINE_SUB = 'U00000000000000000000000000b4b201';
@@ -101,13 +101,8 @@ describe('B4.2 billing cycles & invoices (real PostgreSQL)', () => {
 
   beforeAll(async () => {
     db = await createIntDatabase({ prefix: 'gp_billing' });
-    // the seeded settings start at the seeding instant; this suite travels back to September
-    // (test setup only: the append-only trigger is bypassed with replication role for this one statement)
-    await db.admin.query('SET session_replication_role = replica');
-    await db.admin.query(
-      `UPDATE platform.setting_version SET effective_from = '2026-01-01T00:00:00+07:00', created_at = '2026-01-01T00:00:00+07:00'`,
-    );
-    await db.admin.query('SET session_replication_role = origin');
+    // the seeded settings and consent purposes start at the seeding instant; this suite travels back to September
+    await backdateSeededVersions(db.admin);
     // the MEA residential and MWA tariffs are published (two-person rule done by the platform, D-021a)
     await db.admin.query(
       `UPDATE platform.utility_tariff_version v

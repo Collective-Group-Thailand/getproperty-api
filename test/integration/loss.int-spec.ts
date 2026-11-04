@@ -8,7 +8,7 @@ import { UtilityLossService } from '@modules/smart-health/utility-loss.service';
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';
 import { adminToken, bearer, idem, onboardTenant, ownerToken } from '../support/int-auth';
-import { createIntDatabase, type IntDatabase } from '../support/int-db';
+import { backdateSeededVersions, createIntDatabase, type IntDatabase } from '../support/int-db';
 import { uploadFile } from '../support/int-files';
 
 const GOLDEN = join(__dirname, '..', 'golden', 'loss-report-fixture.json');
@@ -44,6 +44,8 @@ describe('utility invoices & loss (B3.4, real PostgreSQL)', () => {
 
   beforeAll(async () => {
     db = await createIntDatabase({ prefix: 'gp_loss' });
+    // the seeded settings start at the seeding instant; the suite's clock is pinned to 2026-11-03
+    await backdateSeededVersions(db.admin);
     t = await createIntApp(db, { OTP_MAX_PER_HOUR: '20' });
     t.clock.set(new Date('2026-11-03T03:00:00Z')); // October is closed (end-of-month cut-off)
     owner = await ownerToken(t);
