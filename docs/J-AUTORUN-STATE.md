@@ -5,7 +5,7 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 
 | Step | Repo | Status | Commit (merge) | Contract | O-### | Notes |
 |---|---|---|---|---|---|---|
-| J0 | api | todo | | | | |
+| J0 | api | done | 246d7cf (8b9b8bb) | — (docs only) | O-038, O-039, O-040, O-041, O-042 | D-302–D-321; gap `docs/juristic-gap.md`, §7.6 drafts; J1.1 must first fix co-owner share / transfer proration / ownership-only sweep (golden-first); pack names corrected |
 | JA | asset-core | todo | | | | 0.8.0 |
 | JR | api | todo | | | | |
 | JRL | liff | todo | | | | |
