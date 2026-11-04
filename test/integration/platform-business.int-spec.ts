@@ -128,7 +128,7 @@ describe('B6.1 platform business (real PostgreSQL)', () => {
     expect(starter.versions[0]).toMatchObject({ state: 'published', unitPrice: '25.0000', minUnits: 20 });
     expect(
       (plans.body as { key: string; isActive: boolean }[]).find((p) => p.key === 'condo_juristic'),
-    ).toMatchObject({ isActive: false });
+    ).toMatchObject({ isActive: false, tenantType: 'juristic' }); // plan key kept, tenant type juristic (0068)
 
     const backdated = await t.http
       .post(`/v1/admin/price-plans/${starter.id}/versions`)

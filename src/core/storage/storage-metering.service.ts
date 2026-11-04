@@ -25,8 +25,8 @@ import { StorageLedger, sumTotals } from './storage-ledger';
 import {
   COUNTED_RECORDS,
   type CountedRecordType,
+  perTypeValue,
   type StoragePackSetting,
-  type StorageTenantType,
 } from './storage-settings';
 
 /**
@@ -131,10 +131,9 @@ export class StorageMeteringService {
       this.settings.at('storage.record_bytes', at, scope),
       this.settings.at('storage.notice_at_percent', at, scope),
     ]);
-    const type = tenantType as StorageTenantType;
-    const freeGb = ((free?.value as Record<string, string | null> | undefined)?.[type] ?? null) || null;
+    const freeGb = perTypeValue(free?.value as Record<string, string | null> | undefined, tenantType) || null;
     const pricePerGbMonth =
-      ((price?.value as Record<string, string | null> | undefined)?.[type] ?? null) || null;
+      perTypeValue(price?.value as Record<string, string | null> | undefined, tenantType) || null;
     const bytes = (recordBytes?.value as Record<string, number> | undefined) ?? { _default: 1024 };
     const { _default: defaultRecordBytes = 1024, ...perType } = bytes;
     const version = [free, price, packs, recordBytes, notices].map((v) => v?.versionId ?? '-').join(',');

@@ -293,6 +293,15 @@ describe('landlord portfolio (B7.1, real PostgreSQL)', () => {
       [stubId],
     );
     expect(rows).toEqual([{ status: 'active', tenant_id: pm.tenantId, reason: 'juristic_formed' }]);
+    // asset-core 0.8.0 (D-J01): the onboarded `condo_juristic` is stored as `juristic`; the claimed stub is a condo
+    // under the Condominium Act
+    const kinds = await db.admin.query(
+      `SELECT t.type::text AS tenant_type, b.legal_form::text AS legal_form, p.kind::text AS kind
+         FROM core.building b JOIN core.property p ON p.id = b.property_id JOIN core.tenant t ON t.id = b.owner_tenant_id
+        WHERE b.id = $1`,
+      [stubId],
+    );
+    expect(kinds.rows).toEqual([{ tenant_type: 'juristic', legal_form: 'condo_act', kind: 'condo' }]);
     const audit = await db.admin.query(
       `SELECT count(*)::int AS n FROM platform.audit_log WHERE action = 'building.operator_changed' AND subject_id = $1`,
       [stubId],

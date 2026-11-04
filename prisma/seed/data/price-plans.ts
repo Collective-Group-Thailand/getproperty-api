@@ -7,7 +7,7 @@
  */
 export interface PricePlanSeed {
   key: string;
-  tenantType: 'apartment' | 'condo_juristic' | 'pm_company' | 'landlord' | 'agency' | null;
+  tenantType: 'apartment' | 'juristic' | 'pm_company' | 'landlord' | 'agency' | null;
   nameTh: string;
   nameEn: string;
   kind: 'software' | 'addon' | 'hardware_rental' | 'hardware_sale' | 'service';
@@ -135,7 +135,7 @@ export const PRICE_PLANS: readonly PricePlanSeed[] = [
   },
   {
     key: 'condo_juristic',
-    tenantType: 'condo_juristic',
+    tenantType: 'juristic',
     nameTh: 'Condo Juristic',
     nameEn: 'Condo Juristic',
     kind: 'software',
@@ -160,7 +160,7 @@ export const PRICE_PLANS: readonly PricePlanSeed[] = [
   },
   {
     key: 'juristic_pro',
-    tenantType: 'condo_juristic',
+    tenantType: 'juristic',
     nameTh: 'Juristic Pro',
     nameEn: 'Juristic Pro',
     kind: 'software',

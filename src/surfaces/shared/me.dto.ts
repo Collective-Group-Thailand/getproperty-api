@@ -23,12 +23,17 @@ export enum UserLanguageName {
   Zh = 'zh',
 }
 
+/**
+ * `juristic` = the juristic person of any property kind (asset-core 0.8.0, D-J01). `condo_juristic` is deprecated:
+ * still accepted on input and stored as `juristic`; responses never carry it for tenants.
+ */
 export enum TenantTypeName {
   Apartment = 'apartment',
   CondoJuristic = 'condo_juristic',
   PmCompany = 'pm_company',
   Landlord = 'landlord',
   Agency = 'agency',
+  Juristic = 'juristic',
 }
 
 export enum TenantStatusName {

@@ -1,3 +1,4 @@
+import { normaliseTenantType } from '@collective/asset-core';
 import { systemActor, userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
@@ -166,7 +167,8 @@ export class StoragePackagesService implements EventSubscriber, OnModuleInit {
           nameTh: input.nameTh,
           nameEn: input.nameEn,
           kind: 'addon',
-          tenantType: input.tenantType ?? null,
+          // asset-core 0.8.0: the deprecated condo_juristic is stored as juristic (D-J01)
+          tenantType: input.tenantType ? normaliseTenantType(input.tenantType) : null,
           createdBy: by(),
         },
       });
