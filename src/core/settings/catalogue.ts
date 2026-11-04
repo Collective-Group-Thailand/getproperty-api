@@ -523,6 +523,16 @@ export const SETTINGS: readonly SettingDef[] = [
     value: 7,
     reason: 'seed: D-145 (B1.3 assumption)',
   },
+  {
+    key: 'juristic.resident_invite_days',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-309 / D-322 (JR): days a unit invitation for a co-owner (single use, redeemed with an OTP to the phone of the ownership party) stays valid (14).',
+    editableBy: OWNER_SETTINGS,
+    value: 14,
+    reason: 'seed: D-322 (pack J, JR)',
+  },
   // --- storage metering (D-276; amounts pending the founder) ------------------------------------------------
   {
     key: 'storage.free_gb',

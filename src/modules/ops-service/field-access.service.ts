@@ -314,7 +314,14 @@ export class ResidentServiceRequestsService {
         orderBy: { validFrom: 'desc' },
         select: { partyId: true },
       });
-      return occupant?.partyId ?? ids[0]!;
+      if (occupant) return occupant.partyId;
+      // JR (D-322): a co-owner who does not live there reports as the owning party
+      const owner = await tx.unitOwnership.findFirst({
+        where: { unitId, partyId: { in: ids } },
+        orderBy: { validFrom: 'desc' },
+        select: { partyId: true },
+      });
+      return owner?.partyId ?? ids[0]!;
     });
   }
 

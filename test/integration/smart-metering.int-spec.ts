@@ -20,7 +20,7 @@ import { connectAsync, type MqttClient } from 'mqtt';
 import { DEV } from '../../prisma/seed/run';
 import { createIntApp, type IntApp } from '../support/int-app';
 import { adminToken, bearer, idem, onboardTenant, operatorToken, ownerToken } from '../support/int-auth';
-import { createIntDatabase, type IntDatabase } from '../support/int-db';
+import { backdateSeededVersions, createIntDatabase, type IntDatabase } from '../support/int-db';
 import { uploadFile } from '../support/int-files';
 import { startTestBroker, type TestBroker } from '../support/mqtt-broker';
 
@@ -82,6 +82,7 @@ describe('smart metering B3 (real PostgreSQL + MQTT broker)', () => {
   beforeAll(async () => {
     broker = await startTestBroker();
     db = await createIntDatabase({ prefix: 'gp_smart' });
+    await backdateSeededVersions(db.admin); // 3.3 pins the clock to 2026-10-27
     t = await createIntApp(db, {
       OTP_MAX_PER_HOUR: '20',
       MQTT_MODE: 'real',
@@ -1289,9 +1290,12 @@ describe('smart metering B3 (real PostgreSQL + MQTT broker)', () => {
   });
 
   it('3.3 the reading round shrinks as readings arrive; 3.4 meter health', async () => {
-    // inside the 7-day window before the end-of-month cut-off; never behind the OTPs earlier tests sent at the fake
-    // clock (a clock moved back hits the OTP resend gap — the test failed on the real 2026-10-27 after 03:00 UTC)
-    t.clock.set(new Date(Math.max(Date.parse('2026-10-27T03:00:00Z'), t.clock.now().getTime() + 120_000)));
+    // pinned inside the 7-day window before the October end-of-month cut-off on any real date (JR part 0): the
+    // earlier tests ran at the wall clock, so their OTP challenges would sit "in the future" of the pinned clock and
+    // hit the resend gap — they are cleared first (test setup only); the seeded settings were moved before the pinned
+    // day in beforeAll
+    await db.admin.query('DELETE FROM platform.otp_challenge');
+    t.clock.set(new Date('2026-10-27T03:00:00Z'));
     staff = await operatorToken(t, '+660000000003');
     owner = await ownerToken(t);
     const round = async () =>

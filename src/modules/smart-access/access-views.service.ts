@@ -1,7 +1,9 @@
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
+import { bangkokDate } from '@common/time/bangkok';
 import { CLOCK, type Clock } from '@core/clock/clock';
+import { occupiedUnitIds, residentUnitRoles } from '@core/identity/resident-units';
 import { SettingsService } from '@core/settings/settings.service';
 import { TenantTx } from '@database/tenant-tx';
 import { type AccessEvent } from '@generated/prisma/client';
@@ -47,10 +49,20 @@ export class AccessViewsService {
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
-  /** My units (`unit:` scopes of my token) with their tenant, property and active unit locks. */
+  /**
+   * JR (D-322): door codes and a unit's door log are for the people who **live** there — units of my `unit:` scopes
+   * with a current occupancy of mine (a co-owner who does not live in the unit gets neither).
+   */
+  private async occupied(): Promise<string[]> {
+    const { userId, scopes } = actorUser();
+    const today = bangkokDate(this.clock.now());
+    const roles = await this.db.platform((tx) => residentUnitRoles(tx, userId, today));
+    return occupiedUnitIds(roles).filter((u) => scopes.includes(`unit:${u}`));
+  }
+
+  /** My occupied units (`unit:` scopes of my token) with their tenant, property and active unit locks. */
   private async myUnits() {
-    const { scopes } = actorUser();
-    const ids = scopes.filter((s) => s.startsWith('unit:')).map((s) => s.slice('unit:'.length));
+    const ids = await this.occupied();
     if (!ids.length) return [];
     return this.db.platform((tx) =>
       tx.unit.findMany({
@@ -186,8 +198,8 @@ export class AccessViewsService {
     unitId: string,
     range: { from: Date; to: Date; take: number },
   ): Promise<AccessEvent[]> {
-    const { userId, scopes } = actorUser();
-    if (!scopes.includes(`unit:${unitId}`)) throw new DomainException('http.not_found');
+    const { userId } = actorUser();
+    if (!(await this.occupied()).includes(unitId)) throw new DomainException('http.not_found');
     const parties = await this.myParties(userId);
     const mine = parties.length
       ? (

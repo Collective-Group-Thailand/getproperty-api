@@ -115,6 +115,7 @@ import {
   OwnerMembersController,
   OwnerTenantController,
 } from './tenancy.controller';
+import { OwnerUnitResidentInvitesController } from './unit-resident-invites.controller';
 
 /** `/v1/owner/*` (contract §2): owner console — B1.3 identity, tenancy, settings, tariffs, governance, files; B2.1 properties, buildings, floors, units, board, profiles, utility accounts, meters, asset items, Excel import; B2.2 parties; B2.3 leases, lease templates, lease invitations; B2.4 deposits, inspections. */
 @Module({
@@ -171,6 +172,7 @@ import {
     OwnerFloorsController,
     OwnerUnitBoardController,
     OwnerUnitsController,
+    OwnerUnitResidentInvitesController,
     OwnerPortfolioController,
     OwnerListingsController,
     OwnerMandatesController,

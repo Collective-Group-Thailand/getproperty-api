@@ -349,6 +349,10 @@
     "party_mismatch": {
       "title": "Invitation already used",
       "detail": "This invitation belongs to another account, or the party is linked to another login."
+    },
+    "phone_missing": {
+      "title": "The owner has no phone on file",
+      "detail": "A unit invitation is confirmed by a code sent to the co-owner’s phone in the register. Add the phone to the owner first."
     }
   },
   "membership": {

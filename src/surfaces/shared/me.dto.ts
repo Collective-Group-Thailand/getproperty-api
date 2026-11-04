@@ -2,6 +2,7 @@ import { FAKE } from '@common/openapi/examples';
 import { ApiProperty, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
 import { IsEmail, IsEnum, IsIn, IsOptional, IsString, Length, Matches } from 'class-validator';
 
+import { ResidentUnitRoleRefDto } from '../resident/resident-unit-roles.dto';
 import {
   AdminMenuKey,
   LeasePartyRoleName,
@@ -313,6 +314,13 @@ export class ResidentMeDto {
 
   @ApiProperty({ example: true, description: 'Every required consent purpose is granted (D-025).' })
   consentComplete!: boolean;
+
+  @ApiProperty({
+    type: () => [ResidentUnitRoleRefDto],
+    description:
+      'JR (D-309, D-322): my roles on the units of my `unit:` scopes today — `co_owner` (ownership register or owner-occupier), `tenant` / `co_tenant` / `family` (occupancy or a lease in force), `payer` (a lease I pay for); `GET /v1/resident/me/units` groups them per unit with the navigation capabilities.',
+  })
+  unitRoles!: ResidentUnitRoleRefDto[];
 
   @ApiProperty({
     enum: ResidentEntitlement,

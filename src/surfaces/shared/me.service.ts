@@ -3,6 +3,13 @@ import { DomainException } from '@common/errors/domain.exception';
 import { bangkokDate } from '@common/time/bangkok';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { FeatureFlagsService } from '@core/feature-flags/feature-flags.service';
+import {
+  occupiedUnitIds,
+  residentUnitRoles,
+  scopeUnitIds,
+  type UnitRole,
+  unitsHash,
+} from '@core/identity/resident-units';
 import { ConsentService } from '@core/privacy/consent.service';
 import { ADMIN_MENU, entitledMenu, type MenuEntry, OWNER_MENU, STAFF_MENU } from '@core/rbac/menu';
 import { AccessService } from '@core/tenancy/access.service';
@@ -10,6 +17,13 @@ import { TenantTx } from '@database/tenant-tx';
 import { ResidentLeasesService } from '@modules/ops-leases/resident-leases.service';
 import { Inject, Injectable } from '@nestjs/common';
 
+import {
+  ResidentUnitCapability,
+  type ResidentUnitRoleName,
+  type ResidentUnitRoleRefDto,
+  type ResidentUnitRoleSourceName,
+} from '../resident/resident-unit-roles.dto';
+import { type ResidentMeUnitsDto } from '../resident/resident-units.dto';
 import { dateOnly } from './mappers';
 import {
   type AdminMeDto,
@@ -193,7 +207,19 @@ export class MeService {
         orderBy: { createdAt: 'desc' },
       });
     });
-    const tenants = [...new Set([...units.map((u) => u.tenantId), ...leases.map((l) => l.tenantId)])];
+    // JR (D-322): units I own without living there (co-owners) — scopes, entitlements and `unitRoles`
+    const view = await this.unitView(userId);
+    const occupied = new Set(units.map((u) => u.unitId));
+    const owned = view.units
+      .filter((u) => !occupied.has(u.id))
+      .map((u) => ({ unitId: u.id, tenantId: view.tenantOf(u.id) }));
+    const tenants = [
+      ...new Set([
+        ...units.map((u) => u.tenantId),
+        ...leases.map((l) => l.tenantId),
+        ...owned.map((u) => u.tenantId),
+      ]),
+    ];
     const purposes = await this.consents.purposes(
       ['resident'],
       dto.language,
@@ -233,13 +259,104 @@ export class MeService {
         granted: p.granted,
       })),
       consentComplete: purposes.filter((p) => p.required).every((p) => p.granted === true),
+      unitRoles: view.refs,
       entitlements: await this.entitlements(
         units.map((u) => ({ unitId: u.unitId, tenantId: u.tenantId })),
         leases.length > 0,
         tenants,
+        owned,
       ),
       scopes: actor && 'scopes' in actor ? [...actor.scopes] : [],
       linkRequestsPending: await this.linkRequestsPending(userId),
+    };
+  }
+
+  /**
+   * JR (D-309, D-322): my unit roles today (ownership, occupancy, leases in force) and the units of my `unit:` scopes
+   * with their building, property and the tenant that runs them for me.
+   */
+  private async unitView(userId: string) {
+    const today = bangkokDate(this.clock.now());
+    const { roles, units, tenants } = await this.db.platform(async (tx) => {
+      const roles = await residentUnitRoles(tx, userId, today);
+      const ids = scopeUnitIds(roles);
+      const units = ids.length
+        ? await tx.unit.findMany({
+            where: { id: { in: ids } },
+            select: {
+              id: true,
+              unitNo: true,
+              buildingId: true,
+              building: { select: { name: true, propertyId: true } },
+            },
+          })
+        : [];
+      const tenantIds = [...new Set(roles.map((r) => r.tenantId))];
+      const tenants = tenantIds.length
+        ? await tx.tenant.findMany({
+            where: { id: { in: tenantIds } },
+            select: { id: true, displayName: true },
+          })
+        : [];
+      return { roles, units: ids.map((id) => units.find((u) => u.id === id)!).filter(Boolean), tenants };
+    });
+    const rolesOf = (unitId: string) => roles.filter((r) => r.unitId === unitId);
+    // the tenant that runs the unit for me: my occupancy's, else the ownership register's
+    const tenantOf = (unitId: string): string =>
+      (rolesOf(unitId).find((r) => r.source === 'occupancy') ?? rolesOf(unitId)[0]!).tenantId;
+    const refs: ResidentUnitRoleRefDto[] = units.flatMap((u) =>
+      rolesOf(u.id).map((r) => ({
+        unitId: u.id,
+        buildingId: u.buildingId,
+        propertyId: u.building.propertyId,
+        tenantId: r.tenantId,
+        role: r.role as ResidentUnitRoleName,
+        source: r.source as ResidentUnitRoleSourceName,
+        from: r.from,
+        to: r.to,
+      })),
+    );
+    return { roles, units, tenants, rolesOf, tenantOf, refs };
+  }
+
+  /** `GET /v1/resident/me/units` (JR, D-322): my units with roles, navigation capabilities and the roles' hash. */
+  async residentUnits(): Promise<ResidentMeUnitsDto> {
+    const userId = this.userId();
+    const view = await this.unitView(userId);
+    const actor = RequestContext.actor();
+    const tokenUnits = new Set(
+      (actor && 'scopes' in actor ? actor.scopes : [])
+        .filter((x) => x.startsWith('unit:'))
+        .map((x) => x.slice('unit:'.length)),
+    );
+    const current = new Set(view.units.map((u) => u.id));
+    const refreshRequired = tokenUnits.size !== current.size || [...current].some((u) => !tokenUnits.has(u));
+    return {
+      units: view.units.map((u) => {
+        const roles = view.rolesOf(u.id);
+        const tenantId = view.tenantOf(u.id);
+        return {
+          unitId: u.id,
+          unitNo: u.unitNo,
+          buildingId: u.buildingId,
+          buildingName: u.building.name,
+          propertyId: u.building.propertyId,
+          tenantId,
+          tenantName: view.tenants.find((t) => t.id === tenantId)?.displayName ?? '',
+          roles: roles.map((r) => ({
+            role: r.role as ResidentUnitRoleName,
+            source: r.source as ResidentUnitRoleSourceName,
+            partyId: r.partyId,
+            leaseId: r.source === 'lease' ? r.sourceId : null,
+            from: r.from,
+            to: r.to,
+          })),
+          capabilities: unitCapabilities(roles),
+          leaseIds: [...new Set(roles.filter((r) => r.source === 'lease').map((r) => r.sourceId))],
+        };
+      }),
+      unitsHash: unitsHash(view.roles.filter((r) => current.has(r.unitId))),
+      refreshRequired,
     };
   }
 
@@ -257,12 +374,15 @@ export class MeService {
     units: { unitId: string; tenantId: string }[],
     hasLease: boolean,
     tenantIds: string[],
+    /** JR (D-322): units I own without living there — bills and the tenant's modules, never lease / usage / access. */
+    owned: { unitId: string; tenantId: string }[] = [],
   ): Promise<ResidentEntitlement[]> {
     const out = new Set<ResidentEntitlement>();
     if (hasLease || units.length) {
       out.add(ResidentEntitlement.Bills);
       out.add(ResidentEntitlement.Lease);
     }
+    if (owned.length) out.add(ResidentEntitlement.Bills);
     if (units.length) {
       const iot = await this.db.platform((tx) =>
         tx.meterAssignment.count({
@@ -285,7 +405,8 @@ export class MeService {
       // LIFF #27 (D-218): the B5 menus get their own entitlements — facilities when one of my buildings of this
       // tenant has a bookable facility, access when one of my units of this tenant has an active door lock
       const mine = units.filter((u) => u.tenantId === tenantId).map((u) => u.unitId);
-      if (!mine.length) continue;
+      const mineOrOwned = [...mine, ...owned.filter((u) => u.tenantId === tenantId).map((u) => u.unitId)];
+      if (!mineOrOwned.length) continue;
       if (flags['module.community'] && !out.has(ResidentEntitlement.Facilities)) {
         const facilities = await this.db.platform((tx) =>
           tx.facility.count({
@@ -293,13 +414,13 @@ export class MeService {
               tenantId,
               isActive: true,
               deletedAt: null,
-              building: { units: { some: { id: { in: mine } } } },
+              building: { units: { some: { id: { in: mineOrOwned } } } },
             },
           }),
         );
         if (facilities > 0) out.add(ResidentEntitlement.Facilities);
       }
-      if (flags['module.smart_access'] && !out.has(ResidentEntitlement.Access)) {
+      if (mine.length && flags['module.smart_access'] && !out.has(ResidentEntitlement.Access)) {
         const locks = await this.db.platform((tx) =>
           tx.lock.count({ where: { tenantId, unitId: { in: mine }, scope: 'unit', isActive: true } }),
         );
@@ -372,4 +493,24 @@ export class MeService {
       totpEnabled,
     };
   }
+}
+
+/** JR (D-322): what the resident app may show for a unit, from my roles on it (`ResidentMeUnitDto.capabilities`). */
+export function unitCapabilities(roles: readonly UnitRole[]): ResidentUnitCapability[] {
+  const out = new Set<ResidentUnitCapability>([
+    ResidentUnitCapability.Notices,
+    ResidentUnitCapability.Parcels,
+    ResidentUnitCapability.Facilities,
+    ResidentUnitCapability.Rules,
+    ResidentUnitCapability.Contacts,
+    ResidentUnitCapability.ServiceRequests,
+  ]);
+  if (roles.some((r) => r.role !== 'family')) out.add(ResidentUnitCapability.Invoices);
+  if (occupiedUnitIds(roles).length) {
+    out.add(ResidentUnitCapability.Usage);
+    out.add(ResidentUnitCapability.Access);
+  }
+  if (roles.some((r) => r.source === 'lease' && r.role !== 'payer')) out.add(ResidentUnitCapability.Lease);
+  const order = Object.values(ResidentUnitCapability);
+  return [...out].sort((a, b) => order.indexOf(a) - order.indexOf(b));
 }

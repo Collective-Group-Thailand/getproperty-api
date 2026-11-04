@@ -1333,8 +1333,8 @@ export class ResidentInvoicesController {
     id: 'resident.invoices.list',
     summary: 'My invoices',
     description:
-      'Issued invoices billed to me (or of a lease I am a party of), across buildings, newest first; `unpaid=true` for what is still due (D-011, D-061).',
-    implements: ['D-011', 'D-061', 'D-154'],
+      'Issued invoices billed to me (or of a lease I am a party of), across buildings, newest first; `unpaid=true` for what is still due, `unitId` for one unit (D-011, D-061). A co-owner sees the common-fee invoices billed to them, never a lessee’s rent; a family occupant sees none unless billed (D-322).',
+    implements: ['D-011', 'D-061', 'D-154', 'D-322'],
   })
   @ApiPaginated(ResidentInvoiceDto, { example: RESIDENT_INVOICE_EXAMPLE })
   @ApiStandardErrors('auth.unauthenticated', 'validation.failed')
@@ -1342,6 +1342,7 @@ export class ResidentInvoicesController {
     const { rows, total } = await this.invoices.list({
       status: q.status,
       unpaid: q.unpaid,
+      unitId: q.unitId,
       ...toSkipTake(q),
     });
     const extras = await this.invoices.extras(rows);

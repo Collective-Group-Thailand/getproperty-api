@@ -34,6 +34,7 @@ enum OtpPurpose {
   landlord_signup
   prospect_login
   contract_signature
+  unit_invitation
 
   @@map("otp_purpose")
   @@schema("platform")
@@ -70,6 +71,7 @@ enum SupportGrantApprovalVia {
 enum InvitationKind {
   tenant_member
   lease_resident
+  unit_resident
 
   @@map("invitation_kind")
   @@schema("platform")
@@ -319,7 +321,7 @@ model SupportGrant {
   @@schema("platform")
 }
 
-/// Tenant-member and lease-resident invitations (D-145). lease_id ⇢ ops.lease (FK in B2.3).
+/// Tenant-member, lease-resident and unit-resident invitations (D-145, D-322). lease_id ⇢ ops.lease (FK in B2.3).
 model Invitation {
   id               String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId         String            @map("tenant_id") @db.Uuid
@@ -327,6 +329,8 @@ model Invitation {
   role             String?
   buildingIds      String[]          @map("building_ids") @db.Uuid
   leaseId          String?           @map("lease_id") @db.Uuid
+  /// JR (D-322): the unit of a `unit_resident` invitation (a co-owner invited to the resident app).
+  unitId           String?           @map("unit_id") @db.Uuid
   partyId          String?           @map("party_id") @db.Uuid
   phoneE164        String?           @map("phone_e164")
   email            String?           @db.Citext
@@ -346,9 +350,11 @@ model Invitation {
   party          Party?       @relation("InvitationParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invitation_party_id_fkey")
   acceptedByUser UserAccount? @relation("InvitationAcceptedByUser", fields: [acceptedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invitation_accepted_by_user_id_fkey")
   lease          Lease?       @relation(fields: [leaseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invitation_lease_id_fkey")
+  unit           Unit?        @relation("InvitationUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invitation_unit_id_fkey")
 
   @@index([tenantId, state], map: "invitation_tenant_id_state_idx")
   @@index([leaseId], map: "invitation_lease_id_idx")
+  @@index([unitId], map: "invitation_unit_id_idx", where: raw("(unit_id IS NOT NULL)"))
   @@map("invitation")
   @@schema("platform")
 }
