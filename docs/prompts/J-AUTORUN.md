@@ -14,7 +14,7 @@ Run from `~/Collective/getproperty` (holding `collective-asset-core`, `getproper
 | 1 | J0 |
 | 2 | JA (asset-core 0.8.0 release, bump in api) |
 | 3 | JR → JRL (liff, beside J1.1) |
-| 4 | J1.1 → J1.2 |
+| 4 | J1.1a → J1.1b → J1.2a → J1.2b (J0 split) |
 | 5 | JW1 + JL1 (beside J4.1) · J4.1 → J4.2 |
 | 6 | JE1 + JW4 + JL4 (beside J2.1) · J2.1 → J2.2 |
 | 7 | JW2 (beside J3.1) · J3.1 → J3.2 → J3.3 |
