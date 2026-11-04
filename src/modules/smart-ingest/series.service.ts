@@ -1,6 +1,8 @@
 import { type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
+import { bangkokDate, startOfBangkokDay } from '@common/time/bangkok';
 import { CLOCK, type Clock } from '@core/clock/clock';
+import { residentUnitRoles } from '@core/identity/resident-units';
 import { SettingsService } from '@core/settings/settings.service';
 import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
@@ -157,70 +159,133 @@ export class SeriesService extends TenantScopedRepository {
     // access is proven: read through gp_platform (the lessor may be a unit grantee of someone else's building, D-152)
     return this.db.platform(async (tx) => {
       const lease = await tx.lease.findFirstOrThrow({ where: { id: leaseId, tenantId: a.ctx.tenantId } });
-      const leaseStart = lease.startDate;
-      const windowStart = start.getTime() < leaseStart.getTime() ? leaseStart : start;
-      const assignments = await tx.meterAssignment.findMany({
-        where: {
-          unitId: lease.unitId,
-          validFrom: { lt: end },
-          OR: [{ validTo: null }, { validTo: { gt: windowStart } }],
-        },
-      });
-      const out: {
-        utility: 'electric' | 'water';
-        unit: 'kwh' | 'm3';
-        points: { bucket: Date; usage: Decimal }[];
-      }[] = [];
-      const summary: {
-        utility: 'electric' | 'water';
-        unit: 'kwh' | 'm3';
-        total: Decimal;
-        previousTotal: Decimal | null;
-        cycleToDate: { from: Date; usage: Decimal; estimated: boolean } | null;
-      }[] = [];
-      const unit = await tx.unit.findUniqueOrThrow({
-        where: { id: lease.unitId },
-        select: { propertyId: true },
-      });
-      const cutoff = await this.settings.valueAt<CutoffSetting>('billing.cutoff', now, {
+      const usage = await this.unitUsage(tx, {
         tenantId: lease.tenantId,
-        propertyId: unit.propertyId,
+        unitId: lease.unitId,
+        floor: lease.startDate,
+        start,
+        end,
+        bucket,
+        now,
       });
-      const period = periodOf(cutoff, now);
-      const span = end.getTime() - windowStart.getTime();
-      const previousFrom = new Date(windowStart.getTime() - span);
-      for (const utility of ['electric', 'water'] as const) {
-        const ids = assignments.filter((x) => x.utility === utility).map((x) => x.assetItemId);
-        if (!ids.length) continue;
-        const rows = await this.rows(tx, ids, windowStart, end, bucket, true);
-        const sums = new Map<number, Decimal>();
-        for (const r of rows)
-          sums.set(r.bucket.getTime(), (sums.get(r.bucket.getTime()) ?? new Decimal(0)).plus(r.usage ?? 0));
-        out.push({
-          utility,
-          unit: utility === 'electric' ? 'kwh' : 'm3',
-          points: [...sums.entries()]
-            .sort((x, y) => x[0] - y[0])
-            .map(([t, usage]) => ({ bucket: new Date(t), usage })),
-        });
-        // LIFF #12 (D-203): totals computed here so the app never adds meter quantities up
-        const total = await this.total(tx, ids, windowStart, end);
-        if (total === null) continue;
-        const previousTotal =
-          previousFrom.getTime() >= leaseStart.getTime()
-            ? await this.total(tx, ids, previousFrom, windowStart)
-            : null;
-        const cycleFrom = period.start.getTime() < leaseStart.getTime() ? leaseStart : period.start;
-        const cycleUsage = await this.total(tx, ids, cycleFrom, now);
-        summary.push({
-          utility,
-          unit: utility === 'electric' ? 'kwh' : 'm3',
-          total,
-          previousTotal,
-          cycleToDate: cycleUsage === null ? null : { from: cycleFrom, usage: cycleUsage, estimated: true },
-        });
-      }
-      return { leaseId, unitId: lease.unitId, from: windowStart, to: end, series: out, summary };
+      return { leaseId, ...usage };
     });
+  }
+
+  /**
+   * JR (D-322): `GET /v1/resident/units/{unitId}/usage` — the usage of a unit I **live in** (a current occupancy of
+   * one of my parties, any role; a lease is not needed), from the start of my occupancy (review #9: never a former
+   * occupant's consumption). A unit outside my `unit:` scopes, or one I own without living there, is a 404: usage is
+   * the occupant's personal data (PDPA, D-025).
+   */
+  async residentUnitUsage(
+    actor: { userId: string; scopes: readonly string[] },
+    unitId: string,
+    bucket: Bucket,
+    from?: Date,
+    to?: Date,
+  ) {
+    if (!actor.scopes.includes(`unit:${unitId}`)) throw new DomainException('http.not_found');
+    const now = this.clock.now();
+    const end = to ?? now;
+    const start = from ?? new Date(end.getTime() - 30 * 86_400_000);
+    seriesWindow(start, end, bucket);
+    return this.db.platform(async (tx) => {
+      const today = bangkokDate(now);
+      const mine = (await residentUnitRoles(tx, actor.userId, today)).filter(
+        (r) => r.unitId === unitId && r.source === 'occupancy',
+      );
+      if (!mine.length) throw new DomainException('http.not_found');
+      const since = mine.map((r) => r.from).sort()[0]!;
+      return this.unitUsage(tx, {
+        tenantId: mine[0]!.tenantId,
+        unitId,
+        floor: startOfBangkokDay(since),
+        start,
+        end,
+        bucket,
+        now,
+      });
+    });
+  }
+
+  /** Usage of a unit's meters (swaps included) from `floor` on: series, totals, previous window, cycle to date. */
+  private async unitUsage(
+    tx: Tx,
+    input: {
+      tenantId: string;
+      unitId: string;
+      floor: Date;
+      start: Date;
+      end: Date;
+      bucket: Bucket;
+      now: Date;
+    },
+  ) {
+    const { start, end, bucket, now } = input;
+    const leaseStart = input.floor;
+    const windowStart = start.getTime() < leaseStart.getTime() ? leaseStart : start;
+    const assignments = await tx.meterAssignment.findMany({
+      where: {
+        unitId: input.unitId,
+        validFrom: { lt: end },
+        OR: [{ validTo: null }, { validTo: { gt: windowStart } }],
+      },
+    });
+    const out: {
+      utility: 'electric' | 'water';
+      unit: 'kwh' | 'm3';
+      points: { bucket: Date; usage: Decimal }[];
+    }[] = [];
+    const summary: {
+      utility: 'electric' | 'water';
+      unit: 'kwh' | 'm3';
+      total: Decimal;
+      previousTotal: Decimal | null;
+      cycleToDate: { from: Date; usage: Decimal; estimated: boolean } | null;
+    }[] = [];
+    const unit = await tx.unit.findUniqueOrThrow({
+      where: { id: input.unitId },
+      select: { propertyId: true },
+    });
+    const cutoff = await this.settings.valueAt<CutoffSetting>('billing.cutoff', now, {
+      tenantId: input.tenantId,
+      propertyId: unit.propertyId,
+    });
+    const period = periodOf(cutoff, now);
+    const span = end.getTime() - windowStart.getTime();
+    const previousFrom = new Date(windowStart.getTime() - span);
+    for (const utility of ['electric', 'water'] as const) {
+      const ids = assignments.filter((x) => x.utility === utility).map((x) => x.assetItemId);
+      if (!ids.length) continue;
+      const rows = await this.rows(tx, ids, windowStart, end, bucket, true);
+      const sums = new Map<number, Decimal>();
+      for (const r of rows)
+        sums.set(r.bucket.getTime(), (sums.get(r.bucket.getTime()) ?? new Decimal(0)).plus(r.usage ?? 0));
+      out.push({
+        utility,
+        unit: utility === 'electric' ? 'kwh' : 'm3',
+        points: [...sums.entries()]
+          .sort((x, y) => x[0] - y[0])
+          .map(([t, usage]) => ({ bucket: new Date(t), usage })),
+      });
+      // LIFF #12 (D-203): totals computed here so the app never adds meter quantities up
+      const total = await this.total(tx, ids, windowStart, end);
+      if (total === null) continue;
+      const previousTotal =
+        previousFrom.getTime() >= leaseStart.getTime()
+          ? await this.total(tx, ids, previousFrom, windowStart)
+          : null;
+      const cycleFrom = period.start.getTime() < leaseStart.getTime() ? leaseStart : period.start;
+      const cycleUsage = await this.total(tx, ids, cycleFrom, now);
+      summary.push({
+        utility,
+        unit: utility === 'electric' ? 'kwh' : 'm3',
+        total,
+        previousTotal,
+        cycleToDate: cycleUsage === null ? null : { from: cycleFrom, usage: cycleUsage, estimated: true },
+      });
+    }
+    return { unitId: input.unitId, from: windowStart, to: end, series: out, summary };
   }
 }

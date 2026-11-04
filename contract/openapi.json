@@ -1578,6 +1578,17 @@
           "type": "https://errors.getproperty.co/invitation.party_mismatch"
         }
       },
+      "problem.invitation.phone_missing": {
+        "summary": "invitation.phone_missing",
+        "value": {
+          "code": "invitation.phone_missing",
+          "detail": "คำเชิญเชื่อมห้องต้องยืนยันด้วยรหัสที่ส่งไปยังเบอร์โทรของเจ้าของร่วมในทะเบียน กรุณาเพิ่มเบอร์โทรของเจ้าของร่วมก่อน",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 422,
+          "title": "ไม่มีเบอร์โทรของเจ้าของร่วม",
+          "type": "https://errors.getproperty.co/invitation.phone_missing"
+        }
+      },
       "problem.invoice.credit_exceeds": {
         "summary": "invoice.credit_exceeds",
         "value": {
@@ -39823,6 +39834,15 @@
         ],
         "type": "object"
       },
+      "ResidentInviteChannel": {
+        "description": "`line_qr`: the QR to show or print in a letter; `sms`: the link by SMS to the owner’s phone; `link`.",
+        "enum": [
+          "line_qr",
+          "sms",
+          "link"
+        ],
+        "type": "string"
+      },
       "ResidentInvoiceDto": {
         "properties": {
           "amountDue": {
@@ -40484,6 +40504,13 @@
             },
             "type": "array"
           },
+          "unitRoles": {
+            "description": "JR (D-309, D-322): my roles on the units of my `unit:` scopes today — `co_owner` (ownership register or owner-occupier), `tenant` / `co_tenant` / `family` (occupancy or a lease in force), `payer` (a lease I pay for); `GET /v1/resident/me/units` groups them per unit with the navigation capabilities.",
+            "items": {
+              "$ref": "#/components/schemas/ResidentUnitRoleRefDto"
+            },
+            "type": "array"
+          },
           "units": {
             "items": {
               "$ref": "#/components/schemas/ResidentUnitDto"
@@ -40501,9 +40528,117 @@
           "leases",
           "consents",
           "consentComplete",
+          "unitRoles",
           "entitlements",
           "scopes",
           "linkRequestsPending"
+        ],
+        "type": "object"
+      },
+      "ResidentMeUnitDto": {
+        "properties": {
+          "buildingId": {
+            "example": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+            "format": "uuid",
+            "type": "string"
+          },
+          "buildingName": {
+            "example": "อาคาร A",
+            "type": "string"
+          },
+          "capabilities": {
+            "description": "Navigation for this unit (D-322): notices, parcels, facilities, rules, contacts and service requests for every role; `invoices` for co-owners, tenants, co-tenants and payers (bills addressed to me); `usage` and `access` only where I live (occupancy); `lease` only as a party of a lease in force on the unit. The tenant’s modules still gate the tiles (`/me` `entitlements`).",
+            "example": [
+              "notices",
+              "parcels",
+              "facilities",
+              "rules",
+              "contacts",
+              "service_requests",
+              "invoices"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ResidentUnitCapability"
+            },
+            "type": "array"
+          },
+          "leaseIds": {
+            "description": "Leases in force on this unit that I am a party of.",
+            "example": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "propertyId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "roles": {
+            "description": "Every role I hold on the unit today.",
+            "items": {
+              "$ref": "#/components/schemas/ResidentUnitRoleDto"
+            },
+            "type": "array"
+          },
+          "tenantId": {
+            "description": "The tenant that runs the unit for me.",
+            "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+            "format": "uuid",
+            "type": "string"
+          },
+          "tenantName": {
+            "example": "หอพักตัวอย่าง",
+            "type": "string"
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "unitNo": {
+            "example": "A-201",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unitId",
+          "unitNo",
+          "buildingId",
+          "buildingName",
+          "propertyId",
+          "tenantId",
+          "tenantName",
+          "roles",
+          "capabilities",
+          "leaseIds"
+        ],
+        "type": "object"
+      },
+      "ResidentMeUnitsDto": {
+        "properties": {
+          "refreshRequired": {
+            "description": "My access token’s `unit:` scopes differ from my units today (a new co-owner link, a move-in, an ownership that ended): refresh the token.",
+            "example": false,
+            "type": "boolean"
+          },
+          "units": {
+            "items": {
+              "$ref": "#/components/schemas/ResidentMeUnitDto"
+            },
+            "type": "array"
+          },
+          "unitsHash": {
+            "description": "sha256 of my unit roles today; changes whenever a role starts or ends.",
+            "example": "9f2c1a0e5b7d4c3a8e6f1b2d0c9a7e5f3b1d8c6a4e2f0b9d7c5a3e1f8b6d4c2a",
+            "type": "string"
+          }
+        },
+        "required": [
+          "units",
+          "unitsHash",
+          "refreshRequired"
         ],
         "type": "object"
       },
@@ -41541,6 +41676,22 @@
         ],
         "type": "object"
       },
+      "ResidentUnitCapability": {
+        "description": "Navigation for this unit (D-322): notices, parcels, facilities, rules, contacts and service requests for every role; `invoices` for co-owners, tenants, co-tenants and payers (bills addressed to me); `usage` and `access` only where I live (occupancy); `lease` only as a party of a lease in force on the unit. The tenant’s modules still gate the tiles (`/me` `entitlements`).",
+        "enum": [
+          "notices",
+          "parcels",
+          "facilities",
+          "rules",
+          "contacts",
+          "service_requests",
+          "invoices",
+          "usage",
+          "access",
+          "lease"
+        ],
+        "type": "string"
+      },
       "ResidentUnitDto": {
         "properties": {
           "buildingId": {
@@ -41594,6 +41745,196 @@
           "tenantName",
           "role",
           "validFrom"
+        ],
+        "type": "object"
+      },
+      "ResidentUnitRole": {
+        "enum": [
+          "co_owner",
+          "tenant",
+          "co_tenant",
+          "family",
+          "payer"
+        ],
+        "type": "string"
+      },
+      "ResidentUnitRoleDto": {
+        "properties": {
+          "from": {
+            "example": "2026-10-01",
+            "format": "date",
+            "type": "string"
+          },
+          "leaseId": {
+            "description": "The lease of a `lease` role.",
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "partyId": {
+            "description": "My party that holds the role.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResidentUnitRole"
+              }
+            ],
+            "example": "co_owner"
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResidentUnitRoleSource"
+              }
+            ],
+            "example": "ownership"
+          },
+          "to": {
+            "description": "End day (ownership / occupancy: the role ends on this day; lease: its planned last day).",
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "role",
+          "source",
+          "partyId",
+          "leaseId",
+          "from",
+          "to"
+        ],
+        "type": "object"
+      },
+      "ResidentUnitRoleRefDto": {
+        "properties": {
+          "buildingId": {
+            "example": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+            "format": "uuid",
+            "type": "string"
+          },
+          "from": {
+            "example": "2026-10-01",
+            "format": "date",
+            "type": "string"
+          },
+          "propertyId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResidentUnitRole"
+              }
+            ],
+            "example": "tenant"
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResidentUnitRoleSource"
+              }
+            ],
+            "example": "occupancy"
+          },
+          "tenantId": {
+            "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+            "format": "uuid",
+            "type": "string"
+          },
+          "to": {
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unitId",
+          "buildingId",
+          "propertyId",
+          "tenantId",
+          "role",
+          "source",
+          "from",
+          "to"
+        ],
+        "type": "object"
+      },
+      "ResidentUnitRoleSource": {
+        "enum": [
+          "ownership",
+          "occupancy",
+          "lease"
+        ],
+        "type": "string"
+      },
+      "ResidentUnitUsageDto": {
+        "properties": {
+          "bucket": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SeriesBucket"
+              }
+            ],
+            "example": "1d"
+          },
+          "from": {
+            "description": "Never before the start of my occupancy.",
+            "example": "2026-10-01T00:00:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "series": {
+            "description": "Empty for meters read manually (no telemetry).",
+            "items": {
+              "$ref": "#/components/schemas/UtilityUsageDto"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "items": {
+              "$ref": "#/components/schemas/UsageSummaryDto"
+            },
+            "type": "array"
+          },
+          "to": {
+            "example": "2026-10-31T00:00:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unitId",
+          "from",
+          "to",
+          "bucket",
+          "series",
+          "summary"
         ],
         "type": "object"
       },
@@ -51123,6 +51464,85 @@
         ],
         "type": "object"
       },
+      "UnitInvitationAcceptedDto": {
+        "properties": {
+          "acceptedOn": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "partyId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "refreshRequired": {
+            "description": "Refresh the token to receive the unit’s `unit:` scope.",
+            "example": true,
+            "type": "boolean"
+          },
+          "tenantId": {
+            "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+            "format": "uuid",
+            "type": "string"
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId",
+          "unitId",
+          "partyId",
+          "refreshRequired",
+          "acceptedOn"
+        ],
+        "type": "object"
+      },
+      "UnitInvitationPreviewDto": {
+        "properties": {
+          "buildingName": {
+            "example": "อาคาร A",
+            "type": "string"
+          },
+          "expiresAt": {
+            "example": "2026-11-19T10:00:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "partyDisplayName": {
+            "example": "สม••••••",
+            "type": "string"
+          },
+          "phoneMasked": {
+            "description": "Where the OTP will go: the phone of the co-owner in the register (masked).",
+            "example": "+66•••••1234",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenantName": {
+            "example": "หอพักตัวอย่าง",
+            "type": "string"
+          },
+          "unitNo": {
+            "example": "A-201",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantName",
+          "buildingName",
+          "unitNo",
+          "partyDisplayName",
+          "phoneMasked",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
       "UnitMeterHistoryDto": {
         "properties": {
           "assignments": {
@@ -51315,6 +51735,189 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "UnitResidentInviteCreateDto": {
+        "properties": {
+          "channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResidentInviteChannel"
+              }
+            ],
+            "description": "`line_qr`: the QR to show or print in a letter; `sms`: the link by SMS to the owner’s phone; `link`.",
+            "example": "line_qr"
+          },
+          "language": {
+            "example": "th",
+            "type": "string"
+          },
+          "partyId": {
+            "description": "A current co-owner of the unit (default: the only current co-owner).",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel"
+        ],
+        "type": "object"
+      },
+      "UnitResidentInviteCreatedDto": {
+        "properties": {
+          "acceptedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InvitationChannel"
+              }
+            ],
+            "example": "line_qr"
+          },
+          "code": {
+            "description": "Shown once; never stored in clear.",
+            "example": "ABCD-EFGH-JKLM-NPQR",
+            "type": "string"
+          },
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "example": "2026-11-19T10:00:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "partyId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "qrPayload": {
+            "description": "What the QR encodes (render it yourself, e.g. in a printed letter).",
+            "example": "https://liff.getproperty.invalid/link/unit?code=ABCD-EFGH-JKLM-NPQR",
+            "type": "string"
+          },
+          "qrPngDataUrl": {
+            "description": "QR of the URL (PNG data URL).",
+            "example": "data:image/png;base64,iVBORw0KGgo=",
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InvitationState"
+              }
+            ],
+            "example": "pending"
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "unitNo": {
+            "example": "A-201",
+            "type": "string"
+          },
+          "url": {
+            "example": "https://liff.getproperty.invalid/link/unit?code=ABCD-EFGH-JKLM-NPQR",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "unitId",
+          "partyId",
+          "channel",
+          "state",
+          "expiresAt",
+          "acceptedAt",
+          "createdAt",
+          "unitNo",
+          "code",
+          "url",
+          "qrPayload",
+          "qrPngDataUrl"
+        ],
+        "type": "object"
+      },
+      "UnitResidentInviteDto": {
+        "properties": {
+          "acceptedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InvitationChannel"
+              }
+            ],
+            "example": "line_qr"
+          },
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "example": "2026-11-19T10:00:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "partyId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InvitationState"
+              }
+            ],
+            "example": "pending"
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "unitId",
+          "partyId",
+          "channel",
+          "state",
+          "expiresAt",
+          "acceptedAt",
+          "createdAt"
+        ],
         "type": "object"
       },
       "UnitStatus": {
@@ -218486,6 +219089,545 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/units/{unitId}/resident-invites": {
+      "get": {
+        "description": "Pending, accepted, expired and revoked co-owner invitations of the unit, newest first (codes are never shown again, D-322).\n\nImplements: D-322.",
+        "operationId": "owner.units.residentInvites",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unitId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "acceptedAt": null,
+                    "channel": "line_qr",
+                    "createdAt": "2026-11-01T00:15:00+07:00",
+                    "expiresAt": "2026-11-19T10:00:00+07:00",
+                    "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "state": "pending",
+                    "unitId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                  }
+                ],
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UnitResidentInviteDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Invitations",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Co-owner invitations of a unit",
+        "tags": [
+          "owner.unitResidentInvites"
+        ],
+        "x-required-permissions": [
+          "unit.read"
+        ],
+        "x-surface": "owner"
+      },
+      "post": {
+        "description": "A single-use code for a **current co-owner** of the unit in the register (`partyId`; default: the only current co-owner), valid `juristic.resident_invite_days` (14 days): a QR to show or print in a letter (`line_qr`), an SMS with the link to the owner’s phone (`sms`) or a link. The co-owner redeems it in the LINE Mini App with an OTP sent to **the phone of the ownership party** — no lease needed (D-309, D-322). A new code for the same unit and party revokes the pending one. 422 `invitation.phone_missing` when the party has no phone; 422 `validation.failed` (`partyId`: `required` / `notOwner`) when the party is not a current co-owner or the unit has several. Audited, `unit.resident_invited` event (no code in it).\n\nImplements: D-025, D-061, D-309, D-322.",
+        "operationId": "owner.units.inviteResident",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unitId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "channel": "line_qr"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/UnitResidentInviteCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "acceptedAt": null,
+                  "channel": "line_qr",
+                  "code": "ABCD-EFGH-JKLM-NPQR",
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "expiresAt": "2026-11-19T10:00:00+07:00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "qrPayload": "https://liff.getproperty.invalid/link/unit?code=ABCD-EFGH-JKLM-NPQR",
+                  "qrPngDataUrl": "data:image/png;base64,iVBORw0KGgo=",
+                  "state": "pending",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "unitNo": "A-201",
+                  "url": "https://liff.getproperty.invalid/link/unit?code=ABCD-EFGH-JKLM-NPQR"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnitResidentInviteCreatedDto"
+                }
+              }
+            },
+            "description": "Created; the code is shown once",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "invitation.phone_missing": {
+                    "$ref": "#/components/examples/problem.invitation.phone_missing"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `invitation.phone_missing`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "provider.unavailable": {
+                    "$ref": "#/components/examples/problem.provider.unavailable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `provider.unavailable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Invite a co-owner to the resident app",
+        "tags": [
+          "owner.unitResidentInvites"
+        ],
+        "x-required-permissions": [
+          "unit.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/units/{unitId}/verification": {
       "get": {
         "description": "Whether the unit’s owner is verified and the latest request (D-252).\n\nImplements: D-252.",
@@ -243168,7 +244310,7 @@
     },
     "/v1/resident/invoices": {
       "get": {
-        "description": "Issued invoices billed to me (or of a lease I am a party of), across buildings, newest first; `unpaid=true` for what is still due (D-011, D-061).\n\nImplements: D-011, D-061, D-154.",
+        "description": "Issued invoices billed to me (or of a lease I am a party of), across buildings, newest first; `unpaid=true` for what is still due, `unitId` for one unit (D-011, D-061). A co-owner sees the common-fee invoices billed to them, never a lessee’s rent; a family occupant sees none unless billed (D-322).\n\nImplements: D-011, D-061, D-154, D-322.",
         "operationId": "resident.invoices.list",
         "parameters": [
           {
@@ -243234,6 +244376,16 @@
             "required": false,
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "description": "JR (D-322): only the invoices of this unit (the unit switcher); an unknown unit gives an empty page.",
+            "in": "query",
+            "name": "unitId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
             }
           },
           {
@@ -248912,6 +250064,18 @@
                   "scopes": [
                     "unit:3b241101-e2bb-4255-8caf-4136c566a962"
                   ],
+                  "unitRoles": [
+                    {
+                      "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                      "from": "2026-11-01",
+                      "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "role": "tenant",
+                      "source": "occupancy",
+                      "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                      "to": null,
+                      "unitId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                    }
+                  ],
                   "units": [
                     {
                       "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
@@ -249137,6 +250301,18 @@
                   "linkRequestsPending": 0,
                   "scopes": [
                     "unit:3b241101-e2bb-4255-8caf-4136c566a962"
+                  ],
+                  "unitRoles": [
+                    {
+                      "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                      "from": "2026-11-01",
+                      "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "role": "tenant",
+                      "source": "occupancy",
+                      "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                      "to": null,
+                      "unitId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                    }
                   ],
                   "units": [
                     {
@@ -252277,6 +253453,174 @@
         "summary": "Stop sharing",
         "tags": [
           "resident.rentRecord"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/me/units": {
+      "get": {
+        "description": "Every unit of my `unit:` scopes across tenants — units I live in (occupancy) **or** own (co-owner in the register, D-309) — with my roles today (`co_owner`, `tenant`, `co_tenant`, `family`, `payer`; source `ownership`, `occupancy` or `lease`) and the navigation `capabilities` of each unit (D-322). A lease alone never adds a unit; a former owner’s unit disappears on the ownership’s end date. `unitsHash` changes with any role; `refreshRequired` = my token’s unit scopes differ from today’s units (refresh before switching unit).\n\nImplements: D-025, D-309, D-322.",
+        "operationId": "resident.units.list",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "refreshRequired": false,
+                  "units": [
+                    {
+                      "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                      "buildingName": "อาคาร A",
+                      "capabilities": [
+                        "notices",
+                        "parcels",
+                        "facilities",
+                        "rules",
+                        "contacts",
+                        "service_requests",
+                        "invoices"
+                      ],
+                      "leaseIds": [],
+                      "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "roles": [
+                        {
+                          "from": "2026-10-01",
+                          "leaseId": null,
+                          "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                          "role": "co_owner",
+                          "source": "ownership",
+                          "to": null
+                        }
+                      ],
+                      "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                      "tenantName": "นิติบุคคลอาคารชุด ตัวอย่าง",
+                      "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "unitNo": "A-201"
+                    }
+                  ],
+                  "unitsHash": "9f2c1a0e5b7d4c3a8e6f1b2d0c9a7e5f3b1d8c6a4e2f0b9d7c5a3e1f8b6d4c2a"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ResidentMeUnitsDto"
+                }
+              }
+            },
+            "description": "My units",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "My units and what I am there",
+        "tags": [
+          "resident.units"
         ],
         "x-surface": "resident"
       }
@@ -259400,6 +260744,939 @@
         "summary": "Answer the satisfaction survey",
         "tags": [
           "resident.surveys"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/unit-invitations/{code}": {
+      "get": {
+        "description": "The tenant, building, unit, a masked name and the masked phone the OTP will go to, before I redeem a co-owner invitation (D-322). 404 for an unknown code, 409 when used, revoked or expired.\n\nImplements: D-025, D-322.",
+        "operationId": "resident.unitInvitations.preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "buildingName": "อาคาร A",
+                  "expiresAt": "2026-11-19T10:00:00+07:00",
+                  "partyDisplayName": "สม••••••",
+                  "phoneMasked": "+66•••••1234",
+                  "tenantName": "นิติบุคคลอาคารชุด ตัวอย่าง",
+                  "unitNo": "A-201"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnitInvitationPreviewDto"
+                }
+              }
+            },
+            "description": "Preview",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "invitation.not_found": {
+                    "$ref": "#/components/examples/problem.invitation.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `invitation.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "invitation.not_pending": {
+                    "$ref": "#/components/examples/problem.invitation.not_pending"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `invitation.not_pending`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "What a unit invitation is for",
+        "tags": [
+          "resident.unitInvitations"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/unit-invitations/{code}/accept": {
+      "post": {
+        "description": "Links my login to the co-owner party of the invitation with the OTP sent to the register’s phone (D-322). The required PDPA consents first (409 `consent.required`, D-025; they then also bind this tenant as controller); single use (409 `invitation.not_pending`); a wrong code is 401 `auth.otp_invalid` with `attemptsRemaining`. Refresh my token to receive the unit (`refreshRequired`); one login can hold units in several tenants.\n\nImplements: D-025, D-061, D-322.",
+        "operationId": "resident.unitInvitations.accept",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyOptional"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "challengeId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "code": "123456"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/OtpVerifyDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "acceptedOn": "2026-11-01",
+                  "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "refreshRequired": true,
+                  "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnitInvitationAcceptedDto"
+                }
+              }
+            },
+            "description": "Linked",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_invalid`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.otp_expired": {
+                    "$ref": "#/components/examples/problem.auth.otp_expired"
+                  },
+                  "auth.otp_invalid": {
+                    "$ref": "#/components/examples/problem.auth.otp_invalid"
+                  },
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.otp_expired`, `auth.otp_invalid`, `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "invitation.not_found": {
+                    "$ref": "#/components/examples/problem.invitation.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `invitation.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "consent.required": {
+                    "$ref": "#/components/examples/problem.consent.required"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  },
+                  "invitation.not_pending": {
+                    "$ref": "#/components/examples/problem.invitation.not_pending"
+                  },
+                  "invitation.party_mismatch": {
+                    "$ref": "#/components/examples/problem.invitation.party_mismatch"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `consent.required`, `idempotency.in_progress`, `invitation.not_pending`, `invitation.party_mismatch`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.otp_attempts_exceeded": {
+                    "$ref": "#/components/examples/problem.auth.otp_attempts_exceeded"
+                  },
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.otp_attempts_exceeded`, `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Redeem a unit invitation",
+        "tags": [
+          "resident.unitInvitations"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/unit-invitations/{code}/otp": {
+      "post": {
+        "description": "Sends a 6-digit code by SMS to **the phone of the co-owner in the register** (never a number I type), so only the owner can redeem the invitation (D-322). One resend per `OTP_RESEND_SECONDS`, `OTP_MAX_PER_HOUR` per phone (429 `auth.otp_rate_limited`). 422 `invitation.phone_missing` when the register has no phone any more.\n\nImplements: D-025, D-322.",
+        "operationId": "resident.unitInvitations.requestOtp",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "challengeId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "expiresAt": "2026-11-05T10:05:00+07:00",
+                  "phoneMasked": "+66•••••1234",
+                  "resendAvailableAt": "2026-11-05T10:01:00+07:00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ResidentSignatureOtpDto"
+                }
+              }
+            },
+            "description": "Sent",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "invitation.not_found": {
+                    "$ref": "#/components/examples/problem.invitation.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `invitation.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "invitation.not_pending": {
+                    "$ref": "#/components/examples/problem.invitation.not_pending"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `invitation.not_pending`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "invitation.phone_missing": {
+                    "$ref": "#/components/examples/problem.invitation.phone_missing"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `invitation.phone_missing`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.otp_rate_limited": {
+                    "$ref": "#/components/examples/problem.auth.otp_rate_limited"
+                  },
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.otp_rate_limited`, `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "provider.unavailable": {
+                    "$ref": "#/components/examples/problem.provider.unavailable"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `provider.unavailable`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Send the OTP of a unit invitation",
+        "tags": [
+          "resident.unitInvitations"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/units/{unitId}/usage": {
+      "get": {
+        "description": "Daily (or hourly) electricity and water use of a unit I **live in** (a current occupancy of mine, any role — no lease needed, D-322), from the start of my occupancy, summed over the meters that served it (swaps included) from the telemetry rollups; empty for manual meters (D-063, D-162). `summary` as in the lease usage (D-203). A unit outside my scopes, or one I own without living there, is a 404 (the occupant’s consumption is their personal data, D-025).\n\nImplements: D-025, D-063, D-162, D-203, D-322.",
+        "operationId": "resident.units.usage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unitId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Default: 30 days before `to`.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Default: now.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bucket",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SeriesBucket"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "bucket": "1d",
+                  "from": "2026-10-01T00:00:00+07:00",
+                  "series": [
+                    {
+                      "points": [
+                        {
+                          "bucket": "2026-10-01T00:00:00+07:00",
+                          "usage": "6.250"
+                        }
+                      ],
+                      "unit": "kwh",
+                      "utility": "electric"
+                    }
+                  ],
+                  "summary": [
+                    {
+                      "cycleToDate": {
+                        "estimated": true,
+                        "from": "2026-10-01T00:00:00+07:00",
+                        "usage": "84.250"
+                      },
+                      "previousTotal": null,
+                      "total": "187.500",
+                      "unit": "kwh",
+                      "utility": "electric"
+                    }
+                  ],
+                  "to": "2026-10-31T00:00:00+07:00",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ResidentUnitUsageDto"
+                }
+              }
+            },
+            "description": "Usage",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "Usage of a unit I live in",
+        "tags": [
+          "resident.usage"
         ],
         "x-surface": "resident"
       }
@@ -285334,6 +287611,10 @@
       "name": "owner.unitProfiles"
     },
     {
+      "description": "Co-owner invitations to the resident app: single-use code, QR / SMS / link, redeemed with an OTP to the register phone (D-309, D-322).",
+      "name": "owner.unitResidentInvites"
+    },
+    {
       "description": "Units: create (one or floor × pattern), edit, status override, subscription count (D-082, D-151).",
       "name": "owner.units"
     },
@@ -285554,11 +287835,19 @@
       "name": "resident.system"
     },
     {
+      "description": "Redeem a co-owner invitation: preview, OTP to the phone of the ownership party, accept (D-322).",
+      "name": "resident.unitInvitations"
+    },
+    {
+      "description": "My units across tenants, my roles there and what the app may show for each (D-309, D-322).",
+      "name": "resident.units"
+    },
+    {
       "description": "Photos I upload to object storage for a deposit dispute (presigned PUT, scanned like every upload; D-023).",
       "name": "resident.uploads"
     },
     {
-      "description": "My daily usage from the meters of my leased unit (D-063).",
+      "description": "My daily usage from the meters of my leased unit, or of a unit I live in without a lease (D-063, D-322).",
       "name": "resident.usage"
     },
     {

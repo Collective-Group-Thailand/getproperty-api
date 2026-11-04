@@ -135,6 +135,7 @@ export const ERROR_CODES = {
   'rent_certificate.invalid_state': HttpStatus.CONFLICT,
   'consent.required': HttpStatus.CONFLICT,
   'invitation.party_mismatch': HttpStatus.CONFLICT,
+  'invitation.phone_missing': HttpStatus.UNPROCESSABLE_ENTITY,
   'deposit.invalid_state': HttpStatus.CONFLICT,
   'deposit.item_required': HttpStatus.UNPROCESSABLE_ENTITY,
   'identity.already_verified': HttpStatus.CONFLICT,

@@ -174,6 +174,8 @@ export const AUDIT_ACTIONS = [
   'lease.renewed',
   'lease.invitation_created',
   'lease.invitation_accepted',
+  'unit.resident_invited',
+  'unit.resident_linked',
   'deposit.received',
   'deposit.deduction_added',
   'deposit.deduction_removed',

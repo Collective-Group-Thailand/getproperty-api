@@ -277,6 +277,11 @@ export const DOMAIN_EVENT_TYPES = {
     'The owner declined a rent payment certificate request with a reason (B7.5, D-253).',
   'lease.invitation_created': 'A resident was invited to a lease (LINE QR / SMS / link, D-061).',
   'lease.invitation_accepted': 'A resident accepted a lease invitation and linked their login (D-061).',
+  // JR resident identity by unit (D-309, D-322)
+  'unit.resident_invited':
+    'A co-owner of a unit was invited to the resident app (single-use code; QR / SMS / link, D-322).',
+  'unit.resident_linked':
+    'A co-owner redeemed a unit invitation with the OTP sent to the ownership party’s phone; the login is linked (D-322).',
   // B2.4 deposits and inspections
   'deposit.opened': 'A lease was activated: its deposit is expected (D-023).',
   'deposit.received': 'The deposit and advance rent were received; receipt numbered.',

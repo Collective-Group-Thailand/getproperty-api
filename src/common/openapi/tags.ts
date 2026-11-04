@@ -83,6 +83,8 @@ export const API_TAGS: Record<string, string> = {
   'owner.unitBoard': 'The unit board of a building: floors with unit cards (B2.1, D-100).',
   'owner.units':
     'Units: create (one or floor × pattern), edit, status override, subscription count (D-082, D-151).',
+  'owner.unitResidentInvites':
+    'Co-owner invitations to the resident app: single-use code, QR / SMS / link, redeemed with an OTP to the register phone (D-309, D-322).',
   'owner.listings':
     'Rental listings of the tenant: draft, photos, availability, submit, pause, close; owner verification (D-252).',
   'owner.mandates':
@@ -274,7 +276,12 @@ export const API_TAGS: Record<string, string> = {
     'The building’s MEA/PEA/MWA/PWA invoices: manual entry, OCR prefill, e-bill import (D-032).',
   'owner.loss':
     'Utility loss per billing period with suspects and trend (D-032); billed units from readings until B4.',
-  'resident.usage': 'My daily usage from the meters of my leased unit (D-063).',
+  'resident.usage':
+    'My daily usage from the meters of my leased unit, or of a unit I live in without a lease (D-063, D-322).',
+  'resident.units':
+    'My units across tenants, my roles there and what the app may show for each (D-309, D-322).',
+  'resident.unitInvitations':
+    'Redeem a co-owner invitation: preview, OTP to the phone of the ownership party, accept (D-322).',
   'device.config':
     'The gateway’s compiled configuration (cold start; also retained on MQTT, device protocol §3).',
   'device.ota': 'The signed OTA manifest for `ota_apply` (edge CR-011, D-131).',

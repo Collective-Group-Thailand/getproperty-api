@@ -31,8 +31,8 @@ export interface ResidentAnnouncement {
 /**
  * Community in the resident LIFF (B5.3, D-073, D-025): announcements for my units (in my language, read receipts),
  * my units' parcels with the pick-up PIN, facilities of my building and my bookings, the building rules in force
- * with my acknowledgement, the building's contacts. Everything is scoped by the `unit:` scopes of my token; a unit I
- * do not occupy is a 404.
+ * with my acknowledgement, the building's contacts. Everything is scoped by the `unit:` scopes of my token (units I
+ * occupy or own, JR D-322); any other unit is a 404.
  */
 @Injectable()
 export class ResidentCommunityService {
@@ -94,6 +94,13 @@ export class ResidentCommunityService {
           select: { partyId: true },
         });
         if (occ) return occ.partyId;
+        // JR (D-322): a co-owner who does not live there acts as the owning party
+        const own = await tx.unitOwnership.findFirst({
+          where: { unitId, partyId: { in: ids } },
+          orderBy: { validFrom: 'desc' },
+          select: { partyId: true },
+        });
+        if (own) return own.partyId;
       }
       return ids[0]!;
     });

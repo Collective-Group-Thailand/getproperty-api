@@ -1181,4 +1181,13 @@ export class ResidentInvoiceListQuery extends PageQuery {
   @Transform(({ value }) => (value === 'true' ? true : value === 'false' ? false : (value as unknown)))
   @IsBoolean()
   unpaid?: boolean;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'JR (D-322): only the invoices of this unit (the unit switcher); an unknown unit gives an empty page.',
+  })
+  @IsOptional()
+  @IsUUID()
+  unitId?: string;
 }

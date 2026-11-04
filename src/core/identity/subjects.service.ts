@@ -6,6 +6,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { CLOCK, type Clock } from '../clock/clock';
 import { type RoleKey } from '../rbac/catalogue';
 import { permissionsOf } from '../tenancy/access.service';
+import { residentUnitRoles, scopeUnitIds } from './resident-units';
 
 /** What a token says about its subject (contract §4 login response `subject`). */
 export interface Subject {
@@ -25,7 +26,8 @@ export interface Subject {
  * (memberships and occupancies may have changed). All queries run in a platform transaction (identity lookups).
  * - operator: `tenant:<id>` per active membership, `building:<id>` for Staff limited to buildings; roles and
  *   permissions are listed when the operator has exactly one tenant (otherwise per tenant via `/me`);
- * - resident: `lease:<id>` for each lease of a linked party (after the draft), `unit:<id>` for each current occupancy;
+ * - resident: `lease:<id>` for each lease of a linked party (after the draft), `unit:<id>` for each unit of a current
+ *   occupancy or a current ownership (JR, D-322; a former owner loses it on the ownership's end date);
  * - technician: `work_order:<id>` of the work orders assigned to a party linked to the login (B5.1);
  * - platform: role keys and their permissions;
  * - device: `device:<id>`, `tenant:<id>`, `building:<id>`.
@@ -63,23 +65,14 @@ export class SubjectService {
   }
 
   async resident(tx: Tx, userId: string): Promise<Subject> {
-    // occupancy dates are Bangkok business dates (review #15)
+    // occupancy and ownership dates are Bangkok business dates (review #15)
     const today = bangkokDate(this.clock.now());
+    // JR (D-322): units through a current occupancy **or** a current ownership of a linked party
+    const units = scopeUnitIds(await residentUnitRoles(tx, userId, today));
     const links = await tx.partyUserLink.findMany({
       where: { userId, state: 'active' },
       select: { partyId: true },
     });
-    const occupancies = links.length
-      ? await tx.occupancy.findMany({
-          where: {
-            partyId: { in: links.map((l) => l.partyId) },
-            validFrom: { lte: new Date(today) },
-            OR: [{ validTo: null }, { validTo: { gt: new Date(today) } }],
-          },
-          select: { unitId: true },
-        })
-      : [];
-    const units = [...new Set(occupancies.map((o) => o.unitId))];
     // B2.3: leases of the linked parties a resident may open (not drafts, not cancelled) — contract §8 lease scopes.
     const leases = links.length
       ? await tx.leaseParty.findMany({

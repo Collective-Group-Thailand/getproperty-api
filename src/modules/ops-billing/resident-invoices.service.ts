@@ -95,13 +95,14 @@ export class ResidentInvoicesService {
     };
   }
 
-  async list(q: { status?: InvoiceStatus; unpaid?: boolean; skip: number; take: number }) {
+  async list(q: { status?: InvoiceStatus; unpaid?: boolean; unitId?: string; skip: number; take: number }) {
     const base = await this.visible();
     if (!base) return { rows: [] as InvoiceRow[], total: 0 };
     const where: Prisma.InvoiceWhereInput = {
       AND: [
         base,
         q.status ? { status: q.status } : {},
+        q.unitId ? { unitId: q.unitId } : {},
         q.unpaid === true ? { balance: { gt: 0 }, status: { not: 'void' } } : {},
         q.unpaid === false ? { OR: [{ balance: { lte: 0 } }, { status: 'void' }] } : {},
       ],

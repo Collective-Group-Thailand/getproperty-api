@@ -99,6 +99,18 @@ const RESIDENT_ME_EXAMPLE: ResidentMeDto = {
   ],
   consents: [{ purposeKey: 'resident.service', required: true, version: 1, granted: true }],
   consentComplete: true,
+  unitRoles: [
+    {
+      unitId: FAKE.uuid,
+      buildingId: FAKE.buildingId,
+      propertyId: FAKE.uuid,
+      tenantId: FAKE.tenantId,
+      role: 'tenant' as never,
+      source: 'occupancy' as never,
+      from: FAKE.date,
+      to: null,
+    },
+  ],
   entitlements: ['bills', 'usage', 'lease'] as never[],
   scopes: [`unit:${FAKE.uuid}`],
   linkRequestsPending: 0,

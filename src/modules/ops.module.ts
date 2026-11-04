@@ -63,6 +63,7 @@ import { PartiesService } from './ops-parties/parties.service';
 import { PartyNotifications } from './ops-parties/party-notifications';
 import { ResidentDocumentsService } from './ops-parties/resident-documents.service';
 import { ResidentPrivacyService } from './ops-parties/resident-privacy.service';
+import { UnitResidentInvitationsService } from './ops-parties/unit-resident-invitations.service';
 import { MerchantResolver } from './ops-payments/merchants';
 import { PaymentNotifications } from './ops-payments/payment-notifications';
 import { PaymentReadySubscriber } from './ops-payments/payment-ready.subscriber';
@@ -131,6 +132,7 @@ const SERVICES = [
   PartyNotifications,
   ResidentPrivacyService,
   ResidentDocumentsService,
+  UnitResidentInvitationsService,
   ContractRenderer,
   LeasesService,
   LeaseStampDutyService,
