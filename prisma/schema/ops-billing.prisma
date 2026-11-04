@@ -23,6 +23,17 @@ enum RateBasis {
   @@schema("ops")
 }
 
+/// D-303 (J1.1a): how often a cycle bills; leases, utilities, rent and services are monthly.
+enum BillingFrequency {
+  monthly
+  quarterly
+  semiannual
+  annual
+
+  @@map("billing_frequency")
+  @@schema("ops")
+}
+
 enum BillingCycleStatus {
   open
   readings_pending
@@ -140,6 +151,7 @@ model RatePlan {
   kind       RatePlanKind
   name       String
   isDefault  Boolean      @default(false) @map("is_default")
+  frequency  BillingFrequency @default(monthly)
   createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy  String?      @map("created_by") @db.Uuid
   updatedAt  DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -200,6 +212,7 @@ model BillingCycle {
   tenantId              String             @map("tenant_id") @db.Uuid
   propertyId            String             @map("property_id") @db.Uuid
   periodKey             String             @map("period_key")
+  frequency             BillingFrequency   @default(monthly)
   periodStart           DateTime           @map("period_start") @db.Date
   periodEnd             DateTime           @map("period_end") @db.Date
   cutOffAt              DateTime           @map("cut_off_at") @db.Timestamptz(6)
@@ -228,8 +241,8 @@ model BillingCycle {
   readingBatches ReadingBatch[]
   readingRequests ReadingRequest[]
 
-  @@unique([propertyId, periodStart], map: "billing_cycle_property_id_period_start_key")
-  @@unique([propertyId, periodKey], map: "billing_cycle_property_id_period_key_key")
+  @@unique([propertyId, frequency, periodStart], map: "billing_cycle_property_id_frequency_period_start_key")
+  @@unique([propertyId, frequency, periodKey], map: "billing_cycle_property_id_frequency_period_key_key")
   @@index([tenantId, status], map: "billing_cycle_tenant_id_status_idx")
   @@map("billing_cycle")
   @@schema("ops")
@@ -406,6 +419,7 @@ model InvoiceLine {
   estimatedSettlements EstimateSettlement[]       @relation("EstimateSettlementEstimatedLine")
   settlingSettlements  EstimateSettlement[]       @relation("EstimateSettlementSettledLine")
   penaltyApplied     PenaltyAssessment[]
+  revenueSchedule    RevenueSchedule[]
 
   @@unique([invoiceId, lineNo], map: "invoice_line_invoice_id_line_no_key")
   @@index([assetItemId, readingToId], map: "invoice_line_asset_item_id_reading_to_id_idx")

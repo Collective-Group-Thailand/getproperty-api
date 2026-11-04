@@ -15,6 +15,7 @@ import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
 import {
   type BillingCycle,
   type BillingCycleStatus,
+  type BillingFrequency,
   type EstimatePolicy,
   type Lease,
   type Prisma,
@@ -22,7 +23,15 @@ import {
 } from '@generated/prisma/client';
 import { InspectionsService } from '@modules/ops-deposits/inspections.service';
 import { LeasesService } from '@modules/ops-leases/leases.service';
-import { type CutoffSetting, periodBounds, periodOf } from '@modules/smart-readings/cutoff';
+import {
+  calendarPeriod,
+  type CutoffSetting,
+  frequencyOfKey,
+  MONTHS_OF,
+  periodBounds,
+  periodKeyFor,
+  periodOf,
+} from '@modules/smart-readings/cutoff';
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
@@ -35,8 +44,10 @@ import {
   type MeterInput,
   type UnitRatePlanInput,
 } from './engine/invoice-draft';
+import { type OwnershipRow } from './engine/ownership-shares';
 import { addDays, maxDate, minDate } from './engine/periods';
 import { estimateRegister, type MeterSegment, segmentUnits } from './engine/readings';
+import { monthlySchedule } from './engine/revenue-schedule';
 import {
   type DraftTarget,
   INVOICE_INCLUDE,
@@ -51,6 +62,7 @@ const asDate = (s: string) => new Date(`${s}T00:00:00Z`);
 const UTILITIES = ['electric', 'water'] as const;
 const PLAN_KIND: Record<(typeof UTILITIES)[number], RatePlanKind> = { electric: 'power', water: 'water' };
 const LIVE: Lease['status'][] = ['active', 'notice_given', 'ending', 'ended', 'terminated'];
+const DAY_MS = 86_400_000;
 
 export const CYCLE_INCLUDE = {
   property: { select: { id: true, name: true, code: true } },
@@ -66,6 +78,8 @@ interface Billable {
   unitId: string;
   buildingId: string;
   partyId: string;
+  /** Ownership billables: every ownership row of the unit overlapping the period (J1.1a shares / transfer). */
+  ownerships?: OwnershipRow[];
   lease:
     | (Lease & {
         lines: {
@@ -144,6 +158,38 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
         await this.guarded(tx, 'final_refresh', () => this.refreshFinal(tx, leaseId), leaseId);
     });
     this.invoices.onIssued((tx, invoice) => this.linkSettlement(tx, invoice));
+    this.invoices.onIssued((tx, invoice) => this.scheduleRevenue(tx, invoice));
+  }
+
+  /**
+   * An issued invoice of an advance cycle (quarterly / semiannual / annual) is unearned revenue recognised monthly
+   * (D-303): each line with a period is spread over its calendar months by days (`juristic.revenue_schedule`, Σ = the
+   * line amount). Written once, in the issue transaction; the lines of an issued invoice never change (D-040).
+   */
+  private async scheduleRevenue(
+    tx: Tx,
+    invoice: { id: string; tenantId: string; billingCycleId: string | null },
+  ): Promise<void> {
+    if (!invoice.billingCycleId) return;
+    const cycle = await tx.billingCycle.findUnique({
+      where: { id: invoice.billingCycleId },
+      select: { frequency: true },
+    });
+    if (!cycle || cycle.frequency === 'monthly') return;
+    const lines = await tx.invoiceLine.findMany({
+      where: { invoiceId: invoice.id, periodFrom: { not: null }, periodTo: { not: null } },
+      select: { id: true, amount: true, periodFrom: true, periodTo: true },
+    });
+    const data = lines.flatMap((l) =>
+      monthlySchedule(l.amount.toString(), day(l.periodFrom!), day(l.periodTo!)).map((r) => ({
+        tenantId: invoice.tenantId,
+        invoiceLineId: l.id,
+        month: asDate(r.month),
+        amount: r.amount,
+        createdBy: by(),
+      })),
+    );
+    if (data.length) await tx.revenueSchedule.createMany({ data, skipDuplicates: true });
   }
 
   private async guarded(tx: Tx, name: string, work: () => Promise<void>, subject: string): Promise<void> {
@@ -163,12 +209,38 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
     return this.settings.valueAt<CutoffSetting>('billing.cutoff', at, { tenantId, propertyId });
   }
 
-  /** The Bangkok dates of a period key and its instants. */
+  /**
+   * The Bangkok dates of a period key and its instants. Monthly keys follow the meter cut-off (`billing.cutoff`,
+   * arrears); quarterly / semiannual / annual keys are calendar periods billed in advance — their "cut-off" is the
+   * instant the cycle opens: the start of the first day minus `billing.advance_open_days` (D-303, D-323).
+   */
   async periodOfKey(tenantId: string, propertyId: string, key: string) {
+    const frequency = frequencyOfKey(key);
+    if (!frequency)
+      throw new DomainException('validation.failed', {
+        errors: [{ path: 'periodKey', code: 'periodKey', message: 'YYYY-MM | YYYY-Qn | YYYY-Hn | YYYY' }],
+      });
+    if (frequency !== 'monthly') {
+      const c = calendarPeriod(key);
+      const startInstant = startOfBangkokDay(c.start);
+      const openDays = await this.settings.valueAt<number>('billing.advance_open_days', this.clock.now(), {
+        tenantId,
+        propertyId,
+      });
+      return {
+        key,
+        frequency: frequency as BillingFrequency,
+        startInstant,
+        cutOffAt: new Date(startInstant.getTime() - openDays * DAY_MS),
+        start: c.start,
+        end: c.end,
+      };
+    }
     const setting = await this.cutoffSetting(tenantId, propertyId, this.clock.now());
     const b = periodBounds(setting, key);
     return {
       key,
+      frequency: 'monthly' as BillingFrequency,
       startInstant: b.start,
       cutOffAt: b.end,
       start: bangkokDate(new Date(b.start.getTime() + 59_999)),
@@ -178,9 +250,11 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
 
   /** Creates the cycle of a property and period when missing (D-031 settings resolved at the cut-off). */
   async ensureCycle(tx: Tx, tenantId: string, propertyId: string, key: string): Promise<BillingCycle> {
-    const existing = await tx.billingCycle.findFirst({ where: { propertyId, periodKey: key } });
-    if (existing) return existing;
     const p = await this.periodOfKey(tenantId, propertyId, key);
+    const existing = await tx.billingCycle.findFirst({
+      where: { propertyId, frequency: p.frequency, periodKey: key },
+    });
+    if (existing) return existing;
     const scope = { tenantId, propertyId };
     const windowMinutes = await this.settings.valueAt<number>(
       'readings.iot_window_minutes',
@@ -194,11 +268,14 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
         tenantId,
         propertyId,
         periodKey: key,
+        frequency: p.frequency,
         periodStart: asDate(p.start),
         periodEnd: asDate(p.end),
         cutOffAt: p.cutOffAt,
         readingsWindowMinutes: windowMinutes,
-        graceDeadlineAt: new Date(p.cutOffAt.getTime() + graceHours * 3_600_000),
+        // an advance cycle reads no meters: nothing to wait for
+        graceDeadlineAt:
+          p.frequency === 'monthly' ? new Date(p.cutOffAt.getTime() + graceHours * 3_600_000) : p.cutOffAt,
         estimatePolicy: policy,
         createdBy: by(),
       },
@@ -208,7 +285,13 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
       aggregateType: 'billing_cycle',
       aggregateId: cycle.id,
       tenantId,
-      payload: { billingCycleId: cycle.id, propertyId, periodKey: key, cutOffAt: p.cutOffAt.toISOString() },
+      payload: {
+        billingCycleId: cycle.id,
+        propertyId,
+        periodKey: key,
+        frequency: p.frequency,
+        cutOffAt: p.cutOffAt.toISOString(),
+      },
     });
     return cycle;
   }
@@ -227,11 +310,18 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
 
   list(
     ctx: TenantContext,
-    q: { propertyId?: string; status?: BillingCycleStatus; skip: number; take: number },
+    q: {
+      propertyId?: string;
+      status?: BillingCycleStatus;
+      frequency?: BillingFrequency;
+      skip: number;
+      take: number;
+    },
   ) {
     return this.db.tenant(ctx, async (tx) => {
       const where: Prisma.BillingCycleWhereInput = this.own(ctx, {
         ...(q.propertyId ? { propertyId: q.propertyId } : {}),
+        ...(q.frequency ? { frequency: q.frequency } : {}),
         ...(q.status ? { status: q.status } : {}),
       });
       const [rows, total] = await Promise.all([
@@ -264,6 +354,12 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
 
   // ------------------------------------------------------------------------------------------- compute
 
+  /**
+   * The billed party × unit pairs of a cycle. Leases are billed by monthly cycles only (leases stay monthly, D-303).
+   * Juristic tenants bill the owners of every unit with an ownership overlapping the period (`valid_to` exclusive),
+   * each pair carrying all ownership rows of its unit so shares and transfer days split the fee (J1.1a, D-323) — when
+   * the unit has a common-fee / fund plan of the cycle's frequency, or (monthly cycles) a pending one-off charge.
+   */
   private async billables(tx: Tx, tenantId: string, cycle: BillingCycle): Promise<Billable[]> {
     const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { type: true } });
     const buildings = await tx.building.findMany({
@@ -275,19 +371,22 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
       select: { id: true },
     });
     const buildingIds = buildings.map((b) => b.id);
+    const monthly = cycle.frequency === 'monthly';
     const out: Billable[] = [];
-    const leases = await tx.lease.findMany({
-      where: {
-        tenantId,
-        buildingId: { in: buildingIds },
-        status: { in: LIVE },
-        activatedAt: { not: null },
-        startDate: { lte: cycle.periodEnd },
-        endDate: { gte: cycle.periodStart },
-      },
-      include: { lines: true },
-      orderBy: { startDate: 'asc' },
-    });
+    const leases = monthly
+      ? await tx.lease.findMany({
+          where: {
+            tenantId,
+            buildingId: { in: buildingIds },
+            status: { in: LIVE },
+            activatedAt: { not: null },
+            startDate: { lte: cycle.periodEnd },
+            endDate: { gte: cycle.periodStart },
+          },
+          include: { lines: true },
+          orderBy: { startDate: 'asc' },
+        })
+      : [];
     for (const l of leases) {
       // a lease that ended before the cut-off is billed by its final invoice (D-177)
       const endedAt = l.endedAt ?? l.terminatedAt;
@@ -306,21 +405,36 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
         where: {
           buildingId: { in: buildingIds },
           validFrom: { lte: cycle.periodEnd },
-          OR: [{ validTo: null }, { validTo: { gte: cycle.periodStart } }],
+          OR: [{ validTo: null }, { validTo: { gt: cycle.periodStart } }],
         },
+        orderBy: [{ unitId: 'asc' }, { validFrom: 'asc' }, { partyId: 'asc' }],
       });
-      const seen = new Set<string>();
-      for (const o of owners) {
-        const key = `${o.unitId}|${o.partyId}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        out.push({
-          kind: 'ownership',
-          unitId: o.unitId,
-          buildingId: o.buildingId,
+      const period = { start: day(cycle.periodStart), end: day(cycle.periodEnd) };
+      const hasPlans = new Map<string, boolean>();
+      const byUnit = new Map<string, typeof owners>();
+      for (const o of owners) byUnit.set(o.unitId, [...(byUnit.get(o.unitId) ?? []), o]);
+      for (const [unitId, rows] of byUnit) {
+        const buildingId = rows[0]!.buildingId;
+        if (!hasPlans.has(buildingId))
+          hasPlans.set(
+            buildingId,
+            (await this.unitRatePlans(tx, tenantId, buildingId, period, cycle.frequency)).length > 0,
+          );
+        const ownerships: OwnershipRow[] = rows.map((o) => ({
           partyId: o.partyId,
-          lease: null,
-        });
+          sharePct: o.sharePct.toString(),
+          from: day(o.validFrom),
+          to: o.validTo ? day(o.validTo) : null,
+        }));
+        for (const partyId of [...new Set(rows.map((o) => o.partyId))]) {
+          // one-off charges stay on monthly cycles (one place bills them, never twice)
+          if (!hasPlans.get(buildingId)) {
+            if (!monthly) continue;
+            const pending = await tx.invoiceCharge.count({ where: { unitId, partyId, status: 'pending' } });
+            if (!pending) continue;
+          }
+          out.push({ kind: 'ownership', unitId, buildingId, partyId, lease: null, ownerships });
+        }
       }
     }
     return out;
@@ -516,17 +630,28 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
     };
   }
 
+  /**
+   * The unit's default common-fee / fund plans billed by a cycle of `frequency`: monthly cycles take the version in
+   * force at the period end (unchanged); advance cycles the version in force on the first day (else at the end) — a
+   * version taking effect inside an advance period applies from the next cycle (D-323).
+   */
   private async unitRatePlans(
     tx: Tx,
     tenantId: string,
     buildingId: string,
-    onDay: string,
+    period: { start: string; end: string },
+    frequency: BillingFrequency,
   ): Promise<UnitRatePlanInput[]> {
     const out: UnitRatePlanInput[] = [];
     for (const kind of ['common_fee', 'fund'] as const) {
       const plan = await this.inputs.planFor(tx, tenantId, buildingId, kind, null);
-      const version = plan ? BillingInputs.versionAt(plan.versions, onDay) : null;
-      if (plan && version) out.push({ kind, name: plan.name, version: toVersionLike(version) });
+      if (!plan || plan.frequency !== frequency) continue;
+      const version =
+        frequency === 'monthly'
+          ? BillingInputs.versionAt(plan.versions, period.end)
+          : (BillingInputs.versionAt(plan.versions, period.start) ??
+            BillingInputs.versionAt(plan.versions, period.end));
+      if (version) out.push({ kind, name: plan.name, version: toVersionLike(version) });
     }
     return out;
   }
@@ -543,26 +668,34 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
               from: maxDate(period.start, day(b.lease.startDate)),
               to: minDate(period.end, day(b.lease.endDate)),
             }
-          : { from: period.start, to: period.end };
-        const prevCutoff = new Date(
-          (await this.periodOfKey(cycle.tenantId, cycle.propertyId, cycle.periodKey)).startInstant.getTime() -
-            1,
-        );
-        const start = occupancy.from === period.start ? prevCutoff : startOfBangkokDay(occupancy.from);
-        const m = await this.meterInputs(
-          tx,
-          { tenantId: cycle.tenantId, buildingId: b.buildingId, unitId: b.unitId, lease: b.lease },
-          {
-            start,
-            end: cycle.cutOffAt,
-            graceUntil: cycle.graceDeadlineAt,
-            windowMinutes: cycle.readingsWindowMinutes,
-            periodEnd: period.end,
-          },
-          cycle.estimatePolicy,
-          false,
-          cycle.id,
-        );
+          : b.ownerships
+            ? ownedSpan(b.ownerships, b.partyId, period)
+            : { from: period.start, to: period.end };
+        // owners are billed common fees, never meters (meters follow the lease, D-022)
+        const m =
+          b.kind === 'lease'
+            ? await this.meterInputs(
+                tx,
+                { tenantId: cycle.tenantId, buildingId: b.buildingId, unitId: b.unitId, lease: b.lease },
+                {
+                  start:
+                    occupancy.from === period.start
+                      ? new Date(
+                          (
+                            await this.periodOfKey(cycle.tenantId, cycle.propertyId, cycle.periodKey)
+                          ).startInstant.getTime() - 1,
+                        )
+                      : startOfBangkokDay(occupancy.from),
+                  end: cycle.cutOffAt,
+                  graceUntil: cycle.graceDeadlineAt,
+                  windowMinutes: cycle.readingsWindowMinutes,
+                  periodEnd: period.end,
+                },
+                cycle.estimatePolicy,
+                false,
+                cycle.id,
+              )
+            : { meters: [], settlements: [], estimated: 0 };
         const input: DraftInput = {
           period,
           mode: 'cycle',
@@ -578,12 +711,15 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
           meters: b.kind === 'lease' ? m.meters : [],
           unitRatePlans:
             b.kind === 'ownership'
-              ? await this.unitRatePlans(tx, cycle.tenantId, b.buildingId, period.end)
+              ? await this.unitRatePlans(tx, cycle.tenantId, b.buildingId, period, cycle.frequency)
               : [],
-          charges: await this.pendingCharges(tx, b.unitId, b.partyId),
+          // one-off charges are billed by monthly cycles only (never twice across frequencies)
+          charges: cycle.frequency === 'monthly' ? await this.pendingCharges(tx, b.unitId, b.partyId) : [],
           estimateSettlements: b.kind === 'lease' ? m.settlements : [],
           advanceRent: null,
           vat: await this.vatOf(tx, cycle.tenantId, cycle.cutOffAt),
+          ...(b.ownerships ? { ownership: { partyId: b.partyId, rows: b.ownerships } } : {}),
+          cycleMonths: MONTHS_OF[cycle.frequency],
         };
         const draft = computeInvoiceDraft(input);
         const target: DraftTarget = {
@@ -840,8 +976,11 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
   // ------------------------------------------------------------------------------------------- worker
 
   /**
-   * Worker job `billing-cycles` (D-031): for every property whose cut-off passed, the cycle of that period is opened
-   * and computed until it is no longer waiting for readings; computed cycles past `auto_issue_at` issue themselves.
+   * Worker job `billing-cycles` (D-031, D-303): for every property whose cut-off passed, the monthly cycle of that
+   * period is opened and computed until it is no longer waiting for readings — where a lease lives, or (juristic
+   * tenants, J1.1a) where units have owners billed monthly or one-off charges wait; and for each non-monthly frequency
+   * of the property's common-fee / fund plans with owners, the advance cycle of the calendar period starting within
+   * `billing.advance_open_days`. Computed cycles past `auto_issue_at` issue themselves.
    */
   async sweep(): Promise<number> {
     const now = this.clock.now();
@@ -853,39 +992,87 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
       for (const p of properties) {
         try {
           const ctx = systemTenantContext(p.tenantId);
-          const setting = await this.cutoffSetting(p.tenantId, p.id, now);
-          // the period whose cut-off is the latest one at or before now
-          const current = periodOf(setting, now);
-          const previousKey =
-            current.cutoff.getTime() === now.getTime() ? current.key : previousPeriodKey(current.key);
-          const hasUnits = await this.db.tenant(ctx, (tx) =>
-            tx.lease.count({
-              where: { tenantId: p.tenantId, unit: { propertyId: p.id }, status: { in: LIVE } },
-            }),
-          );
-          if (!hasUnits) continue;
-          const cycle = await this.db.tenant(ctx, (tx) =>
-            this.ensureCycle(tx, p.tenantId, p.id, previousKey),
-          );
-          if (cycle.status === 'open' || cycle.status === 'readings_pending') {
-            await this.compute(ctx, cycle.id);
-            worked += 1;
-          } else if (
-            cycle.status === 'computed' &&
-            cycle.autoIssueAt &&
-            cycle.autoIssueAt.getTime() <= now.getTime()
-          ) {
-            await this.issue(ctx, cycle.id).catch((error: unknown) =>
-              this.logger.warn(`auto-issue ${cycle.id}: ${(error as Error).message}`),
+          const due = await this.db.tenant(ctx, (tx) => this.dueFrequencies(tx, p.tenantId, p.id, now));
+          const keys: string[] = [];
+          if (due.monthly) {
+            const setting = await this.cutoffSetting(p.tenantId, p.id, now);
+            // the period whose cut-off is the latest one at or before now
+            const current = periodOf(setting, now);
+            keys.push(
+              current.cutoff.getTime() === now.getTime() ? current.key : previousPeriodKey(current.key),
             );
-            worked += 1;
           }
+          if (due.advance.length) {
+            const openDays = await this.settings.valueAt<number>('billing.advance_open_days', now, {
+              tenantId: p.tenantId,
+              propertyId: p.id,
+            });
+            const ahead = bangkokDate(new Date(now.getTime() + openDays * DAY_MS));
+            for (const f of due.advance) keys.push(periodKeyFor(f, ahead));
+          }
+          for (const key of keys) worked += await this.sweepCycle(ctx, p.tenantId, p.id, key, now);
         } catch (error) {
           this.logger.error(`billing cycle of property ${p.id}: ${(error as Error).message}`);
         }
       }
       return worked;
     });
+  }
+
+  private async sweepCycle(ctx: TenantContext, tenantId: string, propertyId: string, key: string, now: Date) {
+    const cycle = await this.db.tenant(ctx, (tx) => this.ensureCycle(tx, tenantId, propertyId, key));
+    if (cycle.status === 'open' || cycle.status === 'readings_pending') {
+      await this.compute(ctx, cycle.id);
+      return 1;
+    }
+    if (cycle.status === 'computed' && cycle.autoIssueAt && cycle.autoIssueAt.getTime() <= now.getTime()) {
+      await this.issue(ctx, cycle.id).catch((error: unknown) =>
+        this.logger.warn(`auto-issue ${cycle.id}: ${(error as Error).message}`),
+      );
+      return 1;
+    }
+    return 0;
+  }
+
+  /** Which cycles a property needs: monthly (leases, monthly owner billing, owners' one-off charges) and advance ones. */
+  private async dueFrequencies(
+    tx: Tx,
+    tenantId: string,
+    propertyId: string,
+    now: Date,
+  ): Promise<{ monthly: boolean; advance: Exclude<BillingFrequency, 'monthly'>[] }> {
+    const leases = await tx.lease.count({
+      where: { tenantId, unit: { propertyId }, status: { in: LIVE } },
+    });
+    const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { type: true } });
+    if (!isJuristicTenantType(tenant.type)) return { monthly: leases > 0, advance: [] };
+    const buildings = await tx.building.findMany({
+      where: {
+        propertyId,
+        deletedAt: null,
+        OR: [{ operatorTenantId: tenantId }, { ownerTenantId: tenantId }],
+      },
+      select: { id: true },
+    });
+    const today = asDate(bangkokDate(now));
+    const frequencies = new Set<BillingFrequency>();
+    for (const b of buildings) {
+      const owned = await tx.unitOwnership.count({
+        where: { buildingId: b.id, OR: [{ validTo: null }, { validTo: { gt: today } }] },
+      });
+      if (!owned) continue;
+      for (const kind of ['common_fee', 'fund'] as const) {
+        const plan = await this.inputs.planFor(tx, tenantId, b.id, kind, null);
+        if (plan) frequencies.add(plan.frequency);
+      }
+    }
+    const charges = await tx.invoiceCharge.count({
+      where: { tenantId, status: 'pending', unit: { propertyId } },
+    });
+    return {
+      monthly: leases > 0 || frequencies.has('monthly') || charges > 0,
+      advance: [...frequencies].filter((f): f is Exclude<BillingFrequency, 'monthly'> => f !== 'monthly'),
+    };
   }
 
   // ------------------------------------------------------------------------------------------- final invoice
@@ -1120,6 +1307,22 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
       },
     });
   }
+}
+
+/** The days a party owns the unit inside the period (first owned day … last owned day; `valid_to` exclusive). */
+function ownedSpan(rows: OwnershipRow[], partyId: string, period: { start: string; end: string }) {
+  const mine = rows
+    .filter((r) => r.partyId === partyId)
+    .map((r) => ({
+      from: maxDate(r.from, period.start),
+      to: r.to === null ? period.end : minDate(addDays(r.to, -1), period.end),
+    }))
+    .filter((r) => r.from <= r.to);
+  if (!mine.length) return { from: period.start, to: period.end };
+  return {
+    from: mine.reduce((a, r) => minDate(a, r.from), period.end),
+    to: mine.reduce((a, r) => maxDate(a, r.to), period.start),
+  };
 }
 
 function previousPeriodKey(key: string): string {

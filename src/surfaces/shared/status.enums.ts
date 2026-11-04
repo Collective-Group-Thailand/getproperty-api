@@ -227,6 +227,14 @@ export enum BillingCycleStatusName {
   Cancelled = 'cancelled',
 }
 
+/** `ops.billing_frequency` (D-303, J1.1a). */
+export enum BillingFrequencyName {
+  Monthly = 'monthly',
+  Quarterly = 'quarterly',
+  Semiannual = 'semiannual',
+  Annual = 'annual',
+}
+
 /** `ops.rate_plan_kind` (D-151). */
 export enum RatePlanKindName {
   Power = 'power',

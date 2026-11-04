@@ -23,6 +23,7 @@ import {
 import { DecimalInput, MoneyInput, MoneyOutput } from '../shared/fields';
 import {
   BillingCycleStatusName,
+  BillingFrequencyName,
   EstimatePolicyName,
   InvoiceChargeStatusName,
   InvoiceLineKindName,
@@ -69,7 +70,7 @@ export class RatePlanVersionDto {
     type: 'object',
     additionalProperties: true,
     description:
-      'Tiers interpreted by the billing engine (schema-design §4.2.2): `{kind: flat, pricePerUnit}`, `{kind: tiered, tiers: [{fromUnits, toUnits, pricePerUnit}]}`, `{kind: fixed, amount, byUnitType?}` or `{kind: budget, amount}` (condo common fee by ownership ratio). Prices are decimal strings.',
+      'Tiers interpreted by the billing engine (schema-design §4.2.2): `{kind: flat, pricePerUnit}`, `{kind: tiered, tiers: [{fromUnits, toUnits, pricePerUnit}]}`, `{kind: fixed, amount, byUnitType?}` or `{kind: budget, amount, period?: month | year}` (condo common fee by ownership ratio; `year` = amount ÷ 12 a month, D-323). Amounts are per month; a quarterly / semiannual / annual plan bills 3 / 6 / 12 months per cycle. Prices are decimal strings.',
     example: { kind: 'flat', unit: 'kwh', pricePerUnit: '7.0000' },
   })
   tiers!: Record<string, unknown>;
@@ -133,6 +134,15 @@ export class RatePlanDto {
   @ApiProperty({ description: 'Default plan of its kind for the building (or tenant).', example: true })
   isDefault!: boolean;
 
+  @ApiProperty({
+    enum: BillingFrequencyName,
+    enumName: 'BillingFrequency',
+    example: BillingFrequencyName.Monthly,
+    description:
+      'The cycle that bills the plan (D-303): amounts stay per month and a quarterly / semiannual / annual cycle bills 3 / 6 / 12 × the monthly amount, in advance. Only common_fee and fund plans may be non-monthly.',
+  })
+  frequency!: BillingFrequencyName;
+
   @ApiProperty({ type: [RatePlanVersionDto], description: 'Newest first.' })
   versions!: RatePlanVersionDto[];
 
@@ -176,6 +186,17 @@ export class RatePlanCreateDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
+
+  @ApiPropertyOptional({
+    enum: BillingFrequencyName,
+    enumName: 'BillingFrequency',
+    default: BillingFrequencyName.Monthly,
+    description:
+      'Non-monthly only for common_fee / fund plans (422 `validation.failed`, path `frequency`), D-303.',
+  })
+  @IsOptional()
+  @IsEnum(BillingFrequencyName)
+  frequency?: BillingFrequencyName;
 }
 
 export class RatePlanUpdateDto {
@@ -189,6 +210,16 @@ export class RatePlanUpdateDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
+
+  @ApiPropertyOptional({
+    enum: BillingFrequencyName,
+    enumName: 'BillingFrequency',
+    description:
+      'Takes effect from the next cycle opened; non-monthly only for common_fee / fund plans (D-303).',
+  })
+  @IsOptional()
+  @IsEnum(BillingFrequencyName)
+  frequency?: BillingFrequencyName;
 }
 
 export class RatePlanVersionCreateDto {
@@ -815,8 +846,21 @@ export class BillingCycleDto {
   @ApiProperty({ example: 'อาคารสุขใจ' })
   propertyName!: string;
 
-  @ApiProperty({ example: '2026-10', description: 'Period key (cut-off month).' })
+  @ApiProperty({
+    example: '2026-10',
+    description:
+      'Period key: `YYYY-MM` (monthly, the cut-off month), `YYYY-Qn` (quarterly), `YYYY-Hn` (semiannual) or `YYYY` (annual), D-303.',
+  })
   periodKey!: string;
+
+  @ApiProperty({
+    enum: BillingFrequencyName,
+    enumName: 'BillingFrequency',
+    example: BillingFrequencyName.Monthly,
+    description:
+      'Monthly cycles bill leases, meters and monthly unit plans at the cut-off; quarterly / semiannual / annual cycles bill common fees and funds in advance for a calendar period (D-303). A property may hold one cycle per frequency and period.',
+  })
+  frequency!: BillingFrequencyName;
 
   @ApiProperty({ type: String, format: 'date', example: '2026-09-26' })
   periodStart!: string;
@@ -897,6 +941,11 @@ export class BillingCycleListQuery extends PageQuery {
   @IsOptional()
   @IsEnum(BillingCycleStatusName)
   status?: BillingCycleStatusName;
+
+  @ApiPropertyOptional({ enum: BillingFrequencyName, enumName: 'BillingFrequency' })
+  @IsOptional()
+  @IsEnum(BillingFrequencyName)
+  frequency?: BillingFrequencyName;
 }
 
 export class BillingCycleOpenDto {
@@ -904,9 +953,14 @@ export class BillingCycleOpenDto {
   @IsUUID()
   propertyId!: string;
 
-  @ApiPropertyOptional({ example: '2026-10', description: 'Default: the current period.' })
+  @ApiPropertyOptional({
+    example: '2026-10',
+    pattern: '^\\d{4}(-(0[1-9]|1[0-2])|-Q[1-4]|-H[12])?$',
+    description:
+      'The frequency follows the key: `YYYY-MM` monthly, `YYYY-Qn` quarterly, `YYYY-Hn` semiannual, `YYYY` annual (D-303). Default: the current monthly period.',
+  })
   @IsOptional()
-  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/)
+  @Matches(/^\d{4}(-(0[1-9]|1[0-2])|-Q[1-4]|-H[12])?$/)
   periodKey?: string;
 }
 

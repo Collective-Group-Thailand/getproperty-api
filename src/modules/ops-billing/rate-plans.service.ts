@@ -11,7 +11,12 @@ import { DomainEvents } from '@core/events/domain-events';
 import { SettingsService } from '@core/settings/settings.service';
 import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
-import { type Prisma, type RateBasis, type RatePlanKind } from '@generated/prisma/client';
+import {
+  type BillingFrequency,
+  type Prisma,
+  type RateBasis,
+  type RatePlanKind,
+} from '@generated/prisma/client';
 import { operatedBuilding } from '@modules/ops-units/building-access';
 import { Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
@@ -36,6 +41,20 @@ export interface VersionInput {
 }
 
 const UTILITY: Partial<Record<RatePlanKind, 'electric' | 'water'>> = { power: 'electric', water: 'water' };
+
+/** D-303 (J1.1a): only common-fee and fund plans may bill quarterly / semiannually / annually. */
+function checkFrequency(kind: RatePlanKind, frequency: BillingFrequency | undefined): void {
+  if (frequency && frequency !== 'monthly' && kind !== 'common_fee' && kind !== 'fund')
+    throw new DomainException('validation.failed', {
+      errors: [
+        {
+          path: 'frequency',
+          code: 'frequency',
+          message: 'only common_fee and fund plans bill quarterly, semiannual or annual',
+        },
+      ],
+    });
+}
 
 /**
  * Rate plans (B4.2, D-021a, D-141, D-151): tenant-set tariffs per building (or tenant-wide) and kind, versioned by
@@ -109,8 +128,15 @@ export class RatePlansService extends TenantScopedRepository {
 
   async create(
     ctx: TenantContext,
-    input: { buildingId?: string | null; kind: RatePlanKind; name: string; isDefault: boolean },
+    input: {
+      buildingId?: string | null;
+      kind: RatePlanKind;
+      name: string;
+      isDefault: boolean;
+      frequency?: BillingFrequency;
+    },
   ): Promise<RatePlanRow> {
+    checkFrequency(input.kind, input.frequency);
     return this.db.tenant(ctx, async (tx) => {
       if (input.buildingId) await operatedBuilding(tx, ctx, input.buildingId);
       if (input.isDefault)
@@ -130,6 +156,7 @@ export class RatePlansService extends TenantScopedRepository {
           kind: input.kind,
           name: input.name,
           isDefault: input.isDefault,
+          frequency: input.frequency ?? 'monthly',
           createdBy: by(),
         },
       });
@@ -139,7 +166,7 @@ export class RatePlansService extends TenantScopedRepository {
         buildingId: plan.buildingId,
         subjectType: 'ops.rate_plan',
         subjectId: plan.id,
-        after: { kind: plan.kind, name: plan.name, isDefault: plan.isDefault },
+        after: { kind: plan.kind, name: plan.name, isDefault: plan.isDefault, frequency: plan.frequency },
       });
       await this.event(tx, plan, 'created');
       return this.load(tx, ctx, plan.id);
@@ -150,11 +177,12 @@ export class RatePlansService extends TenantScopedRepository {
     ctx: TenantContext,
     id: string,
     version: number,
-    patch: { name?: string; isDefault?: boolean },
+    patch: { name?: string; isDefault?: boolean; frequency?: BillingFrequency },
   ): Promise<RatePlanRow> {
     return this.db.tenant(ctx, async (tx) => {
       const plan = await this.load(tx, ctx, id);
       if (plan.version !== version) throw new DomainException('concurrency.stale');
+      checkFrequency(plan.kind, patch.frequency);
       if (plan.buildingId) await operatedBuilding(tx, ctx, plan.buildingId);
       if (patch.isDefault)
         await tx.ratePlan.updateMany({
@@ -172,6 +200,7 @@ export class RatePlansService extends TenantScopedRepository {
         data: {
           ...(patch.name !== undefined ? { name: patch.name } : {}),
           ...(patch.isDefault !== undefined ? { isDefault: patch.isDefault } : {}),
+          ...(patch.frequency !== undefined ? { frequency: patch.frequency } : {}),
           updatedBy: by(),
           version: { increment: 1 },
         },
@@ -182,7 +211,7 @@ export class RatePlansService extends TenantScopedRepository {
         buildingId: plan.buildingId,
         subjectType: 'ops.rate_plan',
         subjectId: id,
-        before: { name: plan.name, isDefault: plan.isDefault },
+        before: { name: plan.name, isDefault: plan.isDefault, frequency: plan.frequency },
         after: patch,
       });
       await this.event(tx, plan, 'updated');

@@ -7009,6 +7009,15 @@
             ],
             "example": "block"
           },
+          "frequency": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BillingFrequency"
+              }
+            ],
+            "description": "Monthly cycles bill leases, meters and monthly unit plans at the cut-off; quarterly / semiannual / annual cycles bill common fees and funds in advance for a calendar period (D-303). A property may hold one cycle per frequency and period.",
+            "example": "monthly"
+          },
           "graceDeadlineAt": {
             "description": "Staff readings accepted until (D-031).",
             "example": "2026-10-26T23:59:00+07:00",
@@ -7051,7 +7060,7 @@
             "type": "string"
           },
           "periodKey": {
-            "description": "Period key (cut-off month).",
+            "description": "Period key: `YYYY-MM` (monthly, the cut-off month), `YYYY-Qn` (quarterly), `YYYY-Hn` (semiannual) or `YYYY` (annual), D-303.",
             "example": "2026-10",
             "type": "string"
           },
@@ -7112,6 +7121,7 @@
           "propertyId",
           "propertyName",
           "periodKey",
+          "frequency",
           "periodStart",
           "periodEnd",
           "cutOffAt",
@@ -7171,6 +7181,15 @@
             ],
             "example": "block"
           },
+          "frequency": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BillingFrequency"
+              }
+            ],
+            "description": "Monthly cycles bill leases, meters and monthly unit plans at the cut-off; quarterly / semiannual / annual cycles bill common fees and funds in advance for a calendar period (D-303). A property may hold one cycle per frequency and period.",
+            "example": "monthly"
+          },
           "graceDeadlineAt": {
             "description": "Staff readings accepted until (D-031).",
             "example": "2026-10-26T23:59:00+07:00",
@@ -7206,7 +7225,7 @@
             "type": "string"
           },
           "periodKey": {
-            "description": "Period key (cut-off month).",
+            "description": "Period key: `YYYY-MM` (monthly, the cut-off month), `YYYY-Qn` (quarterly), `YYYY-Hn` (semiannual) or `YYYY` (annual), D-303.",
             "example": "2026-10",
             "type": "string"
           },
@@ -7267,6 +7286,7 @@
           "propertyId",
           "propertyName",
           "periodKey",
+          "frequency",
           "periodStart",
           "periodEnd",
           "cutOffAt",
@@ -7325,6 +7345,15 @@
             ],
             "example": "block"
           },
+          "frequency": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BillingFrequency"
+              }
+            ],
+            "description": "Monthly cycles bill leases, meters and monthly unit plans at the cut-off; quarterly / semiannual / annual cycles bill common fees and funds in advance for a calendar period (D-303). A property may hold one cycle per frequency and period.",
+            "example": "monthly"
+          },
           "graceDeadlineAt": {
             "description": "Staff readings accepted until (D-031).",
             "example": "2026-10-26T23:59:00+07:00",
@@ -7367,7 +7396,7 @@
             "type": "string"
           },
           "periodKey": {
-            "description": "Period key (cut-off month).",
+            "description": "Period key: `YYYY-MM` (monthly, the cut-off month), `YYYY-Qn` (quarterly), `YYYY-Hn` (semiannual) or `YYYY` (annual), D-303.",
             "example": "2026-10",
             "type": "string"
           },
@@ -7443,6 +7472,7 @@
           "propertyId",
           "propertyName",
           "periodKey",
+          "frequency",
           "periodStart",
           "periodEnd",
           "cutOffAt",
@@ -7466,8 +7496,9 @@
       "BillingCycleOpenDto": {
         "properties": {
           "periodKey": {
-            "description": "Default: the current period.",
+            "description": "The frequency follows the key: `YYYY-MM` monthly, `YYYY-Qn` quarterly, `YYYY-Hn` semiannual, `YYYY` annual (D-303). Default: the current monthly period.",
             "example": "2026-10",
+            "pattern": "^\\d{4}(-(0[1-9]|1[0-2])|-Q[1-4]|-H[12])?$",
             "type": "string"
           },
           "propertyId": {
@@ -7511,6 +7542,16 @@
           "issued",
           "closed",
           "cancelled"
+        ],
+        "type": "string"
+      },
+      "BillingFrequency": {
+        "description": "The cycle that bills the plan (D-303): amounts stay per month and a quarterly / semiannual / annual cycle bills 3 / 6 / 12 × the monthly amount, in advance. Only common_fee and fund plans may be non-monthly.",
+        "enum": [
+          "monthly",
+          "quarterly",
+          "semiannual",
+          "annual"
         ],
         "type": "string"
       },
@@ -36517,6 +36558,15 @@
               "null"
             ]
           },
+          "frequency": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BillingFrequency"
+              }
+            ],
+            "default": "monthly",
+            "description": "Non-monthly only for common_fee / fund plans (422 `validation.failed`, path `frequency`), D-303."
+          },
           "isDefault": {
             "default": false,
             "type": "boolean"
@@ -36550,6 +36600,15 @@
               "string",
               "null"
             ]
+          },
+          "frequency": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BillingFrequency"
+              }
+            ],
+            "description": "The cycle that bills the plan (D-303): amounts stay per month and a quarterly / semiannual / annual cycle bills 3 / 6 / 12 × the monthly amount, in advance. Only common_fee and fund plans may be non-monthly.",
+            "example": "monthly"
           },
           "id": {
             "example": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -36591,6 +36650,7 @@
           "kind",
           "name",
           "isDefault",
+          "frequency",
           "versions",
           "version"
         ],
@@ -36609,6 +36669,14 @@
       },
       "RatePlanUpdateDto": {
         "properties": {
+          "frequency": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BillingFrequency"
+              }
+            ],
+            "description": "Takes effect from the next cycle opened; non-monthly only for common_fee / fund plans (D-303)."
+          },
           "isDefault": {
             "type": "boolean"
           },
@@ -36760,7 +36828,7 @@
           },
           "tiers": {
             "additionalProperties": true,
-            "description": "Tiers interpreted by the billing engine (schema-design §4.2.2): `{kind: flat, pricePerUnit}`, `{kind: tiered, tiers: [{fromUnits, toUnits, pricePerUnit}]}`, `{kind: fixed, amount, byUnitType?}` or `{kind: budget, amount}` (condo common fee by ownership ratio). Prices are decimal strings.",
+            "description": "Tiers interpreted by the billing engine (schema-design §4.2.2): `{kind: flat, pricePerUnit}`, `{kind: tiered, tiers: [{fromUnits, toUnits, pricePerUnit}]}`, `{kind: fixed, amount, byUnitType?}` or `{kind: budget, amount, period?: month | year}` (condo common fee by ownership ratio; `year` = amount ÷ 12 a month, D-323). Amounts are per month; a quarterly / semiannual / annual plan bills 3 / 6 / 12 months per cycle. Prices are decimal strings.",
             "example": {
               "kind": "flat",
               "pricePerUnit": "7.0000",
@@ -105333,7 +105401,7 @@
     },
     "/v1/owner/billing-cycles": {
       "get": {
-        "description": "One cycle per property and period (D-031), newest first, with its status and counters.\n\nImplements: D-031, D-011.",
+        "description": "One cycle per property, frequency and period (D-031, D-303): monthly cycles at the meter cut-off, quarterly / semiannual / annual common-fee cycles billed in advance (filter `frequency`); newest first, with status and counters.\n\nImplements: D-031, D-011, D-303, D-323.",
         "operationId": "owner.billingCycles.list",
         "parameters": [
           {
@@ -105402,6 +105470,14 @@
             }
           },
           {
+            "in": "query",
+            "name": "frequency",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/BillingFrequency"
+            }
+          },
+          {
             "$ref": "#/components/parameters/TenantIdHeader"
           },
           {
@@ -105420,6 +105496,7 @@
                       "computedAt": "2026-11-01T00:15:00+07:00",
                       "cutOffAt": "2026-10-31T23:59:00+07:00",
                       "estimatePolicy": "block",
+                      "frequency": "monthly",
                       "graceDeadlineAt": "2026-11-01T23:59:00+07:00",
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "issuedAt": null,
@@ -105639,7 +105716,7 @@
         "x-surface": "owner"
       },
       "post": {
-        "description": "The worker opens cycles at the cut-off by itself (`billing.cutoff`, D-031); this opens one ahead of time or for a past period. Returns the existing cycle when there is one.\n\nImplements: D-031.",
+        "description": "The worker opens cycles at the cut-off by itself (`billing.cutoff`, D-031; advance cycles at their calendar start minus `billing.advance_open_days`, D-323); this opens one ahead of time or for a past period. The key decides the frequency: `YYYY-MM`, `YYYY-Qn`, `YYYY-Hn`, `YYYY` (D-303). Returns the existing cycle when there is one.\n\nImplements: D-031, D-303.",
         "operationId": "owner.billingCycles.open",
         "parameters": [
           {
@@ -105678,6 +105755,7 @@
                   "computedAt": "2026-11-01T00:15:00+07:00",
                   "cutOffAt": "2026-10-31T23:59:00+07:00",
                   "estimatePolicy": "block",
+                  "frequency": "monthly",
                   "graceDeadlineAt": "2026-11-01T23:59:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "invoices": [
@@ -105967,6 +106045,7 @@
                   "computedAt": "2026-11-01T00:15:00+07:00",
                   "cutOffAt": "2026-10-31T23:59:00+07:00",
                   "estimatePolicy": "block",
+                  "frequency": "monthly",
                   "graceDeadlineAt": "2026-11-01T23:59:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "invoices": [
@@ -106253,6 +106332,7 @@
                   "computedAt": "2026-11-01T00:15:00+07:00",
                   "cutOffAt": "2026-10-31T23:59:00+07:00",
                   "estimatePolicy": "block",
+                  "frequency": "monthly",
                   "graceDeadlineAt": "2026-11-01T23:59:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "invoices": [
@@ -106559,6 +106639,7 @@
                   "computedAt": "2026-11-01T00:15:00+07:00",
                   "cutOffAt": "2026-10-31T23:59:00+07:00",
                   "estimatePolicy": "block",
+                  "frequency": "monthly",
                   "graceDeadlineAt": "2026-11-01T23:59:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "invoices": [
@@ -106891,6 +106972,7 @@
                   "computedAt": "2026-11-01T00:15:00+07:00",
                   "cutOffAt": "2026-10-31T23:59:00+07:00",
                   "estimatePolicy": "block",
+                  "frequency": "monthly",
                   "graceDeadlineAt": "2026-11-01T23:59:00+07:00",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "invoices": [
@@ -191307,6 +191389,7 @@
                 "example": [
                   {
                     "buildingId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "frequency": "monthly",
                     "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "isDefault": true,
                     "kind": "power",
@@ -191553,6 +191636,7 @@
               "application/json": {
                 "example": {
                   "buildingId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "frequency": "monthly",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "isDefault": true,
                   "kind": "power",
@@ -192017,6 +192101,7 @@
               "application/json": {
                 "example": {
                   "buildingId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "frequency": "monthly",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "isDefault": true,
                   "kind": "power",
@@ -192290,6 +192375,7 @@
               "application/json": {
                 "example": {
                   "buildingId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "frequency": "monthly",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "isDefault": true,
                   "kind": "power",
@@ -192617,6 +192703,7 @@
               "application/json": {
                 "example": {
                   "buildingId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "frequency": "monthly",
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "isDefault": true,
                   "kind": "power",

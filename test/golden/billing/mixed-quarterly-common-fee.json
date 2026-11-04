@@ -1,0 +1,103 @@
+{
+  "owner": {
+    "lines": [
+      {
+        "lineNo": 1,
+        "sourceType": "common_fee",
+        "quantity": "0.012",
+        "unit": "ratio",
+        "unitPrice": "308625.0000",
+        "periodFrom": "2027-01-01",
+        "periodTo": "2027-03-31",
+        "sourceId": "rpv-cf",
+        "leaseLineId": null,
+        "chargeId": null,
+        "estimateSettlementId": null,
+        "meter": null,
+        "ratePlanVersionId": "rpv-cf",
+        "utilityTariffVersionId": null,
+        "capPerUnit": null,
+        "aboveCap": false,
+        "acknowledgementId": null,
+        "tierBreakdown": [
+          {
+            "label": "ownership_ratio",
+            "units": "0.012345",
+            "pricePerUnit": "100000.00",
+            "amount": "1234.5"
+          },
+          {
+            "label": "ownership_share",
+            "units": "100.0000",
+            "pricePerUnit": null,
+            "amount": "3703.50"
+          }
+        ],
+        "proRata": {
+          "days": 90,
+          "daysInPeriod": 90,
+          "factor": "1.000000",
+          "from": "2027-01-01",
+          "to": "2027-03-31"
+        },
+        "vatApplicable": false,
+        "complianceRuleIds": ["compliance.bill_disclosure"],
+        "lineKind": "common_fee",
+        "description": "ค่าส่วนกลาง",
+        "amount": "3703.50"
+      }
+    ],
+    "subtotal": "3703.50",
+    "vatAmount": "0.00",
+    "total": "3703.50",
+    "hasEstimate": false,
+    "hasAboveCapLine": false,
+    "reviewFlags": [],
+    "complianceFlags": [],
+    "advanceRent": null
+  },
+  "rent": {
+    "lines": [
+      {
+        "lineNo": 1,
+        "sourceType": "rent",
+        "quantity": "1.000",
+        "unit": "month",
+        "unitPrice": "4500.0000",
+        "periodFrom": "2027-01-01",
+        "periodTo": "2027-01-31",
+        "sourceId": "lease-r1",
+        "leaseLineId": null,
+        "chargeId": null,
+        "estimateSettlementId": null,
+        "meter": null,
+        "ratePlanVersionId": null,
+        "utilityTariffVersionId": null,
+        "capPerUnit": null,
+        "aboveCap": false,
+        "acknowledgementId": null,
+        "tierBreakdown": null,
+        "proRata": {
+          "days": 31,
+          "daysInPeriod": 31,
+          "factor": "1.000000",
+          "from": "2027-01-01",
+          "to": "2027-01-31"
+        },
+        "vatApplicable": false,
+        "complianceRuleIds": ["compliance.no_midterm_increase"],
+        "lineKind": "rent",
+        "description": "ค่าเช่า R-101",
+        "amount": "4500.00"
+      }
+    ],
+    "subtotal": "4500.00",
+    "vatAmount": "0.00",
+    "total": "4500.00",
+    "hasEstimate": false,
+    "hasAboveCapLine": false,
+    "reviewFlags": [],
+    "complianceFlags": [],
+    "advanceRent": null
+  }
+}

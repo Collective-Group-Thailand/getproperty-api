@@ -46,6 +46,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { iso, isoOrNull } from '../shared/mappers';
 import {
   type BillingCycleStatusName,
+  type BillingFrequencyName,
   type EstimatePolicyName,
   type InvoiceChargeStatusName,
   type InvoiceLineKindName,
@@ -108,6 +109,7 @@ export function ratePlanDto(p: RatePlanRow, today: string): RatePlanDto {
     kind: p.kind as RatePlanKindName,
     name: p.name,
     isDefault: p.isDefault,
+    frequency: p.frequency as BillingFrequencyName,
     versions: p.versions.map((v) => ({
       id: v.id,
       effectiveFrom: day(v.effectiveFrom)!,
@@ -273,6 +275,7 @@ function cycleDto(c: Omit<CycleRow, 'invoices'>): BillingCycleDto {
     propertyId: c.propertyId,
     propertyName: c.property.name,
     periodKey: c.periodKey,
+    frequency: c.frequency as BillingFrequencyName,
     periodStart: day(c.periodStart)!,
     periodEnd: day(c.periodEnd)!,
     cutOffAt: iso(c.cutOffAt),
@@ -438,6 +441,7 @@ const RATE_PLAN_EXAMPLE: RatePlanDto = {
   kind: 'power' as RatePlanKindName,
   name: 'ค่าไฟห้องพัก',
   isDefault: true,
+  frequency: 'monthly' as BillingFrequencyName,
   versions: [VERSION_EXAMPLE],
   version: 1,
 };
@@ -551,6 +555,7 @@ const CYCLE_EXAMPLE: BillingCycleDto = {
   propertyId: FAKE.uuid,
   propertyName: 'อาคารสุขใจ',
   periodKey: '2026-10',
+  frequency: 'monthly' as BillingFrequencyName,
   periodStart: '2026-10-01',
   periodEnd: '2026-10-31',
   cutOffAt: '2026-10-31T23:59:00+07:00',
@@ -708,6 +713,7 @@ export class OwnerRatePlansController {
         kind: body.kind,
         name: body.name,
         isDefault: body.isDefault ?? false,
+        frequency: body.frequency,
       }),
       this.today(),
     );
@@ -839,8 +845,9 @@ export class OwnerBillingCyclesController {
   @ApiEndpoint({
     id: 'owner.billingCycles.list',
     summary: 'Billing cycles',
-    description: 'One cycle per property and period (D-031), newest first, with its status and counters.',
-    implements: ['D-031', 'D-011'],
+    description:
+      'One cycle per property, frequency and period (D-031, D-303): monthly cycles at the meter cut-off, quarterly / semiannual / annual common-fee cycles billed in advance (filter `frequency`); newest first, with status and counters.',
+    implements: ['D-031', 'D-011', 'D-303', 'D-323'],
   })
   @ApiPaginated(BillingCycleDto, { example: CYCLE_EXAMPLE })
   @ApiStandardErrors('validation.failed', ...T)
@@ -851,6 +858,7 @@ export class OwnerBillingCyclesController {
     const { rows, total } = await this.cycles.list(ctx, {
       propertyId: q.propertyId,
       status: q.status,
+      frequency: q.frequency,
       ...toSkipTake(q),
     });
     return paginated(rows.map(cycleDto), total, q);
@@ -864,8 +872,8 @@ export class OwnerBillingCyclesController {
     id: 'owner.billingCycles.open',
     summary: 'Open (or get) the cycle of a period',
     description:
-      'The worker opens cycles at the cut-off by itself (`billing.cutoff`, D-031); this opens one ahead of time or for a past period. Returns the existing cycle when there is one.',
-    implements: ['D-031'],
+      'The worker opens cycles at the cut-off by itself (`billing.cutoff`, D-031; advance cycles at their calendar start minus `billing.advance_open_days`, D-323); this opens one ahead of time or for a past period. The key decides the frequency: `YYYY-MM`, `YYYY-Qn`, `YYYY-Hn`, `YYYY` (D-303). Returns the existing cycle when there is one.',
+    implements: ['D-031', 'D-303'],
   })
   @ApiJsonBody(BillingCycleOpenDto, { propertyId: FAKE.uuid, periodKey: '2026-10' })
   @ApiSuccess(200, { description: 'The cycle', type: BillingCycleDetailDto, example: CYCLE_DETAIL_EXAMPLE })

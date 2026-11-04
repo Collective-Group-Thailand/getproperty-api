@@ -1,0 +1,116 @@
+{
+  "seller": {
+    "lines": [
+      {
+        "lineNo": 1,
+        "sourceType": "common_fee",
+        "quantity": "45.500",
+        "unit": "sqm",
+        "unitPrice": "360.0000",
+        "periodFrom": "2027-01-01",
+        "periodTo": "2027-03-14",
+        "sourceId": "rpv-cf",
+        "leaseLineId": null,
+        "chargeId": null,
+        "estimateSettlementId": null,
+        "meter": null,
+        "ratePlanVersionId": "rpv-cf",
+        "utilityTariffVersionId": null,
+        "capPerUnit": null,
+        "aboveCap": false,
+        "acknowledgementId": null,
+        "tierBreakdown": [
+          {
+            "label": "per_sqm",
+            "units": "45.500",
+            "pricePerUnit": "30.00",
+            "amount": "1365"
+          },
+          {
+            "label": "ownership_share",
+            "units": "100.0000",
+            "pricePerUnit": null,
+            "amount": "3276.00"
+          }
+        ],
+        "proRata": {
+          "days": 73,
+          "daysInPeriod": 365,
+          "factor": "0.200000",
+          "from": "2027-01-01",
+          "to": "2027-03-14"
+        },
+        "vatApplicable": false,
+        "complianceRuleIds": ["compliance.bill_disclosure"],
+        "lineKind": "common_fee",
+        "description": "ค่าส่วนกลาง (73/365 วัน)",
+        "amount": "3276.00"
+      }
+    ],
+    "subtotal": "3276.00",
+    "vatAmount": "0.00",
+    "total": "3276.00",
+    "hasEstimate": false,
+    "hasAboveCapLine": false,
+    "reviewFlags": [],
+    "complianceFlags": [],
+    "advanceRent": null
+  },
+  "buyer": {
+    "lines": [
+      {
+        "lineNo": 1,
+        "sourceType": "common_fee",
+        "quantity": "45.500",
+        "unit": "sqm",
+        "unitPrice": "360.0000",
+        "periodFrom": "2027-03-15",
+        "periodTo": "2027-12-31",
+        "sourceId": "rpv-cf",
+        "leaseLineId": null,
+        "chargeId": null,
+        "estimateSettlementId": null,
+        "meter": null,
+        "ratePlanVersionId": "rpv-cf",
+        "utilityTariffVersionId": null,
+        "capPerUnit": null,
+        "aboveCap": false,
+        "acknowledgementId": null,
+        "tierBreakdown": [
+          {
+            "label": "per_sqm",
+            "units": "45.500",
+            "pricePerUnit": "30.00",
+            "amount": "1365"
+          },
+          {
+            "label": "ownership_share",
+            "units": "100.0000",
+            "pricePerUnit": null,
+            "amount": "13104.00"
+          }
+        ],
+        "proRata": {
+          "days": 292,
+          "daysInPeriod": 365,
+          "factor": "0.800000",
+          "from": "2027-03-15",
+          "to": "2027-12-31"
+        },
+        "vatApplicable": false,
+        "complianceRuleIds": ["compliance.bill_disclosure"],
+        "lineKind": "common_fee",
+        "description": "ค่าส่วนกลาง (292/365 วัน)",
+        "amount": "13104.00"
+      }
+    ],
+    "subtotal": "13104.00",
+    "vatAmount": "0.00",
+    "total": "13104.00",
+    "hasEstimate": false,
+    "hasAboveCapLine": false,
+    "reviewFlags": [],
+    "complianceFlags": [],
+    "advanceRent": null
+  }
+}

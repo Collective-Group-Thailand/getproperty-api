@@ -20,7 +20,8 @@ export type RateTiers =
   | { kind: 'flat'; unit?: string; pricePerUnit: string }
   | { kind: 'tiered'; unit?: string; tiers: RateTier[] }
   | { kind: 'fixed'; amount: string; byUnitType?: Record<string, string> }
-  | { kind: 'budget'; amount: string; period?: 'month' };
+  /** A budget split by ownership ratio: `amount` per month (default) or per year (÷ 12 a month, J1.1a). */
+  | { kind: 'budget'; amount: string; period?: 'month' | 'year' };
 
 export interface RateVersionLike {
   id: string;
@@ -123,12 +124,14 @@ export function validateRateVersion(
       break;
     }
     case 'budget': {
-      const f = t as { amount?: unknown };
+      const f = t as { amount?: unknown; period?: unknown };
       if (typeof f.amount !== 'string' || !MONEY.test(f.amount))
         problems.push({
           path: 'tiers.amount',
           message: 'a money string (the budget split by ownership ratio)',
         });
+      if (f.period !== undefined && f.period !== 'month' && f.period !== 'year')
+        problems.push({ path: 'tiers.period', message: 'month | year' });
       break;
     }
     default:
@@ -241,11 +244,13 @@ export function chargeFor(
       if (!input.ownershipRatio) throw new RateEngineError('the unit has no ownership ratio');
       quantity = D(input.ownershipRatio);
       unit = 'ratio';
-      exact = quantity.times(t.amount);
+      // a yearly budget is billed a twelfth a month (J1.1a); a cycle of n months multiplies the monthly amount
+      const monthly = t.period === 'year' ? D(t.amount).div(12) : D(t.amount);
+      exact = quantity.times(monthly);
       parts.push({
         label: 'ownership_ratio',
         units: quantity.toFixed(6),
-        pricePerUnit: t.amount,
+        pricePerUnit: t.period === 'year' ? p4(monthly) : t.amount,
         amount: exact.toFixed(),
       });
       break;

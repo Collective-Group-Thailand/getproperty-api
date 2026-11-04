@@ -1,0 +1,22 @@
+// juristic schema (pack J, D-302–D-323). Tables arrive step by step; schema-design §7.6 drafts the rest.
+
+/// D-303 (J1.1a): unearned revenue of an advance-billed invoice line spread over its calendar months (Σ = the line
+/// amount); written at issue, recognised by J2.1.
+model RevenueSchedule {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  invoiceLineId String    @map("invoice_line_id") @db.Uuid
+  month         DateTime  @db.Date
+  amount        Decimal   @db.Decimal(14, 2)
+  recognisedAt  DateTime? @map("recognised_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+
+  tenant      Tenant      @relation("RevenueScheduleTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "revenue_schedule_tenant_id_fkey")
+  invoiceLine InvoiceLine @relation(fields: [invoiceLineId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "revenue_schedule_invoice_line_id_fkey")
+
+  @@unique([invoiceLineId, month], map: "revenue_schedule_invoice_line_id_month_key")
+  @@index([tenantId, month], map: "revenue_schedule_tenant_id_month_idx")
+  @@map("revenue_schedule")
+  @@schema("juristic")
+}
