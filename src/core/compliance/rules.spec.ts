@@ -173,6 +173,62 @@ const FIXTURES: { [K in ComplianceRuleId]: { pass: RuleContexts[K]; breach: Rule
     pass: { lateFeeEnabled: true, contractStatesLateFee: true, amount: '100.00', agreedAmount: '100.00' },
     breach: { lateFeeEnabled: false, contractStatesLateFee: false, amount: '100.00', agreedAmount: null },
   },
+  'compliance.condo_act_surcharge_cap': {
+    pass: { legalForm: 'condo_act', enabled: true, ratePct: '12.00', capPct: '12.00' },
+    breach: { legalForm: 'condo_act', enabled: false, ratePct: '12.00', capPct: null },
+  },
+  'compliance.condo_act_suspend_services': {
+    pass: {
+      legalForm: 'condo_act',
+      enabled: true,
+      minOverdueDays: 180,
+      daysOverdue: 200,
+      approved: true,
+      services: ['pool_key_card'],
+    },
+    breach: {
+      legalForm: 'condo_act',
+      enabled: true,
+      minOverdueDays: 180,
+      daysOverdue: 200,
+      approved: true,
+      services: ['water'],
+    },
+  },
+  'compliance.condo_act_letter_wording': {
+    pass: { legalForm: 'condo_act', templateVersion: 'counsel-2027-01' },
+    breach: { legalForm: 'condo_act', templateVersion: null },
+  },
+  'compliance.land_allocation_surcharge_cap': {
+    pass: { legalForm: 'land_allocation_act', enabled: true, ratePct: '10.00', capPct: '12.00' },
+    breach: { legalForm: 'land_allocation_act', enabled: true, ratePct: '15.00', capPct: '12.00' },
+  },
+  'compliance.land_allocation_suspend_services': {
+    pass: {
+      legalForm: 'land_allocation_act',
+      enabled: true,
+      minOverdueDays: 180,
+      daysOverdue: 181,
+      approved: true,
+      services: ['clubhouse'],
+    },
+    breach: {
+      legalForm: 'land_allocation_act',
+      enabled: true,
+      minOverdueDays: 180,
+      daysOverdue: 90,
+      approved: false,
+      services: ['clubhouse'],
+    },
+  },
+  'compliance.land_allocation_transfer_notice': {
+    pass: { legalForm: 'land_allocation_act', templateVersion: 'counsel-2027-01' },
+    breach: { legalForm: 'land_allocation_act', templateVersion: null },
+  },
+  'compliance.juristic_no_utility_cutoff': {
+    pass: { action: 'suspend_services', services: ['pool_key_card'] },
+    breach: { action: 'suspend_services', services: ['electricity', 'gate_access'] },
+  },
 };
 
 const run = <K extends ComplianceRuleId>(id: K, ctx: RuleContexts[K]): RuleCheck => evaluateRule(id, ctx);
@@ -193,7 +249,8 @@ describe('compliance rule registry (ADR-0007, D-020, D-149)', () => {
   it('every rule has a legal reference and only uses known settings', () => {
     const keys = new Set(SETTINGS.map((s) => s.key));
     for (const r of COMPLIANCE_RULES) {
-      expect(r.legalRef).toMatch(/ข้อ \d/);
+      // pack J rules carry identifiers only until counsel confirms the sections (O-038, D-326)
+      expect(r.legalRef).toMatch(/ข้อ \d|O-038|D-024/);
       for (const s of r.settingsUsed) expect([r.id, keys.has(s)]).toEqual([r.id, true]);
     }
   });
@@ -229,7 +286,7 @@ describe('compliance rule registry (ADR-0007, D-020, D-149)', () => {
       const check = run(id, fixture.breach as never);
       expect(outcomeOf(check.violated, 'block')).toBe('block');
       expect(outcomeOf(check.violated, 'warn', { refuseWarnings: true })).toBe('block');
-      expect(legalRef).toContain('2568');
+      expect(legalRef).toMatch(/2568|2543|O-038|D-024/);
     });
   });
 

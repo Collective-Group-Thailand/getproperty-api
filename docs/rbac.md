@@ -16,7 +16,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (102)
+## Permissions (103)
 | Permission | Surfaces | owner | manager | staff | accountant | committee | auditor | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View the tenant profile and company data |
@@ -96,6 +96,7 @@
 | `juristic.collections.read` | owner | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  | Read payment plans, debt clearance certificates and automatic-payment mandates (D-306, D-308) |
 | `juristic.collections.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Propose, reject and cancel payment plans; issue or refuse debt clearance certificates (D-306, D-308, D-325) |
 | `juristic.payment_plan.approve` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  | Approve a payment plan (owner, manager or committee, D-308, D-325) |
+| `juristic.collections.approve` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  | Approve or refuse a collections ladder step that needs approval (suspension of common services, lawyer letter, legal action; owner, manager or committee, D-305, D-326) |
 | `admin.tenant.read` | admin |  |  |  |  |  |  | ✓ | ✓ | ✓ | ✓ | List and view tenants |
 | `admin.tenant.manage` | admin |  |  |  |  |  |  | ✓ |  |  |  | Create, onboard, deactivate tenants (D-161) |
 | `admin.user.manage` | admin |  |  |  |  |  |  | ✓ |  |  |  | Manage platform users and role assignments |

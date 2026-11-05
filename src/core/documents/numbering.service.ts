@@ -22,6 +22,8 @@ export const SERIES_PREFIX: Partial<Record<DocumentType, string>> = {
   rent_certificate: 'RPC',
   income_summary: 'ISM',
   debt_clearance: 'DCL',
+  owner_statement: 'STM',
+  collection_letter: 'CLT',
 };
 
 /**

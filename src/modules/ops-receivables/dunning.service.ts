@@ -1,3 +1,4 @@
+import { isJuristicTenantType } from '@collective/asset-core';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
@@ -75,6 +76,10 @@ export class DunningService extends TenantScopedRepository implements EventSubsc
     switch (event.type) {
       case 'invoice.overdue': {
         const id = event.payload.invoiceId as string;
+        // D-326 (J1.2b): juristic tenants collect through the collections ladder (per party × unit case, legal-form
+        // steps, surcharge by compliance rule) — no per-invoice reminders and no `late_fee.*` assessment there.
+        // Apartments, landlords and PM companies keep this dunning unchanged.
+        if (await this.isJuristicInvoice(tx, id)) return;
         await this.start(tx, id);
         await this.assessPenalty(tx, id);
         return;
@@ -94,6 +99,14 @@ export class DunningService extends TenantScopedRepository implements EventSubsc
       default:
         return;
     }
+  }
+
+  private async isJuristicInvoice(tx: Tx, invoiceId: string): Promise<boolean> {
+    const inv = await tx.invoice.findUnique({
+      where: { id: invoiceId },
+      select: { tenant: { select: { type: true } } },
+    });
+    return isJuristicTenantType(inv?.tenant.type);
   }
 
   private openInstance(tx: Tx, invoiceId: string) {

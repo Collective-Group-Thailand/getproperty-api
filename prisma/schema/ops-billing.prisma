@@ -485,6 +485,7 @@ model InvoiceCharge {
   planInstalments    PaymentPlanInstalment[] @relation("PaymentPlanInstalmentCharge")
   acceleratedPlans   PaymentPlan[]           @relation("PaymentPlanAcceleratedCharge")
   debtClearanceFees  DebtClearance[]         @relation("DebtClearanceFeeCharge")
+  collectionEvents   CollectionEvent[]       @relation("CollectionEventCharge")
   serviceSettlement  ServiceSettlement?
 
   @@index([tenantId, status], map: "invoice_charge_tenant_id_status_idx")

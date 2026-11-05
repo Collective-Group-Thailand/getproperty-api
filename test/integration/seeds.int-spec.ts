@@ -74,7 +74,9 @@ describe('seeds (reference + dev)', () => {
 
   it('compliance rules are pending legal verification (D-149) and carry a legal reference', async () => {
     const { rows } = await db.admin.query<{ status: string; n: number }>(
-      `SELECT status::text, count(*)::int AS n FROM platform.compliance_rule WHERE legal_ref LIKE '%ข้อ%' GROUP BY 1`,
+      // pack J rules carry identifiers only until counsel confirms the sections (O-038, D-326)
+      `SELECT status::text, count(*)::int AS n FROM platform.compliance_rule
+        WHERE legal_ref LIKE '%ข้อ%' OR legal_ref LIKE '%O-038%' OR legal_ref LIKE '%D-024%' GROUP BY 1`,
     );
     expect(rows).toEqual([{ status: 'pending_legal_verification', n: COMPLIANCE_RULES.length }]);
     const cap = await db.admin.query(

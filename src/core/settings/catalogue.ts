@@ -6,6 +6,7 @@
  * ⚖ = value waits for legal confirmation (O-002); "Proposed" = business value not yet confirmed (D-156, D-161).
  */
 import { DEFAULT_PLATFORM_BRAND, platformBrandProblems } from '../brand/brand-setting';
+import { NEVER_SUSPENDED } from '../compliance/evaluators';
 import {
   DEFAULT_RECORD_BYTES,
   FREE_GB_PER_TYPE,
@@ -38,6 +39,16 @@ export interface SettingDef {
 }
 
 const OWNER_SETTINGS = ['tenant.settings.update'];
+/** D-326: a nullable percent (decimal string 0–100, at most 4 decimals). */
+const nullablePercent = (v: unknown): string[] =>
+  v === null || (typeof v === 'string' && /^\d{1,3}(\.\d{1,4})?$/.test(v) && Number(v) <= 100)
+    ? []
+    : ['null or a percent 0–100 as a decimal string'];
+/** D-326: nullable whole days 0–3650. */
+const nullableDays = (v: unknown): string[] =>
+  v === null || (Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 3650)
+    ? []
+    : ['null or whole days 0–3650'];
 const OWNER_BILLING = ['tenant.billing_settings.update'];
 const ADMIN = ['admin.setting.manage'];
 const ADMIN_COMPLIANCE = ['admin.compliance.manage'];
@@ -275,6 +286,165 @@ export const SETTINGS: readonly SettingDef[] = [
     reason: 'seed: D-306 (pack J, J1.2a)',
     check: (v) =>
       Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 365 ? [] : ['an integer 1–365'],
+  },
+  // --- J1.2b collections ladder (D-305, D-326, ⚖ O-038): every legal measure off / unset until counsel confirms ---
+  {
+    key: 'juristic.surcharge.enabled',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-305 / D-326 (J1.2b, compliance.condo_act_surcharge_cap / land_allocation_surcharge_cap ⚖ O-038): ladder surcharge steps may be enabled and run only while this is on; off until counsel confirms the caps per legal form.',
+    editableBy: ADMIN_COMPLIANCE,
+    value: false,
+    reason: 'seed: D-305 (pack J, J1.2b; off until O-038)',
+  },
+  ...(['rate_pct_per_year', 'escalated_rate_pct_per_year'] as const).map((k): SettingDef => ({
+    key: `juristic.surcharge.${k}`,
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description: `D-305 / D-326 (J1.2b): the juristic person's own ${k === 'rate_pct_per_year' ? '' : 'escalated '}surcharge rate in percent per year (decimal string, null = none); never above the legal form's cap (compliance rule).`,
+    editableBy: OWNER_BILLING,
+    value: null,
+    reason: 'seed: D-305 (pack J, J1.2b; unset)',
+    check: nullablePercent,
+  })),
+  ...(['condo_act', 'land_allocation_act'] as const).flatMap((form): SettingDef[] => [
+    {
+      key: `juristic.surcharge.${form}.rate_cap`,
+      valueType: 'json',
+      scopeAllowed: ['platform'],
+      description: `D-305 / D-326 (J1.2b, ⚖ O-038): the highest surcharge rate (percent per year) for ${form} buildings; null until counsel confirms it — no surcharge runs without it.`,
+      editableBy: ADMIN_COMPLIANCE,
+      value: null,
+      reason: 'seed: D-305 (pack J, J1.2b; unset until O-038)',
+      check: nullablePercent,
+    },
+    {
+      key: `juristic.surcharge.${form}.escalated_rate_cap`,
+      valueType: 'json',
+      scopeAllowed: ['platform'],
+      description: `D-305 / D-326 (J1.2b, ⚖ O-038): the highest escalated surcharge rate (percent per year) for ${form} buildings after escalate_after_days; null = the plain cap applies throughout.`,
+      editableBy: ADMIN_COMPLIANCE,
+      value: null,
+      reason: 'seed: D-305 (pack J, J1.2b; unset until O-038)',
+      check: nullablePercent,
+    },
+    {
+      key: `juristic.surcharge.${form}.escalate_after_days`,
+      valueType: 'json',
+      scopeAllowed: ['platform'],
+      description: `D-305 / D-326 (J1.2b, ⚖ O-038): days past the due date after which the escalated surcharge rate applies to ${form} buildings; null = never.`,
+      editableBy: ADMIN_COMPLIANCE,
+      value: null,
+      reason: 'seed: D-305 (pack J, J1.2b; unset until O-038)',
+      check: nullableDays,
+    },
+    {
+      key: `juristic.suspend_services.${form}.min_overdue_days`,
+      valueType: 'json',
+      scopeAllowed: ['platform'],
+      description: `D-305 / D-326 (J1.2b, compliance suspend_services ⚖ O-038): the minimum overdue period (days) before common services of a ${form} building may be suspended; null until counsel confirms it.`,
+      editableBy: ADMIN_COMPLIANCE,
+      value: null,
+      reason: 'seed: D-305 (pack J, J1.2b; unset until O-038)',
+      check: nullableDays,
+    },
+  ]),
+  {
+    key: 'juristic.suspend_services.enabled',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-305 / D-326 (J1.2b, ⚖ O-038): ladder suspend_services steps (common services only — never utilities or entry, D-024 / D-157) may be enabled and run only while this is on.',
+    editableBy: ADMIN_COMPLIANCE,
+    value: false,
+    reason: 'seed: D-305 (pack J, J1.2b; off until O-038)',
+  },
+  {
+    key: 'juristic.suspend_services.services',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-305 / D-326 (J1.2b): the common services a suspend_services step names (e.g. "pool_key_card", "fitness", "clubhouse"); utilities and entry to the unit are refused (compliance.juristic_no_utility_cutoff).',
+    editableBy: OWNER_BILLING,
+    value: [],
+    reason: 'seed: D-305 (pack J, J1.2b; none)',
+    check: (v) =>
+      Array.isArray(v) &&
+      v.length <= 20 &&
+      v.every((x) => typeof x === 'string' && /^[a-z][a-z0-9_]{1,40}$/.test(x)) &&
+      !v.some((x) => NEVER_SUSPENDED.includes(x as string))
+        ? []
+        : ['an array of service keys (never electricity, water or access)'],
+  },
+  {
+    key: 'juristic.legal_action.enabled',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-305 / D-326 (J1.2b, ⚖ O-038): ladder legal_action steps (recording the start of a lawsuit, with approval) may be enabled only while this is on.',
+    editableBy: ADMIN_COMPLIANCE,
+    value: false,
+    reason: 'seed: D-305 (pack J, J1.2b; off until O-038)',
+  },
+  ...(['condo_act', 'land_allocation_act', 'voluntary', 'lease_contract'] as const).map(
+    (form): SettingDef => ({
+      key: `juristic.letters.${form}.template_version`,
+      valueType: 'json',
+      scopeAllowed: ['platform'],
+      description: `D-305 / D-326 (J1.2b, compliance letter wording ⚖ O-038): the counsel-approved version of the notice / lawyer letter wording for ${form} buildings; null = no letter may be sent.`,
+      editableBy: ADMIN_COMPLIANCE,
+      value: null,
+      reason: 'seed: D-305 (pack J, J1.2b; unset until O-038)',
+      check: (v) =>
+        v === null || (typeof v === 'string' && v.length >= 1 && v.length <= 60)
+          ? []
+          : ['null or a version label'],
+    }),
+  ),
+  {
+    key: 'juristic.aging_buckets',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-326 (J1.2b): upper bounds in days past due of the juristic aging buckets — [30, 90, 365] = 0–30 · 31–90 · 91–365 · > 365 (D-045 buckets unchanged).',
+    editableBy: OWNER_BILLING,
+    value: [30, 90, 365],
+    reason: 'seed: D-326 (pack J, J1.2b)',
+    check: (v) =>
+      Array.isArray(v) &&
+      v.length >= 1 &&
+      v.length <= 8 &&
+      v.every(
+        (x, i) =>
+          Number.isInteger(x) && (x as number) > 0 && (i === 0 || (x as number) > (v[i - 1] as number)),
+      )
+        ? []
+        : ['ascending positive whole days'],
+  },
+  {
+    key: 'juristic.kpi_collection_days',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-326 (J1.2b): the collection-rate KPI counts what was paid within this many days after the due date.',
+    editableBy: OWNER_BILLING,
+    value: 30,
+    reason: 'seed: D-326 (pack J, J1.2b)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 365 ? [] : ['an integer 0–365'],
+  },
+  {
+    key: 'juristic.workspace_invite_days',
+    valueType: 'int',
+    scopeAllowed: ['platform'],
+    description:
+      "D-270 / D-326 (J1.2b): days a landlord's invitation of its condo's juristic office stays open.",
+    editableBy: ADMIN,
+    value: 14,
+    reason: 'seed: D-270 (pack J, J1.2b)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 90 ? [] : ['an integer 1–90'],
   },
   {
     key: 'juristic.auditor_max_days',

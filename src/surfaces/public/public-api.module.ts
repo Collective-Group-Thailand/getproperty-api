@@ -7,6 +7,7 @@ import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import { PublicDocumentsController } from './document-verify.controller';
 import { PublicGuidesController } from './guides.controller';
+import { PublicJuristicWorkspacesController } from './juristic-workspace.controller';
 import {
   PublicListingsController,
   PublicOwnersController,
@@ -36,6 +37,7 @@ import { PublicAgencySignupController, PublicSignupController } from './signup.c
     PublicHandoffsController,
     PublicListingReviewsController,
     PublicDocumentsController,
+    PublicJuristicWorkspacesController,
   ],
 })
 export class PublicApiModule {}

@@ -761,3 +761,159 @@ export function evaluateLateFeePolicy(c: LateFeePolicyContext): RuleCheck {
     errors: some(errors),
   };
 }
+
+// ------------------------------------------------------------------------------------------------ juristic collections
+
+/**
+ * D-305 / D-326 (J1.2b, docs/juristic-gap.md §6, ⚖ O-038): the surcharge of a ladder `surcharge` step. Breaks the rule
+ * when surcharges are off (`juristic.surcharge.enabled`), when the legal form has no cap configured (counsel has not
+ * confirmed one), when the tenant set no rate, or when a rate is above its cap.
+ */
+export interface SurchargeCapContext {
+  legalForm: string;
+  enabled: boolean;
+  ratePct: string | null;
+  capPct: string | null;
+  escalatedRatePct?: string | null;
+  escalatedCapPct?: string | null;
+}
+
+export function evaluateSurchargeCap(c: SurchargeCapContext): RuleCheck {
+  const errors: FieldError[] = [];
+  if (!c.enabled)
+    errors.push({ path: 'surcharge', code: 'disabled', message: 'juristic surcharges are switched off' });
+  if (c.capPct === null)
+    errors.push({
+      path: 'capPct',
+      code: 'unset',
+      message: 'no surcharge cap is configured for this legal form',
+    });
+  if (c.ratePct === null)
+    errors.push({ path: 'ratePct', code: 'unset', message: 'the juristic person set no surcharge rate' });
+  if (c.ratePct !== null && c.capPct !== null && D(c.ratePct).gt(c.capPct))
+    errors.push({ path: 'ratePct', code: 'aboveCap', message: 'the surcharge rate is above the cap' });
+  const escCap = c.escalatedCapPct ?? c.capPct;
+  if (c.escalatedRatePct && escCap !== null && D(c.escalatedRatePct).gt(escCap))
+    errors.push({
+      path: 'escalatedRatePct',
+      code: 'aboveCap',
+      message: 'the escalated surcharge rate is above its cap',
+    });
+  const ruleId: ComplianceCode =
+    c.legalForm === 'land_allocation_act'
+      ? 'compliance.land_allocation_surcharge_cap'
+      : 'compliance.condo_act_surcharge_cap';
+  return {
+    ruleId,
+    violated: errors.length > 0,
+    context: {
+      legalForm: c.legalForm,
+      enabled: c.enabled,
+      ratePct: c.ratePct,
+      capPct: c.capPct,
+      escalatedRatePct: c.escalatedRatePct ?? null,
+      escalatedCapPct: c.escalatedCapPct ?? null,
+    },
+    errors: some(errors),
+  };
+}
+
+/** Services a `suspend_services` step may never touch (D-024, D-071, D-157): utilities and entry to the unit. */
+export const NEVER_SUSPENDED = [
+  'electricity',
+  'water',
+  'unit_access',
+  'gate_access',
+  'lock',
+  'power',
+  'entry',
+];
+
+/**
+ * D-305 / D-326 (⚖ O-038): a `suspend_services` step suspends **common services only** (e.g. the key card for the pool
+ * or the gym) — only while switched on, after the legal form's minimum overdue period, with an approval, and never a
+ * utility or entry to the unit (`compliance.juristic_no_utility_cutoff`).
+ */
+export interface SuspendServicesContext {
+  legalForm: string;
+  enabled: boolean;
+  minOverdueDays: number | null;
+  daysOverdue: number;
+  approved: boolean;
+  services: string[];
+}
+
+export function evaluateSuspendServices(c: SuspendServicesContext): RuleCheck {
+  const errors: FieldError[] = [];
+  if (!c.enabled)
+    errors.push({ path: 'suspend', code: 'disabled', message: 'suspending common services is switched off' });
+  if (c.minOverdueDays === null)
+    errors.push({
+      path: 'minOverdueDays',
+      code: 'unset',
+      message: 'no minimum overdue period is configured',
+    });
+  else if (c.daysOverdue < c.minOverdueDays)
+    errors.push({
+      path: 'daysOverdue',
+      code: 'tooEarly',
+      message: 'the minimum overdue period has not passed',
+    });
+  if (!c.approved) errors.push({ path: 'approval', code: 'required', message: 'an approval is required' });
+  if (!c.services.length)
+    errors.push({ path: 'services', code: 'empty', message: 'no common service is named for suspension' });
+  for (const s of c.services)
+    if (NEVER_SUSPENDED.includes(s))
+      errors.push({ path: 'services', code: 'utility', message: `${s} is never suspended for arrears` });
+  return {
+    ruleId:
+      c.legalForm === 'land_allocation_act'
+        ? 'compliance.land_allocation_suspend_services'
+        : 'compliance.condo_act_suspend_services',
+    violated: errors.length > 0,
+    context: { ...c },
+    errors: some(errors),
+  };
+}
+
+/**
+ * D-305 / D-326 (⚖ O-038): a demand letter (`notice_letter`, `lawyer_letter`) — and, for an estate, any statement that
+ * arrears block the registration of a transfer — is sent only from a counsel-approved template version.
+ */
+export interface LetterWordingContext {
+  legalForm: string;
+  templateVersion: string | null;
+}
+
+export function evaluateLetterWording(c: LetterWordingContext): RuleCheck {
+  const violated = !c.templateVersion;
+  return {
+    ruleId:
+      c.legalForm === 'land_allocation_act'
+        ? 'compliance.land_allocation_transfer_notice'
+        : 'compliance.condo_act_letter_wording',
+    violated,
+    context: { legalForm: c.legalForm, templateVersion: c.templateVersion },
+    errors: violated
+      ? [{ path: 'templateVersion', code: 'unverified', message: 'no counsel-approved letter template' }]
+      : undefined,
+  };
+}
+
+/** D-024 / D-157 for juristic ladders: no step cuts power or water or revokes unit / gate access for arrears. */
+export interface JuristicNoCutoffContext {
+  action: string;
+  services: string[];
+}
+
+export function evaluateJuristicNoCutoff(c: JuristicNoCutoffContext): RuleCheck {
+  const bad = c.services.filter((s) => NEVER_SUSPENDED.includes(s));
+  return {
+    ruleId: 'compliance.juristic_no_utility_cutoff',
+    violated: bad.length > 0,
+    context: { action: c.action, services: c.services },
+    errors: bad.length
+      ? bad.map((s) => ({ path: 'services', code: 'utility', message: `${s} is never cut for arrears` }))
+      : undefined,
+  };
+}

@@ -66,6 +66,11 @@ export interface ConfirmInput {
   /** Allocate to this invoice only and never create a credit (payments from the payer's credit). */
   onlyInvoiceId?: string;
   /**
+   * D-326 (J1.2b): allocate over this set of the payer's invoices (a statement's open invoices of one unit) instead of
+   * every open invoice of the payer × unit; the excess still becomes the payer's credit.
+   */
+  targetInvoiceIds?: string[];
+  /**
    * D-220: store the payment `pending` for the owner instead of booking it (a provider payment that looks like a
    * transfer already booked) — no allocation, no credit, no receipt.
    */
@@ -254,7 +259,7 @@ export class PaymentsService extends TenantScopedRepository {
       },
     });
     return {
-      payment: await this.book(tx, payment, input.confirmedVia, input.onlyInvoiceId),
+      payment: await this.book(tx, payment, input.confirmedVia, input.onlyInvoiceId, input.targetInvoiceIds),
       duplicate: false,
     };
   }
@@ -265,8 +270,9 @@ export class PaymentsService extends TenantScopedRepository {
     payment: Payment,
     confirmedVia: PaymentConfirmation,
     onlyInvoiceId?: string,
+    targetInvoiceIds?: string[],
   ): Promise<Payment> {
-    const split = await this.allocate(tx, payment, onlyInvoiceId);
+    const split = await this.allocate(tx, payment, onlyInvoiceId, targetInvoiceIds);
     await this.audit.record(tx, {
       action: confirmedVia === 'manual' ? 'payment.recorded' : 'payment.confirmed',
       tenantId: payment.tenantId,
@@ -505,6 +511,7 @@ export class PaymentsService extends TenantScopedRepository {
     tx: Tx,
     payment: Payment,
     onlyInvoiceId?: string,
+    targetInvoiceIds?: string[],
   ): Promise<{
     allocations: { invoiceId: string; number: string | null; amount: string; surcharge: string }[];
     credited: string;
@@ -512,13 +519,24 @@ export class PaymentsService extends TenantScopedRepository {
     const amount = D(payment.amount).plus(D(payment.whtAmount));
     const candidates = onlyInvoiceId
       ? await tx.invoice.findMany({ where: { id: onlyInvoiceId, status: { in: OPEN }, balance: { gt: 0 } } })
-      : payment.payerPartyId
-        ? await this.openInvoices(tx, {
-            tenantId: payment.tenantId,
-            billedPartyId: payment.payerPartyId,
-            unitId: payment.unitId,
+      : targetInvoiceIds
+        ? await tx.invoice.findMany({
+            where: {
+              id: { in: targetInvoiceIds },
+              tenantId: payment.tenantId,
+              billedPartyId: payment.payerPartyId ?? undefined,
+              status: { in: OPEN },
+              balance: { gt: 0 },
+            },
+            orderBy: [{ issuedAt: 'asc' }, { id: 'asc' }],
           })
-        : [];
+        : payment.payerPartyId
+          ? await this.openInvoices(tx, {
+              tenantId: payment.tenantId,
+              billedPartyId: payment.payerPartyId,
+              unitId: payment.unitId,
+            })
+          : [];
     // the balances as of now, under the row locks (review #3): never what an earlier read saw
     const locked: { id: string; balance: string; status: string }[] = [];
     for (const inv of [...candidates].sort((a, b) => a.id.localeCompare(b.id))) {
@@ -691,7 +709,7 @@ export class PaymentsService extends TenantScopedRepository {
    * D-325 (J1.2a): a juristic tenant records money received outside the platform (cash, a transfer — often from abroad)
    * only with its evidence **and** a note of at least 5 characters (sender bank, SWIFT reference, who paid).
    */
-  private async assertManualEvidence(
+  async assertManualEvidence(
     tx: Tx,
     tenantId: string,
     input: { evidenceDocumentId?: string | null; notes?: string | null; reference?: string | null },

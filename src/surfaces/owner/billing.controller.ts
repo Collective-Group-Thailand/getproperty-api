@@ -527,7 +527,7 @@ const LINE_EXAMPLE: InvoiceLineDto = {
   tierBreakdown: null,
   vatApplicable: false,
 };
-const INVOICE_EXAMPLE: InvoiceDto = {
+export const INVOICE_EXAMPLE: InvoiceDto = {
   ...SUMMARY_EXAMPLE,
   lines: [LINE_EXAMPLE],
   creditNotes: [],

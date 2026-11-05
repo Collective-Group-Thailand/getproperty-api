@@ -18,6 +18,7 @@ import { IntegrationDeliveryService } from '@modules/bridge-integrations/integra
 import { RentalHandoffsService } from '@modules/bridge-integrations/rental-handoffs.service';
 import { BillingCyclesService } from '@modules/ops-billing/billing-cycles.service';
 import { EtaxService } from '@modules/ops-etax/etax.service';
+import { CollectionsService } from '@modules/ops-juristic/collections.service';
 import { PaymentPlansService } from '@modules/ops-juristic/payment-plans.service';
 import { LeaseRenewalsService } from '@modules/ops-leases/lease-renewals.service';
 import { LeasesService } from '@modules/ops-leases/leases.service';
@@ -118,6 +119,8 @@ export const MAINTENANCE_JOBS = {
   'energy-insight': 86_400_000,
   // J1.2a (D-325): payment plan instalments queued on their due month, paid with their invoice, plans defaulted
   'payment-plans': 3_600_000,
+  // J1.2b (D-326): collection cases opened / resolved, the next due ladder step of each case run exactly once
+  collections: 3_600_000,
   // D-252 / O-018: ownership evidence deleted after its retention
   'listing-evidence-purge': 3_600_000,
   // B7.3: viewing reminders (both sides) and the owner's nudge on unanswered enquiries; G7 self-viewing sweep
@@ -185,6 +188,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly sponsored: SponsoredCampaignsService,
     private readonly energyInsight: EnergyInsightService,
     private readonly paymentPlans: PaymentPlansService,
+    private readonly collections: CollectionsService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -345,6 +349,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'payment-plans':
         await this.paymentPlans.maintain();
+        break;
+      case 'collections':
+        await this.collections.run();
         break;
       case 'listing-evidence-purge':
         await this.listingModeration.purgeEvidence();
