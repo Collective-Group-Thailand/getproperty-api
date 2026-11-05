@@ -14,12 +14,13 @@ export type RoleKey =
   | 'accountant'
   | 'committee'
   | 'auditor'
+  | 'guard'
   | 'platform_admin'
   | 'support'
   | 'field_engineer'
   | 'finance';
 
-export type Surface = 'owner' | 'staff' | 'admin';
+export type Surface = 'owner' | 'staff' | 'admin' | 'guard';
 
 export interface RoleDef {
   key: RoleKey;
@@ -80,6 +81,14 @@ export const ROLES: readonly RoleDef[] = [
     nameEn: 'Auditor',
     description:
       'Read-only access to the books, register and reports, time-boxed (`accessUntil`, D-320). Juristic tenants only.',
+  },
+  {
+    key: 'guard',
+    scopeKind: 'tenant',
+    nameTh: 'เจ้าหน้าที่รักษาความปลอดภัย',
+    nameEn: 'Guard',
+    description:
+      'Gate only (D-320, D-327): records visits on an enrolled gate tablet of the property after a PIN sign-in; created with the guard profile, never invited, no other surface.',
   },
   {
     key: 'platform_admin',
@@ -411,6 +420,37 @@ export const PERMISSIONS: readonly PermissionDef[] = [
   },
   // platform (/v1/admin)
   { key: 'admin.tenant.read', description: 'List and view tenants', surfaces: ['admin'] },
+  // J4.1 gate & visitor (D-315, D-320, D-327)
+  {
+    key: 'gate.read',
+    description: 'See gates, devices, guards, house policies, the blacklist and invites (not the visit log)',
+    surfaces: ['owner', 'staff'],
+  },
+  {
+    key: 'gate.manage',
+    description: 'Create and edit gates, enrol / revoke gate tablets, house policies, the blacklist (D-327)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'gate.guard.manage',
+    description: 'Create guards, reset their PINs, revoke them (D-320)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'gate.log.read',
+    description: 'Read the visit log of the estate — every read needs a reason and is audited (D-315 PDPA)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'gate.invite.approve',
+    description: 'Approve or reject contractor invites of residents (D-315)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'gate.visit.record',
+    description: 'Record visits, scan invites, stamp entries and exits on a gate tablet (guard, D-320)',
+    surfaces: ['guard'],
+  },
   {
     key: 'admin.tenant.manage',
     description: 'Create, onboard, deactivate tenants (D-161)',
@@ -522,7 +562,10 @@ export const PERMISSIONS: readonly PermissionDef[] = [
   },
 ];
 
-const tenantKeys = PERMISSIONS.filter((p) => !p.key.startsWith('admin.')).map((p) => p.key);
+// guard-surface keys belong to the guard role only (D-320): an owner or manager records visits through a guard profile
+const tenantKeys = PERMISSIONS.filter(
+  (p) => !p.key.startsWith('admin.') && !(p.surfaces.length === 1 && p.surfaces[0] === 'guard'),
+).map((p) => p.key);
 const MANAGER_EXCLUDED = new Set([
   'tenant.update',
   'tenant.bank_account.manage',
@@ -559,6 +602,9 @@ const JURISTIC_READ = [
   'juristic.collections.read',
 ];
 
+/** D-320 (J4.1): the guard records visits at the gate — nothing else. */
+const GUARD = ['gate.visit.record'];
+
 /** Role → permission keys (D-090). */
 export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
   owner: tenantKeys,
@@ -588,6 +634,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'staff_task.read',
     'juristic.register.read',
     'juristic.collections.read',
+    'gate.read',
   ],
   accountant: [
     'tenant.read',
@@ -619,7 +666,11 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'juristic.resolution.adopt',
     'juristic.payment_plan.approve',
     'juristic.collections.approve',
+    'gate.read',
+    'gate.log.read',
+    'gate.invite.approve',
   ],
+  guard: GUARD,
   auditor: [...JURISTIC_READ, 'deposit.read', 'reading.read', 'tenant.audit.read'],
   platform_admin: PERMISSIONS.filter((p) => p.key.startsWith('admin.')).map((p) => p.key),
   support: [

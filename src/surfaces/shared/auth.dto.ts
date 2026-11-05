@@ -12,6 +12,8 @@ export enum TokenAudience {
   Platform = 'platform',
   Device = 'device',
   Prospect = 'prospect',
+  /** J4.1 (D-320): a guard on an enrolled gate tablet. */
+  Guard = 'guard',
 }
 
 export enum SubjectType {

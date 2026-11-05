@@ -41,6 +41,33 @@ const flexVersions = (): TemplateSeed['versions'] =>
 
 /** Operator events of B1.3 (`src/core/notifications/notifiable-events.ts`): th/en text per channel. */
 const OPERATOR_EVENTS: { key: string; description: string; th: [string, string]; en: [string, string] }[] = [
+  // J4.1 (D-315, D-327): the committee hears these on the manager routes (there is no committee audience)
+  {
+    key: 'gate.visit.overstayed',
+    description:
+      'Owner / manager / committee: a visitor entered and has no exit stamp after gate.open_visit_alert_hours (J4.1, D-315)',
+    th: [
+      'ผู้มาติดต่อยังไม่ออก {{visit.unitNo}}',
+      'ผู้มาติดต่อ ({{visit.kindTh}}) ของบ้าน / ห้อง {{visit.unitNo}} เข้าทาง{{visit.gate}} เกิน {{visit.hours}} ชั่วโมงแล้วยังไม่มีบันทึกออก ตรวจสอบกับ รปภ. หรือเจ้าของบ้าน',
+    ],
+    en: [
+      'Visitor still inside — {{visit.unitNo}}',
+      'A visitor ({{visit.kindEn}}) for unit {{visit.unitNo}} entered at {{visit.gate}} more than {{visit.hours}} hours ago and has no exit stamp. Check with the guard or the household.',
+    ],
+  },
+  {
+    key: 'gate.invite.approval_required',
+    description:
+      'Owner / manager / committee: a resident invited a contractor; the invite waits for approval (J4.1, D-315)',
+    th: [
+      'ขออนุมัติช่าง / ผู้รับเหมา {{invite.unitNo}}',
+      'บ้าน / ห้อง {{invite.unitNo}} เชิญช่างหรือผู้รับเหมาเข้าระหว่าง {{invite.from}} ถึง {{invite.to}} รอการอนุมัติที่เมนูป้อมและผู้มาติดต่อ',
+    ],
+    en: [
+      'Contractor invite to approve — {{invite.unitNo}}',
+      'Unit {{invite.unitNo}} invited a contractor from {{invite.from}} to {{invite.to}}. Approve or reject it under Gate & visitors.',
+    ],
+  },
   {
     key: 'juristic.collection.approval_required',
     description: 'Owner / manager: a collections ladder step waits for approval (J1.2b, D-305, D-326)',
@@ -611,6 +638,7 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
 /** Operator audiences per event: workflow → owner + manager; device/meter health → owner + manager + staff. */
 const operatorAudiences = (key: string): string[] =>
   key.startsWith('workflow.') ||
+  key.startsWith('gate.') ||
   key.startsWith('juristic.collection.') ||
   key === 'billing_cycle.computed' ||
   key === 'slip.review_requested' ||
@@ -839,6 +867,85 @@ const RESIDENT_J_EVENTS: {
   },
 ];
 
+/** J4.1 (D-315, D-327): the household at the gate (LINE; the visit question as Flex with approve / call me / deny). */
+const GATE_RESIDENT_TEMPLATES: TemplateSeed[] = [
+  {
+    key: 'gate.visit.requested',
+    channel: 'line',
+    audience: 'resident',
+    description:
+      'A visitor waits at the gate for my house: approve, ask the guard to call me, or deny (J4.1, D-315)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: 'มีผู้มาติดต่อบ้าน / ห้อง {{visit.unitNo}} ที่{{visit.gate}} ({{visit.kindTh}}) ทะเบียน {{visit.plate}} ชื่อ {{visit.visitorName}} ตอบได้ภายใน {{visit.minutes}} นาที\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'A visitor for unit {{visit.unitNo}} is at {{visit.gate}} ({{visit.kindEn}}), plate {{visit.plate}}, name {{visit.visitorName}}. Please answer within {{visit.minutes}} minutes.\n{{link}}',
+      },
+      ...flexVersions(),
+    ],
+  },
+  {
+    key: 'gate.visit.entered',
+    channel: 'line',
+    audience: 'resident',
+    description:
+      'A visitor for my house entered without asking (invite, remembered car, drop point, house policy) (J4.1, D-315)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{visit.kindTh}} ทะเบียน {{visit.plate}} เข้าทาง{{visit.gate}} มาที่บ้าน / ห้อง {{visit.unitNo}} แล้ว\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: 'A {{visit.kindEn}} visitor, plate {{visit.plate}}, entered at {{visit.gate}} for unit {{visit.unitNo}}.\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'gate.invite.approved',
+    channel: 'line',
+    audience: 'resident',
+    description: 'The office approved my contractor invite (J4.1, D-315)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}} อนุมัติบัตรเชิญช่าง / ผู้รับเหมาของบ้าน / ห้อง {{invite.unitNo}} แล้ว ส่ง QR ให้ช่างได้เลย\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}} approved your contractor invite for unit {{invite.unitNo}}. You can send the QR to the contractor.\n{{link}}',
+      },
+    ],
+  },
+  {
+    key: 'gate.invite.rejected',
+    channel: 'line',
+    audience: 'resident',
+    description: 'The office rejected my contractor invite, with the reason (J4.1, D-315)',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{tenant.name}} ไม่อนุมัติบัตรเชิญช่าง / ผู้รับเหมาของบ้าน / ห้อง {{invite.unitNo}} เหตุผล: {{invite.reason}}\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{tenant.name}} did not approve your contractor invite for unit {{invite.unitNo}}. Reason: {{invite.reason}}\n{{link}}',
+      },
+    ],
+  },
+];
+
 const residentJTemplates = (): TemplateSeed[] =>
   RESIDENT_J_EVENTS.flatMap((e) => [
     {
@@ -946,6 +1053,13 @@ export const NOTIFICATION_ROUTES: {
     audience: 'prospect',
     channel: 'line',
     urgent: false,
+  })),
+  // J4.1 (D-315): a visitor is waiting — the question ignores quiet hours; the rest follows them
+  ...GATE_RESIDENT_TEMPLATES.map((t) => ({
+    eventType: t.key,
+    audience: 'resident',
+    channel: 'line',
+    urgent: t.key === 'gate.visit.requested',
   })),
   // J1.2a (D-325): LINE and e-mail by default; the SMS templates exist for tenants that route them (cost per message)
   ...RESIDENT_J_EVENTS.flatMap((e) =>
@@ -1559,5 +1673,6 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
     ],
   },
   ...residentJTemplates(),
+  ...GATE_RESIDENT_TEMPLATES,
   ...operatorTemplates(),
 ];

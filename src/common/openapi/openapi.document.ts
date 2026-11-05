@@ -55,6 +55,8 @@ const AUDIENCE_DESCRIPTIONS: Record<Audience, string> = {
   device: 'Device JWT with `aud=device` minted at mTLS bootstrap — `/v1/device/*` (one gateway).',
   prospect:
     'Access token with `aud=prospect` — `/v1/prospect/*`: people enquiring about a listing or booking a viewing (no scopes; their own enquiries only; B7.3, D-252).',
+  guard:
+    'Access token with `aud=guard` — `/v1/guard/*`: a guard signed in with a PIN on an enrolled gate tablet (scopes `tenant:`, `property:`, `gate:`, `gate_device:`, `shift:`; J4.1, D-320, D-327).',
 };
 
 const INFO_DESCRIPTION = `getproperty — ให้เช่าง่าย อยู่สบาย, operated by Collective Group (Thailand) (D-001).

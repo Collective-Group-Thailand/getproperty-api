@@ -8,6 +8,7 @@ enum Audience {
   platform
   device
   prospect
+  guard
 
   @@map("audience")
   @@schema("platform")

@@ -1,6 +1,6 @@
 import { type Actor } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
-import { resolveTenantContext, TENANT_ID_HEADER } from '@common/context/tenant-context';
+import { resolveTenantContext, TENANT_ID_HEADER, tenantScopesOf } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
 import { TokenService } from '@core/identity/token.service';
 import { AccessService } from '@core/tenancy/access.service';
@@ -104,6 +104,17 @@ export class AuthGuard implements CanActivate {
         RequestContext.setPermissions(access.permissions);
       }
       RequestContext.setTenant(tenant);
+    } else if (audience === 'guard' && actor?.type === 'user') {
+      // J4.1 (D-320): the tenant of the shift token; the membership must still be an active `guard` (cached 30 s,
+      // revocations also revoke the session family at once)
+      const tenantId = tenantScopesOf(actor.scopes)[0];
+      if (!tenantId) throw new DomainException('auth.unauthenticated');
+      const access = await this.access.operator(actor.publicId, tenantId);
+      if (access?.role !== 'guard') throw new DomainException('auth.forbidden');
+      if (access.tenantStatus === 'read_only' && !SAFE_METHODS.has(req.method))
+        throw new DomainException('tenant.read_only');
+      RequestContext.setTenant({ tenantId, source: 'token', role: 'guard', buildingIds: null });
+      RequestContext.setPermissions(access.permissions);
     } else if (audience === 'platform' && actor?.type === 'user') {
       const access = await this.access.platform(actor.publicId);
       if (access.roles.length === 0) throw new DomainException('auth.forbidden');

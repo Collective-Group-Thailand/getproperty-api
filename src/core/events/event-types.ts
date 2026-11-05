@@ -537,6 +537,38 @@ export const DOMAIN_EVENT_TYPES = {
   'foreign_stay.submitted': 'The owner recorded the manual TM30 submission to the Immigration Bureau.',
   // B6.3 analytics (D-083, D-217)
   'csat.answered': 'A resident answered the 1-question satisfaction survey (D-083 CSAT).',
+  // J4.1 gate & visitor (D-315, D-320, D-327): payloads carry ids only (PDPA)
+  'gate.created': 'A gate of a property was created (D-327).',
+  'gate.changed': 'A gate was renamed, switched on / off or its flags changed (D-327).',
+  'gate.device_added': 'A gate tablet slot was created with a one-time enrolment code (D-327).',
+  'gate.device_enrolled': 'A gate tablet enrolled with its code and got its device secret (D-327).',
+  'gate.device_revoked': 'A gate tablet was revoked; its shifts ended (D-327).',
+  'gate.guard_changed': 'A guard was created, renamed, had the PIN reset or was revoked (D-320, D-327).',
+  'gate.shift_started': 'A guard signed in with the PIN on a gate tablet (D-320).',
+  'gate.shift_ended': 'A guard shift ended (signed out, superseded, tablet or guard revoked).',
+  'gate.visit.requested':
+    'A visit waits for an answer of the unit; every resident of the unit is asked (LINE, D-315).',
+  'gate.visit.recorded':
+    'A visit was recorded without asking the unit (invite, remembered car, drop point, blacklist, offline).',
+  'gate.visit.answered':
+    'A resident answered a visit (approve / deny / call me); the first decision wins (D-315).',
+  'gate.visit.timed_out': 'Nobody of the unit answered in time; the house policy applied (D-315).',
+  'gate.visit.entered': 'The visitor entered (guard stamp); notify-only entries tell the residents (D-315).',
+  'gate.visit.exited': 'The visitor left (exit stamp by the guard or a resident).',
+  'gate.visit.cancelled': 'A visit was cancelled at the gate before entering.',
+  'gate.visit.photo_added': 'A photo was attached to a visit (retention class visitor).',
+  'gate.visit.overstayed':
+    'A visit has been open longer than gate.open_visit_alert_hours; operators are told once.',
+  'gate.invite.created': 'A resident created a visitor invite (QR) for a unit (D-315).',
+  'gate.invite.approval_required': 'A contractor invite waits for the operator approval (D-315).',
+  'gate.invite.approved': 'A contractor invite was approved; the resident is told.',
+  'gate.invite.rejected': 'A contractor invite was rejected; the resident is told.',
+  'gate.invite.revoked': 'A visitor invite was revoked.',
+  'gate.policy.changed': 'The gate policy of a unit changed (timeout, action, delivery, note).',
+  'gate.blacklist.changed': 'A plate was added to or removed from the estate blacklist (reason audited).',
+  'gate.vehicle_remembered': 'A unit remembered a car (gate.remember_days) or forgot it.',
+  'gate.retention_purged':
+    'The gate-retention job deleted expired visits, photos, invites and vehicles of a tenant (counts only).',
 } as const;
 export type DomainEventType = keyof typeof DOMAIN_EVENT_TYPES;
 

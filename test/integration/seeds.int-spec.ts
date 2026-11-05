@@ -28,7 +28,7 @@ describe('seeds (reference + dev)', () => {
   it('seed the expected catalogue sizes', async () => {
     const counts = await countRows(db.admin);
     expect(counts).toMatchObject({
-      'platform.role': 10, // + committee, auditor (J1.1b, D-320)
+      'platform.role': 11, // + committee, auditor (J1.1b, D-320), guard (J4.1, D-320)
       'platform.setting': SETTINGS.length,
       'platform.setting_version': SETTINGS.length,
       'platform.compliance_rule': COMPLIANCE_RULES.length,

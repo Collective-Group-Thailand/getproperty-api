@@ -49,6 +49,7 @@ export class SessionService {
 
   familyTtlMs(audience: Audience): number {
     if (audience === 'platform') return this.config.get('PLATFORM_REFRESH_TOKEN_TTL_HOURS') * 3_600_000;
+    if (audience === 'guard') return this.config.get('GUARD_REFRESH_TOKEN_TTL_HOURS') * 3_600_000;
     if (audience === 'device') return this.config.get('DEVICE_REFRESH_TOKEN_TTL_DAYS') * 86_400_000;
     return this.config.get('REFRESH_TOKEN_TTL_DAYS') * 86_400_000;
   }

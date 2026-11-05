@@ -25,6 +25,8 @@ export interface ProblemExtensions {
   /** `compliance.*` only: the rule id in the compliance registry (B4.1). */
   ruleId?: string;
   attemptsRemaining?: number;
+  /** `gate.pin_locked` only (J4.1, D-327): when the guard may try again. */
+  lockedUntil?: string;
   /** `auth.totp_enrollment_required` only: one-time token for `POST /v1/auth/platform/totp/enroll`. */
   enrollmentToken?: string;
   /** `compliance.acknowledgement_required` only: the evaluation to acknowledge (contract §3, D-021a). */
@@ -138,6 +140,13 @@ export class ProblemDetails {
     description: '`auth.otp_invalid` only (B1.3): codes that may still be tried on this challenge',
   })
   attemptsRemaining?: number;
+
+  @ApiPropertyOptional({
+    format: 'date-time',
+    example: '2026-11-05T22:15:00+07:00',
+    description: '`gate.pin_locked` only (J4.1, D-327): when the guard may enter the PIN again',
+  })
+  lockedUntil?: string;
 
   @ApiPropertyOptional({
     example: 'q2r8XoT1Vb9mJ0yPz4LkWnE6aGs3dHf5',

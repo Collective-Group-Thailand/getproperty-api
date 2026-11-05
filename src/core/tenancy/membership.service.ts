@@ -37,7 +37,11 @@ export class MembershipService extends TenantScopedRepository {
    */
   async list(ctx: TenantContext) {
     const rows = await this.db.tenant(ctx, (tx) =>
-      tx.membership.findMany({ where: this.own(ctx, { deletedAt: null }), orderBy: { createdAt: 'asc' } }),
+      // J4.1 (D-320): guards are managed under the gate (`/v1/owner/gate-guards`), not as console members
+      tx.membership.findMany({
+        where: this.own(ctx, { deletedAt: null, role: { not: 'guard' } }),
+        orderBy: { createdAt: 'asc' },
+      }),
     );
     const users = await this.db.platform((tx) =>
       tx.userAccount.findMany({

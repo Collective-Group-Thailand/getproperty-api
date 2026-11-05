@@ -31,6 +31,7 @@ import {
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import { ResidentUnitCollectionsController } from './resident-collections.controller';
+import { ResidentUnitGateController, ResidentVisitsController } from './resident-gate.controller';
 import { ResidentInspectionsController } from './resident-inspections.controller';
 import {
   ResidentDocumentsController,
@@ -56,6 +57,8 @@ import {
     ResidentUnitCollectionsController,
     ResidentStatementsController,
     ResidentBudgetController,
+    ResidentVisitsController,
+    ResidentUnitGateController,
     ResidentReviewsController,
     ResidentIdentitiesController,
     ResidentIdentityVerificationController,

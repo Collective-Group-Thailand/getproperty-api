@@ -472,6 +472,13 @@ export class EnvironmentVariables {
   @Max(72)
   PLATFORM_REFRESH_TOKEN_TTL_HOURS = 12;
 
+  /** Refresh token family lifetime of a guard shift on a gate tablet (J4.1, D-327): one long shift at most. */
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1)
+  @Max(24)
+  GUARD_REFRESH_TOKEN_TTL_HOURS = 14;
+
   /** Device JWT lifetime (minted at bootstrap, refreshed with the device refresh token). */
   @Transform(toNumber)
   @IsInt()

@@ -36,6 +36,12 @@ const TABLES: Record<string, { column: string; sql: (cutoff: string) => string }
   },
 };
 
+/** Tables purged by their own job with a per-tenant period (the generic job only reports them). */
+const OWN_JOBS: Record<string, string> = {
+  // J4.1 (D-315, D-327): gate.retention_days per tenant
+  'smart.visit': 'gate-retention',
+};
+
 export interface RetentionReport {
   target: string;
   key: string;
@@ -80,6 +86,17 @@ export class RetentionService {
         const pending = p.basis.includes('⚖');
         if (p.target === 'table') {
           const table = TABLES[p.target_key];
+          if (!table && OWN_JOBS[p.target_key]) {
+            report.push({
+              target: p.target,
+              key: p.target_key,
+              action: p.action,
+              executed: false,
+              affected: 0,
+              note: `purged by its own job (${OWN_JOBS[p.target_key]})`,
+            });
+            continue;
+          }
           if (!table) {
             report.push({
               target: p.target,

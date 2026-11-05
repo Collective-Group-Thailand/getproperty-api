@@ -11,114 +11,121 @@
 | `accountant` | tenant | นักบัญชี | Accountant | Read invoices/payments/exports, issue documents, no settings (D-090). |
 | `committee` | tenant | กรรมการ | Committee | Juristic committee member: approves budgets and adopts resolutions, reads the register, billing and reports; never moves money (D-320). Juristic tenants only. |
 | `auditor` | tenant | ผู้สอบบัญชี | Auditor | Read-only access to the books, register and reports, time-boxed (`accessUntil`, D-320). Juristic tenants only. |
+| `guard` | tenant | เจ้าหน้าที่รักษาความปลอดภัย | Guard | Gate only (D-320, D-327): records visits on an enrolled gate tablet of the property after a PIN sign-in; created with the guard profile, never invited, no other surface. |
 | `platform_admin` | platform | ผู้ดูแลแพลตฟอร์ม | Platform admin | Collective Group platform administration (D-090, D-161). |
 | `support` | platform | ฝ่ายสนับสนุน | Support | Read-only into a tenant with a time-boxed, logged support grant (D-090). |
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (103)
-| Permission | Surfaces | owner | manager | staff | accountant | committee | auditor | platform_admin | support | field_engineer | finance | Description |
-|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
-| `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View the tenant profile and company data |
-| `tenant.update` | owner | ✓ |  |  |  |  |  |  |  |  |  | Edit company data (legal name, tax id, address, logo) |
-| `tenant.bank_account.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  | Add/change receiving bank accounts (Owner OTP, D-091) |
-| `tenant.member.read` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | List members and invitations |
-| `tenant.member.invite` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Invite members |
-| `tenant.member.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  | Change roles, building scopes, remove members |
-| `tenant.settings.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View tenant settings |
-| `tenant.settings.update` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Edit operational tenant settings (reminders, quiet hours, readings) |
-| `tenant.billing_settings.update` | owner | ✓ |  |  |  |  |  |  |  |  |  | Edit billing settings (cut-off, estimate policy, late fee, rate plans) |
-| `tenant.subscription.read` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | View the subscription and platform invoices |
-| `tenant.subscription.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  | Change plan, cancel (D-082) |
-| `tenant.audit.read` | owner | ✓ | ✓ |  |  |  | ✓ |  |  |  |  | Read the tenant audit log |
-| `tenant.support_grant.approve` | owner | ✓ |  |  |  |  |  |  |  |  |  | Approve or revoke Support access (D-090) |
-| `tenant.grant.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  | Create/revoke asset access grants for the tenant’s buildings (D-152) |
-| `property.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View properties and buildings |
-| `property.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Create/edit properties, buildings and floors |
-| `unit.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View units |
-| `unit.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Create/edit units, unit profiles |
-| `listing.read` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | See the tenant's rental listings and verifications (D-252) |
-| `listing.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Create, edit, publish, pause and close rental listings; ask for owner verification (D-252) |
-| `party.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View parties (lessees, owners, co-occupants) |
-| `party.manage` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | Create/edit parties |
-| `party.pii.decrypt` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Reveal ID/passport numbers and emergency-contact phones (audited, D-148, D-172) |
-| `party.id_document.read` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | List and download ID document images (every download audited, D-025, D-172) |
-| `party.link.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  | Unlink a resident login (LINE/phone) from a party — the Owner approval of D-061/D-172 |
-| `asset_item.read` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | View meters, gateways, locks and other asset items |
-| `asset_item.manage` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | Create/edit asset items and meter assignments |
-| `document.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  | Download documents of the tenant |
-| `document.upload` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | Upload documents and photos |
-| `lease.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  | View leases |
-| `lease.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Create, sign, renew, end leases |
-| `deposit.read` | owner | ✓ | ✓ |  | ✓ |  | ✓ |  |  |  |  | View deposits and settlements |
-| `deposit.settle` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Propose and agree deposit settlements (D-023) |
-| `inspection.perform` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | Move-in/move-out inspections with photos |
-| `reading.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  | ✓ |  |  |  |  | View meter readings and usage |
-| `reading.capture` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | Capture manual/OCR readings with photos (D-035) |
-| `reading.review` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Review readings in the review queue |
-| `device.install` | staff, owner | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | Install and provision devices (staff PWA, D-033) |
-| `device.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  |  | View devices, gateways and their health (D-033) |
-| `device.command` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | Send read_now / restart / identify / upload_logs to a gateway (D-131) |
-| `utility_invoice.manage` | owner | ✓ | ✓ |  | ✓ |  |  |  |  |  |  | Enter or import the utility (MEA/PEA/MWA/PWA) invoices of a building (D-032) |
-| `rate_plan.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  | View rate plans |
-| `rate_plan.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  | Edit rate plans (tariff-cap warning, D-021a) |
-| `compliance.acknowledge` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Acknowledge a compliance warning (D-021a) |
-| `invoice.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  | View invoices |
-| `invoice.issue` | owner | ✓ | ✓ |  | ✓ |  |  |  |  |  |  | Run billing cycles and issue invoices |
-| `invoice.void` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Void/credit invoices (credit and debit notes, D-040) |
-| `payment.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  | View payments and receipts |
-| `payment.record` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Record manual payments, review slips (D-043) |
-| `receipt.issue` | owner | ✓ | ✓ |  | ✓ |  |  |  |  |  |  | Issue receipts and tax invoices |
-| `export.create` | owner | ✓ | ✓ |  | ✓ |  |  |  |  |  |  | Exports (Excel, FlowAccount, PEAK, VAT report) |
-| `report.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  | Dashboards, arrears, utility loss |
-| `service_request.read` | owner, staff | ✓ | ✓ | ✓ |  | ✓ | ✓ |  |  |  |  | View repair requests |
-| `service_request.handle` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | Triage, assign and close repair requests |
-| `service_category.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Repair categories and their SLA hours (D-072) |
-| `maintenance_plan.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Preventive maintenance plans of equipment (B5.1) |
-| `parcel.manage` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | Record parcels and pick-ups |
-| `access.read` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Locks, credentials and the unlock log of my buildings (D-070, D-025) |
-| `access.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Register locks, issue visitor / staff codes, revoke credentials with a reason (D-070, D-071) |
-| `announcement.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Post announcements |
-| `community.read` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | Facilities and bookings, building rules and contacts (D-073) |
-| `staff_task.read` | staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | My day of tasks: readings, inspections, work orders, parcels, install orders (B5.4) |
-| `community.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Facilities, booking decisions, building rule versions and contacts (D-073) |
-| `notification.route.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Configure which resident-facing events notify through which channels (B1.3 routing matrix) |
-| `privacy.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  | Handle data subject requests as controller and record paper consents (D-025) |
-| `tm30.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | TM30 notifications: generate the Immigration upload file (passport data), record submissions (D-052) |
-| `juristic.register.read` | owner | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  | Read the co-owner register: owners, shares, bill-to, transfers (D-307) |
-| `juristic.register.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Add co-owners, record transfers, set bill-to parties, edit plot fields (D-303, D-307) |
-| `juristic.budget.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  | Read budgets and their lines (D-304) |
-| `juristic.budget.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Draft budgets, preview and draft common-fee rates from a budget (D-304) |
-| `juristic.budget.approve` | owner | ✓ |  |  |  | ✓ |  |  |  |  |  | Approve a budget with an adopted resolution (committee, D-320) |
-| `juristic.resolution.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  | Read meeting resolutions and their documents (D-304) |
-| `juristic.resolution.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Record and edit draft resolutions, attach minutes (D-304) |
-| `juristic.resolution.adopt` | owner | ✓ |  |  |  | ✓ |  |  |  |  |  | Adopt or void a resolution (committee, D-320) |
-| `juristic.collections.read` | owner | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  | Read payment plans, debt clearance certificates and automatic-payment mandates (D-306, D-308) |
-| `juristic.collections.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  | Propose, reject and cancel payment plans; issue or refuse debt clearance certificates (D-306, D-308, D-325) |
-| `juristic.payment_plan.approve` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  | Approve a payment plan (owner, manager or committee, D-308, D-325) |
-| `juristic.collections.approve` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  | Approve or refuse a collections ladder step that needs approval (suspension of common services, lawyer letter, legal action; owner, manager or committee, D-305, D-326) |
-| `admin.tenant.read` | admin |  |  |  |  |  |  | ✓ | ✓ | ✓ | ✓ | List and view tenants |
-| `admin.tenant.manage` | admin |  |  |  |  |  |  | ✓ |  |  |  | Create, onboard, deactivate tenants (D-161) |
-| `admin.user.manage` | admin |  |  |  |  |  |  | ✓ |  |  |  | Manage platform users and role assignments |
-| `admin.setting.manage` | admin |  |  |  |  |  |  | ✓ |  |  |  | Edit platform settings and per-tenant overrides |
-| `admin.compliance.manage` | admin |  |  |  |  |  |  | ✓ |  |  |  | Set compliance severities platform-wide or per tenant (D-021a) |
-| `admin.utility_tariff.enter` | admin |  |  |  |  |  |  | ✓ |  |  |  | Enter utility tariff versions (maker) |
-| `admin.utility_tariff.verify` | admin |  |  |  |  |  |  | ✓ |  |  |  | Verify and publish utility tariff versions (checker) |
-| `admin.support_grant.request` | admin |  |  |  |  |  |  | ✓ | ✓ |  |  | Request a support grant into a tenant |
-| `admin.support_grant.approve_incident` | admin |  |  |  |  |  |  | ✓ |  |  |  | Approve a support grant for an incident without the Owner |
-| `admin.audit.read` | admin |  |  |  |  |  |  | ✓ |  |  |  | Read the platform audit log |
-| `admin.dsr.manage` | admin |  |  |  |  |  |  | ✓ |  |  |  | Handle data subject requests (D-025) |
-| `admin.device.manage` | admin |  |  |  |  |  |  | ✓ |  | ✓ |  | Device fleet, provisioning codes, OTA rings (D-033, D-131) |
-| `admin.provider_credential.manage` | admin |  |  |  |  |  |  | ✓ |  |  |  | Set, replace and revoke per-merchant provider credentials (payments, locks, e-Tax); values write-only (D-240) |
-| `admin.subscription.manage` | admin |  |  |  |  |  |  | ✓ |  |  | ✓ | Price plans, subscriptions, pilot agreements (D-156, D-083) |
-| `admin.platform_invoice.issue` | admin |  |  |  |  |  |  | ✓ |  |  | ✓ | Issue platform invoices and receipts |
-| `admin.platform_credit_note.approve` | admin |  |  |  |  |  |  | ✓ |  |  | ✓ | Approve platform credit notes (maker-checker, D-091) |
-| `admin.integration_event.read` | admin |  |  |  |  |  |  | ✓ | ✓ |  |  | List integration events and overdue acks (D-153) |
-| `admin.ai_usage.read` | admin |  |  |  |  |  |  | ✓ |  |  | ✓ | AI usage cost per tenant (D-161) |
-| `admin.outbox.manage` | admin |  |  |  |  |  |  | ✓ |  |  |  | List dead letters of the outbox and its subscribers, replay them (B1.3) |
-| `admin.notification_template.manage` | admin |  |  |  |  |  |  | ✓ |  |  |  | Edit, preview, test-send and publish notification templates (B1.3) |
-| `admin.feature_flag.manage` | admin |  |  |  |  |  |  | ✓ |  |  |  | Change feature flag defaults and per-tenant overrides |
-| `admin.listing.moderate` | admin |  |  |  |  |  |  | ✓ | ✓ |  |  | Review queue of listings: approve, reject, hide, restore; decide reports (D-252) |
-| `admin.listing.verify` | admin |  |  |  |  |  |  | ✓ | ✓ |  |  | Decide owner verifications from ownership evidence (D-252) |
-| `admin.guide.manage` | admin |  |  |  |  |  |  | ✓ | ✓ |  |  | Write, edit, review and publish the guides of the public site (D-271) |
-| `admin.building.manage` | admin |  |  |  |  |  |  | ✓ |  |  |  | Change the operator of a building between tenants (schema-design §4.6) |
+## Permissions (109)
+| Permission | Surfaces | owner | manager | staff | accountant | committee | auditor | guard | platform_admin | support | field_engineer | finance | Description |
+|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
+| `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | View the tenant profile and company data |
+| `tenant.update` | owner | ✓ |  |  |  |  |  |  |  |  |  |  | Edit company data (legal name, tax id, address, logo) |
+| `tenant.bank_account.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  |  | Add/change receiving bank accounts (Owner OTP, D-091) |
+| `tenant.member.read` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | List members and invitations |
+| `tenant.member.invite` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Invite members |
+| `tenant.member.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  |  | Change roles, building scopes, remove members |
+| `tenant.settings.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | View tenant settings |
+| `tenant.settings.update` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Edit operational tenant settings (reminders, quiet hours, readings) |
+| `tenant.billing_settings.update` | owner | ✓ |  |  |  |  |  |  |  |  |  |  | Edit billing settings (cut-off, estimate policy, late fee, rate plans) |
+| `tenant.subscription.read` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | View the subscription and platform invoices |
+| `tenant.subscription.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  |  | Change plan, cancel (D-082) |
+| `tenant.audit.read` | owner | ✓ | ✓ |  |  |  | ✓ |  |  |  |  |  | Read the tenant audit log |
+| `tenant.support_grant.approve` | owner | ✓ |  |  |  |  |  |  |  |  |  |  | Approve or revoke Support access (D-090) |
+| `tenant.grant.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  |  | Create/revoke asset access grants for the tenant’s buildings (D-152) |
+| `property.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | View properties and buildings |
+| `property.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Create/edit properties, buildings and floors |
+| `unit.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | View units |
+| `unit.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Create/edit units, unit profiles |
+| `listing.read` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | See the tenant's rental listings and verifications (D-252) |
+| `listing.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Create, edit, publish, pause and close rental listings; ask for owner verification (D-252) |
+| `party.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | View parties (lessees, owners, co-occupants) |
+| `party.manage` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | Create/edit parties |
+| `party.pii.decrypt` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Reveal ID/passport numbers and emergency-contact phones (audited, D-148, D-172) |
+| `party.id_document.read` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | List and download ID document images (every download audited, D-025, D-172) |
+| `party.link.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  |  | Unlink a resident login (LINE/phone) from a party — the Owner approval of D-061/D-172 |
+| `asset_item.read` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | View meters, gateways, locks and other asset items |
+| `asset_item.manage` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | Create/edit asset items and meter assignments |
+| `document.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | Download documents of the tenant |
+| `document.upload` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | Upload documents and photos |
+| `lease.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | View leases |
+| `lease.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Create, sign, renew, end leases |
+| `deposit.read` | owner | ✓ | ✓ |  | ✓ |  | ✓ |  |  |  |  |  | View deposits and settlements |
+| `deposit.settle` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Propose and agree deposit settlements (D-023) |
+| `inspection.perform` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | Move-in/move-out inspections with photos |
+| `reading.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  | ✓ |  |  |  |  |  | View meter readings and usage |
+| `reading.capture` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | Capture manual/OCR readings with photos (D-035) |
+| `reading.review` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Review readings in the review queue |
+| `device.install` | staff, owner | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | Install and provision devices (staff PWA, D-033) |
+| `device.read` | owner, staff | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | View devices, gateways and their health (D-033) |
+| `device.command` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | Send read_now / restart / identify / upload_logs to a gateway (D-131) |
+| `utility_invoice.manage` | owner | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  | Enter or import the utility (MEA/PEA/MWA/PWA) invoices of a building (D-032) |
+| `rate_plan.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  |  | View rate plans |
+| `rate_plan.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  |  | Edit rate plans (tariff-cap warning, D-021a) |
+| `compliance.acknowledge` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Acknowledge a compliance warning (D-021a) |
+| `invoice.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  |  | View invoices |
+| `invoice.issue` | owner | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  | Run billing cycles and issue invoices |
+| `invoice.void` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Void/credit invoices (credit and debit notes, D-040) |
+| `payment.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  |  | View payments and receipts |
+| `payment.record` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Record manual payments, review slips (D-043) |
+| `receipt.issue` | owner | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  | Issue receipts and tax invoices |
+| `export.create` | owner | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  | Exports (Excel, FlowAccount, PEAK, VAT report) |
+| `report.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  |  | Dashboards, arrears, utility loss |
+| `service_request.read` | owner, staff | ✓ | ✓ | ✓ |  | ✓ | ✓ |  |  |  |  |  | View repair requests |
+| `service_request.handle` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | Triage, assign and close repair requests |
+| `service_category.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Repair categories and their SLA hours (D-072) |
+| `maintenance_plan.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Preventive maintenance plans of equipment (B5.1) |
+| `parcel.manage` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | Record parcels and pick-ups |
+| `access.read` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Locks, credentials and the unlock log of my buildings (D-070, D-025) |
+| `access.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Register locks, issue visitor / staff codes, revoke credentials with a reason (D-070, D-071) |
+| `announcement.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Post announcements |
+| `community.read` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | Facilities and bookings, building rules and contacts (D-073) |
+| `staff_task.read` | staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | My day of tasks: readings, inspections, work orders, parcels, install orders (B5.4) |
+| `community.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Facilities, booking decisions, building rule versions and contacts (D-073) |
+| `notification.route.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Configure which resident-facing events notify through which channels (B1.3 routing matrix) |
+| `privacy.manage` | owner | ✓ |  |  |  |  |  |  |  |  |  |  | Handle data subject requests as controller and record paper consents (D-025) |
+| `tm30.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | TM30 notifications: generate the Immigration upload file (passport data), record submissions (D-052) |
+| `juristic.register.read` | owner | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | Read the co-owner register: owners, shares, bill-to, transfers (D-307) |
+| `juristic.register.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Add co-owners, record transfers, set bill-to parties, edit plot fields (D-303, D-307) |
+| `juristic.budget.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  |  | Read budgets and their lines (D-304) |
+| `juristic.budget.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Draft budgets, preview and draft common-fee rates from a budget (D-304) |
+| `juristic.budget.approve` | owner | ✓ |  |  |  | ✓ |  |  |  |  |  |  | Approve a budget with an adopted resolution (committee, D-320) |
+| `juristic.resolution.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  |  | Read meeting resolutions and their documents (D-304) |
+| `juristic.resolution.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Record and edit draft resolutions, attach minutes (D-304) |
+| `juristic.resolution.adopt` | owner | ✓ |  |  |  | ✓ |  |  |  |  |  |  | Adopt or void a resolution (committee, D-320) |
+| `juristic.collections.read` | owner | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | Read payment plans, debt clearance certificates and automatic-payment mandates (D-306, D-308) |
+| `juristic.collections.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Propose, reject and cancel payment plans; issue or refuse debt clearance certificates (D-306, D-308, D-325) |
+| `juristic.payment_plan.approve` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  | Approve a payment plan (owner, manager or committee, D-308, D-325) |
+| `juristic.collections.approve` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  | Approve or refuse a collections ladder step that needs approval (suspension of common services, lawyer letter, legal action; owner, manager or committee, D-305, D-326) |
+| `admin.tenant.read` | admin |  |  |  |  |  |  |  | ✓ | ✓ | ✓ | ✓ | List and view tenants |
+| `gate.read` | owner, staff | ✓ | ✓ | ✓ |  | ✓ |  |  |  |  |  |  | See gates, devices, guards, house policies, the blacklist and invites (not the visit log) |
+| `gate.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Create and edit gates, enrol / revoke gate tablets, house policies, the blacklist (D-327) |
+| `gate.guard.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Create guards, reset their PINs, revoke them (D-320) |
+| `gate.log.read` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  | Read the visit log of the estate — every read needs a reason and is audited (D-315 PDPA) |
+| `gate.invite.approve` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  | Approve or reject contractor invites of residents (D-315) |
+| `gate.visit.record` | guard |  |  |  |  |  |  | ✓ |  |  |  |  | Record visits, scan invites, stamp entries and exits on a gate tablet (guard, D-320) |
+| `admin.tenant.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Create, onboard, deactivate tenants (D-161) |
+| `admin.user.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Manage platform users and role assignments |
+| `admin.setting.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Edit platform settings and per-tenant overrides |
+| `admin.compliance.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Set compliance severities platform-wide or per tenant (D-021a) |
+| `admin.utility_tariff.enter` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Enter utility tariff versions (maker) |
+| `admin.utility_tariff.verify` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Verify and publish utility tariff versions (checker) |
+| `admin.support_grant.request` | admin |  |  |  |  |  |  |  | ✓ | ✓ |  |  | Request a support grant into a tenant |
+| `admin.support_grant.approve_incident` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Approve a support grant for an incident without the Owner |
+| `admin.audit.read` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Read the platform audit log |
+| `admin.dsr.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Handle data subject requests (D-025) |
+| `admin.device.manage` | admin |  |  |  |  |  |  |  | ✓ |  | ✓ |  | Device fleet, provisioning codes, OTA rings (D-033, D-131) |
+| `admin.provider_credential.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Set, replace and revoke per-merchant provider credentials (payments, locks, e-Tax); values write-only (D-240) |
+| `admin.subscription.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  | ✓ | Price plans, subscriptions, pilot agreements (D-156, D-083) |
+| `admin.platform_invoice.issue` | admin |  |  |  |  |  |  |  | ✓ |  |  | ✓ | Issue platform invoices and receipts |
+| `admin.platform_credit_note.approve` | admin |  |  |  |  |  |  |  | ✓ |  |  | ✓ | Approve platform credit notes (maker-checker, D-091) |
+| `admin.integration_event.read` | admin |  |  |  |  |  |  |  | ✓ | ✓ |  |  | List integration events and overdue acks (D-153) |
+| `admin.ai_usage.read` | admin |  |  |  |  |  |  |  | ✓ |  |  | ✓ | AI usage cost per tenant (D-161) |
+| `admin.outbox.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | List dead letters of the outbox and its subscribers, replay them (B1.3) |
+| `admin.notification_template.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Edit, preview, test-send and publish notification templates (B1.3) |
+| `admin.feature_flag.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Change feature flag defaults and per-tenant overrides |
+| `admin.listing.moderate` | admin |  |  |  |  |  |  |  | ✓ | ✓ |  |  | Review queue of listings: approve, reject, hide, restore; decide reports (D-252) |
+| `admin.listing.verify` | admin |  |  |  |  |  |  |  | ✓ | ✓ |  |  | Decide owner verifications from ownership evidence (D-252) |
+| `admin.guide.manage` | admin |  |  |  |  |  |  |  | ✓ | ✓ |  |  | Write, edit, review and publish the guides of the public site (D-271) |
+| `admin.building.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Change the operator of a building between tenants (schema-design §4.6) |

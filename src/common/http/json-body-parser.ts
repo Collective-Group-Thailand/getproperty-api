@@ -15,6 +15,8 @@ export const LARGE_BODY_ROUTES: readonly { pattern: RegExp; limit: string }[] = 
   { pattern: /^\/v1\/device\/readings\/batch(\/|\?|$)/, limit: '2mb' },
   // B4.4: a resident's transfer slip image arrives inline (base64, ≤ 5 MB decoded)
   { pattern: /^\/v1\/resident\/invoices\/[^/]+\/slips(\?|$)/, limit: '7mb' },
+  // J4.1: a gate photo of a visit arrives inline (base64, ≤ 2 MB decoded)
+  { pattern: /^\/v1\/guard\/visits\/[^/]+\/photo(\?|$)/, limit: '3mb' },
 ];
 
 /**
