@@ -25,6 +25,8 @@ export enum PaymentMethodName {
   BankTransferManual = 'bank_transfer_manual',
   Card = 'card',
   Offset = 'offset',
+  /** J1.2a (D-308): direct debit / tokenised card through a mandate (fake until O-020). */
+  Recurring = 'recurring',
 }
 
 /** `ops.payment_confirmation`. */
@@ -63,6 +65,10 @@ export enum SlipReasonName {
   AmountUnreadable = 'amount_unreadable',
   /** D-220: a QR payment of the same amount for the same payer × unit was already booked around the slip's time. */
   PossibleQrDuplicate = 'possible_qr_duplicate',
+  /** D-325: the slip is dated outside `payments.slip_max_age_days` before its upload (or after it). */
+  DateOutOfWindow = 'date_out_of_window',
+  /** D-308 / D-325: the bank reference is already used at another tenant — rejected at once. */
+  DuplicateReferencePlatform = 'duplicate_reference_platform',
 }
 
 /** Why a provider payment was held for the owner instead of booked (`ops.payment.held_reason`, D-220). */
@@ -94,6 +100,13 @@ export class PaymentAllocationDto {
 
   @MoneyOutput({ example: '5344.00', description: 'Allocated to this invoice.' })
   amount!: string;
+
+  @MoneyOutput({
+    example: '0.00',
+    description:
+      'Of which paid late-fee (surcharge) lines of the invoice (D-325, `payments.allocation_policy`).',
+  })
+  surchargeAmount!: string;
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
   reversedAt!: string | null;
@@ -339,7 +352,7 @@ export class SlipReviewDto {
     type: [String],
     example: ['amount_below_due'],
     description:
-      'Why it was not confirmed automatically: `not_recognised`, `duplicate_reference`, `receiver_mismatch`, `amount_above_due`, `amount_below_due`, `amount_unreadable`, `possible_qr_duplicate` (a QR payment of the same amount was already booked, D-220).',
+      'Why it was not confirmed automatically: `not_recognised`, `duplicate_reference`, `receiver_mismatch`, `amount_above_due`, `amount_below_due`, `amount_unreadable`, `possible_qr_duplicate` (a QR payment of the same amount was already booked, D-220), `date_out_of_window` (dated outside `payments.slip_max_age_days`, D-325), `duplicate_reference_platform` (the transfer already paid on getproperty at another building — rejected at once, D-308).',
   })
   reasons!: string[];
 

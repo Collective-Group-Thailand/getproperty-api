@@ -23,7 +23,8 @@ export type LineKind =
   | 'prior_balance'
   | 'discount'
   | 'deposit_offset'
-  | 'service_charge_work';
+  | 'service_charge_work'
+  | 'plan_instalment';
 
 export interface LineKindRule {
   lineKind: LineKind;
@@ -202,6 +203,16 @@ export const LINE_KIND_RULES: readonly LineKindRule[] = [
     complianceRuleId: null,
     allowedWhenSetting: null,
     description: 'Billable work-order cost (B5, R2).',
+  },
+  {
+    lineKind: 'plan_instalment',
+    sourceType: 'adjustment',
+    requiresLeaseLine: false,
+    requiresMeter: false,
+    complianceRuleId: null,
+    allowedWhenSetting: null,
+    description:
+      'An instalment of an approved payment plan (the debt the plan covers, credited on the original invoices), or the rest of a defaulted / cancelled plan billed at once (D-308, D-325).',
   },
 ];
 

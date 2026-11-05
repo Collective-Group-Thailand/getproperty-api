@@ -51,6 +51,8 @@ export interface ProblemExtensions {
   addon?: { versionId: string; monthlyFee: string; setupFee: string; vatRate: string; currency: string };
   /** `review.not_eligible` only (G9, D-301): the first day a review of this lease is possible (null = not anymore). */
   reviewEligibleFrom?: string | null;
+  /** `debt_clearance.outstanding` only (J1.2a, D-306): what is still owed (decimal string, THB). */
+  outstanding?: string;
 }
 
 /** The storage position sent with `storage.allowance_exceeded` (G1). */
@@ -245,6 +247,14 @@ export class ProblemDetails {
       '`review.not_eligible` only (G9, D-301): the first day this lease may be reviewed (after `review.min_tenure_months` of tenure); null = no longer (the review window after move-out closed, or the lease never started)',
   })
   reviewEligibleFrom?: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    example: '0.01',
+    description:
+      '`debt_clearance.outstanding` only (J1.2a, D-306): what the owner still owes for the unit (decimal string, THB) — pay it, then ask again.',
+  })
+  outstanding?: string;
 
   @ApiProperty({ example: '6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e' })
   requestId!: string;

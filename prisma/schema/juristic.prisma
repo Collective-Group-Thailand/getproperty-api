@@ -248,3 +248,168 @@ model OwnershipTransfer {
   @@map("ownership_transfer")
   @@schema("juristic")
 }
+
+enum PaymentPlanState {
+  proposed
+  active
+  completed
+  defaulted
+  cancelled
+  rejected
+
+  @@map("payment_plan_state")
+  @@schema("juristic")
+}
+
+enum PlanProposer {
+  staff
+  resident
+
+  @@map("plan_proposer")
+  @@schema("juristic")
+}
+
+enum InstalmentState {
+  scheduled
+  billed
+  paid
+  cancelled
+
+  @@map("instalment_state")
+  @@schema("juristic")
+}
+
+/// D-308 / D-325 (J1.2a): an instalment plan of a party's open invoices of a unit.
+model PaymentPlan {
+  id                  String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String           @map("tenant_id") @db.Uuid
+  buildingId          String           @map("building_id") @db.Uuid
+  unitId              String           @map("unit_id") @db.Uuid
+  partyId             String           @map("party_id") @db.Uuid
+  state               PaymentPlanState @default(proposed)
+  proposedByKind      PlanProposer     @map("proposed_by_kind")
+  requestedByUser     String?          @map("requested_by_user") @db.Uuid
+  instalmentCount     Int              @map("instalment_count") @db.SmallInt
+  firstDueOn          DateTime         @map("first_due_on") @db.Date
+  proposedPrincipal   Decimal          @map("proposed_principal") @db.Decimal(14, 2)
+  principal           Decimal?         @db.Decimal(14, 2)
+  invoiceIds          String[]         @default([]) @map("invoice_ids") @db.Uuid
+  creditNoteIds       String[]         @default([]) @map("credit_note_ids") @db.Uuid
+  defaultAfterDays    Int?             @map("default_after_days") @db.SmallInt
+  note                String?
+  approvedAt          DateTime?        @map("approved_at") @db.Timestamptz(6)
+  approvedBy          String?          @map("approved_by") @db.Uuid
+  decidedReason       String?          @map("decided_reason")
+  endedAt             DateTime?        @map("ended_at") @db.Timestamptz(6)
+  acceleratedChargeId String?          @map("accelerated_charge_id") @db.Uuid
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy           String?          @map("created_by") @db.Uuid
+  updatedAt           DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy           String?          @map("updated_by") @db.Uuid
+  version             Int              @default(1)
+
+  tenant            Tenant                  @relation("PaymentPlanTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_plan_tenant_id_fkey")
+  building          Building                @relation("PaymentPlanBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_plan_building_id_fkey")
+  unit              Unit                    @relation("PaymentPlanUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_plan_unit_id_fkey")
+  party             Party                   @relation("PaymentPlanParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_plan_party_id_fkey")
+  requester         UserAccount?            @relation("PaymentPlanRequester", fields: [requestedByUser], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_plan_requested_by_user_fkey")
+  acceleratedCharge InvoiceCharge?          @relation("PaymentPlanAcceleratedCharge", fields: [acceleratedChargeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_plan_accelerated_charge_id_fkey")
+  instalments       PaymentPlanInstalment[]
+
+  @@unique([unitId, partyId], map: "payment_plan_open_key", where: raw("(state = ANY (ARRAY['proposed'::juristic.payment_plan_state, 'active'::juristic.payment_plan_state]))"))
+  @@index([tenantId, state], map: "payment_plan_tenant_id_state_idx")
+  @@index([partyId], map: "payment_plan_party_id_idx")
+  @@map("payment_plan")
+  @@schema("juristic")
+}
+
+/// D-325 (J1.2a): one instalment of a payment plan (charge line kind `plan_instalment`).
+model PaymentPlanInstalment {
+  id              String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String          @map("tenant_id") @db.Uuid
+  planId          String          @map("plan_id") @db.Uuid
+  seq             Int             @db.SmallInt
+  dueOn           DateTime        @map("due_on") @db.Date
+  amount          Decimal         @db.Decimal(14, 2)
+  state           InstalmentState @default(scheduled)
+  invoiceChargeId String?         @map("invoice_charge_id") @db.Uuid
+  billedAt        DateTime?       @map("billed_at") @db.Timestamptz(6)
+  paidAt          DateTime?       @map("paid_at") @db.Timestamptz(6)
+  cancelledAt     DateTime?       @map("cancelled_at") @db.Timestamptz(6)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant        Tenant         @relation("PaymentPlanInstalmentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_plan_instalment_tenant_id_fkey")
+  plan          PaymentPlan    @relation(fields: [planId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_plan_instalment_plan_id_fkey")
+  invoiceCharge InvoiceCharge? @relation("PaymentPlanInstalmentCharge", fields: [invoiceChargeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_plan_instalment_invoice_charge_id_fkey")
+
+  @@unique([planId, seq], map: "payment_plan_instalment_plan_id_seq_key")
+  @@index([state, dueOn], map: "payment_plan_instalment_state_due_on_idx")
+  @@index([invoiceChargeId], map: "payment_plan_instalment_invoice_charge_id_idx")
+  @@map("payment_plan_instalment")
+  @@schema("juristic")
+}
+
+enum DebtClearanceState {
+  requested
+  issued
+  refused
+
+  @@map("debt_clearance_state")
+  @@schema("juristic")
+}
+
+enum RequestChannel {
+  liff
+  web
+
+  @@map("request_channel")
+  @@schema("juristic")
+}
+
+/// D-306 / D-325 (J1.2a): debt clearance certificate (หนังสือรับรองการปลอดหนี้), series DCL.
+model DebtClearance {
+  id             String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String             @map("tenant_id") @db.Uuid
+  buildingId     String             @map("building_id") @db.Uuid
+  unitId         String             @map("unit_id") @db.Uuid
+  partyId        String             @map("party_id") @db.Uuid
+  requestedVia   RequestChannel     @map("requested_via")
+  requestedBy    String?            @map("requested_by") @db.Uuid
+  asOf           DateTime           @map("as_of") @db.Date
+  language       String             @default("th") @db.Char(2)
+  state          DebtClearanceState @default(requested)
+  outstanding    Decimal            @default(0) @db.Decimal(14, 2)
+  fee            Decimal            @default(0) @db.Decimal(14, 2)
+  feeChargeId    String?            @map("fee_charge_id") @db.Uuid
+  number         String?
+  documentId     String?            @map("document_id") @db.Uuid
+  verifyCodeHash Bytes?             @map("verify_code_hash")
+  verifyCodeHint String?            @map("verify_code_hint")
+  validUntil     DateTime?          @map("valid_until") @db.Date
+  issuedAt       DateTime?          @map("issued_at") @db.Timestamptz(6)
+  issuedBy       String?            @map("issued_by") @db.Uuid
+  refusedAt      DateTime?          @map("refused_at") @db.Timestamptz(6)
+  refusedBy      String?            @map("refused_by") @db.Uuid
+  refuseReason   String?            @map("refuse_reason")
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?            @map("created_by") @db.Uuid
+  updatedAt      DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version        Int                @default(1)
+
+  tenant    Tenant         @relation("DebtClearanceTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debt_clearance_tenant_id_fkey")
+  building  Building       @relation("DebtClearanceBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debt_clearance_building_id_fkey")
+  unit      Unit           @relation("DebtClearanceUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debt_clearance_unit_id_fkey")
+  party     Party          @relation("DebtClearanceParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debt_clearance_party_id_fkey")
+  requester UserAccount?   @relation("DebtClearanceRequester", fields: [requestedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debt_clearance_requested_by_fkey")
+  document  Document?      @relation("DebtClearanceDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debt_clearance_document_id_fkey")
+  feeCharge InvoiceCharge? @relation("DebtClearanceFeeCharge", fields: [feeChargeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "debt_clearance_fee_charge_id_fkey")
+
+  @@unique([tenantId, number], map: "debt_clearance_tenant_id_number_key", where: raw("(number IS NOT NULL)"))
+  @@unique([verifyCodeHash], map: "debt_clearance_verify_code_hash_key", where: raw("(verify_code_hash IS NOT NULL)"))
+  @@index([unitId, createdAt(sort: Desc)], map: "debt_clearance_unit_id_idx")
+  @@index([tenantId, state], map: "debt_clearance_tenant_id_state_idx")
+  @@index([partyId], map: "debt_clearance_party_id_idx")
+  @@map("debt_clearance")
+  @@schema("juristic")
+}

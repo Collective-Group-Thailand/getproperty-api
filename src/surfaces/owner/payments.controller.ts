@@ -121,6 +121,7 @@ export function paymentDto(p: PaymentRow): PaymentDto {
       invoiceId: a.invoiceId,
       invoiceNumber: a.invoice.number,
       amount: m2(a.amount),
+      surchargeAmount: a.surchargeAmount.toFixed(2),
       reversedAt: isoOrNull(a.reversedAt),
     })),
     receipts: p.receipts.map((r) => ({
@@ -193,7 +194,13 @@ const PAYMENT_EXAMPLE: PaymentDto = {
   dismissedAt: null,
   dismissReason: null,
   allocations: [
-    { invoiceId: FAKE.uuid, invoiceNumber: 'INV-2026-00042', amount: '5344.00', reversedAt: null },
+    {
+      invoiceId: FAKE.uuid,
+      invoiceNumber: 'INV-2026-00042',
+      amount: '5344.00',
+      surchargeAmount: '0.00',
+      reversedAt: null,
+    },
   ],
   receipts: [{ id: FAKE.uuid, number: 'RCP-2026-00001', kind: 'payment' as ReceiptKindName, voided: false }],
   nextActions: ['reverse'],
@@ -320,8 +327,8 @@ export class OwnerPaymentsController {
     id: 'owner.payments.record',
     summary: 'Record a cash or transfer payment',
     description:
-      'Money received outside the QR flow: cash, or a transfer with its evidence (required). Allocated to the payer’s open invoices of the unit oldest first; beyond what is due becomes their credit; less than due needs `payments.allow_partial` (D-044). Audited; the receipt follows.',
-    implements: ['D-043', 'D-044', 'D-051'],
+      'Money received outside the QR flow: cash, or a transfer with its evidence (required). Allocated to the payer’s open invoices of the unit by `payments.allocation_policy` (`oldest_first` by default; `surcharge_first` pays every open late fee first, D-308); beyond what is due becomes their credit, used by the next invoice; less than due needs `payments.allow_partial` (D-044). A **juristic** tenant needs the evidence and a note of at least 5 characters for cash too (e.g. a transfer from abroad: sender bank, SWIFT reference — 422 `validation.failed`, D-325). Audited; the receipt follows.',
+    implements: ['D-043', 'D-044', 'D-051', 'D-308', 'D-325'],
   })
   @ApiJsonBody(ManualPaymentDto, {
     invoiceId: FAKE.uuid,
@@ -505,8 +512,8 @@ export class OwnerPaymentsController {
     id: 'owner.slipReviews.decide',
     summary: 'Approve or reject a slip',
     description:
-      'Approve: the payment of the slip amount (or the amount entered) is recorded and allocated — less than due needs `payments.allow_partial`; reject with a reason. Audited (D-043).',
-    implements: ['D-043', 'D-044'],
+      'Approve: the payment of the slip amount (or the amount entered) is recorded and allocated by `payments.allocation_policy` — less than due needs `payments.allow_partial`; reject with a reason. A slip whose bank reference already paid at another tenant is 409 `payment.duplicate_slip` (one transfer pays once on the platform, D-308). Audited (D-043).',
+    implements: ['D-043', 'D-044', 'D-308', 'D-325'],
   })
   @ApiJsonBody(SlipDecisionDto, { action: 'approve', amount: '5344.00' })
   @ApiSuccess(200, {
@@ -520,7 +527,13 @@ export class OwnerPaymentsController {
       imageUrl: null,
     },
   })
-  @ApiStandardErrors('slip.invalid_state', 'payment.partial_not_allowed', 'invoice.nothing_due', ...WRITE)
+  @ApiStandardErrors(
+    'slip.invalid_state',
+    'payment.duplicate_slip',
+    'payment.partial_not_allowed',
+    'invoice.nothing_due',
+    ...WRITE,
+  )
   async decide(
     @CurrentTenant() ctx: TenantContext,
     @Param('slipReviewId', ParseUUIDPipe) id: string,

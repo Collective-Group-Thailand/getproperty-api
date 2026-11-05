@@ -87,6 +87,12 @@ export const API_TAGS: Record<string, string> = {
     'Co-owner register of a juristic tenant: owners and shares, plot fields, ownership transfers with proration, bill-to parties (D-303, D-307, D-324).',
   'owner.juristicResolutions':
     'Meeting resolutions (AGM / EGM / committee): record, adopt, void, minutes (D-304, D-320).',
+  'owner.juristicPaymentPlans':
+    'Payment plans of a juristic tenant: proposals and resident requests, approval (owner / manager / committee), instalments, default and cancel (D-308, D-325).',
+  'owner.juristicDebtClearances':
+    'Debt clearance certificates (หนังสือรับรองการปลอดหนี้): issued only when nothing is outstanding, number DCL, verification QR (D-306, D-325).',
+  'owner.paymentMandates':
+    'Automatic payment mandates (direct debit / card, channel recurring; fake until O-020) set up by residents (D-308, D-325).',
   'owner.juristicBudgets':
     'Budgets per building and fiscal year, approval with a resolution, rate preview and budget_split rate drafts (D-304, D-324).',
   'owner.unitResidentInvites':
@@ -284,6 +290,8 @@ export const API_TAGS: Record<string, string> = {
     'Utility loss per billing period with suspects and trend (D-032); billed units from readings until B4.',
   'resident.usage':
     'My daily usage from the meters of my leased unit, or of a unit I live in without a lease (D-063, D-322).',
+  'resident.collections':
+    'My payment plans, debt clearance certificates and automatic payments for a unit I hold a role on (D-306, D-308, D-325).',
   'resident.units':
     'My units across tenants, my roles there and what the app may show for each (D-309, D-322).',
   'resident.unitInvitations':
@@ -296,6 +304,8 @@ export const API_TAGS: Record<string, string> = {
   'admin.ingest': 'Ingest dead letters (refused MQTT / HTTPS payloads) and replay (D-162).',
   'webhooks.placeholder':
     'PLACEHOLDER provider callback shape (payload, signature header, expected response); the real providers (payment QR, slip verification, LINE) arrive in B4.',
+  'webhooks.recurring':
+    'Signed callbacks of the recurring-payment provider (mandates and charges; fake until O-020), idempotent per event id (D-308, D-325).',
   'webhooks.payments':
     'Signed payment confirmations from KBank, SCB and Opn (O-001) for each landlord’s own merchant account (D-042, ADR-0008).',
   'owner.identityVerification':
@@ -334,6 +344,8 @@ export const API_TAGS: Record<string, string> = {
   'prospect.rentRecord': 'My rent record, shared with an enquiry or as a letter (D-256).',
   'prospect.contracts':
     'Contract documents I sign as a prospect (reservation): read and e-sign (D-062, D-294).',
+  'public.documents':
+    'Check a document issued through getproperty (debt clearance certificate) by its verification code — unit number and initials only (D-306).',
   'public.rentRecords': 'Check a rent record letter by its verification code (D-256).',
   'admin.guides': 'Guides of the public site: write, edit, review and publish (D-271).',
   'admin.contractLibrary': 'Platform contract drafts and their legal-review state (O-025, D-294).',

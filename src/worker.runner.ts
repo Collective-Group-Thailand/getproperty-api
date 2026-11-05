@@ -18,6 +18,7 @@ import { IntegrationDeliveryService } from '@modules/bridge-integrations/integra
 import { RentalHandoffsService } from '@modules/bridge-integrations/rental-handoffs.service';
 import { BillingCyclesService } from '@modules/ops-billing/billing-cycles.service';
 import { EtaxService } from '@modules/ops-etax/etax.service';
+import { PaymentPlansService } from '@modules/ops-juristic/payment-plans.service';
 import { LeaseRenewalsService } from '@modules/ops-leases/lease-renewals.service';
 import { LeasesService } from '@modules/ops-leases/leases.service';
 import { ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
@@ -115,6 +116,8 @@ export const MAINTENANCE_JOBS = {
   'sponsored-broadcasts': 60_000,
   // G9 (D-301): opted-in buildings share a fresh energy snapshot with getenergy every energy.insight.share_every_days
   'energy-insight': 86_400_000,
+  // J1.2a (D-325): payment plan instalments queued on their due month, paid with their invoice, plans defaulted
+  'payment-plans': 3_600_000,
   // D-252 / O-018: ownership evidence deleted after its retention
   'listing-evidence-purge': 3_600_000,
   // B7.3: viewing reminders (both sides) and the owner's nudge on unanswered enquiries; G7 self-viewing sweep
@@ -181,6 +184,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly relocation: RelocationService,
     private readonly sponsored: SponsoredCampaignsService,
     private readonly energyInsight: EnergyInsightService,
+    private readonly paymentPlans: PaymentPlansService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -338,6 +342,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'energy-insight':
         await this.energyInsight.run();
+        break;
+      case 'payment-plans':
+        await this.paymentPlans.maintain();
         break;
       case 'listing-evidence-purge':
         await this.listingModeration.purgeEvidence();

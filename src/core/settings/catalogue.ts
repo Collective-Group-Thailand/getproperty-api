@@ -232,6 +232,51 @@ export const SETTINGS: readonly SettingDef[] = [
     allowedValues: ['carry_to_buyer', 'refund_seller'],
   },
   {
+    key: 'juristic.plan_default_days',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      "D-308 / D-325 (J1.2a): a payment plan defaults when a billed instalment is still unpaid this many days after its invoice's due date — future instalments are cancelled, the rest of the principal is billed at once and the collections ladder resumes (J1.2b). Snapshot on the plan at approval.",
+    editableBy: OWNER_BILLING,
+    value: 30,
+    reason: 'seed: D-308 (pack J, J1.2a)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 180 ? [] : ['an integer 1–180'],
+  },
+  {
+    key: 'juristic.plan_max_instalments',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description: 'D-325 (J1.2a): the most monthly instalments a payment plan may have (2 at least).',
+    editableBy: OWNER_BILLING,
+    value: 12,
+    reason: 'seed: D-308 (pack J, J1.2a)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 2 && (v as number) <= 60 ? [] : ['an integer 2–60'],
+  },
+  {
+    key: 'juristic.debt_clearance.fee',
+    valueType: 'money',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-306 / D-325 (J1.2a, compliance.condo_act.debt_clearance ⚖ O-038): fee of a debt clearance certificate; 0.00 (default) = issued at once when nothing is outstanding, otherwise the fee is charged and the owner issues the certificate once it is paid.',
+    editableBy: OWNER_BILLING,
+    value: '0.00',
+    reason: 'seed: D-306 (pack J, J1.2a; conservative: no fee until set)',
+  },
+  {
+    key: 'juristic.debt_clearance.validity_days',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-306 / D-325 (J1.2a): days a debt clearance certificate stays valid from its issue (shown on the PDF and the public verification page).',
+    editableBy: OWNER_BILLING,
+    value: 30,
+    reason: 'seed: D-306 (pack J, J1.2a)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 365 ? [] : ['an integer 1–365'],
+  },
+  {
     key: 'juristic.auditor_max_days',
     valueType: 'int',
     scopeAllowed: ['platform', 'tenant'],
@@ -321,6 +366,29 @@ export const SETTINGS: readonly SettingDef[] = [
     editableBy: OWNER_BILLING,
     value: 72,
     reason: 'seed: D-220 (review #2)',
+  },
+  {
+    key: 'payments.allocation_policy',
+    valueType: 'string',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-308 / D-325 (J1.2a): how a payment is spread over the payer\'s open invoices — "oldest_first" (default: invoice by invoice by issue date, each one\'s surcharge first) or "surcharge_first" (every open late fee / surcharge first, then the principal, oldest first). What exceeds them is the payer\'s credit.',
+    editableBy: OWNER_BILLING,
+    value: 'oldest_first',
+    reason: 'seed: D-308 (pack J, J1.2a)',
+    allowedValues: ['oldest_first', 'surcharge_first'],
+  },
+  {
+    key: 'payments.slip_max_age_days',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      "D-325 (J1.2a): date window of a transfer slip — a slip dated more than this many days before its upload (or more than a day after it) is not confirmed automatically; it waits in the owner's review queue (reason date_out_of_window).",
+    editableBy: OWNER_BILLING,
+    value: 30,
+    reason: 'seed: D-325 (pack J, J1.2a)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 366 ? [] : ['an integer 1–366'],
   },
   // --- readings ---------------------------------------------------------------------------------------
   {

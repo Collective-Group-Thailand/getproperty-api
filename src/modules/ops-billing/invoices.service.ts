@@ -568,7 +568,13 @@ export class InvoicesService extends TenantScopedRepository {
     });
     // queued one-offs → applied; estimated lines → pending settlements; settlement lines → settled
     for (const l of fresh.lines) {
-      if (l.sourceId && (l.lineKind === 'one_off' || l.lineKind === 'late_fee' || l.lineKind === 'discount'))
+      if (
+        l.sourceId &&
+        (l.lineKind === 'one_off' ||
+          l.lineKind === 'late_fee' ||
+          l.lineKind === 'discount' ||
+          l.lineKind === 'plan_instalment')
+      )
         await tx.invoiceCharge.updateMany({
           where: { id: l.sourceId, status: 'pending' },
           data: { status: 'applied', appliedInvoiceLineId: l.id, updatedBy: by() },

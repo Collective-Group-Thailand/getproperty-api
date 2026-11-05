@@ -141,6 +141,21 @@ export class EnvironmentVariables {
   @IsIn(['off', 'fake'])
   GETBUILD_MODE?: 'off' | 'fake';
 
+  /**
+   * Recurring payments — direct debit / tokenised card (J1.2a, D-308, O-020): `off` (no provider chosen — setting up a
+   * mandate answers `recurring.unavailable`) or `fake` (tests and demos: in-memory mandates and charges, outcome on the
+   * signed webhook). Unset: `fake` with the in-memory fakes, else `off`.
+   */
+  @IsOptional()
+  @IsIn(['off', 'fake'])
+  RECURRING_PAYMENTS_MODE?: 'off' | 'fake';
+
+  /** Shared secret of the recurring-payment webhook (`X-Recurring-Signature`, hex HMAC-SHA256 of the raw body). */
+  @IsOptional()
+  @IsString()
+  @MinLength(16)
+  RECURRING_WEBHOOK_SECRET?: string;
+
   /** Graph API version of the real Facebook adapter (G4). */
   @IsOptional()
   @Matches(/^v\d{1,2}\.\d$/)

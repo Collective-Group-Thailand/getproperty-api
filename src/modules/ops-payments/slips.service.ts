@@ -3,12 +3,15 @@ import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
+import { AppConfig } from '@config/app-config';
 import { AuditService } from '@core/audit/audit.service';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { DocumentsService } from '@core/documents/documents.service';
 import { type DomainEventEnvelope, DomainEvents } from '@core/events/domain-events';
 import { type EventSubscriber, EventSubscriberRegistry } from '@core/events/subscribers';
+import { billedParty, registerNotifiable, tenantName } from '@core/notifications/notifiable-events';
 import { SettingsService } from '@core/settings/settings.service';
+import { isUniqueViolation } from '@database/pg-errors';
 import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
 import { type Prisma, type SlipStatus } from '@generated/prisma/client';
@@ -57,6 +60,7 @@ export class SlipsService extends TenantScopedRepository implements EventSubscri
     private readonly audit: AuditService,
     private readonly events: DomainEvents,
     private readonly registry: EventSubscriberRegistry,
+    private readonly config: AppConfig,
     @Inject(SLIP_VERIFIER) private readonly verifier: SlipVerifierPort,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
@@ -65,6 +69,20 @@ export class SlipsService extends TenantScopedRepository implements EventSubscri
 
   onModuleInit(): void {
     this.registry.register(this);
+    // D-308 / D-325: the resident hears that a reused transfer was refused (never which building used it)
+    registerNotifiable('slip.duplicate_rejected', async (tx, e) => {
+      const partyId = e.payload.partyId as string | undefined;
+      if (!partyId || !e.tenantId) return null;
+      return {
+        recipients: await billedParty(tx, partyId),
+        data: {
+          tenant: { name: await tenantName(tx, e.tenantId) },
+          invoice: { number: e.payload.invoiceNumber ?? '' },
+          link: `${this.config.get('PUBLIC_RESIDENT_APP_URL')}/invoices/${e.payload.invoiceId as string}`,
+        },
+        consentPurpose: 'resident.service' as const,
+      };
+    });
   }
 
   /**
@@ -169,6 +187,12 @@ export class SlipsService extends TenantScopedRepository implements EventSubscri
     const reasons: string[] = [];
     let duplicateOf: string | null = null;
     if (!v.valid) reasons.push('not_recognised');
+    // D-308 / D-325: one bank transfer pays once on the whole platform — a reference another tenant already holds
+    // refuses the slip at once (the resident is told; the other tenant, building and slip stay unknown)
+    if (v.transRef && (await this.referenceHolder(v.transRef, slip.id, slip.tenantId)) === 'other_tenant') {
+      await this.refuseDuplicate(tx, slip, v);
+      return;
+    }
     if (v.transRef) {
       const earlier = await tx.slipReview.findFirst({
         where: {
@@ -194,6 +218,8 @@ export class SlipsService extends TenantScopedRepository implements EventSubscri
         digits(a.accountNoMasked).slice(-4) === receiver.slice(-4),
     );
     if (v.valid && !receiverOk) reasons.push('receiver_mismatch');
+    if (v.valid && v.paidAt && !(await this.inDateWindow(slip.tenantId, v.paidAt, slip.uploadedAt)))
+      reasons.push('date_out_of_window');
     // serialised with every other confirmation of this payer × unit (review #3) before reading what is due
     await this.payments.lockPayer(tx, slip);
     const due = await this.payments.dueFor(tx, slip.invoice);
@@ -269,6 +295,86 @@ export class SlipsService extends TenantScopedRepository implements EventSubscri
     }
   }
 
+  /**
+   * D-308 / D-325: who holds a slip reference among the live slips (not duplicate / rejected) of the **whole
+   * platform**, relative to the asking tenant — `none`, `same_tenant` or `other_tenant`. Read as gp_platform in its
+   * own short transaction; only the category leaves this method (never the other tenant, building or slip). The
+   * platform-wide unique index `ops.slip_review_trans_ref_key` is the hard guarantee under races.
+   */
+  async referenceHolder(
+    transRef: string,
+    slipId: string,
+    tenantId: string,
+  ): Promise<'none' | 'same_tenant' | 'other_tenant'> {
+    const rows = await this.db.platform(
+      (tx) =>
+        tx.$queryRaw<{ tenant_id: string }[]>`
+        SELECT tenant_id FROM ops.slip_review
+         WHERE trans_ref = ${transRef} AND id <> ${slipId}::uuid
+           AND status NOT IN ('duplicate', 'rejected')`,
+    );
+    if (rows.some((r) => r.tenant_id !== tenantId)) return 'other_tenant';
+    return rows.length ? 'same_tenant' : 'none';
+  }
+
+  /** `payments.slip_max_age_days` (D-325): a slip dated too long before the upload, or after it, waits for review. */
+  private async inDateWindow(tenantId: string, paidAt: Date, uploadedAt: Date): Promise<boolean> {
+    const days = Number(
+      await this.settings.valueAt<number>('payments.slip_max_age_days', this.clock.now(), { tenantId }),
+    );
+    const age = uploadedAt.getTime() - paidAt.getTime();
+    return age <= days * 86_400_000 && age >= -86_400_000;
+  }
+
+  /** The slip's reference is already live at another tenant: rejected at once, the resident is told. */
+  private async refuseDuplicate(
+    tx: Tx,
+    slip: { id: string; tenantId: string; buildingId: string; invoiceId: string; payerPartyId: string },
+    v: SlipVerifyResult,
+  ): Promise<void> {
+    const receiver = digits(v.receiverAccount);
+    await tx.slipReview.update({
+      where: { id: slip.id },
+      data: {
+        status: 'rejected',
+        reasons: ['duplicate_reference_platform'],
+        rejectReason: 'payment.duplicate_slip',
+        reviewedAt: this.clock.now(),
+        verifier: this.verifier.provider,
+        verifyResult: v.raw as Prisma.InputJsonValue,
+        transRef: v.transRef,
+        amountDetected: v.amount,
+        receiverAccountMasked: receiver ? `xxx${receiver.slice(-4)}` : null,
+        receiverBankCode: v.receiverBankCode,
+        senderName: v.senderName,
+        slipDatetime: v.paidAt,
+        version: { increment: 1 },
+      },
+    });
+    await this.audit.record(tx, {
+      action: 'slip.duplicate_rejected',
+      tenantId: slip.tenantId,
+      buildingId: slip.buildingId,
+      subjectType: 'ops.slip_review',
+      subjectId: slip.id,
+      metadata: { reason: 'duplicate_reference_platform' },
+    });
+    const inv = await tx.invoice.findUnique({ where: { id: slip.invoiceId }, select: { number: true } });
+    await this.events.record(tx, {
+      type: 'slip.duplicate_rejected',
+      aggregateType: 'slip_review',
+      aggregateId: slip.id,
+      tenantId: slip.tenantId,
+      buildingId: slip.buildingId,
+      payload: {
+        slipReviewId: slip.id,
+        invoiceId: slip.invoiceId,
+        invoiceNumber: inv?.number ?? null,
+        partyId: slip.payerPartyId,
+      },
+    });
+  }
+
   // ------------------------------------------------------------------------------------------- owner queue
 
   private async load(tx: Tx, ctx: TenantContext, id: string): Promise<SlipRow> {
@@ -311,6 +417,21 @@ export class SlipsService extends TenantScopedRepository implements EventSubscri
     id: string,
     input: { action: 'approve' | 'reject'; amount?: string | null; reason?: string | null },
   ): Promise<SlipRow> {
+    try {
+      await this.decideIn(ctx, id, input);
+    } catch (error) {
+      // the platform-wide unique reference (D-308) under a race: another tenant's slip won
+      if (isUniqueViolation(error)) throw new DomainException('payment.duplicate_slip');
+      throw error;
+    }
+    return this.get(ctx, id);
+  }
+
+  private async decideIn(
+    ctx: TenantContext,
+    id: string,
+    input: { action: 'approve' | 'reject'; amount?: string | null; reason?: string | null },
+  ): Promise<void> {
     await this.db.tenant(ctx, async (tx) => {
       await tx.$queryRaw`SELECT id FROM ops.slip_review WHERE id = ${id}::uuid FOR UPDATE`;
       const slip = await this.load(tx, ctx, id);
@@ -341,6 +462,12 @@ export class SlipsService extends TenantScopedRepository implements EventSubscri
               { path: 'amount', code: 'required', message: 'the slip amount could not be read: enter it' },
             ],
           });
+        // one bank transfer pays once on the platform (D-308): held by another tenant → 409 payment.duplicate_slip
+        if (
+          slip.transRef &&
+          (await this.referenceHolder(slip.transRef, slip.id, slip.tenantId)) === 'other_tenant'
+        )
+          throw new DomainException('payment.duplicate_slip');
         // one bank transfer pays once: a duplicate is approvable only after the earlier slip was rejected
         if (slip.transRef) {
           const standing = await tx.slipReview.findFirst({
@@ -407,7 +534,6 @@ export class SlipsService extends TenantScopedRepository implements EventSubscri
         payload: { slipReviewId: id, action: input.action, invoiceId: slip.invoiceId },
       });
     });
-    return this.get(ctx, id);
   }
 
   /** A signed link to the slip image (owner review). */

@@ -84,6 +84,12 @@ import { FakePdfRenderer } from './pdf/fake-pdf-renderer';
 import { PDF_RENDERER, type PdfRendererPort } from './pdf/pdf-renderer.port';
 import { PuppeteerPdfRenderer } from './pdf/puppeteer-pdf-renderer';
 import { BullmqPdfRenderTransport, QueuePdfRenderer } from './pdf/queue-pdf-renderer';
+import { FAKE_RECURRING_SECRET, FakeRecurringPayments } from './recurring-payments/fake-recurring-payments';
+import {
+  RECURRING_PAYMENTS,
+  type RecurringPaymentsPort,
+  UnconfiguredRecurringPayments,
+} from './recurring-payments/recurring-payments.port';
 import { FakeSms } from './sms/fake-sms';
 import { SMS, type SmsPort } from './sms/sms.port';
 import { ThaiBulkSmsAdapter } from './sms/thaibulksms.adapter';
@@ -405,6 +411,18 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
       },
     },
     {
+      // J1.2a (D-308, O-020): direct debit / tokenised card — fake until a provider is chosen
+      provide: RECURRING_PAYMENTS,
+      inject: [AppConfig],
+      useFactory: (config: AppConfig): RecurringPaymentsPort =>
+        (config.get('RECURRING_PAYMENTS_MODE') ?? (config.useFakes ? 'fake' : 'off')) === 'fake'
+          ? new FakeRecurringPayments(
+              config.get('PUBLIC_API_BASE_URL'),
+              config.get('RECURRING_WEBHOOK_SECRET') ?? FAKE_RECURRING_SECRET,
+            )
+          : new UnconfiguredRecurringPayments(),
+    },
+    {
       // G8 / D-299 / O-033: getbuild unit facts + invitation delivery — off in production until the API is agreed
       provide: GETBUILD_HANDOFF,
       inject: [AppConfig],
@@ -463,6 +481,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
     LISTING_WRITER,
     FACEBOOK_PAGES,
     GETBUILD_HANDOFF,
+    RECURRING_PAYMENTS,
     FIREBASE_VERIFIER,
     EMAIL,
     WEB_PUSH,

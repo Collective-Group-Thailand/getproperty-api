@@ -121,7 +121,18 @@ describe('B4.4 payment enums equal the database enums of migration 0022', () => 
   const pgEnum = (name: string): string[] => {
     const m = new RegExp(`CREATE TYPE ops\\.${name} AS ENUM \\(([^;]+)\\);`).exec(sql);
     if (!m) throw new Error(`enum ${name} not found`);
-    return [...m[1]!.matchAll(/'([a-z0-9_]+)'/g)].map((x) => x[1]!).sort();
+    // values added later (J1.2a 0072: payment_method recurring)
+    const later = readFileSync(
+      join(
+        __dirname,
+        '../../../prisma/migrations/20261105000072_0072_payments_plans_clearance/migration.sql',
+      ),
+      'utf8',
+    );
+    const added = [
+      ...later.matchAll(new RegExp(`ALTER TYPE ops\\.${name} ADD VALUE IF NOT EXISTS '([a-z0-9_]+)'`, 'g')),
+    ].map((x) => x[1]!);
+    return [...[...m[1]!.matchAll(/'([a-z0-9_]+)'/g)].map((x) => x[1]!), ...added].sort();
   };
   it.each([
     ['payment_status', PaymentStatusName],

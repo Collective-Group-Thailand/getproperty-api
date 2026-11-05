@@ -7,6 +7,7 @@ import { EkycWebhooksController } from '../shared/identity-verification.controll
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import { IntegrationWebhooksController } from './integration-webhooks.controller';
+import { RecurringWebhooksController } from './recurring-webhooks.controller';
 
 /** `/webhooks/*` (contract §2): signature-verified callbacks, no token — payment providers (B4.4), Collective products (D-238). */
 @Module({
@@ -17,6 +18,7 @@ import { IntegrationWebhooksController } from './integration-webhooks.controller
     IntegrationWebhooksController,
     LineWebhooksController,
     EkycWebhooksController,
+    RecurringWebhooksController,
   ],
 })
 export class WebhooksModule {}

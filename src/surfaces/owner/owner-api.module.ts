@@ -65,6 +65,11 @@ import {
   OwnerJuristicRegisterController,
   OwnerJuristicResolutionsController,
 } from './juristic.controller';
+import {
+  OwnerDebtClearancesController,
+  OwnerPaymentMandatesController,
+  OwnerPaymentPlansController,
+} from './juristic-collections.controller';
 import { OwnerLeaseStampDutyController, OwnerUnitDocumentsController } from './landlord-documents.controller';
 import { OwnerLeadsController } from './leads.controller';
 import { OwnerLeaseNoticesController } from './lease-notices.controller';
@@ -181,6 +186,9 @@ import { OwnerUnitResidentInvitesController } from './unit-resident-invites.cont
     OwnerJuristicRegisterController,
     OwnerJuristicResolutionsController,
     OwnerJuristicBudgetsController,
+    OwnerPaymentPlansController,
+    OwnerDebtClearancesController,
+    OwnerPaymentMandatesController,
     OwnerPortfolioController,
     OwnerListingsController,
     OwnerMandatesController,
