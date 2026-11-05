@@ -136,7 +136,7 @@ export class GuardAuthController {
         ...TOKEN_PAIR_EXAMPLE.subject,
         audience: TokenAudience.Guard,
         roles: ['guard'],
-        permissions: ['gate.visit.record'],
+        permissions: ['gate.visit.record', 'gate.open', 'gate.incident.respond'],
         scopes: [`tenant:${FAKE.tenantId}`, `gate:${FAKE.uuid}`],
       },
     },

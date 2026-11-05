@@ -1,5 +1,6 @@
 import { systemActor } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
+import { bangkokDate } from '@common/time/bangkok';
 import { AuditService } from '@core/audit/audit.service';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { DocumentsService } from '@core/documents/documents.service';
@@ -7,6 +8,8 @@ import { DomainEvents } from '@core/events/domain-events';
 import { SettingsService } from '@core/settings/settings.service';
 import { TenantTx } from '@database/tenant-tx';
 import { Inject, Injectable, Logger } from '@nestjs/common';
+
+import { unitResidentUserIds } from './gate-residents';
 
 export interface GateRetentionReport {
   tenantId: string;
@@ -16,6 +19,10 @@ export interface GateRetentionReport {
   invites: number;
   vehicles: number;
   blacklist: number;
+  /** J4.2 (D-328): plate reads deleted, registered cars deleted after removal, cars removed because their owner left. */
+  detections: number;
+  residentVehicles: number;
+  vehiclesLeft: number;
 }
 
 const BATCH = 500;
@@ -46,16 +53,55 @@ export class GateRetentionService {
         (tx) =>
           tx.$queryRaw<{ tenant_id: string }[]>`
           SELECT tenant_id FROM smart.visit UNION SELECT tenant_id FROM smart.visit_invite
-          UNION SELECT tenant_id FROM smart.remembered_vehicle UNION SELECT tenant_id FROM smart.gate_blacklist`,
+          UNION SELECT tenant_id FROM smart.remembered_vehicle UNION SELECT tenant_id FROM smart.gate_blacklist
+          UNION SELECT tenant_id FROM smart.plate_detection UNION SELECT tenant_id FROM smart.resident_vehicle`,
       );
       const out: GateRetentionReport[] = [];
       for (const { tenant_id: tenantId } of tenants) {
         const days = await this.settings.valueAt<number>('gate.retention_days', now, { tenantId });
         const cutoff = new Date(now.getTime() - days * 86_400_000);
-        out.push(await this.purgeTenant(tenantId, cutoff));
+        const left = await this.removeLeftVehicles(tenantId, now);
+        out.push({ ...(await this.purgeTenant(tenantId, cutoff)), vehiclesLeft: left });
       }
       return out;
     });
+  }
+
+  /**
+   * J4.2 (D-328, PDPA): a registered car whose registering login no longer holds a gate role on its unit (moved out,
+   * sold) is removed (reason `resident_left`) — it no longer opens the barrier or enters by LPR.
+   */
+  async removeLeftVehicles(tenantId: string, now: Date): Promise<number> {
+    const today = bangkokDate(now);
+    const live = await this.db.platform((tx) =>
+      tx.residentVehicle.findMany({ where: { tenantId, removedAt: null }, take: 5000 }),
+    );
+    const byUnit = new Map<string, string[]>();
+    let removed = 0;
+    for (const v of live) {
+      let users = byUnit.get(v.unitId);
+      if (!users) {
+        users = await this.db.platform((tx) => unitResidentUserIds(tx, v.unitId, today));
+        byUnit.set(v.unitId, users);
+      }
+      if (users.includes(v.registeredByUserId)) continue;
+      await this.db.platform(async (tx) => {
+        const moved = await tx.residentVehicle.updateMany({
+          where: { id: v.id, removedAt: null },
+          data: { removedAt: now, removeReason: 'resident_left', updatedAt: now },
+        });
+        if (moved.count !== 1) return;
+        removed += 1;
+        await this.audit.record(tx, {
+          action: 'gate.resident_vehicle_removed',
+          tenantId,
+          subjectType: 'smart.resident_vehicle',
+          subjectId: v.id,
+          metadata: { unitId: v.unitId, reason: 'resident_left' },
+        });
+      });
+    }
+    return removed;
   }
 
   async purgeTenant(tenantId: string, cutoff: Date): Promise<GateRetentionReport> {
@@ -67,6 +113,9 @@ export class GateRetentionService {
       invites: 0,
       vehicles: 0,
       blacklist: 0,
+      detections: 0,
+      residentVehicles: 0,
+      vehiclesLeft: 0,
     };
     for (;;) {
       const batch = await this.db.platform((tx) =>
@@ -112,7 +161,19 @@ export class GateRetentionService {
       report.blacklist = (
         await tx.gateBlacklist.deleteMany({ where: { tenantId, revokedAt: { lt: cutoff } } })
       ).count;
-      const total = report.visits + report.invites + report.vehicles + report.blacklist;
+      report.detections = (
+        await tx.plateDetection.deleteMany({ where: { tenantId, receivedAt: { lt: cutoff } } })
+      ).count;
+      report.residentVehicles = (
+        await tx.residentVehicle.deleteMany({ where: { tenantId, removedAt: { lt: cutoff } } })
+      ).count;
+      const total =
+        report.visits +
+        report.invites +
+        report.vehicles +
+        report.blacklist +
+        report.detections +
+        report.residentVehicles;
       if (!total) return;
       await this.audit.record(tx, {
         action: 'gate.retention_purged',
@@ -129,7 +190,7 @@ export class GateRetentionService {
         payload: { ...report },
       });
     });
-    if (report.visits || report.invites || report.vehicles || report.blacklist)
+    if (report.visits || report.invites || report.vehicles || report.blacklist || report.detections)
       this.logger.log(
         `gate retention ${tenantId}: ${report.visits} visits, ${report.photos} photos, ${report.invites} invites, ${report.vehicles} vehicles, ${report.blacklist} blacklist`,
       );

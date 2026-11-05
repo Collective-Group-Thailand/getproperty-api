@@ -451,6 +451,29 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     description: 'Record visits, scan invites, stamp entries and exits on a gate tablet (guard, D-320)',
     surfaces: ['guard'],
   },
+  // J4.2 barrier, LPR, SOS (D-316, D-317, D-328)
+  {
+    key: 'gate.open',
+    description: 'Open the barrier of the gate of the shift, claim LPR reads (guard, D-316, D-328)',
+    surfaces: ['guard'],
+  },
+  {
+    key: 'gate.incident.respond',
+    description:
+      'See SOS / incidents of the estate on the gate tablet, raise, acknowledge and resolve them (guard, D-317)',
+    surfaces: ['guard'],
+  },
+  {
+    key: 'gate.incident.read',
+    description:
+      'Read the incident log of the estate — every read needs a reason and is audited (D-317, D-328)',
+    surfaces: ['owner', 'staff'],
+  },
+  {
+    key: 'gate.incident.manage',
+    description: 'Acknowledge and resolve SOS / incidents from the console (D-317, D-328)',
+    surfaces: ['owner', 'staff'],
+  },
   {
     key: 'admin.tenant.manage',
     description: 'Create, onboard, deactivate tenants (D-161)',
@@ -603,7 +626,7 @@ const JURISTIC_READ = [
 ];
 
 /** D-320 (J4.1): the guard records visits at the gate — nothing else. */
-const GUARD = ['gate.visit.record'];
+const GUARD = ['gate.visit.record', 'gate.open', 'gate.incident.respond'];
 
 /** Role → permission keys (D-090). */
 export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
@@ -635,6 +658,8 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'juristic.register.read',
     'juristic.collections.read',
     'gate.read',
+    'gate.incident.read',
+    'gate.incident.manage',
   ],
   accountant: [
     'tenant.read',
@@ -669,6 +694,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'gate.read',
     'gate.log.read',
     'gate.invite.approve',
+    'gate.incident.read',
   ],
   guard: GUARD,
   auditor: [...JURISTIC_READ, 'deposit.read', 'reading.read', 'tenant.audit.read'],

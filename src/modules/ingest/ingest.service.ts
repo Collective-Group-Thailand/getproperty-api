@@ -3,9 +3,10 @@ import { validateAs } from '@common/validation/validation';
 import { Injectable, Logger, type Type } from '@nestjs/common';
 
 import { CommandAck } from './protocol/command.dto';
-import { MeterHealthStatus } from './protocol/enums';
+import { DeviceEventType, MeterHealthStatus } from './protocol/enums';
 import { DeviceEvent } from './protocol/events.dto';
 import { MAX_READINGS_PER_BATCH } from './protocol/formats';
+import { GateStateData, PlateDetectedData } from './protocol/gate.dto';
 import { Health, isLwtPayload } from './protocol/health.dto';
 import { TelemetryBatch } from './protocol/telemetry.dto';
 
@@ -18,6 +19,12 @@ const PAYLOAD_BY_KIND: Record<IngestTopicKind, Type<object>> = {
   health: Health,
   events: DeviceEvent,
   'cmd/ack': CommandAck,
+};
+
+/** 1.3 (D-328): event types whose `data` is validated against its own schema. */
+const EVENT_DATA_TYPES: Partial<Record<DeviceEventType, Type<object>>> = {
+  [DeviceEventType.GateState]: GateStateData,
+  [DeviceEventType.PlateDetected]: PlateDetectedData,
 };
 
 const TOPIC = /^gp\/v1\/([0-9a-f-]{36})\/(telemetry|health|events|cmd\/ack)$/i;
@@ -90,6 +97,23 @@ export class IngestService {
           ? error.errors?.map((e) => `${e.path}:${e.code}`).join(',')
           : undefined;
       return this.reject('invalid_payload', topic, detail);
+    }
+
+    // 1.3 (D-328): the `data` of gate events has its own schema; it is replaced by the validated instance
+    if (parsed.kind === 'events') {
+      const event = instance as DeviceEvent;
+      const dataType = EVENT_DATA_TYPES[event.type];
+      if (dataType) {
+        try {
+          event.data = (await validateAs(dataType, event.data ?? {})) as unknown as Record<string, unknown>;
+        } catch (error) {
+          const detail =
+            error instanceof DomainException
+              ? error.errors?.map((e) => `data.${e.path}:${e.code}`).join(',')
+              : undefined;
+          return this.reject('invalid_payload', topic, detail);
+        }
+      }
     }
 
     const bodyGateway = (instance as { gatewayId?: string }).gatewayId;

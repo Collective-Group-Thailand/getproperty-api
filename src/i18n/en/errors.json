@@ -1653,6 +1653,34 @@
     "blacklist_exists": {
       "title": "Plate already listed",
       "detail": "This plate is already on the estate blacklist."
+    },
+    "no_barrier": {
+      "title": "No barrier at this gate",
+      "detail": "This gate has no connected barrier. Open it by hand."
+    },
+    "open_rate_limited": {
+      "title": "Barrier just opened",
+      "detail": "The barrier of this gate was opened a moment ago. Try again in a few seconds."
+    },
+    "resident_open_disabled": {
+      "title": "Opening from LINE is off",
+      "detail": "The estate does not let residents open the barrier from LINE. Ask the guard."
+    },
+    "geofence_unavailable": {
+      "title": "Location check not possible",
+      "detail": "The estate has no location on file, so opening from your phone is not possible. Ask the office."
+    },
+    "outside_geofence": {
+      "title": "Too far from the gate",
+      "detail": "You can open the barrier only when you are near the estate."
+    },
+    "edge_device_invalid": {
+      "title": "Gateway cannot drive this gate",
+      "detail": "Choose a provisioned getproperty gateway of a building of this estate."
+    },
+    "channel_taken": {
+      "title": "Channel already in use",
+      "detail": "Another barrier or camera already uses this channel of the gateway."
     }
   },
   "visit": {
@@ -1693,6 +1721,26 @@
     "window_too_long": {
       "title": "Window too long",
       "detail": "The invite window is longer than the estate allows."
+    }
+  },
+  "plate_detection": {
+    "invalid_state": {
+      "title": "Plate read already handled",
+      "detail": "Another guard claimed or dismissed this read, or it expired."
+    }
+  },
+  "incident": {
+    "invalid_state": {
+      "title": "Not possible now",
+      "detail": "This incident cannot change like this in its current state."
+    },
+    "cancel_window_passed": {
+      "title": "Too late to cancel",
+      "detail": "The guard and the office were already alerted. Call the gate if it was a mistake."
+    },
+    "rate_limited": {
+      "title": "Too many SOS",
+      "detail": "You sent several SOS within an hour. Call the gate or emergency services directly."
     }
   }
 }

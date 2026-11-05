@@ -3,5 +3,6 @@ export * from './config.dto';
 export * from './enums';
 export * from './events.dto';
 export * from './formats';
+export * from './gate.dto';
 export * from './health.dto';
 export * from './telemetry.dto';

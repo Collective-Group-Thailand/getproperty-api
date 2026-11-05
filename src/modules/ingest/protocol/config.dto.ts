@@ -36,6 +36,7 @@ import {
   SCALE_PATTERN,
   SCALE_PATTERN_SOURCE,
 } from './formats';
+import { GateDeviceConfig } from './gate.dto';
 
 const BAUD_RATES = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200] as const;
 
@@ -244,4 +245,15 @@ export class GatewayConfig {
   @ValidateNested({ each: true })
   @Type(() => MeterConfig)
   meters!: MeterConfig[];
+
+  @JSONSchema({
+    description:
+      '1.3 (D-328): barrier relays and LPR cameras this gateway drives; absent for a meter-only gateway (its config is unchanged).',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(32)
+  @ValidateNested({ each: true })
+  @Type(() => GateDeviceConfig)
+  gateDevices?: GateDeviceConfig[];
 }

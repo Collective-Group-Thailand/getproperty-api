@@ -56,6 +56,19 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     ],
   },
   {
+    key: 'gate.incident.raised',
+    description:
+      'Owner / manager / staff / committee: SOS from a resident or the gate tablet — urgent, quiet hours never hold it (J4.2, D-317, D-328)',
+    th: [
+      'SOS {{incident.kindTh}} — {{incident.where}}',
+      'แจ้งเหตุฉุกเฉิน ({{incident.kindTh}}) ที่ {{incident.where}} โครงการ {{incident.property}} หมายเหตุ: {{incident.note}} รปภ. ได้รับแจ้งที่ป้อมแล้ว ตรวจสอบที่เมนูป้อมและผู้มาติดต่อ',
+    ],
+    en: [
+      'SOS {{incident.kindEn}} — {{incident.where}}',
+      'Emergency ({{incident.kindEn}}) at {{incident.where}}, {{incident.property}}. Note: {{incident.note}}. The gate has been alerted. See Gate & visitors.',
+    ],
+  },
+  {
     key: 'gate.invite.approval_required',
     description:
       'Owner / manager / committee: a resident invited a contractor; the invite waits for approval (J4.1, D-315)',
@@ -637,26 +650,29 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
 
 /** Operator audiences per event: workflow → owner + manager; device/meter health → owner + manager + staff. */
 const operatorAudiences = (key: string): string[] =>
-  key.startsWith('workflow.') ||
-  key.startsWith('gate.') ||
-  key.startsWith('juristic.collection.') ||
-  key === 'billing_cycle.computed' ||
-  key === 'slip.review_requested' ||
-  key === 'payment.held'
-    ? ['owner', 'manager']
-    : key.startsWith('meter.') ||
-        key.startsWith('device.') ||
-        key === 'billing_cycle.readings_requested' ||
-        key === 'reading.requested' ||
-        key === 'service_request.created' ||
-        key === 'work_order.assigned' ||
-        key.startsWith('listing.self_viewing_')
-      ? ['owner', 'manager', 'staff']
-      : key === 'foreign_stay.due'
-        ? ['owner', 'manager']
-        : key.startsWith('etax.')
-          ? ['owner', 'accountant']
-          : ['owner'];
+  // J4.2 (D-317): an SOS reaches the staff on duty as well
+  key.startsWith('gate.incident.')
+    ? ['owner', 'manager', 'staff']
+    : key.startsWith('workflow.') ||
+        key.startsWith('gate.') ||
+        key.startsWith('juristic.collection.') ||
+        key === 'billing_cycle.computed' ||
+        key === 'slip.review_requested' ||
+        key === 'payment.held'
+      ? ['owner', 'manager']
+      : key.startsWith('meter.') ||
+          key.startsWith('device.') ||
+          key === 'billing_cycle.readings_requested' ||
+          key === 'reading.requested' ||
+          key === 'service_request.created' ||
+          key === 'work_order.assigned' ||
+          key.startsWith('listing.self_viewing_')
+        ? ['owner', 'manager', 'staff']
+        : key === 'foreign_stay.due'
+          ? ['owner', 'manager']
+          : key.startsWith('etax.')
+            ? ['owner', 'accountant']
+            : ['owner'];
 
 const operatorTemplates = (): TemplateSeed[] =>
   OPERATOR_EVENTS.flatMap((e) =>
@@ -870,6 +886,24 @@ const RESIDENT_J_EVENTS: {
 /** J4.1 (D-315, D-327): the household at the gate (LINE; the visit question as Flex with approve / call me / deny). */
 const GATE_RESIDENT_TEMPLATES: TemplateSeed[] = [
   {
+    key: 'gate.incident.acknowledged',
+    channel: 'line',
+    audience: 'resident',
+    description: 'My SOS was received by the guard or the office (J4.2, D-317, D-328) — urgent',
+    versions: [
+      {
+        language: 'th',
+        subject: null,
+        body: '{{incident.byTh}} รับเรื่องแจ้งเหตุ ({{incident.kindTh}}) ของบ้าน / ห้อง {{incident.unitNo}} แล้ว กำลังดำเนินการ\n{{link}}',
+      },
+      {
+        language: 'en',
+        subject: null,
+        body: '{{incident.byEn}} received your SOS ({{incident.kindEn}}) for unit {{incident.unitNo}} and is on it.\n{{link}}',
+      },
+    ],
+  },
+  {
     key: 'gate.visit.requested',
     channel: 'line',
     audience: 'resident',
@@ -1011,6 +1045,7 @@ export const NOTIFICATION_ROUTES: {
         urgent:
           e.key === 'tenant.bank_account.changed' ||
           e.key === 'support_grant.requested' ||
+          e.key === 'gate.incident.raised' ||
           e.key.startsWith('listing.self_viewing_'),
       })),
     ),
@@ -1059,7 +1094,7 @@ export const NOTIFICATION_ROUTES: {
     eventType: t.key,
     audience: 'resident',
     channel: 'line',
-    urgent: t.key === 'gate.visit.requested',
+    urgent: t.key === 'gate.visit.requested' || t.key === 'gate.incident.acknowledged',
   })),
   // J1.2a (D-325): LINE and e-mail by default; the SMS templates exist for tenants that route them (cost per message)
   ...RESIDENT_J_EVENTS.flatMap((e) =>

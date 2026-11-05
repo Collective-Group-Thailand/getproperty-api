@@ -18,6 +18,7 @@ import {
   type GateDto,
   type GateGuardDto,
   type GateGuardStateName,
+  type GateHwStateName,
   type GateKindName,
   type GatePolicyActionName,
   type GateStateName,
@@ -135,6 +136,11 @@ export function deviceDto(d: GateDevice): GateDeviceDto {
     enrolledAt: isoOrNull(d.enrolledAt),
     lastSeenAt: isoOrNull(d.lastSeenAt),
     revokedAt: isoOrNull(d.revokedAt),
+    edgeDeviceId: d.edgeDeviceId ?? null,
+    channel: d.channel ?? null,
+    pulseMs: d.pulseMs ?? null,
+    hwState: (d.hwState as GateHwStateName | null) ?? null,
+    hwStateAt: isoOrNull(d.hwStateAt),
   };
 }
 

@@ -1,7 +1,8 @@
-# getproperty Device Protocol (v1, revision 1.2) — MQTT between `getproperty-edge` and `getproperty-api`
+# getproperty Device Protocol (v1, revision 1.3) — MQTT between `getproperty-edge` and `getproperty-api`
 
 > Owned by `getproperty-api`; identical copy in `getproperty-edge/docs/contract/device-protocol.md`. JSON Schemas of every payload are generated into `contract/device-protocol.json` by `pnpm contract:build` (from the same DTO classes the MQTT ingest worker validates with). Implements D-130, D-131, D-030, D-033, D-034.
 > **Schema mapping (schema-design v2, D-151/D-152):** `gatewayId` and `meterId` are `smart.device` ids (a meter device is linked to its `core.asset_item` once installed, and to a unit or common area through `core.meter_assignment`); `roomCode` is a display label only — it carries `core.unit.unit_no` or the meter assignment's `code` for common areas, and keeps its wire name until a coordinated protocol change with `getproperty-edge`. Accepted readings land in `smart.telemetry_point` (insight) and `smart.meter_reading` (billing, D-030); dedup is `(gatewayId, seqEpoch, meterId, seq)` since protocol 1.1 (D-143, D-227).
+> **Protocol 1.3 (2026-11-05, D-328, pack J step J4.2 — additive, no new topic or ACL entry):** gate hardware on getproperty-edge. Command type **`gate.open`** on `…/cmd` (`args` = `GateOpenArgs`), event types **`gate.state`** (`data` = `GateStateData`) and **`plate.detected`** (`data` = `PlateDetectedData`) on `…/events`, and `GatewayConfig.gateDevices` (only for a gateway that drives a barrier or LPR camera — a meter-only gateway's config is byte-identical). `contract/device-protocol.json` adds `x-command-args` / `x-event-data` (type → `$defs` name). Meter agents before 1.3 never receive a `gate.open` (they drive no gate device) and never publish the new events.
 > **Protocol 1.2, amended 2026-10-22 (D-249, edge CR-015 — additive HTTP field, revision unchanged):** every `POST /v1/device/token` answer also carries the gateway's **current** MQTT endpoints `mqtt { url, wsUrl? }` (same rule as the bootstrap answer: `wsUrl` only while the platform admin has this gateway's WebSocket fallback on and the platform publishes one). The agent re-reads them on every refresh, so a fallback switched on or off reaches an already-provisioned gateway within one token lifetime, without a new provisioning code. MQTT payloads and `$defs` are unchanged, hence still revision 1.2. Meter status changes stay derived by the api from `Health.meters[]` (T-13); gateways do not send `meter_status_changed` (edge CR-016).
 > **Protocol 1.2 (2026-10-22, D-235, D-239, D-244 — additive for payloads):** the MQTT **password is a device JWT** of the gateway (`POST /v1/device/token`, ≤ 1 h), fetched before every (re)connect — on 8883 together with the client certificate (required while the platform setting `mqtt.authn.require_device_jwt` is on, the default; agents before 1.2 send none and are refused then), on the WebSocket fallback alone; a gateway publishes only its **four explicit topics** (`telemetry`, `health`, `events`, `cmd/ack`) — the former `gp/v1/<id>/+` grant is gone; the bootstrap answer carries `mqtt.password = "device_jwt"` and `mqtt.wsUrl` only for a gateway whose WebSocket fallback the platform admin enabled. `contract/device-protocol.json`: `x-protocol-version`, `x-mqtt-auth`, `x-acl`.
 > **Protocol 1.1 (2026-10-21, D-227, release review #4 — additive):** `TelemetryBatch.seqEpoch` (optional, `^[A-Za-z0-9-]{8,64}$`): the id of the gateway's sequence space, created by the agent together with its state database. A batch without it (agents before 1.1) belongs to the epoch `-` of its gateway.
@@ -34,9 +35,9 @@ Every `deny` of a gateway is audited (`mqtt.authn_denied` / `mqtt.authz_denied`)
 |---|---|---|---|---|
 | `gp/v1/<gatewayId>/telemetry` | gateway → cloud | 1 | no | `TelemetryBatch` |
 | `gp/v1/<gatewayId>/health` | gateway → cloud | 1 | no | `Health` every 60 s |
-| `gp/v1/<gatewayId>/events` | gateway → cloud | 1 | no | `DeviceEvent` (meter_offline, pulse_overflow, config_applied, config_rejected, ota_*, tamper, power_loss, restart) |
+| `gp/v1/<gatewayId>/events` | gateway → cloud | 1 | no | `DeviceEvent` (meter_offline, pulse_overflow, config_applied, config_rejected, ota_*, tamper, power_loss, restart; 1.3: gate.state, plate.detected) |
 | `gp/v1/<gatewayId>/config` | cloud → gateway | 1 | **yes** | `GatewayConfig` (full document, versioned) |
-| `gp/v1/<gatewayId>/cmd` | cloud → gateway | 1 | no | `Command` (read_now, restart, ota_apply, upload_logs, set_log_level, identify) |
+| `gp/v1/<gatewayId>/cmd` | cloud → gateway | 1 | no | `Command` (read_now, restart, ota_apply, upload_logs, set_log_level, identify; 1.3: gate.open) |
 | `gp/v1/<gatewayId>/cmd/ack` | gateway → cloud | 1 | no | `CommandAck` |
 | LWT: `gp/v1/<gatewayId>/health` | broker | 1 | no | `{ "status": "offline_lwt" }` |
 
@@ -70,6 +71,27 @@ Every `deny` of a gateway is audited (`mqtt.authn_denied` / `mqtt.authz_denied`)
 { "cmdId": "uuid", "status": "done", "result": {}, "error": null, "finishedAt": "..." }      // accepted | done | failed
 ```
 
+```jsonc
+// 1.3 (D-328) — gate hardware
+// GatewayConfig.gateDevices (only when the gateway drives gate hardware)
+"gateDevices": [ { "deviceId": "uuid", "gateId": "uuid", "kind": "barrier", "channel": "relay-1", "pulseMs": 800 },
+                 { "deviceId": "uuid", "gateId": "uuid", "kind": "lpr", "channel": "cam:entry" } ]
+// Command gate.open (cloud → gateway)
+{ "cmdId": "uuid", "type": "gate.open", "issuedAt": "2026-11-05T18:00:00+07:00", "ttlS": 30,
+  "args": { "commandId": "uuid (= cmdId)", "gateId": "uuid", "deviceId": "uuid (the barrier)",
+            "reason": "visit",            // visit | resident | delivery | service | emergency | other | lpr_known_plate | resident_app
+            "visitId": "uuid",            // optional
+            "pulseMs": 800,               // 200–10000
+            "expiresAt": "2026-11-05T18:00:30+07:00" } }
+// DeviceEvent gate.state (gateway → cloud)
+{ "eventId": "uuid", "gatewayId": "uuid", "type": "gate.state", "severity": "info", "occurredAt": "…",
+  "data": { "gateId": "uuid", "deviceId": "uuid", "state": "open", "at": "…", "commandId": "uuid" } }   // open | closed | fault; deviceId optional with one barrier
+// DeviceEvent plate.detected (gateway → cloud)
+{ "eventId": "uuid", "gatewayId": "uuid", "type": "plate.detected", "severity": "info", "occurredAt": "…",
+  "data": { "gateId": "uuid", "deviceId": "uuid", "plate": { "category": "1กข", "number": "0000", "province": "กรุงเทพมหานคร" },
+            "confidence": 0.94, "at": "…", "imageRef": "snap/183000-1.jpg" } }   // province, deviceId, imageRef optional
+```
+
 - `registerMap: "custom"` comes with `customRegisterMap` (`energy` required: address, `function` holding|input, `dataType`, `wordOrder`, decimal `scale`; `voltage`/`current`/`power` optional and only for `extra`). A model with a built-in driver map keeps `driver_default` (D-013).
 - `DeviceEvent.configVersion` is a **string** (`String(version)`), while `GatewayConfig.version` and `Health.configVersion` are integers; the cloud parses it (CR-010).
 - A reading whose register **decreased** without a swap is sent unchanged with `quality: "register_decrease"` (never dropped); the agent may also raise a `tamper` event with `data.reason = "register_decrease"`. The cloud stores it as telemetry and sends the reading to the owner's review queue (D-035), never to billing as is.
@@ -80,6 +102,7 @@ Every `deny` of a gateway is audited (`mqtt.authn_denied` / `mqtt.authz_denied`)
 - **Pulse meters**: the gateway holds the register (`initialRegister` + pulses × litres/pulse) and persists it on every pulse batch; a power loss between persists is reported as `quality: estimated_by_gateway` for the first reading after restart; the cloud never trusts pulse registers for billing without a staff-confirmed physical read at install and at every `meter_swap` (D-033).
 - **Config**: the gateway applies a config atomically, persists it, publishes `config_applied` with the version; on a failure it keeps the previous config and publishes `config_rejected` with the error. Health reports the applied version so the cloud can detect drift.
 - **Commands** expire after `ttlS` (default 300 s); the gateway acks `accepted` immediately and `done|failed` on completion; the cloud retries unacked commands up to 3 times.
+- **Gate hardware (1.3, D-328)**: `gate.open` is **idempotent by `commandId`** on the edge (a redelivered command never pulses the relay twice) and **refused after `expiresAt`** (= `issuedAt` + 30 s; ack `failed` with `error: "expired"`); the edge acks `accepted` then `done` / `failed` like any command. The cloud publishes a `gate.open` **once** — no re-send, an unacknowledged one is expired at 30 s — so a barrier never opens late. The cloud acts on `gate.state` / `plate.detected` only from the gateway that drives a live device of that kind at that gate (`GatewayConfig.gateDevices`); anything else is stored as a device event, audited (`gate.device_event_refused`) and ignored. A `plate.detected` event row keeps ids and the confidence only (never the plate); the snapshot stays on the edge (`imageRef` is opaque, ≤ 200 characters). The same plate at the same gate within `gate.lpr.repeat_seconds` (60) is ignored, so the agent may publish every frame.
 - **OTA**: `ota_apply` carries a manifest URL (signed, from `/v1/device/ota/manifest`; a relative `/v1/device/…` path or a URL on the device host, D-231); the agent verifies the signature, installs to the inactive slot, reboots, health-checks, and rolls back automatically if the new version fails to publish health within 5 min (D-131 rings).
 
 ## 5. Security

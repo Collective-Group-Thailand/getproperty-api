@@ -36,6 +36,17 @@ export interface CompiledConfig {
   heartbeatS: number;
   buses: BusInput[];
   meters: Record<string, unknown>[];
+  /** 1.3 (D-328): only when the gateway drives gate hardware. */
+  gateDevices?: GateDeviceInput[];
+}
+
+/** A barrier relay / LPR camera this gateway drives (protocol 1.3, D-328). */
+export interface GateDeviceInput {
+  deviceId: string;
+  gateId: string;
+  kind: 'barrier' | 'lpr';
+  channel: string;
+  pulseMs?: number;
 }
 
 /** Buses the gateway reads itself (cloud-to-cloud meters — NB-IoT, vendor clouds — never appear in a config). */
@@ -71,6 +82,7 @@ export function compileGatewayConfig(input: {
   heartbeatS: number;
   configuredBuses: BusInput[];
   channels: ChannelInput[];
+  gateDevices?: GateDeviceInput[];
 }): CompiledConfig {
   const channels = input.channels
     .filter((c) => GATEWAY_BUSES.has(c.busType))
@@ -100,12 +112,18 @@ export function compileGatewayConfig(input: {
       meter.initialRegister = new Decimal(c.initialRegister).toFixed(3);
     return sortKeys(meter);
   });
+  // 1.3 (D-328): absent for a meter-only gateway, so its document (and content hash) is unchanged
+  const gateDevices = (input.gateDevices ?? [])
+    .slice()
+    .sort((a, b) => a.gateId.localeCompare(b.gateId) || a.deviceId.localeCompare(b.deviceId))
+    .map((d) => sortKeys({ ...d }));
   return sortKeys({
     version: input.version,
     pollIntervalS: input.pollIntervalS,
     heartbeatS: input.heartbeatS,
     buses: [...buses.values()].sort((a, b) => a.id.localeCompare(b.id)).map((b) => sortKeys(b)),
     meters,
+    ...(gateDevices.length ? { gateDevices } : {}),
   });
 }
 

@@ -21,8 +21,10 @@ import { OtaService } from './smart-devices/ota.service';
 import { StaffFieldService } from './smart-devices/staff-field.service';
 import { GateNotifications } from './smart-gate/gate.subscribers';
 import { GateAdminService } from './smart-gate/gate-admin.service';
+import { GateHardwareService } from './smart-gate/gate-hardware.service';
 import { GateRetentionService } from './smart-gate/gate-retention.service';
 import { GuardAuthService } from './smart-gate/guard-auth.service';
+import { IncidentsService } from './smart-gate/incidents.service';
 import { VisitsService } from './smart-gate/visits.service';
 import { BILLED_UNITS } from './smart-health/billed-units.provider';
 import { LossReportExportBuilder } from './smart-health/loss-report-export.builder';
@@ -59,6 +61,9 @@ const SERVICES = [
   VisitsService,
   GateAdminService,
   GateRetentionService,
+  // J4.2 barrier, LPR, SOS (D-316, D-317, D-328)
+  GateHardwareService,
+  IncidentsService,
 ];
 
 /**

@@ -65,11 +65,11 @@
     },
     "Command": {
       "additionalProperties": false,
-      "description": "Command from the cloud: read_now, restart, ota_apply (signed manifest URL in args), upload_logs, set_log_level, identify. Expires after `ttlS` (default 300 s); the gateway acks `accepted` at once and `done`/`failed` on completion.",
+      "description": "Command from the cloud: read_now, restart, ota_apply (signed manifest URL in args), upload_logs, set_log_level, identify, gate.open (1.3, `args` = GateOpenArgs, `ttlS` 30, sent once). Expires after `ttlS` (default 300 s); the gateway acks `accepted` at once and `done`/`failed` on completion.",
       "properties": {
         "args": {
           "additionalProperties": true,
-          "description": "Command arguments, e.g. `{ \"meterIds\": [\"…\"] }` for read_now, `{ \"manifestUrl\": \"/v1/device/ota/manifest?releaseId=…\" }` for ota_apply. `manifestUrl` is a relative `/v1/device/…` path or an absolute URL on the device host (`DEVICE_PUBLIC_BASE_URL`), never the public API host; the gateway fetches any `/v1/device/…` path from its device host with its client certificate (D-231, edge CR-012).",
+          "description": "Command arguments, e.g. `{ \"meterIds\": [\"…\"] }` for read_now, `{ \"manifestUrl\": \"/v1/device/ota/manifest?releaseId=…\" }` for ota_apply, `GateOpenArgs` for gate.open (1.3). `manifestUrl` is a relative `/v1/device/…` path or an absolute URL on the device host (`DEVICE_PUBLIC_BASE_URL`), never the public API host; the gateway fetches any `/v1/device/…` path from its device host with its client certificate (D-231, edge CR-012).",
           "type": "object"
         },
         "cmdId": {
@@ -159,7 +159,8 @@
         "ota_apply",
         "upload_logs",
         "set_log_level",
-        "identify"
+        "identify",
+        "gate.open"
       ],
       "title": "CommandType",
       "type": "string"
@@ -189,7 +190,7 @@
     },
     "DeviceEvent": {
       "additionalProperties": false,
-      "description": "Operational event from a gateway on `gp/v1/<gatewayId>/events`: meter_offline, pulse_overflow, config_applied / config_rejected (with the version), ota_*, tamper, power_loss, restart, seq_gap. `eventId` deduplicates redeliveries.",
+      "description": "Operational event from a gateway on `gp/v1/<gatewayId>/events`: meter_offline, pulse_overflow, config_applied / config_rejected (with the version), ota_*, tamper, power_loss, restart, seq_gap; 1.3: gate.state (`data` = GateStateData), plate.detected (`data` = PlateDetectedData). `eventId` deduplicates redeliveries.",
       "properties": {
         "configVersion": {
           "description": "Config version for config_applied / config_rejected",
@@ -198,7 +199,7 @@
         },
         "data": {
           "additionalProperties": true,
-          "description": "Event-specific details (e.g. `{ \"fromSeq\": 48210, \"toSeq\": 48213 }` for seq_gap)",
+          "description": "Event-specific details (e.g. `{ \"fromSeq\": 48210, \"toSeq\": 48213 }` for seq_gap); GateStateData for gate.state, PlateDetectedData for plate.detected (validated by type, 1.3)",
           "type": "object"
         },
         "eventId": {
@@ -267,10 +268,169 @@
         "tamper",
         "power_loss",
         "restart",
-        "seq_gap"
+        "seq_gap",
+        "gate.state",
+        "plate.detected"
       ],
       "title": "DeviceEventType",
       "type": "string"
+    },
+    "GateBarrierState": {
+      "enum": [
+        "open",
+        "closed",
+        "fault"
+      ],
+      "title": "GateBarrierState",
+      "type": "string"
+    },
+    "GateDeviceConfig": {
+      "additionalProperties": false,
+      "description": "A barrier relay or LPR camera of a gate driven by this gateway (1.3).",
+      "properties": {
+        "channel": {
+          "description": "Relay output / camera id on the edge",
+          "pattern": "^[A-Za-z0-9_.:-]{1,32}$",
+          "type": "string"
+        },
+        "deviceId": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "gateId": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/GateHardwareKind"
+        },
+        "pulseMs": {
+          "description": "Default pulse (barrier only); `gate.open` carries its own",
+          "maximum": 10000,
+          "minimum": 200,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "channel",
+        "deviceId",
+        "gateId",
+        "kind"
+      ],
+      "title": "GateDeviceConfig",
+      "type": "object"
+    },
+    "GateHardwareKind": {
+      "enum": [
+        "barrier",
+        "lpr"
+      ],
+      "title": "GateHardwareKind",
+      "type": "string"
+    },
+    "GateOpenArgs": {
+      "additionalProperties": false,
+      "description": "Arguments of the `gate.open` command (1.3): pulse the relay of barrier `deviceId` for `pulseMs`. Idempotent by `commandId` (= `cmdId`; a redelivery never pulses twice); refused after `expiresAt` (ack `failed`, error `expired`). The cloud sends it once and never re-sends it.",
+      "properties": {
+        "commandId": {
+          "description": "Same as `Command.cmdId`",
+          "format": "uuid",
+          "type": "string"
+        },
+        "deviceId": {
+          "description": "The barrier (`smart.gate_device` id, `GatewayConfig.gateDevices[].deviceId`)",
+          "format": "uuid",
+          "type": "string"
+        },
+        "expiresAt": {
+          "description": "`issuedAt` + 30 s: the edge does not open after this instant",
+          "examples": [
+            "2026-11-05T18:00:30+07:00"
+          ],
+          "format": "date-time",
+          "type": "string"
+        },
+        "gateId": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "pulseMs": {
+          "description": "Relay pulse length in milliseconds",
+          "maximum": 10000,
+          "minimum": 200,
+          "type": "integer"
+        },
+        "reason": {
+          "$ref": "#/$defs/GateOpenReason"
+        },
+        "visitId": {
+          "description": "The visit the barrier opens for, when there is one",
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "commandId",
+        "deviceId",
+        "expiresAt",
+        "gateId",
+        "pulseMs",
+        "reason"
+      ],
+      "title": "GateOpenArgs",
+      "type": "object"
+    },
+    "GateOpenReason": {
+      "enum": [
+        "visit",
+        "resident",
+        "delivery",
+        "service",
+        "emergency",
+        "other",
+        "lpr_known_plate",
+        "resident_app"
+      ],
+      "title": "GateOpenReason",
+      "type": "string"
+    },
+    "GateStateData": {
+      "additionalProperties": false,
+      "description": "Data of a `gate.state` event (1.3): the position a barrier reports.",
+      "properties": {
+        "at": {
+          "description": "Gateway clock",
+          "examples": [
+            "2026-11-05T18:00:02+07:00"
+          ],
+          "format": "date-time",
+          "type": "string"
+        },
+        "commandId": {
+          "description": "The `gate.open` command this change answers, if any",
+          "format": "uuid",
+          "type": "string"
+        },
+        "deviceId": {
+          "description": "The barrier; required when the gateway drives more than one barrier of the gate",
+          "format": "uuid",
+          "type": "string"
+        },
+        "gateId": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/GateBarrierState"
+        }
+      },
+      "required": [
+        "at",
+        "gateId",
+        "state"
+      ],
+      "title": "GateStateData",
+      "type": "object"
     },
     "GatewayConfig": {
       "additionalProperties": false,
@@ -281,6 +441,14 @@
             "$ref": "#/$defs/BusConfig"
           },
           "maxItems": 16,
+          "type": "array"
+        },
+        "gateDevices": {
+          "description": "1.3 (D-328): barrier relays and LPR cameras this gateway drives; absent for a meter-only gateway (its config is unchanged).",
+          "items": {
+            "$ref": "#/$defs/GateDeviceConfig"
+          },
+          "maxItems": 32,
           "type": "array"
         },
         "heartbeatS": {
@@ -545,6 +713,78 @@
       "title": "ModbusFunction",
       "type": "string"
     },
+    "PlateDetectedData": {
+      "additionalProperties": false,
+      "description": "Data of a `plate.detected` event (1.3). `DeviceEvent.eventId` deduplicates; the same plate at the same gate within gate.lpr.repeat_seconds is ignored. The image stays on the edge (`imageRef` is an opaque reference).",
+      "properties": {
+        "at": {
+          "description": "Gateway clock",
+          "examples": [
+            "2026-11-05T18:00:00+07:00"
+          ],
+          "format": "date-time",
+          "type": "string"
+        },
+        "confidence": {
+          "description": "Recognition confidence 0–1",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "deviceId": {
+          "description": "The camera; required when the gateway reads more than one camera of the gate",
+          "format": "uuid",
+          "type": "string"
+        },
+        "gateId": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "imageRef": {
+          "description": "Opaque edge reference of the snapshot (never a URL with credentials)",
+          "maxLength": 200,
+          "type": "string"
+        },
+        "plate": {
+          "$ref": "#/$defs/PlateReading"
+        }
+      },
+      "required": [
+        "at",
+        "confidence",
+        "gateId",
+        "plate"
+      ],
+      "title": "PlateDetectedData",
+      "type": "object"
+    },
+    "PlateReading": {
+      "additionalProperties": false,
+      "description": "A Thai plate as read: category (1–4 Thai consonants / digits, spaces allowed), number (1–4 digits, Thai or Arabic numerals), province when the camera reads it.",
+      "properties": {
+        "category": {
+          "maxLength": 12,
+          "minLength": 1,
+          "type": "string"
+        },
+        "number": {
+          "maxLength": 12,
+          "minLength": 1,
+          "type": "string"
+        },
+        "province": {
+          "maxLength": 60,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "category",
+        "number"
+      ],
+      "title": "PlateReading",
+      "type": "object"
+    },
     "Reading": {
       "additionalProperties": false,
       "description": "One cumulative register reading of a meter (D-030). `seq` is per meter, monotonic and persisted on the gateway; the cloud deduplicates on (meterId, seq). `extra` is driver-specific instant data and is never used for billing.",
@@ -755,6 +995,13 @@
     ]
   },
   "x-api-version": "0.1.0",
+  "x-command-args": {
+    "gate.open": "GateOpenArgs"
+  },
+  "x-event-data": {
+    "gate.state": "GateStateData",
+    "plate.detected": "PlateDetectedData"
+  },
   "x-lwt": {
     "payload": {
       "status": "offline_lwt"
@@ -778,7 +1025,7 @@
     },
     "username": "gw-<gatewayId> (= client id = certificate CN)"
   },
-  "x-protocol-version": "1.2",
+  "x-protocol-version": "1.3",
   "x-topics": {
     "gp/v1/<gatewayId>/cmd": {
       "direction": "cloud_to_gateway",

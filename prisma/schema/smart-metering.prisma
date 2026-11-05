@@ -60,6 +60,7 @@ enum CommandType {
   upload_logs
   set_log_level
   identify
+  gate_open
 
   @@map("command_type")
   @@schema("smart")

@@ -44,6 +44,7 @@ import { LocksService } from '@modules/smart-access/locks.service';
 import { DeviceCommandsService } from '@modules/smart-devices/commands.service';
 import { GatewayConfigService } from '@modules/smart-devices/gateway-config.service';
 import { EnergyInsightService } from '@modules/smart-energy/energy-insight.service';
+import { GateHardwareService } from '@modules/smart-gate/gate-hardware.service';
 import { GateRetentionService } from '@modules/smart-gate/gate-retention.service';
 import { VisitsService } from '@modules/smart-gate/visits.service';
 import { MeterHealthService } from '@modules/smart-health/meter-health.service';
@@ -196,6 +197,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly paymentPlans: PaymentPlansService,
     private readonly collections: CollectionsService,
     private readonly gateVisits: VisitsService,
+    private readonly gateHardware: GateHardwareService,
     private readonly gateRetention: GateRetentionService,
   ) {}
 
@@ -363,6 +365,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'gate-visits':
         await this.gateVisits.sweep();
+        await this.gateHardware.expireDetections();
         break;
       case 'gate-retention':
         await this.gateRetention.run();

@@ -19,7 +19,8 @@ import { CommandAckStatus, CommandType } from './enums';
 @JSONSchema({
   description:
     'Command from the cloud: read_now, restart, ota_apply (signed manifest URL in args), upload_logs, set_log_level, ' +
-    'identify. Expires after `ttlS` (default 300 s); the gateway acks `accepted` at once and `done`/`failed` on completion.',
+    'identify, gate.open (1.3, `args` = GateOpenArgs, `ttlS` 30, sent once). Expires after `ttlS` (default 300 s); the ' +
+    'gateway acks `accepted` at once and `done`/`failed` on completion.',
 })
 export class Command {
   @IsUUID()
@@ -31,7 +32,7 @@ export class Command {
   @JSONSchema({
     description:
       'Command arguments, e.g. `{ "meterIds": ["…"] }` for read_now, `{ "manifestUrl": "/v1/device/ota/manifest?releaseId=…" }` ' +
-      'for ota_apply. `manifestUrl` is a relative `/v1/device/…` path or an absolute URL on the device host ' +
+      'for ota_apply, `GateOpenArgs` for gate.open (1.3). `manifestUrl` is a relative `/v1/device/…` path or an absolute URL on the device host ' +
       '(`DEVICE_PUBLIC_BASE_URL`), never the public API host; the gateway fetches any `/v1/device/…` path from its ' +
       'device host with its client certificate (D-231, edge CR-012).',
     additionalProperties: true,

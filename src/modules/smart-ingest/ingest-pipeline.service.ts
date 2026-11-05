@@ -26,6 +26,7 @@ import { type TelemetryBatch } from '@modules/ingest/protocol/telemetry.dto';
 import { DeviceCommandsService } from '@modules/smart-devices/commands.service';
 import { GatewayConfigService } from '@modules/smart-devices/gateway-config.service';
 import { OtaService } from '@modules/smart-devices/ota.service';
+import { GateHardwareService } from '@modules/smart-gate/gate-hardware.service';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
@@ -111,6 +112,7 @@ export class IngestPipeline {
     private readonly configs: GatewayConfigService,
     private readonly commands: DeviceCommandsService,
     private readonly ota: OtaService,
+    private readonly gateHardware: GateHardwareService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
@@ -653,14 +655,16 @@ export class IngestPipeline {
       if (exists) return;
       await this.recordEvent(tx, gateway, {
         eventId: e.eventId,
-        type: e.type,
+        // protocol 1.3 wire names carry a dot (`gate.state`); the stored enum uses `_` (D-328)
+        type: e.type.replace('.', '_') as DeviceEventType,
         severity: e.severity,
         occurredAt: new Date(e.occurredAt),
         deviceId: e.meterId ?? null,
         configVersion: e.configVersion ?? null,
         message: e.message ?? null,
-        data: e.data,
+        data: this.gateHardware.redactedData(e),
       });
+      await this.gateHardware.onDeviceEvent(tx, gateway, e);
       const version = e.configVersion ? Number.parseInt(e.configVersion, 10) : NaN;
       if (
         (e.type === WireEventType.ConfigApplied || e.type === WireEventType.ConfigRejected) &&

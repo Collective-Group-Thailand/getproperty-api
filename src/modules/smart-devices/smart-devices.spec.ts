@@ -4,7 +4,7 @@ import { DomainException } from '@common/errors/domain.exception';
 import { validateAs } from '@common/validation/validation';
 import { GatewayConfig } from '@modules/ingest/protocol/config.dto';
 
-import { commandArgs } from './commands.service';
+import { commandArgs, wireCommandType } from './commands.service';
 import { type ChannelInput, compileGatewayConfig, configContentHash } from './config-compiler';
 import {
   canonicalManifest,
@@ -118,6 +118,39 @@ describe('gateway config compiler (D-131, protocol §3)', () => {
     expect(doc.buses.map((b) => b.id)).toEqual(['rs485-1']);
     await expect(validateAs(GatewayConfig, JSON.parse(JSON.stringify(doc)))).resolves.toBeDefined();
   });
+
+  it('protocol 1.3: gateDevices only for a gateway with gate hardware — a meter-only document is unchanged (D-328)', async () => {
+    const meterOnly = compileGatewayConfig({
+      version: 1,
+      pollIntervalS: 900,
+      heartbeatS: 60,
+      configuredBuses: [],
+      channels: [electric, water],
+      gateDevices: [],
+    });
+    expect(JSON.stringify(meterOnly)).toBe(JSON.stringify(GOLDEN_V1));
+    const gate = '0192a000-0000-7000-8000-0000000000aa';
+    const withGate = compileGatewayConfig({
+      version: 2,
+      pollIntervalS: 900,
+      heartbeatS: 60,
+      configuredBuses: [],
+      channels: [electric, water],
+      gateDevices: [
+        { deviceId: '0192a000-0000-7000-8000-0000000000c2', gateId: gate, kind: 'lpr', channel: 'cam:entry' },
+        {
+          deviceId: '0192a000-0000-7000-8000-0000000000c1',
+          gateId: gate,
+          kind: 'barrier',
+          channel: 'relay-1',
+          pulseMs: 800,
+        },
+      ],
+    });
+    expect(withGate.gateDevices!.map((d) => d.kind)).toEqual(['barrier', 'lpr']);
+    expect(configContentHash(withGate).equals(configContentHash(meterOnly))).toBe(false);
+    await expect(validateAs(GatewayConfig, JSON.parse(JSON.stringify(withGate)))).resolves.toBeDefined();
+  });
 });
 
 describe('gateway commands (protocol §2, D-131)', () => {
@@ -128,6 +161,10 @@ describe('gateway commands (protocol §2, D-131)', () => {
     expect(commandArgs('restart', { anything: 1 })).toEqual({});
     expect(() => commandArgs('identify', { seconds: 9999 })).toThrow(DomainException);
     expect(() => commandArgs('set_log_level', { level: 'trace' })).toThrow(DomainException);
+    // 1.3: gate.open is built by the gate service only, never from operator / admin arguments (D-328)
+    expect(() => commandArgs('gate_open', { gateId: M1 })).toThrow(DomainException);
+    expect(wireCommandType('gate_open')).toBe('gate.open');
+    expect(wireCommandType('read_now')).toBe('read_now');
     expect(() => commandArgs('ota_apply', { manifestUrl: 'ftp://x' })).toThrow(DomainException);
     // relative device paths (protocol §6, D-231) and absolute https URLs; nothing else
     expect(commandArgs('ota_apply', { manifestUrl: '/v1/device/ota/manifest?releaseId=x' })).toEqual({
