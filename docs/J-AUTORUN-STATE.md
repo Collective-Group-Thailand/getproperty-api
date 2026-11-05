@@ -11,7 +11,7 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 | JRL | liff | done | liff 4985566 (49e684b) | sourceCommit c66e284 | — | unit 862 (+34), build, storybook, lhci ≤180 KB (new set units-roles); e2e units-roles.spec written, deferred; CR #41 propertyKind on resident unit DTOs → J1.1b; visual baseline resident-shell-unit-sheet to re-baseline |
 | J1.1a | api | done | api 72b3a97a (d02f9e0) | 804 paths, frequency fields | — | D-323; migration 0070; fixed co-owner full billing, transfer double billing, owner-only cycles + valid_to off-by-one; frequencies monthly/quarterly/semiannual/annual keyed (property, frequency, period_key); juristic.revenue_schedule; unit 635, int 525/526 (0 failed) |
 | J1.1b | api | done | api a03b192 (31fc29f) | 821 paths (+17) | — | D-324; migration 0071; register/transfers/bill-to/resolutions/budgets endpoints; per_sqwa + budget_split; committee/auditor roles; CR #41 done; unit 643 (+2 skipped), int 536/537 (0 failed) |
-| J1.2a | api | todo | | | | platform-unique slip ref (ops.slip_review.trans_ref), allocation, plans, recurring (fake), debt clearance + public verify |
+| J1.2a | api | done | api ba8ee73 (16bfc67) | 843 paths | — | D-325; migration 0072; platform-unique slip ref, allocation policy + credit, payment plans, recurring (fake, mode off in uat/prod), debt clearance DCL + public verify; unit 655, int 544/545 (0 failed). Before deploying 0072: run the duplicate slip-ref query in deployment.md. Web needs /verify/<code> page |
 | J1.2b | api | todo | | | | collections ladder on the workflow engine, statements, D-270 workspace, aging/KPI reports |
 | JW1 | web | todo | | | | |
 | JL1 | liff | todo | | | | |
@@ -42,3 +42,5 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 **2026-11-05 07:45** — J1.1a merged. Next: J1.1b (+ CR #41 propertyKind on resident unit DTOs).
 
 **2026-11-05 ~10:30** — J1.1b merged (ff). Next: J1.2a (api).
+
+**2026-11-05 ~13:30** — third server restart during J1.2a; resumed; merged (ff). Next: J1.2b.
