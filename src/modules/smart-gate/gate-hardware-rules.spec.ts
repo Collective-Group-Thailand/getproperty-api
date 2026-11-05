@@ -1,6 +1,7 @@
 import {
   distanceMetres,
   insideGeofence,
+  isLateRead,
   matchPlate,
   normaliseLprPlate,
   openRetryAfter,
@@ -101,5 +102,15 @@ describe('J4.2 gate hardware rules (D-316, D-317, D-328)', () => {
     expect(visitActiveAt({ enteredAt: null, exitedAt: null }, at, 30)).toBe(false);
     expect(sosCancellable(at, new Date(at.getTime() + 30_000), 30)).toBe(true);
     expect(sosCancellable(at, new Date(at.getTime() + 30_001), 30)).toBe(false);
+  });
+
+  it('CR-017 / D-330: a read older than the age limit at receipt, or with no readable time, is late', () => {
+    const now = new Date('2026-11-06T03:00:00Z');
+    expect(isLateRead(new Date('2026-11-06T02:59:41Z'), now, 20)).toBe(false);
+    expect(isLateRead(new Date('2026-11-06T02:59:40Z'), now, 20)).toBe(false);
+    expect(isLateRead(new Date('2026-11-06T02:59:39Z'), now, 20)).toBe(true);
+    expect(isLateRead(new Date('2026-11-06T02:58:00Z'), now, 20)).toBe(true);
+    expect(isLateRead(new Date('2026-11-06T03:00:05Z'), now, 20)).toBe(false); // gateway clock slightly ahead
+    expect(isLateRead(new Date('not a date'), now, 20)).toBe(true);
   });
 });

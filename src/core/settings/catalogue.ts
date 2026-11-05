@@ -18,9 +18,12 @@ import {
   TENANT_TYPES,
 } from '../storage/storage-settings';
 import {
+  alertDaysProblems,
   approvalBandsProblems,
   DEFAULT_APPROVAL_BANDS,
+  DEFAULT_EVALUATION_CRITERIA,
   DEFAULT_WHT_RATES,
+  evaluationCriteriaProblems,
   whtRatesProblems,
 } from './juristic-accounting-settings';
 
@@ -461,6 +464,51 @@ export const SETTINGS: readonly SettingDef[] = [
     reason: 'seed: D-329 (pack J, J2.1)',
     check: (v) =>
       Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 31 ? [] : ['an integer 0–31'],
+  },
+  {
+    key: 'juristic.quotation_threshold',
+    valueType: 'decimal',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-310 / D-331 (J2.2): a vendor purchase or service contract above this amount (THB) needs at least 3 quotations, or a recorded reason for fewer approved by resolution or the approval band.',
+    editableBy: OWNER_SETTINGS,
+    value: '50000.00',
+    reason: 'seed: D-310 (pack J, J2.2)',
+    check: (v) => (typeof v === 'string' && /^\d{1,12}(\.\d{1,2})?$/.test(v) ? [] : ['a money string ≥ 0']),
+  },
+  {
+    key: 'juristic.contract_expiry_alert_days',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-310 / D-331 (J2.2): days before a vendor contract ends at which the owner, managers and committee are alerted (once each; a late first run sends only the nearest).',
+    editableBy: OWNER_SETTINGS,
+    value: [90, 60, 30],
+    reason: 'seed: D-310 (pack J, J2.2)',
+    check: alertDaysProblems,
+  },
+  {
+    key: 'juristic.contract_instalment_lead_days',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-331 (J2.2): days before an instalment of a vendor contract falls due that the vendor-contracts job submits its expense request for approval.',
+    editableBy: OWNER_SETTINGS,
+    value: 7,
+    reason: 'seed: D-331 (pack J, J2.2) — assumption',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 60 ? [] : ['an integer 0–60'],
+  },
+  {
+    key: 'juristic.vendor_evaluation_criteria',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-310 / D-331 (J2.2): the criteria (key, th / en label) a vendor contract is scored on each month, 1–5 each; the evaluation score is their average.',
+    editableBy: OWNER_SETTINGS,
+    value: DEFAULT_EVALUATION_CRITERIA,
+    reason: 'seed: D-331 (pack J, J2.2) — assumption, editable',
+    check: evaluationCriteriaProblems,
   },
   {
     key: 'juristic.kpi_collection_days',
@@ -933,6 +981,18 @@ export const SETTINGS: readonly SettingDef[] = [
     check: (v) =>
       Number.isInteger(v) && (v as number) >= min && (v as number) <= max ? [] : [`an integer ${min}–${max}`],
   })),
+  {
+    key: 'gate.lpr.max_event_age_seconds',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-330 (edge CR-017): a plate read that reaches the cloud more than this many seconds after the camera read it (`plate.detected` `data.at`, queued on the edge during an outage) is kept as a past read only — no automatic entry, no automatic barrier open, nothing for the guard to claim.',
+    editableBy: OWNER_SETTINGS,
+    value: 20,
+    reason: 'seed: D-330 (conservative: a late read never opens the gate)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 5 && (v as number) <= 300 ? [] : ['an integer 5–300'],
+  },
   {
     key: 'gate.lpr.min_confidence',
     valueType: 'decimal',

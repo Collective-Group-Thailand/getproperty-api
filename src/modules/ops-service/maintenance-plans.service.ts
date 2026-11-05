@@ -4,6 +4,7 @@ import { systemTenantContext, type TenantContext } from '@common/context/tenant-
 import { DomainException } from '@common/errors/domain.exception';
 import { bangkokDate, startOfBangkokDay } from '@common/time/bangkok';
 import { CLOCK, type Clock } from '@core/clock/clock';
+import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
 import { type MaintenancePlan, type Prisma } from '@generated/prisma/client';
 import { Inject, Injectable, Logger } from '@nestjs/common';
@@ -22,11 +23,16 @@ export interface MaintenancePlanInput {
   nextDueOn: string;
   assigneeUserId?: string | null;
   assigneePartyId?: string | null;
+  /** J2.2 (D-331, the pack's pm_schedule): the vendor contract the preventive work is done under. */
+  vendorContractId?: string | null;
 }
 
 export const MAINTENANCE_PLAN_INCLUDE = {
   assetItem: { select: { id: true, name: true, category: true, unitId: true } },
   lastWorkOrder: { select: { id: true, status: true, scheduledAt: true } },
+  vendorContract: {
+    select: { id: true, title: true, state: true, vendor: { select: { id: true, name: true } } },
+  },
 } satisfies Prisma.MaintenancePlanInclude;
 export type MaintenancePlanRow = Prisma.MaintenancePlanGetPayload<{
   include: typeof MAINTENANCE_PLAN_INCLUDE;
@@ -80,6 +86,30 @@ export class MaintenancePlansService extends TenantScopedRepository {
     );
   }
 
+  /**
+   * J2.2 (D-331): a plan may run under a vendor contract of the same tenant and building that has not ended (draft or
+   * active); cross-tenant ids are 404.
+   */
+  private async contractFor(
+    tx: Tx,
+    ctx: TenantContext,
+    contractId: string | null | undefined,
+    buildingId: string,
+  ): Promise<string | null | undefined> {
+    if (contractId === undefined || contractId === null) return contractId;
+    const c = await tx.vendorContract.findFirst({ where: { id: contractId, tenantId: ctx.tenantId } });
+    if (!c) throw new DomainException('http.not_found');
+    if (c.buildingId !== buildingId)
+      throw new DomainException('validation.failed', {
+        errors: [
+          { path: 'vendorContractId', code: 'building', message: 'a contract of the plan’s building' },
+        ],
+      });
+    if (c.state !== 'draft' && c.state !== 'active')
+      throw new DomainException('vendor_contract.invalid_state', { params: { state: c.state } });
+    return c.id;
+  }
+
   async create(ctx: TenantContext, input: MaintenancePlanInput): Promise<MaintenancePlanRow> {
     if (input.assigneeUserId && input.assigneePartyId)
       throw new DomainException('validation.failed', {
@@ -100,6 +130,7 @@ export class MaintenancePlansService extends TenantScopedRepository {
       const category = input.categoryId
         ? await this.categories.resolve(tx, ctx.tenantId, input.categoryId)
         : null;
+      const vendorContractId = await this.contractFor(tx, ctx, input.vendorContractId, item.buildingId);
       const plan = await tx.maintenancePlan.create({
         data: {
           tenantId: ctx.tenantId,
@@ -113,6 +144,7 @@ export class MaintenancePlansService extends TenantScopedRepository {
           nextDueOn: new Date(`${input.nextDueOn}T00:00:00Z`),
           assigneeUserId: input.assigneeUserId ?? null,
           assigneePartyId: input.assigneePartyId ?? null,
+          vendorContractId: vendorContractId ?? null,
           createdBy: by(),
         },
       });
@@ -134,6 +166,7 @@ export class MaintenancePlansService extends TenantScopedRepository {
       const category = input.categoryId
         ? await this.categories.resolve(tx, ctx.tenantId, input.categoryId)
         : null;
+      const vendorContractId = await this.contractFor(tx, ctx, input.vendorContractId, plan.buildingId);
       await tx.maintenancePlan.update({
         where: { id: plan.id },
         data: {
@@ -147,6 +180,7 @@ export class MaintenancePlansService extends TenantScopedRepository {
             ? { assigneeUserId: input.assigneeUserId ?? null, assigneePartyId: input.assigneePartyId ?? null }
             : {}),
           ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+          ...(vendorContractId !== undefined ? { vendorContractId } : {}),
           version: { increment: 1 },
           updatedBy: by(),
         },
@@ -183,12 +217,36 @@ export class MaintenancePlansService extends TenantScopedRepository {
     return { opened };
   }
 
+  /** A vendor's party can be assigned only when it can be told (LINE, phone or a linked login — like any technician). */
+  private async reachableParty(tx: Tx, partyId: string): Promise<string | null> {
+    const p = await tx.party.findFirst({
+      where: { id: partyId, deletedAt: null, anonymisedAt: null },
+      select: {
+        id: true,
+        lineUserId: true,
+        phoneE164: true,
+        userLinks: { where: { state: 'active' }, select: { id: true } },
+      },
+    });
+    return p && (p.lineUserId || p.phoneE164 || p.userLinks.length) ? p.id : null;
+  }
+
   private openFor(plan: MaintenancePlan, due: string): Promise<boolean> {
     const ctx = systemTenantContext(plan.tenantId);
     return RequestContext.run({ actor: systemActor('maintenance-plans') }, () =>
       this.db.tenant(ctx, async (tx) => {
-        const fresh = await tx.maintenancePlan.findUniqueOrThrow({ where: { id: plan.id } });
+        const fresh = await tx.maintenancePlan.findUniqueOrThrow({
+          where: { id: plan.id },
+          include: { vendorContract: { include: { vendor: { select: { partyId: true } } } } },
+        });
         if (fresh.version !== plan.version || !fresh.isActive) return false;
+        // J2.2 (D-331): work under a vendor contract waits while the contract is not in force (draft, expired,
+        // terminated); a plan without its own assignee goes to the contract's vendor when the vendor can be reached
+        if (fresh.vendorContract && fresh.vendorContract.state !== 'active') return false;
+        const vendorParty =
+          !plan.assigneeUserId && !plan.assigneePartyId && fresh.vendorContract
+            ? await this.reachableParty(tx, fresh.vendorContract.vendor.partyId)
+            : null;
         const active = await tx.workOrder.count({
           where: { maintenancePlanId: plan.id, status: { in: [...ACTIVE_WORK_ORDER_STATUSES] } },
         });
@@ -201,7 +259,7 @@ export class MaintenancePlansService extends TenantScopedRepository {
           description: plan.description,
           scheduledAt: new Date(startOfBangkokDay(due).getTime() + VISIT_HOUR_MS),
           assigneeUserId: plan.assigneeUserId,
-          assigneePartyId: plan.assigneePartyId,
+          assigneePartyId: plan.assigneePartyId ?? vendorParty,
         });
         await tx.maintenancePlan.update({
           where: { id: plan.id },

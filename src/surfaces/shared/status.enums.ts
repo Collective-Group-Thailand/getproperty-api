@@ -117,6 +117,9 @@ export enum OwnerMenuKey {
   JuristicExpenses = 'juristic_expenses',
   JuristicFunds = 'juristic_funds',
   JuristicBankStatements = 'juristic_bank_statements',
+  JuristicVendors = 'juristic_vendors',
+  JuristicVendorContracts = 'juristic_vendor_contracts',
+  JuristicQuotations = 'juristic_quotations',
   JuristicWorkspaceInvitations = 'juristic_workspace_invitations',
   /** J4.1 (D-315, D-327): gate & visitors — juristic estates; `gate` for apartment / PM tenants behind `module.gate`. */
   JuristicGate = 'juristic_gate',

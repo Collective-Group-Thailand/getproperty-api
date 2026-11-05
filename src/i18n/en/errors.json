@@ -1783,6 +1783,10 @@
     "already_decided": {
       "title": "Already decided",
       "detail": "You already decided on this expense request."
+    },
+    "quotations_required": {
+      "title": "Quotations required",
+      "detail": "A vendor purchase above {threshold} THB needs a quotation round awarded to this vendor."
     }
   },
   "wht": {
@@ -1859,6 +1863,72 @@
     "already_matched": {
       "title": "Already matched",
       "detail": "This item is matched to another statement line."
+    }
+  },
+  "vendor": {
+    "blocked": {
+      "title": "Vendor blocked",
+      "detail": "This vendor is blocked: no new contracts, quotations or expense requests."
+    },
+    "exists": {
+      "title": "Vendor already registered",
+      "detail": "This person or company is already one of your vendors."
+    }
+  },
+  "vendor_contract": {
+    "invalid_state": {
+      "title": "Contract state",
+      "detail": "The contract is {state}; this action is not possible."
+    },
+    "quotations_required": {
+      "title": "Quotations required",
+      "detail": "A contract above {threshold} THB needs a quotation round awarded to this vendor (or, for a renewal, an adopted resolution)."
+    },
+    "schedule_invalid": {
+      "title": "Instalment schedule invalid",
+      "detail": "Instalments must fall within the contract term and must not exceed the contract value."
+    },
+    "already_renewed": {
+      "title": "Already renewed",
+      "detail": "This contract already has a renewal."
+    }
+  },
+  "vendor_evaluation": {
+    "exists": {
+      "title": "Already evaluated",
+      "detail": "This contract was already evaluated for {month}."
+    }
+  },
+  "quotation_round": {
+    "invalid_state": {
+      "title": "Quotation round state",
+      "detail": "The quotation round is {state}; this action is not possible."
+    }
+  },
+  "quotation": {
+    "exists": {
+      "title": "Quotation already received",
+      "detail": "This vendor already quoted in this round."
+    },
+    "expired": {
+      "title": "Quotation expired",
+      "detail": "The quotation is no longer valid; choose another or ask for a new one."
+    },
+    "minimum_not_met": {
+      "title": "Fewer than 3 quotations",
+      "detail": "Above {threshold} THB at least 3 quotations are needed, or a recorded reason why there are fewer."
+    },
+    "maker_checker": {
+      "title": "Cannot approve your own award",
+      "detail": "The person who asked for the award cannot approve it."
+    },
+    "not_in_band": {
+      "title": "Not in the approval band",
+      "detail": "This award must be approved by {roles}."
+    },
+    "already_decided": {
+      "title": "Already decided",
+      "detail": "You already decided on this award."
     }
   }
 }

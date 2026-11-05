@@ -38,6 +38,9 @@ export type NotifiableResolver = (
   event: DomainEventEnvelope,
 ) => Promise<NotificationPlanInput | null>;
 
+/** Operator roles that are notification audiences (`platform.notification_audience`). */
+const OPERATOR_AUDIENCES: ReadonlySet<string> = new Set(['owner', 'manager', 'staff', 'accountant']);
+
 export async function operators(
   tx: Tx,
   tenantId: string,
@@ -48,8 +51,10 @@ export async function operators(
     where: { tenantId, role: { in: roles }, status: 'active', deletedAt: null, user: { status: 'active' } },
     include: { user: true },
   });
+  // a role without an audience of its own (committee, auditor — D-320) hears the message on the routes of the
+  // audience the caller names (the committee on the manager routes, D-327); its role is never sent as an audience
   return rows.map((m) => ({
-    audience: (m.role as NotificationAudience) ?? audience,
+    audience: OPERATOR_AUDIENCES.has(m.role) ? (m.role as NotificationAudience) : audience,
     type: 'user' as const,
     id: m.user.id,
     tenantId,

@@ -28,6 +28,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import {
   insideGeofence,
+  isLateRead,
   matchPlate,
   normaliseLprPlate,
   openRetryAfter,
@@ -571,14 +572,30 @@ export class GateHardwareService extends TenantScopedRepository {
       return;
     }
     await tx.gateDevice.update({ where: { id: device.id }, data: { lastSeenAt: now } });
-    // one car, one entry: the same plate again at this gate within the window is ignored (no row kept)
+    // CR-017 / D-330: a read that reaches us later than gate.lpr.max_event_age_seconds after the camera read it (edge
+    // outage, queued) is history — the car is no longer at the barrier. It is kept as a past read only: no entry, no
+    // gate.open, nothing for the guard to claim. An unreadable read time cannot prove it is live → history too.
+    const detectedAt = new Date(data.at);
+    const maxAge = await this.settings.valueAt<number>('gate.lpr.max_event_age_seconds', now, scope);
+    const historical = isLateRead(detectedAt, now, maxAge);
+    // one car, one entry: the same plate again at this gate within the window is ignored (no row kept). Live reads
+    // compare receipt times among live reads; late reads compare read times among late reads (a flushed queue of
+    // frames keeps one row) — a late read never suppresses the next live read, nor the other way round.
     const repeat = await this.settings.valueAt<number>('gate.lpr.repeat_seconds', now, scope);
     const again = await tx.plateDetection.findFirst({
       where: {
         gateId: gate.id,
         plateCategory: plate.category,
         plateNumber: plate.number,
-        receivedAt: { gte: new Date(now.getTime() - repeat * 1000) },
+        ...(historical
+          ? {
+              state: 'historical',
+              detectedAt: {
+                gte: new Date(detectedAt.getTime() - repeat * 1000),
+                lte: new Date(detectedAt.getTime() + repeat * 1000),
+              },
+            }
+          : { state: { not: 'historical' }, receivedAt: { gte: new Date(now.getTime() - repeat * 1000) } }),
       },
       select: { id: true },
     });
@@ -619,8 +636,7 @@ export class GateHardwareService extends TenantScopedRepository {
     const confident = data.confidence >= minConfidence;
     const match = blacklisted ? 'blacklisted' : known && !confident ? 'low_confidence' : result.match;
     const candidate = known ? result.candidate : null;
-    const enters = Boolean(candidate) && confident && !blacklisted;
-    const detectedAt = new Date(data.at);
+    const enters = !historical && Boolean(candidate) && confident && !blacklisted;
     let visitId: string | null = null;
     if (enters && candidate) {
       const rememberedRow =
@@ -684,7 +700,7 @@ export class GateHardwareService extends TenantScopedRepository {
         detectedAt: Number.isNaN(detectedAt.getTime()) ? now : detectedAt,
         receivedAt: now,
         imageRef: data.imageRef ?? null,
-        state: enters ? 'matched' : 'pending',
+        state: historical ? 'historical' : enters ? 'matched' : 'pending',
         match,
         unitId: candidate?.unitId ?? null,
         matchedVehicleId: candidate?.id ?? null,
@@ -705,6 +721,22 @@ export class GateHardwareService extends TenantScopedRepository {
         unitId: detection.unitId,
       },
     });
+    if (historical)
+      await this.audit.record(tx, {
+        action: 'gate.plate_read_late',
+        tenantId: gate.tenantId,
+        subjectType: 'smart.plate_detection',
+        subjectId: detection.id,
+        metadata: {
+          gateId: gate.id,
+          eventId,
+          match,
+          ageSeconds: Number.isNaN(detectedAt.getTime())
+            ? null
+            : Math.round((now.getTime() - detectedAt.getTime()) / 1000),
+          maxAgeSeconds: maxAge,
+        },
+      });
     if (
       enters &&
       visitId &&

@@ -17,7 +17,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (122)
+## Permissions (125)
 | Permission | Surfaces | owner | manager | staff | accountant | committee | auditor | guard | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | View the tenant profile and company data |
@@ -107,6 +107,9 @@
 | `juristic.petty_cash.spend` | owner | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | Record a petty cash spend with its receipt (the custodian, or an owner / manager, D-329) |
 | `juristic.fund.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Create funds and petty cash floats, request fund transfers, count petty cash (D-311, D-329) |
 | `juristic.fund.approve` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  | Approve or reject a fund transfer requested by another user (out of a fund only with a resolution, D-311, D-329) |
+| `juristic.vendor.read` | owner | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | Read vendors, service contracts (SLA, instalments, documents, evaluations, preventive plans) and quotation rounds (D-310, D-331) |
+| `juristic.vendor.manage` | owner | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  | Register and block vendors; draft, activate, renew and terminate service contracts; run quotation rounds and ask for an award (D-310, D-331) |
+| `juristic.vendor.evaluate` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  | Record the monthly evaluation of a vendor contract (D-310, D-331) |
 | `admin.tenant.read` | admin |  |  |  |  |  |  |  | ✓ | ✓ | ✓ | ✓ | List and view tenants |
 | `gate.read` | owner, staff | ✓ | ✓ | ✓ |  | ✓ |  |  |  |  |  |  | See gates, devices, guards, house policies, the blacklist and invites (not the visit log) |
 | `gate.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Create and edit gates, enrol / revoke gate tablets, house policies, the blacklist (D-327) |

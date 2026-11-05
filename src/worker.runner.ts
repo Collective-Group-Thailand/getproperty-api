@@ -21,6 +21,7 @@ import { EtaxService } from '@modules/ops-etax/etax.service';
 import { LedgerService } from '@modules/ops-juristic/accounting/ledger.service';
 import { CollectionsService } from '@modules/ops-juristic/collections.service';
 import { PaymentPlansService } from '@modules/ops-juristic/payment-plans.service';
+import { VendorsService } from '@modules/ops-juristic/vendors/vendors.service';
 import { LeaseRenewalsService } from '@modules/ops-leases/lease-renewals.service';
 import { LeasesService } from '@modules/ops-leases/leases.service';
 import { ListingLeadsService } from '@modules/ops-listings/listing-leads.service';
@@ -127,6 +128,8 @@ export const MAINTENANCE_JOBS = {
   collections: 3_600_000,
   // J2.1 (D-329): back-posts journals of juristic tenants and recognises advance-billed revenue month by month
   'juristic-ledger': 3_600_000,
+  // J2.2 (D-331): contract instalments → submitted expense requests, expiry alerts 90 / 60 / 30, contracts expired
+  'vendor-contracts': 3_600_000,
   // J4.1 (D-315, D-327): unanswered visits past their house timeout get the policy; open visits reported once;
   // visits, photos, plates, ended invites and expired cars deleted after gate.retention_days
   'gate-visits': 15_000,
@@ -200,6 +203,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly paymentPlans: PaymentPlansService,
     private readonly collections: CollectionsService,
     private readonly juristicLedger: LedgerService,
+    private readonly vendorContracts: VendorsService,
     private readonly gateVisits: VisitsService,
     private readonly gateHardware: GateHardwareService,
     private readonly gateRetention: GateRetentionService,
@@ -369,6 +373,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'juristic-ledger':
         await this.juristicLedger.run();
+        break;
+      case 'vendor-contracts':
+        await this.vendorContracts.run();
         break;
       case 'gate-visits':
         await this.gateVisits.sweep();

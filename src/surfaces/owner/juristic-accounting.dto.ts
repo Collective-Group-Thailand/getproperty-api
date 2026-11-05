@@ -835,6 +835,31 @@ export class ExpenseCreateDto {
   @IsUUID()
   resolutionId?: string;
 
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'J2.2 (D-331): the vendor paid — the payee party (its tax id goes on the 50 ทวิ) and the payee name come from it; a blocked vendor is refused (422 `vendor.blocked`). Above `juristic.quotation_threshold` a vendor purchase not under a contract is submitted only with `quotationRoundId` (422 `expense.quotations_required`).',
+  })
+  @IsOptional()
+  @IsUUID()
+  vendorId?: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'J2.2: an active contract of the vendor for the building.',
+  })
+  @IsOptional()
+  @IsUUID()
+  vendorContractId?: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'J2.2: a quotation round of the building awarded to the vendor.',
+  })
+  @IsOptional()
+  @IsUUID()
+  quotationRoundId?: string;
+
   @ApiPropertyOptional({ example: 'ตามสัญญาจ้างเลขที่ 12/2569', maxLength: 2000 })
   @IsOptional()
   @IsString()
@@ -884,6 +909,26 @@ export class ExpenseUpdateDto {
   @IsOptional()
   @IsUUID()
   resolutionId?: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description: 'J2.2 (D-331): the vendor paid (payee from the vendor).',
+  })
+  @IsOptional()
+  @IsUUID()
+  vendorId?: string | null;
+
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  @IsOptional()
+  @IsUUID()
+  vendorContractId?: string | null;
+
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  @IsOptional()
+  @IsUUID()
+  quotationRoundId?: string | null;
 
   @ApiPropertyOptional({ type: String, nullable: true, maxLength: 2000 })
   @IsOptional()
@@ -1056,6 +1101,30 @@ export class ExpenseRequestDto {
 
   @ApiProperty({ type: String, format: 'uuid', nullable: true, example: null })
   resolutionId!: string | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: FAKE.uuid,
+    description: 'J2.2 (D-331): the vendor paid.',
+  })
+  vendorId!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: 'บริษัท รักษาความปลอดภัย จำกัด' })
+  vendorName!: string | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: FAKE.uuid,
+    description: 'J2.2: the vendor contract (instalment requests carry it).',
+  })
+  vendorContractId!: string | null;
+
+  @ApiProperty({ type: String, format: 'uuid', nullable: true, example: null })
+  quotationRoundId!: string | null;
 
   @ApiProperty({ enum: ExpenseStateName, enumName: 'ExpenseState', example: 'submitted' })
   state!: ExpenseStateName;

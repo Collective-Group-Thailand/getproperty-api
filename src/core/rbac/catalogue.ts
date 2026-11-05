@@ -471,6 +471,24 @@ export const PERMISSIONS: readonly PermissionDef[] = [
       'Approve or reject a fund transfer requested by another user (out of a fund only with a resolution, D-311, D-329)',
     surfaces: ['owner'],
   },
+  // J2.2 vendors, contracts, quotation rounds, evaluations (D-310, D-331)
+  {
+    key: 'juristic.vendor.read',
+    description:
+      'Read vendors, service contracts (SLA, instalments, documents, evaluations, preventive plans) and quotation rounds (D-310, D-331)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.vendor.manage',
+    description:
+      'Register and block vendors; draft, activate, renew and terminate service contracts; run quotation rounds and ask for an award (D-310, D-331)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.vendor.evaluate',
+    description: 'Record the monthly evaluation of a vendor contract (D-310, D-331)',
+    surfaces: ['owner'],
+  },
   // platform (/v1/admin)
   { key: 'admin.tenant.read', description: 'List and view tenants', surfaces: ['admin'] },
   // J4.1 gate & visitor (D-315, D-320, D-327)
@@ -678,6 +696,7 @@ const JURISTIC_READ = [
   'juristic.collections.read',
   'juristic.accounting.read',
   'juristic.expense.read',
+  'juristic.vendor.read',
 ];
 
 /** D-320 (J4.1): the guard records visits at the gate — nothing else. */
@@ -715,6 +734,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'juristic.expense.read',
     'juristic.expense.request',
     'juristic.petty_cash.spend',
+    'juristic.vendor.read',
     'gate.read',
     'gate.incident.read',
     'gate.incident.manage',
@@ -747,6 +767,8 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'juristic.expense.read',
     'juristic.expense.request',
     'juristic.expense.pay',
+    'juristic.vendor.read',
+    'juristic.vendor.manage',
   ],
   committee: [
     ...JURISTIC_READ,
@@ -756,6 +778,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'juristic.collections.approve',
     'juristic.expense.approve',
     'juristic.fund.approve',
+    'juristic.vendor.evaluate',
     'gate.read',
     'gate.log.read',
     'gate.invite.approve',

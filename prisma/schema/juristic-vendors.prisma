@@ -1,0 +1,382 @@
+// J2.2 vendors, service contracts, quotation rounds, evaluations (D-310, D-331; migration 0078).
+
+enum VendorCategory {
+  security
+  cleaning
+  gardening
+  lift
+  pump
+  fire_system
+  electrical
+  plumbing
+  pest_control
+  pool
+  cctv
+  waste
+  building_works
+  professional
+  insurance
+  other
+
+  @@map("vendor_category")
+  @@schema("juristic")
+}
+
+enum VendorState {
+  active
+  blocked
+
+  @@map("vendor_state")
+  @@schema("juristic")
+}
+
+enum VendorContractState {
+  draft
+  active
+  expired
+  terminated
+
+  @@map("vendor_contract_state")
+  @@schema("juristic")
+}
+
+enum ContractInstalmentState {
+  scheduled
+  requested
+  cancelled
+
+  @@map("contract_instalment_state")
+  @@schema("juristic")
+}
+
+enum ContractDocumentKind {
+  contract
+  amendment
+  insurance
+  guarantee
+  other
+
+  @@map("contract_document_kind")
+  @@schema("juristic")
+}
+
+enum QuotationRoundState {
+  open
+  awaiting_approval
+  awarded
+  cancelled
+
+  @@map("quotation_round_state")
+  @@schema("juristic")
+}
+
+enum AwardOutcome {
+  contract
+  expense
+
+  @@map("award_outcome")
+  @@schema("juristic")
+}
+
+enum AwardBasis {
+  resolution
+  approval
+
+  @@map("award_basis")
+  @@schema("juristic")
+}
+
+/// D-310 / D-331 (J2.2): a vendor = a core.party (tax id on the party) with categories, contact, masked bank account.
+model Vendor {
+  id               String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String           @map("tenant_id") @db.Uuid
+  partyId          String           @map("party_id") @db.Uuid
+  name             String
+  categories       VendorCategory[] @default([])
+  contactName      String?          @map("contact_name")
+  contactPhone     String?          @map("contact_phone")
+  contactEmail     String?          @map("contact_email") @db.Citext
+  bankName         String?          @map("bank_name")
+  bankAccountName  String?          @map("bank_account_name")
+  bankAccountLast4 String?          @map("bank_account_last4")
+  state            VendorState      @default(active)
+  blockedReason    String?          @map("blocked_reason")
+  note             String?
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?          @map("created_by") @db.Uuid
+  updatedAt        DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy        String?          @map("updated_by") @db.Uuid
+  version          Int              @default(1)
+
+  tenant          Tenant             @relation("VendorTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_tenant_id_fkey")
+  party           Party              @relation("VendorParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_party_id_fkey")
+  contracts       VendorContract[]
+  quotations      Quotation[]
+  evaluations     VendorEvaluation[]
+  expenseRequests ExpenseRequest[]
+
+  @@unique([tenantId, partyId], map: "vendor_tenant_id_party_id_key")
+  @@index([tenantId, state], map: "vendor_tenant_id_state_idx")
+  @@map("vendor")
+  @@schema("juristic")
+}
+
+/// D-310 / D-331 (J2.2): a round of quotations; awarded by resolution or band approval (maker-checker).
+model QuotationRound {
+  id                      String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                String              @map("tenant_id") @db.Uuid
+  buildingId              String              @map("building_id") @db.Uuid
+  title                   String
+  description             String?
+  category                VendorCategory?
+  estimatedAmount         Decimal?            @map("estimated_amount") @db.Decimal(14, 2)
+  state                   QuotationRoundState @default(open)
+  awardedQuotationId      String?             @map("awarded_quotation_id") @db.Uuid
+  outcome                 AwardOutcome?
+  basis                   AwardBasis?
+  resolutionId            String?             @map("resolution_id") @db.Uuid
+  fewerQuotationsReason   String?             @map("fewer_quotations_reason")
+  quotationCount          Int?                @map("quotation_count") @db.SmallInt
+  aboveThreshold          Boolean?            @map("above_threshold")
+  threshold               Decimal?            @db.Decimal(14, 2)
+  awardOptions            Json?               @map("award_options")
+  band                    Json?
+  approvalsRequired       Int?                @map("approvals_required") @db.SmallInt
+  approverRoles           String[]            @default([]) @map("approver_roles")
+  awardRequestedBy        String?             @map("award_requested_by") @db.Uuid
+  awardRequestedAt        DateTime?           @map("award_requested_at") @db.Timestamptz(6)
+  awardedAt               DateTime?           @map("awarded_at") @db.Timestamptz(6)
+  outcomeContractId       String?             @map("outcome_contract_id") @db.Uuid
+  outcomeExpenseRequestId String?             @map("outcome_expense_request_id") @db.Uuid
+  cancelledAt             DateTime?           @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason            String?             @map("cancel_reason")
+  createdAt               DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy               String?             @map("created_by") @db.Uuid
+  updatedAt               DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy               String?             @map("updated_by") @db.Uuid
+  version                 Int                 @default(1)
+
+  tenant                Tenant              @relation("QuotationRoundTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_round_tenant_id_fkey")
+  building              Building            @relation("QuotationRoundBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_round_building_id_fkey")
+  resolution            Resolution?         @relation(fields: [resolutionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_round_resolution_id_fkey")
+  awardRequester        UserAccount?        @relation("QuotationRoundAwardRequester", fields: [awardRequestedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_round_award_requested_by_fkey")
+  awardedQuotation      Quotation?          @relation("QuotationRoundAwarded", fields: [awardedQuotationId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_round_awarded_quotation_id_fkey")
+  outcomeContract       VendorContract?     @relation("QuotationRoundOutcomeContract", fields: [outcomeContractId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_round_outcome_contract_id_fkey")
+  outcomeExpenseRequest ExpenseRequest?     @relation("QuotationRoundOutcomeExpense", fields: [outcomeExpenseRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_round_outcome_expense_request_id_fkey")
+  quotations            Quotation[]         @relation("QuotationRoundQuotations")
+  approvals             QuotationApproval[]
+  contracts             VendorContract[]    @relation("VendorContractQuotationRound")
+  expenseRequests       ExpenseRequest[]    @relation("ExpenseRequestQuotationRound")
+
+  @@index([tenantId, state, createdAt(sort: Desc)], map: "quotation_round_tenant_id_state_idx")
+  @@index([buildingId], map: "quotation_round_building_id_idx")
+  @@map("quotation_round")
+  @@schema("juristic")
+}
+
+/// D-310 / D-331 (J2.2): one vendor's quotation in a round (document required); append-only.
+model Quotation {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  roundId    String   @map("round_id") @db.Uuid
+  vendorId   String   @map("vendor_id") @db.Uuid
+  amount     Decimal  @db.Decimal(14, 2)
+  vatAmount  Decimal  @default(0) @map("vat_amount") @db.Decimal(14, 2)
+  validUntil DateTime @map("valid_until") @db.Date
+  documentId String   @map("document_id") @db.Uuid
+  note       String?
+  receivedOn DateTime @map("received_on") @db.Date
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?  @map("created_by") @db.Uuid
+
+  tenant      Tenant           @relation("QuotationTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_tenant_id_fkey")
+  round       QuotationRound   @relation("QuotationRoundQuotations", fields: [roundId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_round_id_fkey")
+  vendor      Vendor           @relation(fields: [vendorId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_vendor_id_fkey")
+  document    Document         @relation("QuotationDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_document_id_fkey")
+  awardedIn   QuotationRound[] @relation("QuotationRoundAwarded")
+
+  @@unique([roundId, vendorId], map: "quotation_round_id_vendor_id_key")
+  @@index([vendorId], map: "quotation_vendor_id_idx")
+  @@map("quotation")
+  @@schema("juristic")
+}
+
+/// D-091 / D-331 (J2.2): one approver's decision on an award (append-only; never the award requester — trigger).
+model QuotationApproval {
+  id               String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String          @map("tenant_id") @db.Uuid
+  roundId          String          @map("round_id") @db.Uuid
+  approverUserId   String          @map("approver_user_id") @db.Uuid
+  role             String
+  decision         ExpenseDecision
+  reason           String?
+  bandKey          String          @map("band_key")
+  awardRequestedAt DateTime        @map("award_requested_at") @db.Timestamptz(6)
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant   Tenant         @relation("QuotationApprovalTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_approval_tenant_id_fkey")
+  round    QuotationRound @relation(fields: [roundId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_approval_round_id_fkey")
+  approver UserAccount    @relation("QuotationApprovalApprover", fields: [approverUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "quotation_approval_approver_user_id_fkey")
+
+  @@unique([roundId, awardRequestedAt, approverUserId], map: "quotation_approval_round_request_approver_key")
+  @@index([tenantId], map: "quotation_approval_tenant_id_idx")
+  @@map("quotation_approval")
+  @@schema("juristic")
+}
+
+/// D-310 / D-331 (J2.2): a service contract of a building with a vendor (SLA, term, instalments, penalties).
+model VendorContract {
+  id                String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String              @map("tenant_id") @db.Uuid
+  buildingId        String              @map("building_id") @db.Uuid
+  vendorId          String              @map("vendor_id") @db.Uuid
+  title             String
+  scope             String?
+  category          VendorCategory?
+  slaTerms          Json                @default("[]") @map("sla_terms")
+  startsOn          DateTime            @map("starts_on") @db.Date
+  endsOn            DateTime            @map("ends_on") @db.Date
+  renewalNoticeDays Int                 @default(30) @map("renewal_notice_days") @db.SmallInt
+  value             Decimal             @db.Decimal(14, 2)
+  expenseAccountId  String?             @map("expense_account_id") @db.Uuid
+  whtKey            String?             @map("wht_key")
+  instalmentPlan    Json?               @map("instalment_plan")
+  penaltyClauses    String?             @map("penalty_clauses")
+  state             VendorContractState @default(draft)
+  quotationRoundId  String?             @map("quotation_round_id") @db.Uuid
+  resolutionId      String?             @map("resolution_id") @db.Uuid
+  renewsContractId  String?             @map("renews_contract_id") @db.Uuid
+  activatedAt       DateTime?           @map("activated_at") @db.Timestamptz(6)
+  activatedBy       String?             @map("activated_by") @db.Uuid
+  terminatedOn      DateTime?           @map("terminated_on") @db.Date
+  terminatedAt      DateTime?           @map("terminated_at") @db.Timestamptz(6)
+  terminatedBy      String?             @map("terminated_by") @db.Uuid
+  terminationReason String?             @map("termination_reason")
+  expiredAt         DateTime?           @map("expired_at") @db.Timestamptz(6)
+  note              String?
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?             @map("created_by") @db.Uuid
+  updatedAt         DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?             @map("updated_by") @db.Uuid
+  version           Int                 @default(1)
+
+  tenant           Tenant                     @relation("VendorContractTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_tenant_id_fkey")
+  building         Building                   @relation("VendorContractBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_building_id_fkey")
+  vendor           Vendor                     @relation(fields: [vendorId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_vendor_id_fkey")
+  expenseAccount   Account?                   @relation(fields: [expenseAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_expense_account_id_fkey")
+  quotationRound   QuotationRound?            @relation("VendorContractQuotationRound", fields: [quotationRoundId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_quotation_round_id_fkey")
+  resolution       Resolution?                @relation(fields: [resolutionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_resolution_id_fkey")
+  renews           VendorContract?            @relation("VendorContractRenewal", fields: [renewsContractId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_renews_contract_id_fkey")
+  renewedBy        VendorContract[]           @relation("VendorContractRenewal")
+  activator        UserAccount?               @relation("VendorContractActivator", fields: [activatedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_activated_by_fkey")
+  terminator       UserAccount?               @relation("VendorContractTerminator", fields: [terminatedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_terminated_by_fkey")
+  instalments      VendorContractInstalment[]
+  documents        VendorContractDocument[]
+  alerts           VendorContractAlert[]
+  evaluations      VendorEvaluation[]
+  maintenancePlans MaintenancePlan[]
+  expenseRequests  ExpenseRequest[]           @relation("ExpenseRequestVendorContract")
+  awardedFrom      QuotationRound[]           @relation("QuotationRoundOutcomeContract")
+
+  @@index([tenantId, state], map: "vendor_contract_tenant_id_state_idx")
+  @@index([endsOn], map: "vendor_contract_ends_on_idx", where: raw("(state = 'active'::juristic.vendor_contract_state)"))
+  @@index([vendorId], map: "vendor_contract_vendor_id_idx")
+  @@index([buildingId], map: "vendor_contract_building_id_idx")
+  @@unique([renewsContractId], map: "vendor_contract_renews_contract_id_key", where: raw("(renews_contract_id IS NOT NULL)"))
+  @@map("vendor_contract")
+  @@schema("juristic")
+}
+
+/// D-331 (J2.2): an instalment of a contract schedule → one expense request lead days before its due date.
+model VendorContractInstalment {
+  id               String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String          @map("tenant_id") @db.Uuid
+  contractId       String          @map("contract_id") @db.Uuid
+  seq              Int             @db.SmallInt
+  dueOn            DateTime        @map("due_on") @db.Date
+  amount           Decimal         @db.Decimal(14, 2)
+  vatAmount        Decimal         @default(0) @map("vat_amount") @db.Decimal(14, 2)
+  description      String
+  state            ContractInstalmentState @default(scheduled)
+  expenseRequestId String?         @map("expense_request_id") @db.Uuid
+  requestedAt      DateTime?       @map("requested_at") @db.Timestamptz(6)
+  cancelledAt      DateTime?       @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason     String?         @map("cancel_reason")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant         Tenant          @relation("VendorContractInstalmentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_instalment_tenant_id_fkey")
+  contract       VendorContract  @relation(fields: [contractId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_instalment_contract_id_fkey")
+  expenseRequest ExpenseRequest? @relation("VendorContractInstalmentExpense", fields: [expenseRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_instalment_expense_request_id_fkey")
+
+  @@unique([contractId, seq], map: "vendor_contract_instalment_contract_id_seq_key")
+  @@unique([expenseRequestId], map: "vendor_contract_instalment_expense_request_id_key", where: raw("(expense_request_id IS NOT NULL)"))
+  @@index([dueOn], map: "vendor_contract_instalment_due_idx", where: raw("(state = 'scheduled'::juristic.contract_instalment_state)"))
+  @@map("vendor_contract_instalment")
+  @@schema("juristic")
+}
+
+/// D-331 (J2.2): a document of a vendor contract (append-only).
+model VendorContractDocument {
+  id         String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String               @map("tenant_id") @db.Uuid
+  contractId String               @map("contract_id") @db.Uuid
+  documentId String               @map("document_id") @db.Uuid
+  kind       ContractDocumentKind
+  createdAt  DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?              @map("created_by") @db.Uuid
+
+  tenant   Tenant         @relation("VendorContractDocumentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_document_tenant_id_fkey")
+  contract VendorContract @relation(fields: [contractId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_document_contract_id_fkey")
+  document Document       @relation("VendorContractDocumentDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_document_document_id_fkey")
+
+  @@unique([contractId, documentId], map: "vendor_contract_document_contract_id_document_id_key")
+  @@index([documentId], map: "vendor_contract_document_document_id_idx")
+  @@map("vendor_contract_document")
+  @@schema("juristic")
+}
+
+/// D-331 (J2.2): an expiry alert of a contract at a threshold of its end date (once each).
+model VendorContractAlert {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  contractId String   @map("contract_id") @db.Uuid
+  daysBefore Int      @map("days_before") @db.SmallInt
+  endsOn     DateTime @map("ends_on") @db.Date
+  sentAt     DateTime @default(now()) @map("sent_at") @db.Timestamptz(6)
+
+  tenant   Tenant         @relation("VendorContractAlertTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_alert_tenant_id_fkey")
+  contract VendorContract @relation(fields: [contractId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_contract_alert_contract_id_fkey")
+
+  @@unique([contractId, daysBefore, endsOn], map: "vendor_contract_alert_contract_days_ends_key")
+  @@map("vendor_contract_alert")
+  @@schema("juristic")
+}
+
+/// D-310 / D-331 (J2.2): monthly evaluation of a vendor contract (append-only).
+model VendorEvaluation {
+  id           String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  contractId   String   @map("contract_id") @db.Uuid
+  vendorId     String   @map("vendor_id") @db.Uuid
+  month        DateTime @db.Date
+  scores       Json
+  score        Decimal  @db.Decimal(3, 2)
+  incidents    Int      @default(0)
+  incidentNote String?  @map("incident_note")
+  slaBreaches  Int      @default(0) @map("sla_breaches")
+  slaItems     Json     @default("[]") @map("sla_items")
+  workOrders   Int      @default(0) @map("work_orders")
+  note         String?
+  evaluatedBy  String   @map("evaluated_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant    Tenant         @relation("VendorEvaluationTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_evaluation_tenant_id_fkey")
+  contract  VendorContract @relation(fields: [contractId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_evaluation_contract_id_fkey")
+  vendor    Vendor         @relation(fields: [vendorId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_evaluation_vendor_id_fkey")
+  evaluator UserAccount    @relation("VendorEvaluationEvaluator", fields: [evaluatedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "vendor_evaluation_evaluated_by_fkey")
+
+  @@unique([contractId, month], map: "vendor_evaluation_contract_id_month_key")
+  @@index([vendorId, month(sort: Desc)], map: "vendor_evaluation_vendor_id_month_idx")
+  @@map("vendor_evaluation")
+  @@schema("juristic")
+}

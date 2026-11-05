@@ -42,6 +42,9 @@ import { JuristicWorkspaceService } from './ops-juristic/juristic-workspace.serv
 import { PaymentPlansService } from './ops-juristic/payment-plans.service';
 import { JuristicRegisterService } from './ops-juristic/register.service';
 import { StatementsService } from './ops-juristic/statements.service';
+import { QuotationsService } from './ops-juristic/vendors/quotations.service';
+import { VendorEvaluationsService } from './ops-juristic/vendors/vendor-evaluations.service';
+import { VendorsService } from './ops-juristic/vendors/vendors.service';
 import { ContractLibraryService } from './ops-leases/contract-library.service';
 import { ContractRenderer } from './ops-leases/contract-renderer';
 import { ContractsService } from './ops-leases/contracts.service';
@@ -160,6 +163,9 @@ const SERVICES = [
   ExpensesService,
   FundsService,
   BankStatementsService,
+  VendorsService,
+  QuotationsService,
+  VendorEvaluationsService,
   ContractRenderer,
   LeasesService,
   LeaseStampDutyService,

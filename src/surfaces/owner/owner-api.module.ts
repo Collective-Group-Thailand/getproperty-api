@@ -101,6 +101,11 @@ import {
   OwnerStatementsController,
   OwnerWorkspaceInvitationsController,
 } from './juristic-receivables.controller';
+import {
+  OwnerQuotationRoundsController,
+  OwnerVendorContractsController,
+  OwnerVendorsController,
+} from './juristic-vendors.controller';
 import { OwnerLeaseStampDutyController, OwnerUnitDocumentsController } from './landlord-documents.controller';
 import { OwnerLeadsController } from './leads.controller';
 import { OwnerLeaseNoticesController } from './lease-notices.controller';
@@ -242,6 +247,9 @@ import { OwnerUnitResidentInvitesController } from './unit-resident-invites.cont
     OwnerPettyCashController,
     OwnerBankStatementsController,
     OwnerBankStatementLinesController,
+    OwnerVendorsController,
+    OwnerVendorContractsController,
+    OwnerQuotationRoundsController,
     OwnerStatementsController,
     OwnerLetterBatchesController,
     OwnerJuristicWorkspaceController,

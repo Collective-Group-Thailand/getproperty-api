@@ -291,6 +291,8 @@ model MaintenancePlan {
   assigneeUserId  String?   @map("assignee_user_id") @db.Uuid
   isActive        Boolean   @default(true) @map("is_active")
   lastWorkOrderId String?   @map("last_work_order_id") @db.Uuid
+  /// J2.2 (D-331, = the pack's pm_schedule): the vendor contract the preventive work is performed under.
+  vendorContractId String?  @map("vendor_contract_id") @db.Uuid
   version         Int       @default(1)
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy       String?   @map("created_by") @db.Uuid
@@ -305,11 +307,13 @@ model MaintenancePlan {
   assigneeUser  UserAccount?     @relation("MaintenancePlanAssigneeUser", fields: [assigneeUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "maintenance_plan_assignee_user_id_fkey")
   lastWorkOrder WorkOrder?       @relation("MaintenancePlanLastWorkOrder", fields: [lastWorkOrderId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "maintenance_plan_last_work_order_id_fkey")
   workOrders    WorkOrder[]      @relation("WorkOrderMaintenancePlan")
+  vendorContract VendorContract? @relation(fields: [vendorContractId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "maintenance_plan_vendor_contract_id_fkey")
 
   @@index([tenantId, buildingId], map: "maintenance_plan_tenant_id_building_id_idx")
   @@index([buildingId], map: "maintenance_plan_building_id_idx")
   @@index([assetItemId], map: "maintenance_plan_asset_item_id_idx")
   @@index([nextDueOn], map: "maintenance_plan_next_due_on_idx", where: raw("is_active"))
+  @@index([vendorContractId], map: "maintenance_plan_vendor_contract_id_idx", where: raw("(vendor_contract_id IS NOT NULL)"))
   @@map("maintenance_plan")
   @@schema("ops")
 }
