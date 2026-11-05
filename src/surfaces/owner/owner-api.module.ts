@@ -55,7 +55,9 @@ import {
   OwnerGateInvitesController,
   OwnerGatePoliciesController,
   OwnerGatesController,
+  OwnerGateVehiclesController,
   OwnerGateVisitsController,
+  OwnerIncidentsController,
 } from './gates.controller';
 import {
   OwnerAssetGrantsController,
@@ -154,6 +156,8 @@ import { OwnerUnitResidentInvitesController } from './unit-resident-invites.cont
     OwnerGateBlacklistController,
     OwnerGateInvitesController,
     OwnerGateVisitsController,
+    OwnerIncidentsController,
+    OwnerGateVehiclesController,
     OwnerSubscriptionController,
     OwnerStorageController,
     OwnerInsightsController,

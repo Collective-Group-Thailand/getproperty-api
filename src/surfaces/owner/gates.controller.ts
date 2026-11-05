@@ -8,6 +8,8 @@ import { ApiPaginated } from '@common/pagination/api-paginated.decorator';
 import { paginated, toSkipTake } from '@common/pagination/pagination';
 import { type Page } from '@common/pagination/pagination.dto';
 import { GateAdminService } from '@modules/smart-gate/gate-admin.service';
+import { GateHardwareService } from '@modules/smart-gate/gate-hardware.service';
+import { IncidentsService } from '@modules/smart-gate/incidents.service';
 import {
   Body,
   Controller,
@@ -54,6 +56,7 @@ import {
   PLATE_EXAMPLE,
   POLICY_EXAMPLE,
   RevokeReasonDto,
+  VisitActorKindName,
   VisitInviteDto,
   VisitInviteStateName,
   VisitLogDetailDto,
@@ -70,6 +73,27 @@ import {
   policyDto,
   visitEventDto,
 } from '../shared/gate.mappers';
+import {
+  EdgeDeviceAttachDto,
+  GateHardwareKindName,
+  INCIDENT_EXAMPLE,
+  IncidentDecisionDto,
+  IncidentDetailDto,
+  IncidentDto,
+  IncidentEventKindName,
+  IncidentLogQuery,
+  IncidentReasonQuery,
+  IncidentStateName,
+  OwnerVehicleQuery,
+  RESIDENT_VEHICLE_EXAMPLE,
+  ResidentVehicleDto,
+} from '../shared/gate-hardware.dto';
+import {
+  incidentDto,
+  incidentEventDto,
+  incidentVisitDto,
+  residentVehicleDto,
+} from '../shared/gate-hardware.mappers';
 import { ApiSurface, SURFACES } from '../surfaces';
 
 const T = [
@@ -100,6 +124,11 @@ const DEVICE_EXAMPLE: GateDeviceDto = {
   enrolledAt: null,
   lastSeenAt: null,
   revokedAt: null,
+  edgeDeviceId: null,
+  channel: null,
+  pulseMs: null,
+  hwState: null,
+  hwStateAt: null,
 };
 const GUARD_EXAMPLE: GateGuardDto = {
   id: FAKE.uuid,
@@ -125,7 +154,10 @@ const BLACKLIST_EXAMPLE: BlacklistDto = {
 @ApiSurface(SURFACES.owner)
 @Controller('owner/gates')
 export class OwnerGatesController {
-  constructor(private readonly gates: GateAdminService) {}
+  constructor(
+    private readonly gates: GateAdminService,
+    private readonly hardware: GateHardwareService,
+  ) {}
 
   @Post()
   @Idempotent({ optional: true })
@@ -271,6 +303,89 @@ export class OwnerGatesController {
     @Body() body: RevokeReasonDto,
   ): Promise<GateDeviceDto> {
     return deviceDto(await this.gates.revokeDevice(ctx, gateId, deviceId, body.reason));
+  }
+  @Post(':gateId/edge-devices')
+  @Idempotent()
+  @TenantScoped()
+  @Can('gate.manage')
+  @ApiEndpoint({
+    id: 'owner.gates.attachEdgeDevice',
+    summary: 'Attach a barrier or LPR camera',
+    description:
+      'A barrier relay or an LPR camera on a getproperty-edge gateway (a provisioned gateway of a building of this estate, same tenant — else 422 `gate.edge_device_invalid`) and its channel there (409 when another live device uses it). Active at once; the gate’s `barrier` / `lpr` flags follow; the gateway config (`gateDevices`, protocol 1.3) is recompiled and published (D-316, D-328).',
+    implements: ['D-316', 'D-328'],
+  })
+  @ApiJsonBody(EdgeDeviceAttachDto, {
+    kind: GateHardwareKindName.Barrier,
+    name: 'ไม้กั้นขาเข้า',
+    edgeDeviceId: FAKE.uuid,
+    channel: 'relay-1',
+    pulseMs: 800,
+  })
+  @ApiSuccess(201, {
+    description: 'Attached',
+    type: GateDeviceDto,
+    example: {
+      ...DEVICE_EXAMPLE,
+      kind: 'barrier' as GateDeviceKindName,
+      name: 'ไม้กั้นขาเข้า',
+      state: 'active' as GateDeviceStateName,
+      enrolExpiresAt: null,
+      enrolledAt: FAKE.dateTime,
+      edgeDeviceId: FAKE.uuid,
+      channel: 'relay-1',
+      pulseMs: 800,
+    },
+  })
+  @ApiStandardErrors(
+    'http.not_found',
+    'validation.failed',
+    'auth.forbidden',
+    'gate.edge_device_invalid',
+    'gate.channel_taken',
+    ...T,
+  )
+  async attachEdgeDevice(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('gateId', ParseUUIDPipe) gateId: string,
+    @Body() body: EdgeDeviceAttachDto,
+  ): Promise<GateDeviceDto> {
+    return deviceDto(await this.hardware.attach(ctx, gateId, body));
+  }
+
+  @Post(':gateId/edge-devices/:gateDeviceId/actions/detach')
+  @HttpCode(200)
+  @Idempotent()
+  @TenantScoped()
+  @Can('gate.manage')
+  @ApiEndpoint({
+    id: 'owner.gates.detachEdgeDevice',
+    summary: 'Detach a barrier or LPR camera',
+    description:
+      'The device stops at once (no more `gate.open` to it, its events are refused); the gateway config drops it. Idempotent (D-328).',
+    implements: ['D-328'],
+  })
+  @ApiJsonBody(RevokeReasonDto, { reason: 'เปลี่ยนชุดไม้กั้นใหม่' })
+  @ApiSuccess(200, {
+    description: 'Detached',
+    type: GateDeviceDto,
+    example: {
+      ...DEVICE_EXAMPLE,
+      kind: 'barrier' as GateDeviceKindName,
+      state: 'revoked' as GateDeviceStateName,
+      revokedAt: FAKE.dateTime,
+      edgeDeviceId: FAKE.uuid,
+      channel: 'relay-1',
+    },
+  })
+  @ApiStandardErrors('http.not_found', 'validation.failed', 'auth.forbidden', ...T)
+  async detachEdgeDevice(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('gateId', ParseUUIDPipe) gateId: string,
+    @Param('gateDeviceId', ParseUUIDPipe) gateDeviceId: string,
+    @Body() body: RevokeReasonDto,
+  ): Promise<GateDeviceDto> {
+    return deviceDto(await this.hardware.detach(ctx, gateId, gateDeviceId, body.reason));
   }
 }
 
@@ -643,5 +758,154 @@ export class OwnerGateVisitsController {
   ): Promise<VisitLogDetailDto> {
     const r = await this.gates.visitLogGet(ctx, id, q.reason);
     return { ...guardVisitDto(r.visit), events: r.events.map(visitEventDto) };
+  }
+}
+
+/** `/v1/owner/incidents*` (J4.2, D-317, D-328): the SOS / incident log — every read needs a reason (audited). */
+@ApiTags('owner.gates')
+@ApiSurface(SURFACES.owner)
+@Controller('owner/incidents')
+export class OwnerIncidentsController {
+  constructor(private readonly incidents: IncidentsService) {}
+
+  @Get()
+  @TenantScoped()
+  @Can('gate.incident.read')
+  @ApiEndpoint({
+    id: 'owner.incidents.list',
+    summary: 'Incident log',
+    description:
+      'SOS and incidents of the tenant’s estates, newest first, by property, state and period. `reason` (5–500) is required; every read writes one `gate.incident_log_read` audit row (PDPA, like the visit log) (D-317, D-328).',
+    implements: ['D-317', 'D-328'],
+  })
+  @ApiPaginated(IncidentDto, { example: INCIDENT_EXAMPLE })
+  @ApiStandardErrors('validation.failed', 'auth.forbidden', ...T)
+  async list(@CurrentTenant() ctx: TenantContext, @Query() q: IncidentLogQuery): Promise<Page<IncidentDto>> {
+    const { skip, take } = toSkipTake(q);
+    const r = await this.incidents.log(ctx, q, skip, take);
+    return paginated(r.rows.map(incidentDto), r.total, q);
+  }
+
+  @Get(':incidentId')
+  @TenantScoped()
+  @Can('gate.incident.read')
+  @ApiEndpoint({
+    id: 'owner.incidents.get',
+    summary: 'An incident',
+    description:
+      'The incident, its timeline (raised, acknowledged, resolved, cancelled) and the visits inside the estate at that time (entered and not exited before the SOS − `gate.incident.visit_window_minutes`). `reason` required, audited (D-317, D-328).',
+    implements: ['D-317', 'D-328'],
+  })
+  @ApiSuccess(200, {
+    description: 'Incident',
+    type: IncidentDetailDto,
+    example: {
+      ...INCIDENT_EXAMPLE,
+      events: [
+        {
+          id: FAKE.uuid,
+          kind: IncidentEventKindName.Raised,
+          actorKind: VisitActorKindName.Resident,
+          occurredAt: FAKE.dateTime,
+        },
+      ],
+      visits: [],
+    },
+  })
+  @ApiStandardErrors('http.not_found', 'validation.failed', 'auth.forbidden', ...T)
+  async get(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('incidentId', ParseUUIDPipe) id: string,
+    @Query() q: IncidentReasonQuery,
+  ): Promise<IncidentDetailDto> {
+    const r = await this.incidents.logGet(ctx, id, q.reason);
+    return {
+      ...incidentDto(r.incident),
+      events: r.events.map(incidentEventDto),
+      visits: r.visits.map(incidentVisitDto),
+    };
+  }
+
+  @Post(':incidentId/actions/acknowledge')
+  @HttpCode(200)
+  @TenantScoped()
+  @Can('gate.incident.manage')
+  @ApiEndpoint({
+    id: 'owner.incidents.acknowledge',
+    summary: 'Acknowledge an incident',
+    description: 'The office has it: `open` → `acknowledged` (idempotent); the resident is told (D-317).',
+    implements: ['D-317', 'D-328'],
+  })
+  @ApiJsonBody(IncidentDecisionDto, { note: 'ผู้จัดการรับเรื่องแล้ว' })
+  @ApiSuccess(200, {
+    description: 'Acknowledged',
+    type: IncidentDto,
+    example: { ...INCIDENT_EXAMPLE, state: IncidentStateName.Acknowledged, acknowledgedAt: FAKE.dateTime },
+  })
+  @ApiStandardErrors('http.not_found', 'validation.failed', 'auth.forbidden', 'incident.invalid_state', ...T)
+  async acknowledge(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('incidentId', ParseUUIDPipe) id: string,
+    @Body() body: IncidentDecisionDto,
+  ): Promise<IncidentDto> {
+    return incidentDto(await this.incidents.operatorDecide(ctx, id, 'acknowledge', body.note));
+  }
+
+  @Post(':incidentId/actions/resolve')
+  @HttpCode(200)
+  @TenantScoped()
+  @Can('gate.incident.manage')
+  @ApiEndpoint({
+    id: 'owner.incidents.resolve',
+    summary: 'Resolve an incident',
+    description:
+      '`open` | `acknowledged` → `resolved` with an optional note (idempotent once resolved) (D-317).',
+    implements: ['D-317', 'D-328'],
+  })
+  @ApiJsonBody(IncidentDecisionDto, { note: 'ตรวจสอบแล้ว ไม่มีผู้บาดเจ็บ' })
+  @ApiSuccess(200, {
+    description: 'Resolved',
+    type: IncidentDto,
+    example: {
+      ...INCIDENT_EXAMPLE,
+      state: IncidentStateName.Resolved,
+      acknowledgedAt: FAKE.dateTime,
+      resolvedAt: FAKE.dateTime,
+    },
+  })
+  @ApiStandardErrors('http.not_found', 'validation.failed', 'auth.forbidden', 'incident.invalid_state', ...T)
+  async resolve(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('incidentId', ParseUUIDPipe) id: string,
+    @Body() body: IncidentDecisionDto,
+  ): Promise<IncidentDto> {
+    return incidentDto(await this.incidents.operatorDecide(ctx, id, 'resolve', body.note));
+  }
+}
+
+/** `/v1/owner/gate-vehicles` (J4.2, D-328): the registered cars of the tenant's units. */
+@ApiTags('owner.gates')
+@ApiSurface(SURFACES.owner)
+@Controller('owner/gate-vehicles')
+export class OwnerGateVehiclesController {
+  constructor(private readonly hardware: GateHardwareService) {}
+
+  @Get()
+  @TenantScoped()
+  @Can('gate.read')
+  @ApiEndpoint({
+    id: 'owner.gateVehicles.list',
+    summary: 'Registered cars',
+    description:
+      'Cars the households registered (LPR entry, resident open), optionally of one unit or property; residents add and remove them (D-328).',
+    implements: ['D-328'],
+  })
+  @ApiSuccess(200, { description: 'Cars', type: [ResidentVehicleDto], example: [RESIDENT_VEHICLE_EXAMPLE] })
+  @ApiStandardErrors('validation.failed', 'auth.forbidden', ...T)
+  async list(
+    @CurrentTenant() ctx: TenantContext,
+    @Query() q: OwnerVehicleQuery,
+  ): Promise<ResidentVehicleDto[]> {
+    return (await this.hardware.ownerVehicles(ctx, q)).map(residentVehicleDto);
   }
 }

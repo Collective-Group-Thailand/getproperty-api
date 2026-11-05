@@ -27,7 +27,40 @@ export const GATE_STREAM_EVENTS = [
   'gate.visit.cancelled',
   'gate.visit.photo_added',
   'gate.visit.overstayed',
+  // J4.2 (D-328)
+  'gate.open_requested',
 ] as const;
+
+/** J4.2 (D-328): gate hardware events streamed to the gate (`gate:<id>`) only. */
+export const GATE_HARDWARE_STREAM_EVENTS = [
+  'gate.barrier_state',
+  'gate.plate_detected',
+  'gate.plate_detection.changed',
+  'gate.edge_device_attached',
+  'gate.edge_device_detached',
+  'device.command_finished',
+] as const;
+
+/** J4.2 (D-317, D-328): incident events — every gate of the estate and the unit's LIFF. */
+export const INCIDENT_STREAM_EVENTS = [
+  'gate.incident.raised',
+  'gate.incident.acknowledged',
+  'gate.incident.resolved',
+  'gate.incident.cancelled',
+] as const;
+
+const INCIDENT_KIND_TH: Record<string, string> = {
+  fire: 'ไฟไหม้',
+  medical: 'เจ็บป่วยฉุกเฉิน',
+  intrusion: 'บุกรุก',
+  other: 'เหตุฉุกเฉินอื่น',
+};
+const INCIDENT_KIND_EN: Record<string, string> = {
+  fire: 'fire',
+  medical: 'medical emergency',
+  intrusion: 'intrusion',
+  other: 'other emergency',
+};
 
 const KIND_TH: Record<string, string> = {
   guest: 'แขก',
@@ -79,12 +112,102 @@ export class GateNotifications implements OnModuleInit {
   }
 
   onModuleInit(): void {
+    /** Owner and manager by their audiences; the committee hears it on the manager routes (no committee audience). */
+    const estateOperators = async (tx: Tx, tenantId: string): Promise<Recipient[]> => [
+      ...(await operators(tx, tenantId, ['owner', 'manager'], 'owner')),
+      ...(await operators(tx, tenantId, ['committee'], 'manager')).map((r) => ({
+        ...r,
+        audience: 'manager' as const,
+      })),
+    ];
+
     registerRealtimeChannels(GATE_STREAM_EVENTS, (_tx, e) => {
       const p = e.payload as { gateId?: string; unitId?: string | null };
       return Promise.resolve([
         ...(p.gateId ? [`gate:${p.gateId}`] : []),
         ...(p.unitId ? [`unit:${p.unitId}`] : []),
       ]);
+    });
+
+    registerRealtimeChannels(GATE_HARDWARE_STREAM_EVENTS, (_tx, e) => {
+      const p = e.payload as { gateId?: string };
+      return Promise.resolve(p.gateId ? [`gate:${p.gateId}`] : []);
+    });
+    registerRealtimeChannels(INCIDENT_STREAM_EVENTS, (_tx, e) => {
+      const p = e.payload as { gateIds?: string[]; unitId?: string | null };
+      return Promise.resolve([
+        ...(p.gateIds ?? []).map((id) => `gate:${id}`),
+        ...(p.unitId ? [`unit:${p.unitId}`] : []),
+      ]);
+    });
+
+    /** SOS: urgent to owner, manager, staff and the committee (manager routes) — quiet hours never hold it. */
+    registerNotifiable('gate.incident.raised', async (tx, e) => {
+      if (!e.tenantId) return null;
+      const i = await tx.incident.findUnique({
+        where: { id: e.payload.incidentId as string },
+        include: {
+          unit: { select: { unitNo: true, building: { select: { name: true } } } },
+          property: { select: { name: true } },
+          gate: { select: { name: true } },
+        },
+      });
+      if (!i) return null;
+      return {
+        recipients: [
+          ...(await estateOperators(tx, e.tenantId)),
+          ...(await operators(tx, e.tenantId, ['staff'], 'staff')),
+        ],
+        urgent: true,
+        data: {
+          tenant: { name: await tenantName(tx, e.tenantId) },
+          incident: {
+            kindTh: INCIDENT_KIND_TH[i.kind] ?? i.kind,
+            kindEn: INCIDENT_KIND_EN[i.kind] ?? i.kind,
+            property: i.property.name,
+            where: i.unit ? `${i.unit.building.name} ${i.unit.unitNo}` : (i.gate?.name ?? i.property.name),
+            note: i.note ?? '-',
+          },
+        },
+      };
+    });
+
+    /** The resident who raised the SOS hears that a guard / the office has it (urgent). */
+    registerNotifiable('gate.incident.acknowledged', async (tx, e) => {
+      if (!e.tenantId) return null;
+      const i = await tx.incident.findUnique({
+        where: { id: e.payload.incidentId as string },
+        include: { unit: { select: { unitNo: true } } },
+      });
+      if (!i?.raisedByUserId || i.source !== 'resident_sos') return null;
+      const user = await tx.userAccount.findUnique({ where: { id: i.raisedByUserId } });
+      if (!user) return null;
+      return {
+        recipients: [
+          {
+            audience: 'resident' as const,
+            type: 'user' as const,
+            id: user.id,
+            tenantId: e.tenantId,
+            language: user.language,
+            line: user.lineUserId,
+            phone: null,
+            email: null,
+          },
+        ],
+        urgent: true,
+        data: {
+          tenant: { name: await tenantName(tx, e.tenantId) },
+          incident: {
+            kindTh: INCIDENT_KIND_TH[i.kind] ?? i.kind,
+            kindEn: INCIDENT_KIND_EN[i.kind] ?? i.kind,
+            unitNo: i.unit?.unitNo ?? '-',
+            byTh: e.payload.by === 'guard' ? 'รปภ.' : 'สำนักงานนิติบุคคล',
+            byEn: e.payload.by === 'guard' ? 'the guard' : 'the office',
+          },
+          link: this.link(`/sos/${i.id}`),
+        },
+      };
     });
 
     registerNotifiable('gate.visit.requested', async (tx, e) => {
@@ -212,15 +335,6 @@ export class GateNotifications implements OnModuleInit {
     };
     registerNotifiable('gate.invite.approved', inviteDecision);
     registerNotifiable('gate.invite.rejected', inviteDecision);
-
-    /** Owner and manager by their audiences; the committee hears it on the manager routes (no committee audience). */
-    const estateOperators = async (tx: Tx, tenantId: string): Promise<Recipient[]> => [
-      ...(await operators(tx, tenantId, ['owner', 'manager'], 'owner')),
-      ...(await operators(tx, tenantId, ['committee'], 'manager')).map((r) => ({
-        ...r,
-        audience: 'manager' as const,
-      })),
-    ];
 
     registerNotifiable('gate.visit.overstayed', async (tx, e) => {
       if (!e.tenantId) return null;

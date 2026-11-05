@@ -32,6 +32,11 @@ import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
 import { ResidentUnitCollectionsController } from './resident-collections.controller';
 import { ResidentUnitGateController, ResidentVisitsController } from './resident-gate.controller';
+import {
+  ResidentGatesController,
+  ResidentSosController,
+  ResidentUnitVehiclesController,
+} from './resident-gate-hardware.controller';
 import { ResidentInspectionsController } from './resident-inspections.controller';
 import {
   ResidentDocumentsController,
@@ -45,7 +50,7 @@ import {
   ResidentUnitUsageController,
 } from './resident-units.controller';
 
-/** `/v1/resident/*` (contract §2): LIFF — me, consents, PDPA requests, inbox, realtime (B1.3); privacy (B2.2); leases, e-signature, notice, invitations (B2.3); deposits (B2.4); invoices (B4.2); payments, slips, receipts (B4.4); service requests (B5.1); door codes (B5.2); community (B5.3); satisfaction survey (B6.3); my units, unit usage and co-owner invitations (JR). */
+/** `/v1/resident/*` (contract §2): LIFF — me, consents, PDPA requests, inbox, realtime (B1.3); privacy (B2.2); leases, e-signature, notice, invitations (B2.3); deposits (B2.4); invoices (B4.2); payments, slips, receipts (B4.4); service requests (B5.1); door codes (B5.2); community (B5.3); satisfaction survey (B6.3); my units, unit usage and co-owner invitations (JR); gate, visits (J4.1); barrier open, cars, SOS (J4.2). */
 @Module({
   controllers: [
     ResidentCsatSurveyController,
@@ -59,6 +64,9 @@ import {
     ResidentBudgetController,
     ResidentVisitsController,
     ResidentUnitGateController,
+    ResidentGatesController,
+    ResidentUnitVehiclesController,
+    ResidentSosController,
     ResidentReviewsController,
     ResidentIdentitiesController,
     ResidentIdentityVerificationController,

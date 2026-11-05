@@ -47,13 +47,13 @@ describe('device-protocol.json generation', () => {
     );
   });
 
-  it('protocol 1.2 publishes the MQTT identity and the exact gateway ACL (D-235, T-9)', () => {
+  it('protocol 1.2+ publishes the MQTT identity and the exact gateway ACL (D-235, T-9)', () => {
     const schema = buildDeviceProtocolSchema('0.0.0-test') as unknown as {
       'x-protocol-version': string;
       'x-acl': { publish: string[] };
       'x-mqtt-auth': { transports: Record<string, unknown> };
     };
-    expect(schema['x-protocol-version']).toBe('1.2');
+    expect(schema['x-protocol-version']).toBe('1.3');
     expect(schema['x-acl'].publish).toEqual([
       'gp/v1/<gatewayId>/telemetry',
       'gp/v1/<gatewayId>/health',
@@ -143,6 +143,105 @@ describe('device-protocol.json generation', () => {
     expect(validate('CommandAck', { cmdId: '3b241101-e2bb-4255-8caf-4136c566a962', status: 'maybe' })).toBe(
       false,
     );
+  });
+
+  it('protocol 1.3 adds gate.open, gate.state and plate.detected additively on the existing topics (D-328)', () => {
+    const ajv = new Ajv2020({ strict: false, allErrors: true });
+    addFormats(ajv);
+    ajv.addSchema(schema);
+    const validate = (name: string, value: unknown) =>
+      ajv.validate(`${String(schema.$id)}#/$defs/${name}`, value);
+    const id = '3b241101-e2bb-4255-8caf-4136c566a962';
+    // no new topic, no new ACL entry (the broker allows none)
+    expect(Object.keys(schema['x-topics'] as object)).toHaveLength(6);
+    expect(schema['x-command-args']).toEqual({ 'gate.open': 'GateOpenArgs' });
+    expect(schema['x-event-data']).toEqual({
+      'gate.state': 'GateStateData',
+      'plate.detected': 'PlateDetectedData',
+    });
+    expect(schema.$defs.CommandType!.enum).toContain('gate.open');
+    expect(schema.$defs.DeviceEventType!.enum).toEqual(
+      expect.arrayContaining(['gate.state', 'plate.detected']),
+    );
+    // meter commands / events keep their values
+    expect(schema.$defs.CommandType!.enum).toEqual(
+      expect.arrayContaining(['read_now', 'ota_apply', 'identify']),
+    );
+    const args = {
+      commandId: id,
+      gateId: id,
+      deviceId: id,
+      reason: 'visit',
+      visitId: id,
+      pulseMs: 800,
+      expiresAt: '2026-11-05T18:00:30+07:00',
+    };
+    expect(validate('GateOpenArgs', args)).toBe(true);
+    expect(
+      validate('Command', {
+        cmdId: id,
+        type: 'gate.open',
+        args,
+        issuedAt: '2026-11-05T18:00:00+07:00',
+        ttlS: 30,
+      }),
+    ).toBe(true);
+    expect(validate('GateOpenArgs', { ...args, pulseMs: 50 })).toBe(false);
+    expect(validate('GateOpenArgs', { ...args, reason: 'because' })).toBe(false);
+    const { expiresAt: _e, ...noExpiry } = args;
+    expect(validate('GateOpenArgs', noExpiry)).toBe(false);
+    expect(
+      validate('GateStateData', {
+        gateId: id,
+        state: 'open',
+        at: '2026-11-05T18:00:02+07:00',
+        commandId: id,
+      }),
+    ).toBe(true);
+    expect(validate('GateStateData', { gateId: id, state: 'ajar', at: '2026-11-05T18:00:02+07:00' })).toBe(
+      false,
+    );
+    expect(
+      validate('PlateDetectedData', {
+        gateId: id,
+        plate: { category: '1กข', number: '0000' },
+        confidence: 0.94,
+        at: '2026-11-05T18:00:00+07:00',
+        imageRef: 'snap/1.jpg',
+      }),
+    ).toBe(true);
+    expect(
+      validate('PlateDetectedData', {
+        gateId: id,
+        plate: { category: '1กข', number: '0000' },
+        confidence: 1.5,
+        at: '2026-11-05T18:00:00+07:00',
+      }),
+    ).toBe(false);
+    expect(
+      validate('DeviceEvent', {
+        eventId: id,
+        gatewayId: id,
+        type: 'plate.detected',
+        severity: 'info',
+        occurredAt: '2026-11-05T18:00:00+07:00',
+        data: { gateId: id },
+      }),
+    ).toBe(true);
+    expect(
+      validate('GateDeviceConfig', {
+        deviceId: id,
+        gateId: id,
+        kind: 'barrier',
+        channel: 'relay-1',
+        pulseMs: 800,
+      }),
+    ).toBe(true);
+    expect(
+      validate('GateDeviceConfig', { deviceId: id, gateId: id, kind: 'barrier', channel: 'relay 1' }),
+    ).toBe(false);
+    // a meter-only GatewayConfig stays valid without gateDevices
+    expect((schema.$defs.GatewayConfig!.required as string[]).includes('gateDevices')).toBe(false);
   });
 
   it('matches the committed contract/device-protocol.json when it exists', () => {

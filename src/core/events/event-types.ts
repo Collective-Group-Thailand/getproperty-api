@@ -567,6 +567,22 @@ export const DOMAIN_EVENT_TYPES = {
   'gate.policy.changed': 'The gate policy of a unit changed (timeout, action, delivery, note).',
   'gate.blacklist.changed': 'A plate was added to or removed from the estate blacklist (reason audited).',
   'gate.vehicle_remembered': 'A unit remembered a car (gate.remember_days) or forgot it.',
+  'gate.edge_device_attached':
+    'A barrier relay or LPR camera on an edge gateway was attached to a gate (D-328).',
+  'gate.edge_device_detached': 'A barrier relay or LPR camera was detached from a gate (D-328).',
+  'gate.open_requested':
+    'A guard, a resident or a known plate asked the barrier of a gate to open (gate.open sent, D-328).',
+  'gate.barrier_state': 'A barrier reported its position (gate.state, D-328).',
+  'gate.plate_detected':
+    'An LPR camera read a plate at a gate; known plates entered, others wait for the guard (D-328).',
+  'gate.plate_detection.changed': 'A pending plate read was claimed, dismissed or expired (D-328).',
+  'gate.resident_vehicle.changed': 'A unit registered or removed one of its own cars (D-328).',
+  'gate.incident.raised':
+    'A resident SOS or a gate tablet raised an incident; every gate, the office and the committee are alerted (D-317, D-328).',
+  'gate.incident.acknowledged':
+    'A guard or the office acknowledged an incident; the resident is told (D-317).',
+  'gate.incident.resolved': 'An incident was resolved (D-317).',
+  'gate.incident.cancelled': 'The resident cancelled an SOS within gate.sos.cancel_seconds (D-328).',
   'gate.retention_purged':
     'The gate-retention job deleted expired visits, photos, invites and vehicles of a tenant (counts only).',
 } as const;

@@ -51,6 +51,8 @@ enum DeviceEventType {
   gateway_online
   gateway_offline
   meter_status_changed
+  gate_state
+  plate_detected
 
   @@map("device_event_type")
   @@schema("smart")

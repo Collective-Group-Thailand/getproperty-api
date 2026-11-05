@@ -17,7 +17,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (109)
+## Permissions (113)
 | Permission | Surfaces | owner | manager | staff | accountant | committee | auditor | guard | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | View the tenant profile and company data |
@@ -105,6 +105,10 @@
 | `gate.log.read` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  | Read the visit log of the estate — every read needs a reason and is audited (D-315 PDPA) |
 | `gate.invite.approve` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  | Approve or reject contractor invites of residents (D-315) |
 | `gate.visit.record` | guard |  |  |  |  |  |  | ✓ |  |  |  |  | Record visits, scan invites, stamp entries and exits on a gate tablet (guard, D-320) |
+| `gate.open` | guard |  |  |  |  |  |  | ✓ |  |  |  |  | Open the barrier of the gate of the shift, claim LPR reads (guard, D-316, D-328) |
+| `gate.incident.respond` | guard |  |  |  |  |  |  | ✓ |  |  |  |  | See SOS / incidents of the estate on the gate tablet, raise, acknowledge and resolve them (guard, D-317) |
+| `gate.incident.read` | owner, staff | ✓ | ✓ | ✓ |  | ✓ |  |  |  |  |  |  | Read the incident log of the estate — every read needs a reason and is audited (D-317, D-328) |
+| `gate.incident.manage` | owner, staff | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | Acknowledge and resolve SOS / incidents from the console (D-317, D-328) |
 | `admin.tenant.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Create, onboard, deactivate tenants (D-161) |
 | `admin.user.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Manage platform users and role assignments |
 | `admin.setting.manage` | admin |  |  |  |  |  |  |  | ✓ |  |  |  | Edit platform settings and per-tenant overrides |

@@ -428,6 +428,19 @@ export const AUDIT_ACTIONS = [
   'gate.vehicle_forgotten',
   'gate.visit_log_read',
   'gate.retention_purged',
+  'gate.edge_device_attached',
+  'gate.edge_device_detached',
+  'gate.open_requested',
+  'gate.device_event_refused',
+  'gate.plate_claimed',
+  'gate.plate_dismissed',
+  'gate.resident_vehicle_added',
+  'gate.resident_vehicle_removed',
+  'gate.incident_raised',
+  'gate.incident_acknowledged',
+  'gate.incident_resolved',
+  'gate.incident_cancelled',
+  'gate.incident_log_read',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

@@ -7,7 +7,8 @@ import { DeviceEventSeverity, DeviceEventType } from './enums';
 @JSONSchema({
   description:
     'Operational event from a gateway on `gp/v1/<gatewayId>/events`: meter_offline, pulse_overflow, config_applied / ' +
-    'config_rejected (with the version), ota_*, tamper, power_loss, restart, seq_gap. `eventId` deduplicates redeliveries.',
+    'config_rejected (with the version), ota_*, tamper, power_loss, restart, seq_gap; 1.3: gate.state (`data` = ' +
+    'GateStateData), plate.detected (`data` = PlateDetectedData). `eventId` deduplicates redeliveries.',
 })
 export class DeviceEvent {
   @JSONSchema({ description: 'Gateway-generated uuid; redelivered events carry the same id' })
@@ -48,7 +49,9 @@ export class DeviceEvent {
   message?: string;
 
   @JSONSchema({
-    description: 'Event-specific details (e.g. `{ "fromSeq": 48210, "toSeq": 48213 }` for seq_gap)',
+    description:
+      'Event-specific details (e.g. `{ "fromSeq": 48210, "toSeq": 48213 }` for seq_gap); GateStateData for gate.state, ' +
+      'PlateDetectedData for plate.detected (validated by type, 1.3)',
     additionalProperties: true,
   })
   @IsOptional()

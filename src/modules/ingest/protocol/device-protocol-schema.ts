@@ -6,6 +6,7 @@ import { Command, CommandAck } from './command.dto';
 import { BusConfig, CustomRegisterMap, GatewayConfig, MeterConfig, RegisterDef } from './config.dto';
 import * as enums from './enums';
 import { DeviceEvent } from './events.dto';
+import { GateDeviceConfig, GateOpenArgs, GateStateData, PlateDetectedData, PlateReading } from './gate.dto';
 import { Health, MeterHealth } from './health.dto';
 import { Reading, TelemetryBatch } from './telemetry.dto';
 
@@ -26,7 +27,18 @@ export const PROTOCOL_PAYLOADS = [
   RegisterDef,
   Command,
   CommandAck,
+  // 1.3 (D-328): gate hardware
+  GateOpenArgs,
+  GateStateData,
+  PlateDetectedData,
+  PlateReading,
+  GateDeviceConfig,
 ] as const;
+
+/** 1.3 (D-328): the `args` schema of a command type (other types keep free-form `args`). */
+export const COMMAND_ARGS = { 'gate.open': 'GateOpenArgs' } as const;
+/** 1.3 (D-328): the `data` schema of an event type (other types keep free-form `data`). */
+export const EVENT_DATA = { 'gate.state': 'GateStateData', 'plate.detected': 'PlateDetectedData' } as const;
 
 /** Topic → payload definition (device-protocol.md §2); `<gatewayId>` is the uuid of the publishing gateway. */
 export const TOPICS = {
@@ -58,8 +70,11 @@ export const TOPICS = {
   },
 } as const;
 
-/** Device protocol version (docs/contract/device-protocol.md): 1.1 seqEpoch (D-227), 1.2 MQTT authn/authz (D-235). */
-export const DEVICE_PROTOCOL_VERSION = '1.2';
+/**
+ * Device protocol version (docs/contract/device-protocol.md): 1.1 seqEpoch (D-227), 1.2 MQTT authn/authz (D-235),
+ * 1.3 gate hardware — `gate.open` command, `gate.state` / `plate.detected` events, `GatewayConfig.gateDevices` (D-328).
+ */
+export const DEVICE_PROTOCOL_VERSION = '1.3';
 
 /**
  * Protocol 1.2 (D-235, D-239): how a gateway authenticates to the shared EMQX and what it may do there. The broker
@@ -142,6 +157,8 @@ export function buildDeviceProtocolSchema(version: string): Schema {
     'x-mqtt-auth': MQTT_AUTH,
     'x-acl': GATEWAY_ACL,
     'x-topics': TOPICS,
+    'x-command-args': COMMAND_ARGS,
+    'x-event-data': EVENT_DATA,
     'x-lwt': { topic: 'gp/v1/<gatewayId>/health', payload: { status: 'offline_lwt' } },
     $defs: defs,
   });

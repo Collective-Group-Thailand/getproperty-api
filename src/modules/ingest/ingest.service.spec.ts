@@ -156,6 +156,62 @@ describe('IngestService (MQTT DTO validation, device-protocol.md)', () => {
     });
   });
 
+  it('protocol 1.3: validates the data of gate.state / plate.detected per type and leaves other events free-form (D-328)', async () => {
+    const event = (type: string, data: Record<string, unknown>) =>
+      JSON.stringify({
+        eventId: '3b241101-e2bb-4255-8caf-4136c566a962',
+        gatewayId: GW,
+        type,
+        severity: 'info',
+        occurredAt: '2026-11-05T18:00:00+07:00',
+        data,
+      });
+    const topic = `gp/v1/${GW}/events`;
+    const gateId = '9b241101-e2bb-4255-8caf-4136c566a962';
+    const ok = await ingest.handle(
+      topic,
+      event('plate.detected', {
+        gateId,
+        plate: { category: '1กข', number: '0000', province: 'กรุงเทพมหานคร' },
+        confidence: 0.97,
+        at: '2026-11-05T18:00:00+07:00',
+      }),
+    );
+    expect(ok).toMatchObject({ status: 'accepted', kind: 'events' });
+    expect((ok as { payload: { data: unknown } }).payload.data).toMatchObject({ gateId, confidence: 0.97 });
+    expect(
+      await ingest.handle(
+        topic,
+        event('gate.state', { gateId, state: 'open', at: '2026-11-05T18:00:02+07:00' }),
+      ),
+    ).toMatchObject({ status: 'accepted' });
+    // a gate event with a wrong / extra data field is refused
+    expect(
+      await ingest.handle(
+        topic,
+        event('gate.state', { gateId, state: 'ajar', at: '2026-11-05T18:00:02+07:00' }),
+      ),
+    ).toMatchObject({ status: 'rejected', reason: 'invalid_payload' });
+    expect(
+      await ingest.handle(
+        topic,
+        event('plate.detected', {
+          gateId,
+          plate: { category: '1กข', number: '0000' },
+          confidence: 0.9,
+          at: '2026-11-05T18:00:00+07:00',
+          image: 'x',
+        }),
+      ),
+    ).toMatchObject({ status: 'rejected', reason: 'invalid_payload' });
+    // meter events keep free-form data
+    expect(
+      await ingest.handle(topic, event('seq_gap', { fromSeq: 1, toSeq: 3, anything: true })),
+    ).toMatchObject({
+      status: 'accepted',
+    });
+  });
+
   it('is fed by the fake broker through the shared-subscription filters', async () => {
     const mqtt = new FakeMqttClient();
     const filters = ingestFilters('ingest');

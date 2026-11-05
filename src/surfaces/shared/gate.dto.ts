@@ -53,6 +53,7 @@ export enum VisitEntryBasisName {
   Policy = 'policy',
   GuardOverride = 'guard_override',
   Offline = 'offline',
+  ResidentVehicle = 'resident_vehicle',
 }
 export enum GatePolicyActionName {
   AllowAndLog = 'allow_and_log',
@@ -77,6 +78,7 @@ export enum VisitEventKindName {
   PhotoAdded = 'photo_added',
   Overstayed = 'overstayed',
   Note = 'note',
+  GateOpened = 'gate_opened',
 }
 export enum GateKindName {
   Main = 'main',
@@ -94,7 +96,13 @@ export enum GateDeviceStateName {
 export enum GateDeviceKindName {
   GuardTablet = 'guard_tablet',
   Barrier = 'barrier',
-  LprCamera = 'lpr_camera',
+  Lpr = 'lpr',
+}
+/** J4.2 (D-328): the position a barrier last reported (`gate.state`). */
+export enum GateHwStateName {
+  Open = 'open',
+  Closed = 'closed',
+  Fault = 'fault',
 }
 export enum GateGuardStateName {
   Active = 'active',
@@ -890,6 +898,43 @@ export class GateDeviceDto {
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
   revokedAt!: string | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: null,
+    description: 'Barrier / LPR only (J4.2): the getproperty-edge gateway that drives it.',
+  })
+  edgeDeviceId!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: null,
+    description: 'Barrier / LPR only: relay output / camera id on the gateway.',
+  })
+  channel!: string | null;
+
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    example: null,
+    description: 'Barrier only: relay pulse (null = `gate.barrier.pulse_ms`).',
+  })
+  pulseMs!: number | null;
+
+  @ApiProperty({
+    enum: GateHwStateName,
+    enumName: 'GateHwState',
+    nullable: true,
+    example: null,
+    description: 'Barrier only: the last reported position.',
+  })
+  hwState!: GateHwStateName | null;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, example: null })
+  hwStateAt!: string | null;
 }
 
 export class GateDeviceCreatedDto extends GateDeviceDto {

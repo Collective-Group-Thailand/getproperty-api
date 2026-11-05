@@ -12,6 +12,7 @@ import { type CommandType, type DeviceCommand, type Prisma } from '@generated/pr
 import { MQTT_CLIENT, type MqttClientPort } from '@integrations/mqtt/mqtt-client.port';
 import { type CommandAck } from '@modules/ingest/protocol/command.dto';
 import { CommandAckStatus } from '@modules/ingest/protocol/enums';
+import { GATE_OPEN_TTL_S } from '@modules/ingest/protocol/gate.dto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 export const cmdTopic = (gatewayId: string) => `gp/v1/${gatewayId}/cmd`;
@@ -75,8 +76,21 @@ export function commandArgs(
     }
     case 'restart':
       return {};
+    case 'gate_open':
+      // built by the gate service only (GateOpenArgs, D-328) — never from an operator / admin request
+      throw new DomainException('command.not_allowed');
   }
 }
+
+/** DB command type → wire `Command.type` (protocol 1.3: `gate_open` is `gate.open` on the wire, D-328). */
+export const wireCommandType = (type: CommandType): string => (type === 'gate_open' ? 'gate.open' : type);
+/** The gate of a `gate.open` (for the gate stream, D-328). */
+const gateOf = (c: { type: CommandType; args: unknown }): { gateId?: string } => {
+  const gateId = (c.args as { gateId?: unknown } | null)?.gateId;
+  return c.type === 'gate_open' && typeof gateId === 'string' ? { gateId } : {};
+};
+/** Commands the cloud never re-sends (a barrier must not open late or twice, D-328). */
+export const SEND_ONCE: CommandType[] = ['gate_open'];
 
 /**
  * Gateway commands (device protocol §2, §4; D-131): issued by operators (read_now, restart, identify, upload_logs) or
@@ -125,17 +139,46 @@ export class DeviceCommandsService extends TenantScopedRepository {
     return tx ? run(tx) : this.db.platform(run);
   }
 
+  /**
+   * 1.3 (D-328): a `gate.open` to the edge gateway of a barrier, inside the caller's transaction. `args` gets
+   * `commandId` (= cmdId) and `expiresAt` (issuedAt + 30 s); sent once after commit, never re-sent.
+   */
+  async issueGateOpen(
+    tx: Tx,
+    gateway: { id: string; tenantId: string | null; buildingId: string | null },
+    args: { gateId: string; deviceId: string; reason: string; visitId?: string; pulseMs: number },
+  ): Promise<DeviceCommand> {
+    const now = this.clock.now();
+    const id = uuidv7(now.getTime());
+    return this.create(
+      tx,
+      gateway,
+      'gate_open',
+      {
+        commandId: id,
+        gateId: args.gateId,
+        deviceId: args.deviceId,
+        reason: args.reason,
+        ...(args.visitId ? { visitId: args.visitId } : {}),
+        pulseMs: args.pulseMs,
+        expiresAt: new Date(now.getTime() + GATE_OPEN_TTL_S * 1000).toISOString(),
+      },
+      id,
+    );
+  }
+
   private async create(
     tx: Tx,
     gateway: { id: string; tenantId: string | null; buildingId: string | null },
     type: CommandType,
     args: Record<string, unknown>,
+    presetId?: string,
   ): Promise<DeviceCommand> {
     const now = this.clock.now();
-    const ttlS = type === 'ota_apply' ? 3600 : 300;
+    const ttlS = type === 'ota_apply' ? 3600 : type === 'gate_open' ? GATE_OPEN_TTL_S : 300;
     const command = await tx.deviceCommand.create({
       data: {
-        id: uuidv7(now.getTime()),
+        id: presetId ?? uuidv7(now.getTime()),
         tenantId: gateway.tenantId,
         buildingId: gateway.buildingId,
         gatewayDeviceId: gateway.id,
@@ -182,9 +225,31 @@ export class DeviceCommandsService extends TenantScopedRepository {
     const command = await this.db.platform((tx) => tx.deviceCommand.findUnique({ where: { id: commandId } }));
     if (!command || !['queued', 'sent'].includes(command.status)) return false;
     if (command.expiresAt.getTime() <= now.getTime() || command.attempts >= MAX_ATTEMPTS) return false;
+    // a send-once command (gate.open) is published at most once, even when two workers race (D-328)
+    if (SEND_ONCE.includes(command.type)) {
+      const claimed = await this.db.platform((tx) =>
+        tx.deviceCommand.updateMany({
+          where: { id: command.id, status: 'queued', attempts: 0 },
+          data: { status: 'sent', sentAt: now, attempts: 1 },
+        }),
+      );
+      if (claimed.count !== 1) return false;
+      await this.mqtt.publish(
+        cmdTopic(command.gatewayDeviceId),
+        JSON.stringify({
+          cmdId: command.id,
+          type: wireCommandType(command.type),
+          args: command.args,
+          issuedAt: command.issuedAt.toISOString(),
+          ttlS: command.ttlS,
+        }),
+        { qos: 1 },
+      );
+      return true;
+    }
     const payload = {
       cmdId: command.id,
-      type: command.type,
+      type: wireCommandType(command.type),
       args: command.args,
       issuedAt: command.issuedAt.toISOString(),
       ttlS: command.ttlS,
@@ -232,6 +297,7 @@ export class DeviceCommandsService extends TenantScopedRepository {
           gatewayDeviceId: gatewayId,
           type: command.type,
           status: ack.status,
+          ...gateOf(command),
         },
       });
     return updated;
@@ -253,6 +319,7 @@ export class DeviceCommandsService extends TenantScopedRepository {
       const tooOld = c.expiresAt.getTime() <= now.getTime();
       const exhausted =
         c.status !== 'accepted' &&
+        !SEND_ONCE.includes(c.type) &&
         c.attempts >= MAX_ATTEMPTS &&
         (c.sentAt?.getTime() ?? 0) + RESEND_AFTER_MS <= now.getTime();
       if (tooOld || exhausted) {
@@ -267,13 +334,21 @@ export class DeviceCommandsService extends TenantScopedRepository {
             aggregateId: c.gatewayDeviceId,
             tenantId: c.tenantId,
             buildingId: c.buildingId,
-            payload: { commandId: c.id, gatewayDeviceId: c.gatewayDeviceId, type: c.type, status: 'expired' },
+            payload: {
+              commandId: c.id,
+              gatewayDeviceId: c.gatewayDeviceId,
+              type: c.type,
+              status: 'expired',
+              ...gateOf(c),
+            },
           });
         });
         expired += 1;
       } else if (
         c.status === 'queued' ||
-        (c.status === 'sent' && (c.sentAt?.getTime() ?? 0) + RESEND_AFTER_MS <= now.getTime())
+        (c.status === 'sent' &&
+          !SEND_ONCE.includes(c.type) &&
+          (c.sentAt?.getTime() ?? 0) + RESEND_AFTER_MS <= now.getTime())
       ) {
         if (await this.send(c.id)) resent += 1;
       }

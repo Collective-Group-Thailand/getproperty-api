@@ -85,6 +85,18 @@ export class GatewayConfigService {
       heartbeatS: defaults.heartbeatS,
       configuredBuses: Array.isArray(gateway.busConfig) ? (gateway.busConfig as unknown as BusInput[]) : [],
       channels: inputs,
+      gateDevices: (
+        await tx.gateDevice.findMany({
+          where: { edgeDeviceId: gatewayId, state: 'active', kind: { in: ['barrier', 'lpr'] } },
+          select: { id: true, gateId: true, kind: true, channel: true, pulseMs: true },
+        })
+      ).map((d) => ({
+        deviceId: d.id,
+        gateId: d.gateId,
+        kind: d.kind as 'barrier' | 'lpr',
+        channel: d.channel!,
+        ...(d.kind === 'barrier' && d.pulseMs ? { pulseMs: d.pulseMs } : {}),
+      })),
     });
     const hash = configContentHash(doc);
     if (latest && Buffer.from(latest.documentSha256).equals(hash)) return { config: latest, created: false };

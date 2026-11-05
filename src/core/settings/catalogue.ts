@@ -806,6 +806,136 @@ export const SETTINGS: readonly SettingDef[] = [
     value: 7,
     reason: 'seed: D-145 (B1.3 assumption)',
   },
+  // --- J4.2 barrier, LPR, resident open, SOS (D-316, D-317, D-328) -----------------------------------------
+  ...(
+    [
+      [
+        'gate.lpr.repeat_seconds',
+        60,
+        10,
+        600,
+        'seconds the same plate read again at the same gate is ignored (one car, one entry)',
+        ['platform', 'tenant', 'property'],
+      ],
+      [
+        'gate.lpr.pending_minutes',
+        10,
+        1,
+        60,
+        'minutes an unknown-plate read waits on the gate tablet to pre-fill the visit form before it expires',
+        ['platform', 'tenant', 'property'],
+      ],
+      [
+        'gate.open.min_interval_seconds',
+        3,
+        1,
+        60,
+        'shortest interval between two barrier opens of one gate (guard, resident or LPR) — a faster request is refused with 429',
+        ['platform', 'tenant', 'property'],
+      ],
+      [
+        'gate.resident_open.max_per_hour',
+        12,
+        1,
+        60,
+        'barrier opens one resident login may request in an hour',
+        ['platform', 'tenant', 'property'],
+      ],
+      [
+        'gate.resident_open.radius_m',
+        300,
+        50,
+        5000,
+        'metres around the estate location a resident must be within to open the barrier while gate.resident_open.require_geofence is on (+ the reported GPS accuracy, at most 100 m)',
+        ['platform', 'tenant', 'property'],
+      ],
+      [
+        'gate.barrier.pulse_ms',
+        800,
+        200,
+        10000,
+        'relay pulse of a barrier in milliseconds when its device has none of its own',
+        ['platform', 'tenant', 'property'],
+      ],
+      [
+        'gate.sos.cancel_seconds',
+        30,
+        10,
+        120,
+        'seconds a resident may cancel an SOS sent by mistake',
+        ['platform', 'tenant'],
+      ],
+      [
+        'gate.sos.max_per_hour',
+        5,
+        1,
+        20,
+        'SOS one resident login may send in an hour (abuse guard; an open SOS of the same unit is returned instead of a second one)',
+        ['platform', 'tenant'],
+      ],
+      [
+        'gate.incident.visit_window_minutes',
+        30,
+        0,
+        240,
+        'minutes before an SOS a visit that already exited is still linked to the incident',
+        ['platform', 'tenant'],
+      ],
+    ] as const
+  ).map(([key, value, min, max, what, scopes]): SettingDef => ({
+    key,
+    valueType: 'int',
+    scopeAllowed: [...scopes],
+    description: `D-316 / D-317 / D-328 (J4.2): ${what}.`,
+    editableBy: OWNER_SETTINGS,
+    value,
+    reason: 'seed: D-328 (pack J, J4.2)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= min && (v as number) <= max ? [] : [`an integer ${min}–${max}`],
+  })),
+  {
+    key: 'gate.lpr.min_confidence',
+    valueType: 'decimal',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-316 / D-328 (J4.2): lowest LPR confidence (0–1) at which a known plate enters on its own; below it the read only pre-fills the guard form.',
+    editableBy: OWNER_SETTINGS,
+    value: '0.90',
+    reason: 'seed: D-328 (conservative: a misread never opens the gate)',
+    check: (v) =>
+      typeof v === 'string' && /^(0(\.\d{1,3})?|1(\.0{1,3})?)$/.test(v)
+        ? []
+        : ['a decimal string 0–1 (≤ 3 decimals)'],
+  },
+  {
+    key: 'gate.auto_open_known_plates',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-316 / D-328 (J4.2): the barrier opens by itself for a known plate (resident or remembered car) read with enough confidence. Off: the guard opens.',
+    editableBy: OWNER_SETTINGS,
+    value: false,
+    reason: 'seed: D-328 (conservative: the guard opens until the estate decides)',
+  },
+  {
+    key: 'gate.resident_open.enabled',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description: 'D-316 / D-328 (J4.2): residents may open the barrier from LINE for their registered cars.',
+    editableBy: OWNER_SETTINGS,
+    value: true,
+    reason: 'seed: D-J15 (residents open from LINE)',
+  },
+  {
+    key: 'gate.resident_open.require_geofence',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-316 / D-328 (J4.2): a resident open needs the phone location within gate.resident_open.radius_m of the estate (the location is checked, never stored).',
+    editableBy: OWNER_SETTINGS,
+    value: false,
+    reason: 'seed: D-328 (brief: off by default)',
+  },
   // --- J4.1 gate & visitor (D-315, D-327; PDPA: minimal data, retention that really deletes) ---------------
   ...(
     [

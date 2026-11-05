@@ -43,6 +43,10 @@ export enum DeviceEventType {
   PowerLoss = 'power_loss',
   Restart = 'restart',
   SeqGap = 'seq_gap',
+  /** 1.3 (D-328): a barrier reports its position; `data` = GateStateData. */
+  GateState = 'gate.state',
+  /** 1.3 (D-328): an LPR camera read a plate; `data` = PlateDetectedData. */
+  PlateDetected = 'plate.detected',
 }
 
 export enum DeviceEventSeverity {
@@ -98,10 +102,37 @@ export enum CommandType {
   UploadLogs = 'upload_logs',
   SetLogLevel = 'set_log_level',
   Identify = 'identify',
+  /** 1.3 (D-328): pulse a barrier relay; `args` = GateOpenArgs. */
+  GateOpen = 'gate.open',
 }
 
 export enum CommandAckStatus {
   Accepted = 'accepted',
   Done = 'done',
   Failed = 'failed',
+}
+
+/** 1.3 (D-328): position of a barrier reported in `gate.state`. */
+export enum GateBarrierState {
+  Open = 'open',
+  Closed = 'closed',
+  Fault = 'fault',
+}
+
+/** 1.3 (D-328): gate hardware an edge gateway drives (`GatewayConfig.gateDevices[].kind`). */
+export enum GateHardwareKind {
+  Barrier = 'barrier',
+  Lpr = 'lpr',
+}
+
+/** 1.3 (D-328): why the cloud asked a barrier to open (`GateOpenArgs.reason`). */
+export enum GateOpenReason {
+  Visit = 'visit',
+  Resident = 'resident',
+  Delivery = 'delivery',
+  Service = 'service',
+  Emergency = 'emergency',
+  Other = 'other',
+  LprKnownPlate = 'lpr_known_plate',
+  ResidentApp = 'resident_app',
 }
