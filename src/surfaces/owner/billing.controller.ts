@@ -120,6 +120,7 @@ export function ratePlanDto(p: RatePlanRow, today: string): RatePlanDto {
       aboveCap: v.aboveCap,
       capCheck: (v.capCheck as Record<string, unknown> | null) ?? null,
       complianceAcknowledgementId: v.complianceAcknowledgementId,
+      resolutionId: v.resolutionId,
       note: v.note,
       inForce: day(v.effectiveFrom)! <= today && (!v.effectiveTo || day(v.effectiveTo)! >= today),
     })),
@@ -432,10 +433,11 @@ const VERSION_EXAMPLE = {
     aboveCap: true,
   },
   complianceAcknowledgementId: FAKE.uuid,
+  resolutionId: null,
   note: null,
   inForce: true,
 };
-const RATE_PLAN_EXAMPLE: RatePlanDto = {
+export const RATE_PLAN_EXAMPLE: RatePlanDto = {
   id: FAKE.uuid,
   buildingId: FAKE.uuid,
   kind: 'power' as RatePlanKindName,
@@ -788,8 +790,8 @@ export class OwnerRatePlansController {
     id: 'owner.ratePlans.saveVersion',
     summary: 'Set prices from a date',
     description:
-      'A new version effective today or later (never backdated: `rate_plan.backdated`; a version already in force is immutable: `rate_plan.version_in_force`); a future version with the same date is replaced. Power/water prices are compared with the utility’s effective average rate at the representative consumption (`compliance.tariff_cap.representative_units`): above → 409 `compliance.acknowledgement_required` → acknowledge → repeat with `acknowledgementIds` (D-021a), refused where the platform admin set `block`. A water minimum above the utility minimum is refused (`compliance.water_minimum`, D-141). Leases keep the price agreed at signing when a later version charges more (`compliance.no_midterm_increase`).',
-    implements: ['D-021a', 'D-141', 'D-022'],
+      'A new version effective today or later (never backdated: `rate_plan.backdated`; a version already in force is immutable: `rate_plan.version_in_force`); a future version with the same date is replaced. Power/water prices are compared with the utility’s effective average rate at the representative consumption (`compliance.tariff_cap.representative_units`): above → 409 `compliance.acknowledgement_required` → acknowledge → repeat with `acknowledgementIds` (D-021a), refused where the platform admin set `block`. A water minimum above the utility minimum is refused (`compliance.water_minimum`, D-141). Leases keep the price agreed at signing when a later version charges more (`compliance.no_midterm_increase`). Juristic buildings (D-304, D-324): a common-fee / fund version needs `resolutionId` — an adopted resolution of the building — while `juristic.rate_requires_resolution` is true (422 `rate_plan.resolution_required` / `rate_plan.resolution_invalid`); bases `per_sqwa` (flat price per ตารางวา of land) and `budget_split` (budget tiers with `splitBy`).',
+    implements: ['D-021a', 'D-141', 'D-022', 'D-304', 'D-324'],
   })
   @ApiCompliance('compliance.tariff_cap', 'compliance.water_minimum')
   @ApiJsonBody(RatePlanVersionCreateDto, {
@@ -803,6 +805,8 @@ export class OwnerRatePlansController {
     'compliance.acknowledgement_required',
     'rate_plan.backdated',
     'rate_plan.version_in_force',
+    'rate_plan.resolution_required',
+    'rate_plan.resolution_invalid',
     ...WRITE,
   )
   async saveVersion(
@@ -820,6 +824,7 @@ export class OwnerRatePlansController {
           tiers: body.tiers,
           minimumCharge: body.minimumCharge ?? null,
           note: body.note ?? null,
+          resolutionId: body.resolutionId ?? null,
         },
         body.acknowledgementIds ?? [],
       ),

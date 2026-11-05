@@ -41,7 +41,12 @@ import {
 import { ToE164 } from '../shared/auth.dto';
 import { LanguageName, NotificationChannelName } from '../shared/common.dto';
 import { TenantTypeName } from '../shared/me.dto';
-import { PlatformRoleName, UserStatusName } from '../shared/status.enums';
+import {
+  BuildingLegalFormName,
+  PlatformRoleName,
+  PropertyKindName,
+  UserStatusName,
+} from '../shared/status.enums';
 
 export class AdminTenantListQuery extends PageQuery {}
 
@@ -877,6 +882,26 @@ export class StubClaimDto {
   @IsOptional()
   @IsUUID()
   operatorTenantId?: string;
+
+  @ApiPropertyOptional({
+    enum: PropertyKindName,
+    enumName: 'PropertyKind',
+    description:
+      'What the property is (default `condo`, D-251); e.g. `village` for a housing estate (D-302).',
+  })
+  @IsOptional()
+  @IsEnum(PropertyKindName)
+  propertyKind?: PropertyKindName;
+
+  @ApiPropertyOptional({
+    enum: BuildingLegalFormName,
+    enumName: 'BuildingLegalForm',
+    description:
+      'Default `condo_act`; `land_allocation_act` for a housing estate, `voluntary`, `lease_contract` (D-302).',
+  })
+  @IsOptional()
+  @IsEnum(BuildingLegalFormName)
+  legalForm?: BuildingLegalFormName;
 }
 
 export class OperatorChangeDto {
@@ -908,6 +933,16 @@ export class OperatorChangeDto {
   @IsString()
   @MaxLength(200)
   sourceRef?: string | null;
+
+  @ApiPropertyOptional({
+    enum: BuildingLegalFormName,
+    enumName: 'BuildingLegalForm',
+    description:
+      'Required when the new operator is a juristic tenant and the building has no legal form yet (422 path `legalForm`, D-302).',
+  })
+  @IsOptional()
+  @IsEnum(BuildingLegalFormName)
+  legalForm?: BuildingLegalFormName;
 }
 
 export class OperatorChangedDto {

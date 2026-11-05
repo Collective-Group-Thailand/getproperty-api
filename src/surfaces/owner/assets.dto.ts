@@ -23,7 +23,7 @@ import {
 
 import { DecimalInput, MoneyInput, MoneyOutput } from '../shared/fields';
 import { MeterHealthName, RoundLastReadingDto } from '../shared/smart.dto';
-import { LeaseStatusName } from '../shared/status.enums';
+import { BuildingLegalFormName, LeaseStatusName, PropertyKindName } from '../shared/status.enums';
 import { AddressDto } from './tenancy.dto';
 
 /** `active | inactive` of properties and buildings (core.property_status, core.building_status). */
@@ -50,6 +50,8 @@ export enum UnitTypeName {
   House = 'house',
   Shop = 'shop',
   Parking = 'parking',
+  /** A plot of a housing estate (asset-core 0.8.0, D-302). */
+  Plot = 'plot',
 }
 export enum UnitStatusName {
   Vacant = 'vacant',
@@ -155,6 +157,15 @@ export class PropertyDto {
   @ApiProperty({ type: String, nullable: true, example: '10', description: 'Province code (2 digits).' })
   provinceCode!: string | null;
 
+  @ApiProperty({
+    enum: PropertyKindName,
+    enumName: 'PropertyKind',
+    nullable: true,
+    example: PropertyKindName.Apartment,
+    description: 'What the property is — data, not a module (D-302); juristic tenants always set it.',
+  })
+  kind!: PropertyKindName | null;
+
   @ApiProperty({ enum: ActiveStatusName, enumName: 'ActiveStatus', example: ActiveStatusName.Active })
   status!: ActiveStatusName;
 
@@ -186,6 +197,16 @@ export class PropertyCreateDto {
   @IsOptional()
   @Matches(/^\d{2}$/)
   provinceCode?: string | null;
+
+  @ApiPropertyOptional({
+    enum: PropertyKindName,
+    enumName: 'PropertyKind',
+    description:
+      'Required for juristic tenants (condo, village, community, office, retail, industrial, mixed — D-302).',
+  })
+  @IsOptional()
+  @IsEnum(PropertyKindName)
+  kind?: PropertyKindName;
 }
 
 export class PropertyUpdateDto {
@@ -210,6 +231,16 @@ export class PropertyUpdateDto {
   @IsOptional()
   @IsEnum(ActiveStatusName)
   status?: ActiveStatusName;
+
+  @ApiPropertyOptional({
+    enum: PropertyKindName,
+    enumName: 'PropertyKind',
+    description:
+      'Required for juristic tenants (condo, village, community, office, retail, industrial, mixed — D-302).',
+  })
+  @IsOptional()
+  @IsEnum(PropertyKindName)
+  kind?: PropertyKindName;
 }
 
 // ------------------------------------------------------------------------------------------- buildings
@@ -252,6 +283,16 @@ export class BuildingDto {
     description: 'How the current tenant sees the building: as operator, owner, or through a grant (D-152).',
   })
   access!: BuildingAccessName;
+
+  @ApiProperty({
+    enum: BuildingLegalFormName,
+    enumName: 'BuildingLegalForm',
+    nullable: true,
+    example: null,
+    description:
+      'The law the building’s juristic management runs under (`condo_act` · `land_allocation_act` · `voluntary` · `lease_contract`, D-302); set for every building a juristic tenant operates.',
+  })
+  legalForm!: BuildingLegalFormName | null;
 
   @ApiProperty({ enum: ActiveStatusName, enumName: 'ActiveStatus', example: ActiveStatusName.Active })
   status!: ActiveStatusName;
@@ -297,6 +338,15 @@ export class BuildingCreateDto {
   @ValidateNested()
   @Type(() => AddressDto)
   address?: AddressDto;
+
+  @ApiPropertyOptional({
+    enum: BuildingLegalFormName,
+    enumName: 'BuildingLegalForm',
+    description: 'Required when the tenant is juristic (422 `validation.failed` path `legalForm`, D-302).',
+  })
+  @IsOptional()
+  @IsEnum(BuildingLegalFormName)
+  legalForm?: BuildingLegalFormName;
 }
 
 export class BuildingUpdateDto {
@@ -322,6 +372,15 @@ export class BuildingUpdateDto {
   @IsOptional()
   @IsEnum(ActiveStatusName)
   status?: ActiveStatusName;
+
+  @ApiPropertyOptional({
+    enum: BuildingLegalFormName,
+    enumName: 'BuildingLegalForm',
+    description: 'Required when the tenant is juristic (422 `validation.failed` path `legalForm`, D-302).',
+  })
+  @IsOptional()
+  @IsEnum(BuildingLegalFormName)
+  legalForm?: BuildingLegalFormName;
 }
 
 export class FloorDto {
@@ -457,6 +516,17 @@ export class UnitDto {
 
   @ApiProperty({
     type: String,
+    nullable: true,
+    example: null,
+    description: 'Land area in ตารางวา (plots, D-302).',
+  })
+  landAreaSqwa!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: null, description: 'Plot number (housing estates).' })
+  plotNo!: string | null;
+
+  @ApiProperty({
+    type: String,
     format: 'uuid',
     nullable: true,
     example: null,
@@ -508,6 +578,20 @@ export class UnitCreateDto {
   })
   baseRent?: string | null;
 
+  @DecimalInput({
+    example: '52.50',
+    description: 'Land area in ตารางวา (plots).',
+    optional: true,
+    nullable: true,
+  })
+  landAreaSqwa?: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '12/48', maxLength: 40 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  plotNo?: string | null;
+
   @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true, example: FAKE.uuid })
   @IsOptional()
   @IsUUID()
@@ -547,6 +631,20 @@ export class UnitUpdateDto {
     nullable: true,
   })
   baseRent?: string | null;
+
+  @DecimalInput({
+    example: '52.50',
+    description: 'Land area in ตารางวา (plots).',
+    optional: true,
+    nullable: true,
+  })
+  landAreaSqwa?: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '12/48', maxLength: 40 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  plotNo?: string | null;
 
   @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true, example: FAKE.uuid })
   @IsOptional()

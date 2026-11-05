@@ -18,8 +18,9 @@ import { readableCode } from '../identity/crypto/secrets';
 import { maskPhone } from '../identity/phone';
 import { SettingsService } from '../settings/settings.service';
 import { AccessService } from './access.service';
+import { checkRoleGrant } from './juristic-roles';
 
-export const TENANT_ROLES = ['owner', 'manager', 'staff', 'accountant'] as const;
+export const TENANT_ROLES = ['owner', 'manager', 'staff', 'accountant', 'committee', 'auditor'] as const;
 export type TenantRole = (typeof TENANT_ROLES)[number];
 
 export interface CreatedInvitation {
@@ -70,10 +71,22 @@ export class InvitationService extends TenantScopedRepository {
       phone?: string | null;
       email?: string | null;
       channel: InvitationChannel;
+      /** D-320: end of an auditor's time-boxed access. */
+      accessUntil?: string | null;
     },
   ): Promise<CreatedInvitation> {
     const now = this.clock.now();
     const days = await this.settings.valueAt<number>('invitation.expiry_days', now);
+    const tenantType = (
+      await tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { type: true } })
+    ).type;
+    const accessUntil = checkRoleGrant({
+      role: input.role,
+      tenantType,
+      accessUntil: input.accessUntil,
+      now,
+      maxDays: await this.settings.valueAt<number>('juristic.auditor_max_days', now, { tenantId }),
+    });
     const code = readableCode(4);
     // Staff join the staff PWA (STAFF_HOST); every other role the owner console.
     const origin = this.config.get(input.role === 'staff' ? 'PUBLIC_STAFF_APP_URL' : 'PUBLIC_WEB_APP_URL');
@@ -104,6 +117,7 @@ export class InvitationService extends TenantScopedRepository {
         buildingIds,
         phoneE164: input.phone ?? null,
         email: input.email ?? null,
+        accessUntil,
         codeHash: this.codeHash(code),
         channel: input.channel,
         expiresAt: new Date(now.getTime() + days * 86_400_000),
@@ -120,6 +134,7 @@ export class InvitationService extends TenantScopedRepository {
         role: input.role,
         buildingIds,
         channel: input.channel,
+        accessUntil: accessUntil?.toISOString() ?? null,
         phone: input.phone ? maskPhone(input.phone) : null,
       },
     });
@@ -160,6 +175,7 @@ export class InvitationService extends TenantScopedRepository {
       email?: string | null;
       channel: InvitationChannel;
       language?: string;
+      accessUntil?: string | null;
     },
   ): Promise<CreatedInvitation> {
     if (input.role === 'owner' && ctx.role !== 'owner') throw new DomainException('auth.forbidden');
@@ -202,7 +218,10 @@ export class InvitationService extends TenantScopedRepository {
       throw new DomainException('invitation.not_pending');
     if (invitation.phoneE164 && invitation.phoneE164 !== user.phoneE164)
       throw new DomainException('invitation.not_found');
-    const moduleScopes = invitation.buildingIds.length ? { buildingIds: invitation.buildingIds } : {};
+    const moduleScopes = {
+      ...(invitation.buildingIds.length ? { buildingIds: invitation.buildingIds } : {}),
+      ...(invitation.accessUntil ? { accessUntil: invitation.accessUntil.toISOString() } : {}),
+    };
     const existing = await tx.membership.findFirst({
       where: { tenantId: invitation.tenantId, userId: user.id, deletedAt: null },
     });

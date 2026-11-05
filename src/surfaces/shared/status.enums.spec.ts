@@ -51,7 +51,21 @@ describe('B4 billing enums equal the database enums of migration 0020', () => {
   const pgEnum = (name: string): string[] => {
     const m = new RegExp(`CREATE TYPE ops\\.${name} AS ENUM \\(([^;]+)\\);`).exec(sql);
     if (!m) throw new Error(`enum ${name} not found`);
-    return [...m[1]!.matchAll(/'([a-z_]+)'/g)].map((x) => x[1]!).sort();
+    // values added later (J1.1b 0071: rate_basis per_sqwa / budget_split, note_reason ownership_transfer)
+    const added = [
+      ...readdirSync(join(__dirname, '../../../prisma/migrations'))
+        .filter((d) => d > '20261017000020')
+        .flatMap((d) => {
+          try {
+            return [readFileSync(join(__dirname, '../../../prisma/migrations', d, 'migration.sql'), 'utf8')];
+          } catch {
+            return [];
+          }
+        })
+        .join('\n')
+        .matchAll(new RegExp(`ALTER TYPE ops\\.${name} ADD VALUE IF NOT EXISTS '([a-z0-9_]+)'`, 'g')),
+    ].map((x) => x[1]!);
+    return [...[...m[1]!.matchAll(/'([a-z_]+)'/g)].map((x) => x[1]!), ...added].sort();
   };
   it.each([
     ['invoice_status', InvoiceStatusName],

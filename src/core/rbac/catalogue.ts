@@ -8,7 +8,16 @@
  * Residents and technicians are audiences, not roles (D-090).
  */
 export type RoleKey =
-  'owner' | 'manager' | 'staff' | 'accountant' | 'platform_admin' | 'support' | 'field_engineer' | 'finance';
+  | 'owner'
+  | 'manager'
+  | 'staff'
+  | 'accountant'
+  | 'committee'
+  | 'auditor'
+  | 'platform_admin'
+  | 'support'
+  | 'field_engineer'
+  | 'finance';
 
 export type Surface = 'owner' | 'staff' | 'admin';
 
@@ -55,6 +64,22 @@ export const ROLES: readonly RoleDef[] = [
     nameTh: 'นักบัญชี',
     nameEn: 'Accountant',
     description: 'Read invoices/payments/exports, issue documents, no settings (D-090).',
+  },
+  {
+    key: 'committee',
+    scopeKind: 'tenant',
+    nameTh: 'กรรมการ',
+    nameEn: 'Committee',
+    description:
+      'Juristic committee member: approves budgets and adopts resolutions, reads the register, billing and reports; never moves money (D-320). Juristic tenants only.',
+  },
+  {
+    key: 'auditor',
+    scopeKind: 'tenant',
+    nameTh: 'ผู้สอบบัญชี',
+    nameEn: 'Auditor',
+    description:
+      'Read-only access to the books, register and reports, time-boxed (`accessUntil`, D-320). Juristic tenants only.',
   },
   {
     key: 'platform_admin',
@@ -324,6 +349,43 @@ export const PERMISSIONS: readonly PermissionDef[] = [
       'TM30 notifications: generate the Immigration upload file (passport data), record submissions (D-052)',
     surfaces: ['owner'],
   },
+  // juristic (pack J, D-302–D-324)
+  {
+    key: 'juristic.register.read',
+    description: 'Read the co-owner register: owners, shares, bill-to, transfers (D-307)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.register.manage',
+    description: 'Add co-owners, record transfers, set bill-to parties, edit plot fields (D-303, D-307)',
+    surfaces: ['owner'],
+  },
+  { key: 'juristic.budget.read', description: 'Read budgets and their lines (D-304)', surfaces: ['owner'] },
+  {
+    key: 'juristic.budget.manage',
+    description: 'Draft budgets, preview and draft common-fee rates from a budget (D-304)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.budget.approve',
+    description: 'Approve a budget with an adopted resolution (committee, D-320)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.resolution.read',
+    description: 'Read meeting resolutions and their documents (D-304)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.resolution.manage',
+    description: 'Record and edit draft resolutions, attach minutes (D-304)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.resolution.adopt',
+    description: 'Adopt or void a resolution (committee, D-320)',
+    surfaces: ['owner'],
+  },
   // platform (/v1/admin)
   { key: 'admin.tenant.read', description: 'List and view tenants', surfaces: ['admin'] },
   {
@@ -449,7 +511,29 @@ const MANAGER_EXCLUDED = new Set([
   'rate_plan.manage',
   'party.link.manage',
   'privacy.manage',
+  // D-320: budgets are approved and resolutions adopted by the committee (and the tenant's Owner), not the manager
+  'juristic.budget.approve',
+  'juristic.resolution.adopt',
 ]);
+
+/** Read-only keys shared by the committee and the auditor (D-320). */
+const JURISTIC_READ = [
+  'tenant.read',
+  'tenant.settings.read',
+  'property.read',
+  'unit.read',
+  'party.read',
+  'document.read',
+  'lease.read',
+  'rate_plan.read',
+  'invoice.read',
+  'payment.read',
+  'report.read',
+  'service_request.read',
+  'juristic.register.read',
+  'juristic.budget.read',
+  'juristic.resolution.read',
+];
 
 /** Role → permission keys (D-090). */
 export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
@@ -478,6 +562,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'parcel.manage',
     'community.read',
     'staff_task.read',
+    'juristic.register.read',
   ],
   accountant: [
     'tenant.read',
@@ -498,7 +583,12 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'receipt.issue',
     'export.create',
     'report.read',
+    'juristic.register.read',
+    'juristic.budget.read',
+    'juristic.resolution.read',
   ],
+  committee: [...JURISTIC_READ, 'juristic.budget.approve', 'juristic.resolution.adopt'],
+  auditor: [...JURISTIC_READ, 'deposit.read', 'reading.read', 'tenant.audit.read'],
   platform_admin: PERMISSIONS.filter((p) => p.key.startsWith('admin.')).map((p) => p.key),
   support: [
     'admin.tenant.read',

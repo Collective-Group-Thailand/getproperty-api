@@ -1,0 +1,267 @@
+{
+  "plots": 248,
+  "landTotalSqwa": "19968.88",
+  "yearTotal": "7188796.80",
+  "samples": [
+    {
+      "unitNo": "1/248",
+      "landAreaSqwa": "87.13",
+      "lines": [
+        {
+          "lineNo": 1,
+          "sourceType": "common_fee",
+          "quantity": "87.130",
+          "unit": "sqwa",
+          "unitPrice": "360.0000",
+          "periodFrom": "2027-01-01",
+          "periodTo": "2027-12-31",
+          "sourceId": "rpv-village-2027",
+          "leaseLineId": null,
+          "chargeId": null,
+          "estimateSettlementId": null,
+          "meter": null,
+          "ratePlanVersionId": "rpv-village-2027",
+          "utilityTariffVersionId": null,
+          "capPerUnit": null,
+          "aboveCap": false,
+          "acknowledgementId": null,
+          "tierBreakdown": [
+            {
+              "label": "per_sqwa",
+              "units": "87.130",
+              "pricePerUnit": "30.00",
+              "amount": "2613.9"
+            },
+            {
+              "label": "ownership_share",
+              "units": "100.0000",
+              "pricePerUnit": null,
+              "amount": "31366.80"
+            }
+          ],
+          "proRata": {
+            "days": 365,
+            "daysInPeriod": 365,
+            "factor": "1.000000",
+            "from": "2027-01-01",
+            "to": "2027-12-31"
+          },
+          "vatApplicable": false,
+          "complianceRuleIds": ["compliance.bill_disclosure"],
+          "lineKind": "common_fee",
+          "description": "ค่าส่วนกลางหมู่บ้าน",
+          "amount": "31366.80"
+        }
+      ],
+      "total": "31366.80"
+    },
+    {
+      "unitNo": "2/248",
+      "landAreaSqwa": "63.26",
+      "lines": [
+        {
+          "lineNo": 1,
+          "sourceType": "common_fee",
+          "quantity": "63.260",
+          "unit": "sqwa",
+          "unitPrice": "360.0000",
+          "periodFrom": "2027-01-01",
+          "periodTo": "2027-12-31",
+          "sourceId": "rpv-village-2027",
+          "leaseLineId": null,
+          "chargeId": null,
+          "estimateSettlementId": null,
+          "meter": null,
+          "ratePlanVersionId": "rpv-village-2027",
+          "utilityTariffVersionId": null,
+          "capPerUnit": null,
+          "aboveCap": false,
+          "acknowledgementId": null,
+          "tierBreakdown": [
+            {
+              "label": "per_sqwa",
+              "units": "63.260",
+              "pricePerUnit": "30.00",
+              "amount": "1897.8"
+            },
+            {
+              "label": "ownership_share",
+              "units": "100.0000",
+              "pricePerUnit": null,
+              "amount": "22773.60"
+            }
+          ],
+          "proRata": {
+            "days": 365,
+            "daysInPeriod": 365,
+            "factor": "1.000000",
+            "from": "2027-01-01",
+            "to": "2027-12-31"
+          },
+          "vatApplicable": false,
+          "complianceRuleIds": ["compliance.bill_disclosure"],
+          "lineKind": "common_fee",
+          "description": "ค่าส่วนกลางหมู่บ้าน",
+          "amount": "22773.60"
+        }
+      ],
+      "total": "22773.60"
+    },
+    {
+      "unitNo": "62/248",
+      "landAreaSqwa": "87.06",
+      "lines": [
+        {
+          "lineNo": 1,
+          "sourceType": "common_fee",
+          "quantity": "87.060",
+          "unit": "sqwa",
+          "unitPrice": "360.0000",
+          "periodFrom": "2027-01-01",
+          "periodTo": "2027-12-31",
+          "sourceId": "rpv-village-2027",
+          "leaseLineId": null,
+          "chargeId": null,
+          "estimateSettlementId": null,
+          "meter": null,
+          "ratePlanVersionId": "rpv-village-2027",
+          "utilityTariffVersionId": null,
+          "capPerUnit": null,
+          "aboveCap": false,
+          "acknowledgementId": null,
+          "tierBreakdown": [
+            {
+              "label": "per_sqwa",
+              "units": "87.060",
+              "pricePerUnit": "30.00",
+              "amount": "2611.8"
+            },
+            {
+              "label": "ownership_share",
+              "units": "100.0000",
+              "pricePerUnit": null,
+              "amount": "31341.60"
+            }
+          ],
+          "proRata": {
+            "days": 365,
+            "daysInPeriod": 365,
+            "factor": "1.000000",
+            "from": "2027-01-01",
+            "to": "2027-12-31"
+          },
+          "vatApplicable": false,
+          "complianceRuleIds": ["compliance.bill_disclosure"],
+          "lineKind": "common_fee",
+          "description": "ค่าส่วนกลางหมู่บ้าน",
+          "amount": "31341.60"
+        }
+      ],
+      "total": "31341.60"
+    },
+    {
+      "unitNo": "124/248",
+      "landAreaSqwa": "63.12",
+      "lines": [
+        {
+          "lineNo": 1,
+          "sourceType": "common_fee",
+          "quantity": "63.120",
+          "unit": "sqwa",
+          "unitPrice": "360.0000",
+          "periodFrom": "2027-01-01",
+          "periodTo": "2027-12-31",
+          "sourceId": "rpv-village-2027",
+          "leaseLineId": null,
+          "chargeId": null,
+          "estimateSettlementId": null,
+          "meter": null,
+          "ratePlanVersionId": "rpv-village-2027",
+          "utilityTariffVersionId": null,
+          "capPerUnit": null,
+          "aboveCap": false,
+          "acknowledgementId": null,
+          "tierBreakdown": [
+            {
+              "label": "per_sqwa",
+              "units": "63.120",
+              "pricePerUnit": "30.00",
+              "amount": "1893.6"
+            },
+            {
+              "label": "ownership_share",
+              "units": "100.0000",
+              "pricePerUnit": null,
+              "amount": "22723.20"
+            }
+          ],
+          "proRata": {
+            "days": 365,
+            "daysInPeriod": 365,
+            "factor": "1.000000",
+            "from": "2027-01-01",
+            "to": "2027-12-31"
+          },
+          "vatApplicable": false,
+          "complianceRuleIds": ["compliance.bill_disclosure"],
+          "lineKind": "common_fee",
+          "description": "ค่าส่วนกลางหมู่บ้าน",
+          "amount": "22723.20"
+        }
+      ],
+      "total": "22723.20"
+    },
+    {
+      "unitNo": "248/248",
+      "landAreaSqwa": "76.24",
+      "lines": [
+        {
+          "lineNo": 1,
+          "sourceType": "common_fee",
+          "quantity": "76.240",
+          "unit": "sqwa",
+          "unitPrice": "360.0000",
+          "periodFrom": "2027-01-01",
+          "periodTo": "2027-12-31",
+          "sourceId": "rpv-village-2027",
+          "leaseLineId": null,
+          "chargeId": null,
+          "estimateSettlementId": null,
+          "meter": null,
+          "ratePlanVersionId": "rpv-village-2027",
+          "utilityTariffVersionId": null,
+          "capPerUnit": null,
+          "aboveCap": false,
+          "acknowledgementId": null,
+          "tierBreakdown": [
+            {
+              "label": "per_sqwa",
+              "units": "76.240",
+              "pricePerUnit": "30.00",
+              "amount": "2287.2"
+            },
+            {
+              "label": "ownership_share",
+              "units": "100.0000",
+              "pricePerUnit": null,
+              "amount": "27446.40"
+            }
+          ],
+          "proRata": {
+            "days": 365,
+            "daysInPeriod": 365,
+            "factor": "1.000000",
+            "from": "2027-01-01",
+            "to": "2027-12-31"
+          },
+          "vatApplicable": false,
+          "complianceRuleIds": ["compliance.bill_disclosure"],
+          "lineKind": "common_fee",
+          "description": "ค่าส่วนกลางหมู่บ้าน",
+          "amount": "27446.40"
+        }
+      ],
+      "total": "27446.40"
+    }
+  ]
+}

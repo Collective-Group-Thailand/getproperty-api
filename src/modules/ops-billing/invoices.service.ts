@@ -1053,124 +1053,145 @@ export class InvoicesService extends TenantScopedRepository {
     },
   ): Promise<InvoiceRow> {
     return this.db.tenant(ctx, async (tx) => {
-      await tx.$queryRaw`SELECT id FROM ops.invoice WHERE id = ${invoiceId}::uuid FOR UPDATE`;
-      const inv = await this.load(tx, ctx, invoiceId);
-      if (inv.tenantId !== ctx.tenantId) throw new DomainException('asset.read_only');
-      if (!inv.issuedAt || inv.status === 'void')
-        throw new DomainException('invoice.invalid_state', { params: { status: inv.status } });
-      if (!input.lines.length)
-        throw new DomainException('validation.failed', {
-          errors: [{ path: 'lines', code: 'min', message: 'at least one line' }],
-        });
-      const lines = input.lines.map((l, i) => {
-        const ref = l.refInvoiceLineId ? inv.lines.find((x) => x.id === l.refInvoiceLineId) : null;
-        if (l.refInvoiceLineId && !ref) throw new DomainException('http.not_found');
-        if (!D(l.amount).gt(0))
-          throw new DomainException('validation.failed', {
-            errors: [{ path: `lines[${i}].amount`, code: 'min', message: 'a positive amount' }],
-          });
-        return {
-          lineNo: i + 1,
-          lineKind: ref?.lineKind ?? l.lineKind ?? 'one_off',
-          description: l.description,
-          amount: D(l.amount).toFixed(2),
-          refInvoiceLineId: ref?.id ?? null,
-        };
-      });
-      const total = lines.reduce((s, l) => s.plus(l.amount), D(0));
-      if (kind === 'credit') {
-        const creditable = D(inv.total.toString())
-          .plus(inv.debitedTotal.toString())
-          .minus(inv.creditedTotal.toString());
-        if (total.gt(creditable))
-          throw new DomainException('invoice.credit_exceeds', {
-            params: { creditable: creditable.toFixed(2) },
-          });
-        for (const l of lines.filter((x) => x.refInvoiceLineId)) {
-          const ref = inv.lines.find((x) => x.id === l.refInvoiceLineId)!;
-          if (D(l.amount).gt(ref.amount.abs().toString()))
-            throw new DomainException('invoice.credit_exceeds', {
-              params: { creditable: ref.amount.toFixed(2) },
-            });
-        }
-      }
-      const now = this.clock.now();
-      const number = await this.numbering.next(
-        tx,
-        inv.tenantId,
-        kind === 'credit' ? 'credit_note' : 'debit_note',
-        now,
-      );
-      const data = {
-        tenantId: inv.tenantId,
-        buildingId: inv.buildingId,
-        unitId: inv.unitId,
-        invoiceId,
-        number,
-        reason: input.reason,
-        reasonText: input.reasonText,
-        subtotal: total.toFixed(2),
-        vatAmount: '0.00',
-        total: total.toFixed(2),
-        issuedAt: now,
-        issuedBy: by(),
-        createdBy: by(),
-      };
-      const lineData = (noteId: string) =>
-        lines.map((l) => ({
-          tenantId: inv.tenantId,
-          noteId,
-          lineNo: l.lineNo,
-          lineKind: l.lineKind,
-          description: l.description,
-          quantity: '1.000',
-          unitPrice: l.amount,
-          amount: l.amount,
-          refInvoiceLineId: l.refInvoiceLineId,
-        }));
-      let noteId: string;
-      if (kind === 'credit') {
-        const n = await tx.creditNote.create({ data });
-        await tx.creditNoteLine.createMany({ data: lineData(n.id) });
-        noteId = n.id;
-      } else {
-        const n = await tx.debitNote.create({ data });
-        await tx.debitNoteLine.createMany({ data: lineData(n.id) });
-        noteId = n.id;
-      }
-      await this.applyBalance(
-        tx,
-        invoiceId,
-        kind === 'credit' ? { credited: total } : { debited: total },
-        `${kind}_note:${number}`,
-      );
-      await this.audit.record(tx, {
-        action: kind === 'credit' ? 'credit_note.issued' : 'debit_note.issued',
-        tenantId: inv.tenantId,
-        buildingId: inv.buildingId,
-        subjectType: kind === 'credit' ? 'ops.credit_note' : 'ops.debit_note',
-        subjectId: noteId,
-        metadata: { number, invoiceNumber: inv.number, total: total.toFixed(2), reason: input.reason },
-      });
-      await this.events.record(tx, {
-        type: kind === 'credit' ? 'credit_note.issued' : 'debit_note.issued',
-        aggregateType: kind === 'credit' ? 'credit_note' : 'debit_note',
-        aggregateId: noteId,
-        tenantId: inv.tenantId,
-        buildingId: inv.buildingId,
-        payload: {
-          noteId,
-          number,
-          invoiceId,
-          invoiceNumber: inv.number,
-          total: total.toFixed(2),
-          unitId: inv.unitId,
-          billedPartyId: inv.billedPartyId,
-          leaseId: inv.leaseId,
-        },
-      });
+      await this.noteIn(tx, ctx, kind, invoiceId, input);
       return this.load(tx, ctx, invoiceId);
     });
+  }
+
+  /** `note` inside the caller's transaction (J1.1b ownership transfer); returns the note id. */
+  async noteIn(
+    tx: Tx,
+    ctx: TenantContext,
+    kind: 'credit' | 'debit',
+    invoiceId: string,
+    input: {
+      reason: NoteReason;
+      reasonText: string;
+      lines: {
+        refInvoiceLineId?: string | null;
+        lineKind?: InvoiceLineKind;
+        description: string;
+        amount: string;
+      }[];
+    },
+  ): Promise<string> {
+    await tx.$queryRaw`SELECT id FROM ops.invoice WHERE id = ${invoiceId}::uuid FOR UPDATE`;
+    const inv = await this.load(tx, ctx, invoiceId);
+    if (inv.tenantId !== ctx.tenantId) throw new DomainException('asset.read_only');
+    if (!inv.issuedAt || inv.status === 'void')
+      throw new DomainException('invoice.invalid_state', { params: { status: inv.status } });
+    if (!input.lines.length)
+      throw new DomainException('validation.failed', {
+        errors: [{ path: 'lines', code: 'min', message: 'at least one line' }],
+      });
+    const lines = input.lines.map((l, i) => {
+      const ref = l.refInvoiceLineId ? inv.lines.find((x) => x.id === l.refInvoiceLineId) : null;
+      if (l.refInvoiceLineId && !ref) throw new DomainException('http.not_found');
+      if (!D(l.amount).gt(0))
+        throw new DomainException('validation.failed', {
+          errors: [{ path: `lines[${i}].amount`, code: 'min', message: 'a positive amount' }],
+        });
+      return {
+        lineNo: i + 1,
+        lineKind: ref?.lineKind ?? l.lineKind ?? 'one_off',
+        description: l.description,
+        amount: D(l.amount).toFixed(2),
+        refInvoiceLineId: ref?.id ?? null,
+      };
+    });
+    const total = lines.reduce((s, l) => s.plus(l.amount), D(0));
+    if (kind === 'credit') {
+      const creditable = D(inv.total.toString())
+        .plus(inv.debitedTotal.toString())
+        .minus(inv.creditedTotal.toString());
+      if (total.gt(creditable))
+        throw new DomainException('invoice.credit_exceeds', {
+          params: { creditable: creditable.toFixed(2) },
+        });
+      for (const l of lines.filter((x) => x.refInvoiceLineId)) {
+        const ref = inv.lines.find((x) => x.id === l.refInvoiceLineId)!;
+        if (D(l.amount).gt(ref.amount.abs().toString()))
+          throw new DomainException('invoice.credit_exceeds', {
+            params: { creditable: ref.amount.toFixed(2) },
+          });
+      }
+    }
+    const now = this.clock.now();
+    const number = await this.numbering.next(
+      tx,
+      inv.tenantId,
+      kind === 'credit' ? 'credit_note' : 'debit_note',
+      now,
+    );
+    const data = {
+      tenantId: inv.tenantId,
+      buildingId: inv.buildingId,
+      unitId: inv.unitId,
+      invoiceId,
+      number,
+      reason: input.reason,
+      reasonText: input.reasonText,
+      subtotal: total.toFixed(2),
+      vatAmount: '0.00',
+      total: total.toFixed(2),
+      issuedAt: now,
+      issuedBy: by(),
+      createdBy: by(),
+    };
+    const lineData = (noteId: string) =>
+      lines.map((l) => ({
+        tenantId: inv.tenantId,
+        noteId,
+        lineNo: l.lineNo,
+        lineKind: l.lineKind,
+        description: l.description,
+        quantity: '1.000',
+        unitPrice: l.amount,
+        amount: l.amount,
+        refInvoiceLineId: l.refInvoiceLineId,
+      }));
+    let noteId: string;
+    if (kind === 'credit') {
+      const n = await tx.creditNote.create({ data });
+      await tx.creditNoteLine.createMany({ data: lineData(n.id) });
+      noteId = n.id;
+    } else {
+      const n = await tx.debitNote.create({ data });
+      await tx.debitNoteLine.createMany({ data: lineData(n.id) });
+      noteId = n.id;
+    }
+    await this.applyBalance(
+      tx,
+      invoiceId,
+      kind === 'credit' ? { credited: total } : { debited: total },
+      `${kind}_note:${number}`,
+    );
+    await this.audit.record(tx, {
+      action: kind === 'credit' ? 'credit_note.issued' : 'debit_note.issued',
+      tenantId: inv.tenantId,
+      buildingId: inv.buildingId,
+      subjectType: kind === 'credit' ? 'ops.credit_note' : 'ops.debit_note',
+      subjectId: noteId,
+      metadata: { number, invoiceNumber: inv.number, total: total.toFixed(2), reason: input.reason },
+    });
+    await this.events.record(tx, {
+      type: kind === 'credit' ? 'credit_note.issued' : 'debit_note.issued',
+      aggregateType: kind === 'credit' ? 'credit_note' : 'debit_note',
+      aggregateId: noteId,
+      tenantId: inv.tenantId,
+      buildingId: inv.buildingId,
+      payload: {
+        noteId,
+        number,
+        invoiceId,
+        invoiceNumber: inv.number,
+        total: total.toFixed(2),
+        unitId: inv.unitId,
+        billedPartyId: inv.billedPartyId,
+        leaseId: inv.leaseId,
+      },
+    });
+    return noteId;
   }
 
   // ------------------------------------------------------------------------------------------- one-off charges

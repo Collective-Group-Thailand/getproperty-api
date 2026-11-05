@@ -105,6 +105,9 @@ export enum OwnerMenuKey {
   Access = 'access',
   Parcels = 'parcels',
   Announcements = 'announcements',
+  JuristicRegister = 'juristic_register',
+  JuristicCycles = 'juristic_cycles',
+  JuristicBudgets = 'juristic_budgets',
   Members = 'members',
   BankAccounts = 'bank_accounts',
   Settings = 'settings',
@@ -251,6 +254,10 @@ export enum RateBasisName {
   PerSqm = 'per_sqm',
   PerOwnershipRatio = 'per_ownership_ratio',
   Fixed = 'fixed',
+  /** J1.1b (D-324): price per ตารางวา of land (housing estates). */
+  PerSqwa = 'per_sqwa',
+  /** J1.1b (D-324): a budget split over the building's units by ratio / m² / ตร.วา / per unit, exact sum. */
+  BudgetSplit = 'budget_split',
 }
 
 /** `ops.note_reason` (credit / debit notes, D-040). */
@@ -261,6 +268,8 @@ export enum NoteReasonName {
   Duplicate = 'duplicate',
   EstimateSettlement = 'estimate_settlement',
   Other = 'other',
+  /** J1.1b (D-324): the days after an ownership transfer on an issued advance invoice. */
+  OwnershipTransfer = 'ownership_transfer',
 }
 
 /** `ops.invoice_charge_status` (one-off charges queued for the next invoice). */
@@ -290,4 +299,24 @@ export enum ViewingAccessStateName {
   Expired = 'expired',
   NoShow = 'no_show',
   Cancelled = 'cancelled',
+}
+
+/** `core.property_kind` (asset-core 0.8.0, D-302): the kind of a property is data, not a module. */
+export enum PropertyKindName {
+  Apartment = 'apartment',
+  Condo = 'condo',
+  Village = 'village',
+  Community = 'community',
+  Office = 'office',
+  Retail = 'retail',
+  Industrial = 'industrial',
+  Mixed = 'mixed',
+}
+
+/** `core.building_legal_form` (asset-core 0.8.0, D-302): the law a building's juristic management runs under. */
+export enum BuildingLegalFormName {
+  CondoAct = 'condo_act',
+  LandAllocationAct = 'land_allocation_act',
+  Voluntary = 'voluntary',
+  LeaseContract = 'lease_contract',
 }

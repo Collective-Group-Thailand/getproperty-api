@@ -60,6 +60,11 @@ import { OwnerBoostsController, OwnerMediaServicesController } from './growth.co
 import { OwnerEnergyInsightController, OwnerListingAssistantController } from './growth-insight.controller';
 import { OwnerEmployerHousingController, OwnerRentalHandoffsController } from './growth-network.controller';
 import { OwnerInsightsController } from './insights.controller';
+import {
+  OwnerJuristicBudgetsController,
+  OwnerJuristicRegisterController,
+  OwnerJuristicResolutionsController,
+} from './juristic.controller';
 import { OwnerLeaseStampDutyController, OwnerUnitDocumentsController } from './landlord-documents.controller';
 import { OwnerLeadsController } from './leads.controller';
 import { OwnerLeaseNoticesController } from './lease-notices.controller';
@@ -173,6 +178,9 @@ import { OwnerUnitResidentInvitesController } from './unit-resident-invites.cont
     OwnerUnitBoardController,
     OwnerUnitsController,
     OwnerUnitResidentInvitesController,
+    OwnerJuristicRegisterController,
+    OwnerJuristicResolutionsController,
+    OwnerJuristicBudgetsController,
     OwnerPortfolioController,
     OwnerListingsController,
     OwnerMandatesController,

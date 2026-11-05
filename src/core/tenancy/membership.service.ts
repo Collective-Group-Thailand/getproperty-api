@@ -7,8 +7,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
 import { CLOCK, type Clock } from '../clock/clock';
 import { DomainEvents } from '../events/domain-events';
+import { SettingsService } from '../settings/settings.service';
 import { AccessService, permissionsOf } from './access.service';
 import { type TenantRole } from './invitation.service';
+import { checkRoleGrant } from './juristic-roles';
 
 /**
  * Memberships of a tenant (operator audience, D-090): list, change role / building limits, suspend, remove. A
@@ -22,6 +24,7 @@ export class MembershipService extends TenantScopedRepository {
     private readonly audit: AuditService,
     private readonly events: DomainEvents,
     private readonly access: AccessService,
+    private readonly settings: SettingsService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
     super();
@@ -99,12 +102,38 @@ export class MembershipService extends TenantScopedRepository {
   async update(
     ctx: TenantContext,
     membershipId: string,
-    input: { role?: TenantRole; buildingIds?: string[] | null; status?: 'active' | 'suspended' },
+    input: {
+      role?: TenantRole;
+      buildingIds?: string[] | null;
+      status?: 'active' | 'suspended';
+      accessUntil?: string | null;
+    },
   ) {
     const result = await this.db.tenant(ctx, async (tx) => {
       const m = this.found(
         await tx.membership.findFirst({ where: this.own(ctx, { id: membershipId, deletedAt: null }) }),
       );
+      const role = input.role ?? m.role;
+      const previous = (m.moduleScopes ?? {}) as { accessUntil?: string };
+      // D-320: committee / auditor only in juristic tenants; an auditor stays time-boxed
+      const now = this.clock.now();
+      const accessUntil =
+        input.role || input.accessUntil !== undefined
+          ? checkRoleGrant({
+              role,
+              tenantType: (
+                await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { type: true } })
+              ).type,
+              accessUntil:
+                input.accessUntil !== undefined ? input.accessUntil : (previous.accessUntil ?? null),
+              now,
+              maxDays: await this.settings.valueAt<number>('juristic.auditor_max_days', now, {
+                tenantId: ctx.tenantId,
+              }),
+            })
+          : previous.accessUntil
+            ? new Date(previous.accessUntil)
+            : null;
       const touchesOwner = m.role === 'owner' || input.role === 'owner';
       if (touchesOwner && ctx.role !== 'owner') throw new DomainException('auth.forbidden');
       const losesOwner =
@@ -121,12 +150,16 @@ export class MembershipService extends TenantScopedRepository {
         });
         if (n !== new Set(input.buildingIds).size) throw new DomainException('http.not_found');
       }
-      const moduleScopes =
+      const buildingScopes =
         input.buildingIds === undefined
-          ? (m.moduleScopes ?? {})
+          ? (((m.moduleScopes ?? {}) as { buildingIds?: string[] }).buildingIds ?? null)
           : input.buildingIds === null || input.buildingIds.length === 0
-            ? {}
-            : { buildingIds: [...new Set(input.buildingIds)] };
+            ? null
+            : [...new Set(input.buildingIds)];
+      const moduleScopes = {
+        ...(buildingScopes ? { buildingIds: buildingScopes } : {}),
+        ...(accessUntil ? { accessUntil: accessUntil.toISOString() } : {}),
+      };
       const updated = await tx.membership.update({
         where: { id: m.id },
         data: { role: input.role ?? m.role, status: input.status ?? m.status, moduleScopes },

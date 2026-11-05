@@ -48,6 +48,10 @@ export enum TenantRoleName {
   Manager = 'manager',
   Staff = 'staff',
   Accountant = 'accountant',
+  /** Juristic tenants only (D-320). */
+  Committee = 'committee',
+  /** Juristic tenants only, time-boxed (D-320). */
+  Auditor = 'auditor',
 }
 
 export enum SubscriptionStateName {

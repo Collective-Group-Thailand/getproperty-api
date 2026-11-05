@@ -18,6 +18,8 @@ enum RateBasis {
   per_sqm
   per_ownership_ratio
   fixed
+  per_sqwa
+  budget_split
 
   @@map("rate_basis")
   @@schema("ops")
@@ -111,6 +113,7 @@ enum NoteReason {
   duplicate
   estimate_settlement
   other
+  ownership_transfer
 
   @@map("note_reason")
   @@schema("ops")
@@ -187,6 +190,8 @@ model RatePlanVersion {
   capCheck                    Json?     @map("cap_check")
   aboveCap                    Boolean   @default(false) @map("above_cap")
   complianceAcknowledgementId String?   @map("compliance_acknowledgement_id") @db.Uuid
+  /// D-304 (J1.1b): the adopted resolution behind a common-fee / fund version of a juristic building.
+  resolutionId                String?   @map("resolution_id") @db.Uuid
   note                        String?
   createdAt                   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy                   String?   @map("created_by") @db.Uuid
@@ -196,9 +201,11 @@ model RatePlanVersion {
   tenant              Tenant                     @relation("RatePlanVersionTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rate_plan_version_tenant_id_fkey")
   ratePlan            RatePlan                   @relation(fields: [ratePlanId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "rate_plan_version_rate_plan_id_fkey")
   acknowledgement     ComplianceAcknowledgement? @relation("RatePlanVersionAck", fields: [complianceAcknowledgementId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rate_plan_version_ack_fkey")
+  resolution          Resolution?                @relation(fields: [resolutionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "rate_plan_version_resolution_id_fkey")
   invoiceLines        InvoiceLine[]
   estimateSettlements EstimateSettlement[]
 
+  @@index([resolutionId], map: "rate_plan_version_resolution_id_idx", where: raw("(resolution_id IS NOT NULL)"))
   @@unique([ratePlanId, effectiveFrom], map: "rate_plan_version_rate_plan_id_effective_from_key")
   @@index([tenantId], map: "rate_plan_version_tenant_id_idx")
   @@index([complianceAcknowledgementId], map: "rate_plan_version_compliance_acknowledgement_id_idx")

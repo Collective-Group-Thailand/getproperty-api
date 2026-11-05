@@ -1,0 +1,65 @@
+{
+  "budget": "1234567.89",
+  "units": 312,
+  "totalWeight": "1.044032",
+  "remainder": "-0.34",
+  "remainderUnit": "unit-278",
+  "stats": {
+    "min": "2957.43",
+    "median": "3952.51",
+    "max": "4944.88",
+    "sum": "1234567.89"
+  },
+  "first10": [
+    {
+      "unitId": "unit-001",
+      "ratio": "0.003619",
+      "amount": "4279.47"
+    },
+    {
+      "unitId": "unit-002",
+      "ratio": "0.003038",
+      "amount": "3592.44"
+    },
+    {
+      "unitId": "unit-003",
+      "ratio": "0.004157",
+      "amount": "4915.65"
+    },
+    {
+      "unitId": "unit-004",
+      "ratio": "0.003576",
+      "amount": "4228.62"
+    },
+    {
+      "unitId": "unit-005",
+      "ratio": "0.002995",
+      "amount": "3541.59"
+    },
+    {
+      "unitId": "unit-006",
+      "ratio": "0.004114",
+      "amount": "4864.81"
+    },
+    {
+      "unitId": "unit-007",
+      "ratio": "0.003533",
+      "amount": "4177.77"
+    },
+    {
+      "unitId": "unit-008",
+      "ratio": "0.002952",
+      "amount": "3490.74"
+    },
+    {
+      "unitId": "unit-009",
+      "ratio": "0.004071",
+      "amount": "4813.96"
+    },
+    {
+      "unitId": "unit-010",
+      "ratio": "0.003490",
+      "amount": "4126.93"
+    }
+  ]
+}

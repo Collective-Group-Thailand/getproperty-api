@@ -4,6 +4,7 @@ import { IsEnum, IsIn, IsOptional, IsUUID } from 'class-validator';
 
 import { InvitationChannelName, InvitationStateName } from '../owner/tenancy.dto';
 import { SeriesBucketName, UsageSummaryDto, UtilityUsageDto } from '../shared/smart.dto';
+import { BuildingLegalFormName, PropertyKindName } from '../shared/status.enums';
 import {
   ResidentUnitCapability,
   ResidentUnitRoleName,
@@ -78,6 +79,26 @@ export class ResidentMeUnitDto {
 
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   propertyId!: string;
+
+  @ApiProperty({
+    enum: PropertyKindName,
+    enumName: 'PropertyKind',
+    nullable: true,
+    example: PropertyKindName.Condo,
+    description:
+      'What the place is (D-302): the app names the unit by it — ห้อง (condo / apartment), บ้าน (village), พื้นที่ (office / retail). null = not set.',
+  })
+  propertyKind!: PropertyKindName | null;
+
+  @ApiProperty({
+    enum: BuildingLegalFormName,
+    enumName: 'BuildingLegalForm',
+    nullable: true,
+    example: BuildingLegalFormName.CondoAct,
+    description:
+      'The law the building’s juristic management runs under (D-302); null for rentals without one.',
+  })
+  legalForm!: BuildingLegalFormName | null;
 
   @ApiProperty({
     format: 'uuid',
@@ -258,6 +279,26 @@ export class UnitInvitationPreviewDto {
 
   @ApiProperty({ example: FAKE.unitCode })
   unitNo!: string;
+
+  @ApiProperty({
+    enum: PropertyKindName,
+    enumName: 'PropertyKind',
+    nullable: true,
+    example: PropertyKindName.Condo,
+    description:
+      'What the place is (D-302): the app names the unit by it — ห้อง (condo / apartment), บ้าน (village), พื้นที่ (office / retail). null = not set.',
+  })
+  propertyKind!: PropertyKindName | null;
+
+  @ApiProperty({
+    enum: BuildingLegalFormName,
+    enumName: 'BuildingLegalForm',
+    nullable: true,
+    example: BuildingLegalFormName.CondoAct,
+    description:
+      'The law the building’s juristic management runs under (D-302); null for rentals without one.',
+  })
+  legalForm!: BuildingLegalFormName | null;
 
   @ApiProperty({ example: 'สม••••••' })
   partyDisplayName!: string;

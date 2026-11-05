@@ -13,10 +13,12 @@ import { DomainEvents } from '@core/events/domain-events';
 import { type Tx } from '@database/prisma.service';
 import { TenantTx } from '@database/tenant-tx';
 import {
+  type BuildingLegalForm,
   type Furnishing,
   type OwnershipSource,
   type PortfolioUnitKind,
   Prisma,
+  type PropertyKind,
 } from '@generated/prisma/client';
 import { Inject, Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
@@ -266,7 +268,15 @@ export class PortfolioService {
    * takes over the stub building its landlords created. The building moves to the juristic tenant (owner) and its
    * operator (itself or a PM company); the landlords keep their units, leases and invoices — nothing is copied.
    */
-  async claim(buildingId: string, input: { ownerTenantId: string; operatorTenantId?: string }) {
+  async claim(
+    buildingId: string,
+    input: {
+      ownerTenantId: string;
+      operatorTenantId?: string;
+      propertyKind?: PropertyKind;
+      legalForm?: BuildingLegalForm;
+    },
+  ) {
     return this.db.platform(async (tx) => {
       const before = await tx.building.findFirst({ where: { id: buildingId, deletedAt: null } });
       const operatorTenantId = input.operatorTenantId ?? input.ownerTenantId;
@@ -276,6 +286,8 @@ export class PortfolioService {
         operatorTenantId,
         by: userIdOf(RequestContext.actor()),
         at: this.clock.now(),
+        propertyKind: input.propertyKind,
+        legalForm: input.legalForm,
       });
       await this.audit.record(tx, {
         action: 'building.operator_changed',
@@ -446,7 +458,16 @@ export class PortfolioService {
  */
 export async function claimStub(
   tx: Tx,
-  input: { buildingId: string; ownerTenantId: string; operatorTenantId: string; by: string | null; at: Date },
+  input: {
+    buildingId: string;
+    ownerTenantId: string;
+    operatorTenantId: string;
+    by: string | null;
+    at: Date;
+    /** D-302 (J1.1b): what the claimed stub is — default a condominium under the condo act (D-251). */
+    propertyKind?: PropertyKind;
+    legalForm?: BuildingLegalForm;
+  },
 ) {
   const building = await tx.building.findFirst({ where: { id: input.buildingId, deletedAt: null } });
   if (!building) throw new DomainException('http.not_found');
@@ -466,7 +487,11 @@ export async function claimStub(
   const property = await tx.property.findUniqueOrThrow({ where: { id: building.propertyId } });
   await tx.property.update({
     where: { id: building.propertyId },
-    data: { tenantId: input.operatorTenantId, kind: property.kind ?? 'condo', updatedBy: input.by },
+    data: {
+      tenantId: input.operatorTenantId,
+      kind: input.propertyKind ?? property.kind ?? 'condo',
+      updatedBy: input.by,
+    },
   });
   const claimed = await tx.building.update({
     where: { id: building.id },
@@ -474,7 +499,7 @@ export async function claimStub(
       tenantId: input.operatorTenantId,
       ownerTenantId: input.ownerTenantId,
       operatorTenantId: input.operatorTenantId,
-      legalForm: building.legalForm ?? 'condo_act',
+      legalForm: input.legalForm ?? building.legalForm ?? 'condo_act',
       status: 'active',
       updatedBy: input.by,
       version: { increment: 1 },

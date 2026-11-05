@@ -24,6 +24,9 @@ const BUILDING_OPERATORS: readonly TenantTypeKey[] = [
   'pm_company',
 ];
 
+/** Juristic tenants (and the deprecated alias). */
+const JURISTIC: readonly TenantTypeKey[] = ['juristic', 'condo_juristic'];
+
 export const OWNER_MENU: readonly MenuEntry[] = [
   // D-251: a landlord's home is the portfolio of its units across projects, not a building
   { key: 'portfolio', anyOf: ['unit.read'], tenantTypes: ['landlord'] },
@@ -61,6 +64,14 @@ export const OWNER_MENU: readonly MenuEntry[] = [
     anyOf: ['announcement.manage'],
     flag: 'module.community',
     tenantTypes: BUILDING_OPERATORS,
+  },
+  // pack J (D-302, D-J20 J-DESIGN §5): juristic console keys whose endpoints exist; later steps add theirs
+  { key: 'juristic_register', anyOf: ['juristic.register.read'], tenantTypes: JURISTIC },
+  { key: 'juristic_cycles', anyOf: ['invoice.read'], tenantTypes: JURISTIC },
+  {
+    key: 'juristic_budgets',
+    anyOf: ['juristic.budget.read', 'juristic.resolution.read'],
+    tenantTypes: JURISTIC,
   },
   { key: 'members', anyOf: ['tenant.member.read'] },
   { key: 'bank_accounts', anyOf: ['tenant.bank_account.manage'] },

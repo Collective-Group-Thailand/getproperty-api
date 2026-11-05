@@ -1,3 +1,4 @@
+import { isJuristicTenantType } from '@collective/asset-core';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
@@ -32,6 +33,9 @@ export interface UnitInput {
   baseRent?: string | null;
   unitProfileId?: string | null;
   notes?: string | null;
+  /** J1.1b (D-302): land area in ตารางวา and plot number (housing estates). */
+  landAreaSqwa?: string | null;
+  plotNo?: string | null;
 }
 
 export interface UnitListQuery {
@@ -100,6 +104,8 @@ export class UnitsService extends TenantScopedRepository {
         type: input.type ?? 'room',
         areaSqm: input.areaSqm ?? profile?.areaSqm ?? null,
         baseRent: input.baseRent ?? profile?.defaultRent ?? null,
+        landAreaSqwa: input.landAreaSqwa ?? null,
+        plotNo: input.plotNo?.trim() || null,
         statusChangedAt: now,
         createdBy: by(),
       },
@@ -117,9 +123,10 @@ export class UnitsService extends TenantScopedRepository {
     if (building.ownerTenantId === ctx.tenantId) {
       const tenant = await tx.tenant.findUnique({
         where: { id: ctx.tenantId },
-        select: { legalPartyId: true },
+        select: { legalPartyId: true, type: true },
       });
-      if (tenant?.legalPartyId)
+      // a juristic person does not own the units it manages: its co-owner register starts empty (D-307, J1.1b)
+      if (tenant?.legalPartyId && !isJuristicTenantType(tenant.type))
         await tx.unitOwnership.create({
           data: {
             tenantId: building.tenantId,
@@ -267,6 +274,8 @@ export class UnitsService extends TenantScopedRepository {
               ...(patch.type !== undefined ? { type: patch.type } : {}),
               ...(patch.areaSqm !== undefined ? { areaSqm: patch.areaSqm } : {}),
               ...(patch.baseRent !== undefined ? { baseRent: patch.baseRent } : {}),
+              ...(patch.landAreaSqwa !== undefined ? { landAreaSqwa: patch.landAreaSqwa } : {}),
+              ...(patch.plotNo !== undefined ? { plotNo: patch.plotNo?.trim() || null } : {}),
               updatedBy: by(),
               version: { increment: 1 },
             },

@@ -9,7 +9,7 @@ import { type UnitRow } from '@modules/ops-units/units.service';
 import { dateOnly, iso, isoOrNull } from '../shared/mappers';
 import { unitActions } from '../shared/next-actions';
 import { type MeterHealthName, type ReadingSourceName } from '../shared/smart.dto';
-import { LeaseStatusName } from '../shared/status.enums';
+import { BuildingLegalFormName, LeaseStatusName, PropertyKindName } from '../shared/status.enums';
 import {
   type ActiveStatusName,
   type AmenityCategoryName,
@@ -62,6 +62,7 @@ export const propertyDto = (p: Property): PropertyDto => ({
   name: p.name,
   address: address(p.address),
   provinceCode: p.provinceCode,
+  kind: (p.kind ?? null) as PropertyKindName | null,
   status: p.status as ActiveStatusName,
   version: p.version,
   createdAt: iso(p.createdAt),
@@ -82,6 +83,7 @@ export const buildingDto = (ctx: TenantContext, b: Building, unitCount: number):
       : b.ownerTenantId === ctx.tenantId
         ? BuildingAccessName.Owner
         : BuildingAccessName.Grant,
+  legalForm: (b.legalForm ?? null) as BuildingLegalFormName | null,
   status: b.status as ActiveStatusName,
   unitCount,
   version: b.version,
@@ -113,6 +115,8 @@ export const unitDto = (u: UnitRow): UnitDto => ({
   unitProfileId: u.unitDetailUnit?.unitProfileId ?? null,
   unitProfileName: u.unitDetailUnit?.profile?.name ?? null,
   ownershipRatio: u.ownershipRatio ? u.ownershipRatio.toString() : null,
+  landAreaSqwa: u.landAreaSqwa ? u.landAreaSqwa.toFixed(2) : null,
+  plotNo: u.plotNo,
   currentLeaseId: u.unitDetailUnit?.currentLeaseId ?? null,
   notes: u.unitDetailUnit?.notes ?? null,
   currency: 'THB',
@@ -227,6 +231,7 @@ export const PROPERTY_EXAMPLE: PropertyDto = {
   name: FAKE.propertyName,
   address: { line1: FAKE.addressLine, province: 'กรุงเทพมหานคร', postcode: FAKE.postcode, country: 'TH' },
   provinceCode: '10',
+  kind: 'apartment' as PropertyKindName,
   status: 'active' as ActiveStatusName,
   version: 1,
   createdAt: FAKE.dateTime,
@@ -242,6 +247,7 @@ export const BUILDING_EXAMPLE: BuildingDto = {
   ownerTenantId: FAKE.tenantId,
   operatorTenantId: FAKE.tenantId,
   access: BuildingAccessName.Operator,
+  legalForm: null,
   status: 'active' as ActiveStatusName,
   unitCount: 12,
   version: 1,
@@ -273,6 +279,8 @@ export const UNIT_EXAMPLE: UnitDto = {
   unitProfileId: FAKE.uuid,
   unitProfileName: 'ห้องสตูดิโอ',
   ownershipRatio: null,
+  landAreaSqwa: null,
+  plotNo: null,
   currentLeaseId: null,
   notes: null,
   currency: 'THB',

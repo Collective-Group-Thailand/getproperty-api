@@ -15,6 +15,7 @@ import { OtpVerifyDto } from '../shared/auth.dto';
 import { iso } from '../shared/mappers';
 import { MeService } from '../shared/me.service';
 import { type MeterUnitName, SeriesBucketName, UsageQuery } from '../shared/smart.dto';
+import { BuildingLegalFormName, PropertyKindName } from '../shared/status.enums';
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
   ResidentMeUnitsDto,
@@ -57,6 +58,8 @@ export class ResidentMeUnitsController {
           buildingId: FAKE.buildingId,
           buildingName: 'อาคาร A',
           propertyId: FAKE.uuid,
+          propertyKind: PropertyKindName.Condo,
+          legalForm: BuildingLegalFormName.CondoAct,
           tenantId: FAKE.tenantId,
           tenantName: 'นิติบุคคลอาคารชุด ตัวอย่าง',
           roles: [
@@ -194,6 +197,8 @@ export class ResidentUnitInvitationsController {
       tenantName: 'นิติบุคคลอาคารชุด ตัวอย่าง',
       buildingName: 'อาคาร A',
       unitNo: FAKE.unitCode,
+      propertyKind: PropertyKindName.Condo,
+      legalForm: BuildingLegalFormName.CondoAct,
       partyDisplayName: 'สม••••••',
       phoneMasked: '+66•••••1234',
       expiresAt: '2026-11-19T10:00:00+07:00',
@@ -202,7 +207,12 @@ export class ResidentUnitInvitationsController {
   @ApiStandardErrors(...INVITE_ERRORS)
   async preview(@Param('code') code: string): Promise<UnitInvitationPreviewDto> {
     const p = await this.invitations.preview(code);
-    return { ...p, expiresAt: iso(p.expiresAt) };
+    return {
+      ...p,
+      propertyKind: p.propertyKind as PropertyKindName | null,
+      legalForm: p.legalForm as BuildingLegalFormName | null,
+      expiresAt: iso(p.expiresAt),
+    };
   }
 
   @Post('otp')

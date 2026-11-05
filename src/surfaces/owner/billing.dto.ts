@@ -105,6 +105,16 @@ export class RatePlanVersionDto {
   @ApiProperty({ type: String, format: 'uuid', nullable: true, example: null })
   complianceAcknowledgementId!: string | null;
 
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: null,
+    description:
+      'The adopted resolution that justifies a common-fee / fund version of a juristic building (D-304; required while `juristic.rate_requires_resolution` is true).',
+  })
+  resolutionId!: string | null;
+
   @ApiProperty({ type: String, nullable: true, example: null })
   note!: string | null;
 
@@ -257,6 +267,15 @@ export class RatePlanVersionCreateDto {
     nullable: true,
   })
   minimumCharge?: string | null;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'An adopted resolution of the plan’s building (`/v1/owner/juristic/resolutions`). Required for a common-fee / fund version of a building run by a juristic tenant while `juristic.rate_requires_resolution` is true (422 `rate_plan.resolution_required`, D-304).',
+  })
+  @IsOptional()
+  @IsUUID()
+  resolutionId?: string;
 
   @ApiPropertyOptional({ maxLength: 500 })
   @IsOptional()

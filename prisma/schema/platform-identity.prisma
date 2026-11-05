@@ -339,6 +339,8 @@ model Invitation {
   state            InvitationState   @default(pending)
   expiresAt        DateTime          @map("expires_at") @db.Timestamptz(6)
   acceptedAt       DateTime?         @map("accepted_at") @db.Timestamptz(6)
+  /// D-320 / D-324 (J1.1b): end of a time-boxed membership (auditor).
+  accessUntil      DateTime?         @map("access_until") @db.Timestamptz(6)
   acceptedByUserId String?           @map("accepted_by_user_id") @db.Uuid
   invitedBy        String?           @map("invited_by") @db.Uuid
   createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)

@@ -282,6 +282,17 @@ export const DOMAIN_EVENT_TYPES = {
     'A co-owner of a unit was invited to the resident app (single-use code; QR / SMS / link, D-322).',
   'unit.resident_linked':
     'A co-owner redeemed a unit invitation with the OTP sent to the ownership party’s phone; the login is linked (D-322).',
+  // J1.1b juristic register, bill-to, budgets and resolutions (D-303, D-304, D-307, D-324)
+  'unit_ownership.added':
+    'A co-owner was added to the register of a unit with a share from a date (J1.1b, D-324).',
+  'unit_ownership.transferred':
+    'A whole-unit ownership transfer was recorded: sellers closed and buyers opened at the transfer date, issued advance invoices prorated (internal; not the inbound getbuild `unit.transferred`, D-324).',
+  'juristic.bill_to.changed':
+    'A co-owner named (`set`) or stopped (`ended`) a bill-to party who receives and pays the unit’s invoices (D-307, D-324).',
+  'juristic.resolution.changed':
+    'A meeting resolution was recorded, edited, adopted or voided (D-304, D-324).',
+  'juristic.budget.changed':
+    'A budget was drafted, edited, approved (superseding the previous approved budget) or turned into a draft rate (D-304, D-324).',
   // B2.4 deposits and inspections
   'deposit.opened': 'A lease was activated: its deposit is expected (D-023).',
   'deposit.received': 'The deposit and advance rent were received; receipt numbered.',

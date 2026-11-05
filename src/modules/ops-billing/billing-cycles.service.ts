@@ -37,6 +37,7 @@ import Decimal from 'decimal.js';
 
 import { BillingInputs, toVersionLike } from './billing-inputs';
 import { segmentReadingOf } from './billing-inputs';
+import { periodBudget, splitBudget, type SplitUnit } from './engine/budget-split';
 import {
   computeInvoiceDraft,
   type DraftInput,
@@ -80,6 +81,8 @@ interface Billable {
   partyId: string;
   /** Ownership billables: every ownership row of the unit overlapping the period (J1.1a shares / transfer). */
   ownerships?: OwnershipRow[];
+  /** Ownership billables: the owners whose shares this invoice bills (one, or several naming one bill-to party). */
+  ownerPartyIds?: string[];
   lease:
     | (Lease & {
         lines: {
@@ -426,14 +429,45 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
           from: day(o.validFrom),
           to: o.validTo ? day(o.validTo) : null,
         }));
-        for (const partyId of [...new Set(rows.map((o) => o.partyId))]) {
+        // D-307 (J1.1b): an owner who named a bill-to party is billed through that party — the bill-to in force on the
+        // first day the owner holds the unit inside the period; owners naming the same payer share one invoice
+        const byPayer = new Map<string, string[]>();
+        for (const owner of [...new Set(rows.map((o) => o.partyId))]) {
+          const first = ownedSpan(ownerships, owner, period).from;
+          const billTo = await tx.billTo.findFirst({
+            where: {
+              unitId,
+              ownerPartyId: owner,
+              validFrom: { lte: new Date(first) },
+              OR: [{ validTo: null }, { validTo: { gt: new Date(first) } }],
+            },
+            select: { billToPartyId: true },
+          });
+          const payer = billTo?.billToPartyId ?? owner;
+          byPayer.set(payer, [...(byPayer.get(payer) ?? []), owner]);
+        }
+        for (const [partyId, ownerPartyIds] of byPayer) {
           // one-off charges stay on monthly cycles (one place bills them, never twice)
           if (!hasPlans.get(buildingId)) {
             if (!monthly) continue;
-            const pending = await tx.invoiceCharge.count({ where: { unitId, partyId, status: 'pending' } });
+            const pending = await tx.invoiceCharge.count({
+              where: {
+                unitId,
+                partyId: { in: [...new Set([partyId, ...ownerPartyIds])] },
+                status: 'pending',
+              },
+            });
             if (!pending) continue;
           }
-          out.push({ kind: 'ownership', unitId, buildingId, partyId, lease: null, ownerships });
+          out.push({
+            kind: 'ownership',
+            unitId,
+            buildingId,
+            partyId,
+            lease: null,
+            ownerships,
+            ownerPartyIds,
+          });
         }
       }
     }
@@ -590,9 +624,9 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
     return { registered: tenant.vatRegistered, rate: v.rate, applicableKinds: v.applicableLineKinds ?? [] };
   }
 
-  private async pendingCharges(tx: Tx, unitId: string, partyId: string): Promise<DraftInput['charges']> {
+  private async pendingCharges(tx: Tx, unitId: string, partyIds: string[]): Promise<DraftInput['charges']> {
     const rows = await tx.invoiceCharge.findMany({
-      where: { unitId, partyId, status: 'pending' },
+      where: { unitId, partyId: { in: [...new Set(partyIds)] }, status: 'pending' },
       orderBy: { createdAt: 'asc' },
     });
     return rows.map((c) => ({
@@ -656,6 +690,46 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
     return out;
   }
 
+  /**
+   * `budget_split` versions (J1.1b, D-324): the cycle's budget amount is split over every unit of the building by the
+   * version's weight with an exact sum (remainder to the largest weight); the unit's part rides on the plan input.
+   * When any unit of the building lacks the weight nobody gets a part (every draft is flagged
+   * `budget_split_weight_missing`, not issuable) — never shift a missing unit's part onto the others.
+   */
+  private async withSplits(
+    tx: Tx,
+    buildingId: string,
+    unitId: string,
+    plans: UnitRatePlanInput[],
+    months: number,
+  ): Promise<UnitRatePlanInput[]> {
+    if (!plans.some((p) => p.version.basis === 'budget_split')) return plans;
+    const units = await tx.unit.findMany({
+      where: { buildingId, deletedAt: null },
+      select: { id: true, areaSqm: true, ownershipRatio: true, landAreaSqwa: true },
+    });
+    const splitUnits: SplitUnit[] = units.map((u) => ({
+      unitId: u.id,
+      areaSqm: u.areaSqm?.toString() ?? null,
+      ownershipRatio: u.ownershipRatio?.toString() ?? null,
+      landAreaSqwa: u.landAreaSqwa?.toString() ?? null,
+    }));
+    return plans.map((p) => {
+      if (p.version.basis !== 'budget_split' || p.version.tiers.kind !== 'budget') return p;
+      const tiers = p.version.tiers;
+      const r = splitBudget(periodBudget(tiers, months), splitUnits, tiers.splitBy ?? 'ownership_ratio');
+      const amount = r.amounts.get(unitId);
+      return {
+        ...p,
+        // a unit of the building without its weight would shift its part onto the others: no part for anyone
+        split:
+          amount && !r.missing.length
+            ? { periodAmount: amount, weight: r.weights.get(unitId)!, totalWeight: r.totalWeight }
+            : null,
+      };
+    });
+  }
+
   /** Computes one billable of a cycle into its draft invoice (own transaction). */
   private async computeBillable(ctx: TenantContext, cycle: BillingCycle, b: Billable): Promise<DraftResult> {
     return this.db.tenant(
@@ -705,20 +779,38 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
             type: unit.type,
             areaSqm: unit.areaSqm?.toFixed(2) ?? null,
             ownershipRatio: unit.ownershipRatio?.toFixed(6) ?? null,
+            landAreaSqwa: unit.landAreaSqwa?.toFixed(2) ?? null,
           },
           occupancy,
           lease: b.lease ? this.leaseInput(b.lease) : null,
           meters: b.kind === 'lease' ? m.meters : [],
           unitRatePlans:
             b.kind === 'ownership'
-              ? await this.unitRatePlans(tx, cycle.tenantId, b.buildingId, period, cycle.frequency)
+              ? await this.withSplits(
+                  tx,
+                  b.buildingId,
+                  b.unitId,
+                  await this.unitRatePlans(tx, cycle.tenantId, b.buildingId, period, cycle.frequency),
+                  MONTHS_OF[cycle.frequency],
+                )
               : [],
           // one-off charges are billed by monthly cycles only (never twice across frequencies)
-          charges: cycle.frequency === 'monthly' ? await this.pendingCharges(tx, b.unitId, b.partyId) : [],
+          charges:
+            cycle.frequency === 'monthly'
+              ? await this.pendingCharges(tx, b.unitId, [b.partyId, ...(b.ownerPartyIds ?? [])])
+              : [],
           estimateSettlements: b.kind === 'lease' ? m.settlements : [],
           advanceRent: null,
           vat: await this.vatOf(tx, cycle.tenantId, cycle.cutOffAt),
-          ...(b.ownerships ? { ownership: { partyId: b.partyId, rows: b.ownerships } } : {}),
+          ...(b.ownerships
+            ? {
+                ownership: {
+                  partyId: b.partyId,
+                  rows: b.ownerships,
+                  partyIds: b.ownerPartyIds ?? [b.partyId],
+                },
+              }
+            : {}),
           cycleMonths: MONTHS_OF[cycle.frequency],
         };
         const draft = computeInvoiceDraft(input);
@@ -1149,7 +1241,7 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
       lease: this.leaseInput(billable.lease!),
       meters: m.meters,
       unitRatePlans: [],
-      charges: await this.pendingCharges(tx, lease.unitId, lease.payerPartyId ?? lease.lesseePartyId),
+      charges: await this.pendingCharges(tx, lease.unitId, [lease.payerPartyId ?? lease.lesseePartyId]),
       estimateSettlements: m.settlements,
       advanceRent: advance,
       vat: await this.vatOf(tx, lease.tenantId, moveOutAt),
