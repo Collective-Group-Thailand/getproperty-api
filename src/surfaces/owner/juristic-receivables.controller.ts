@@ -41,6 +41,7 @@ import { InvoiceDto } from './billing.dto';
 import { DocumentDownloadDto } from './deposits.dto';
 import { EXPORT_EXAMPLE, exportDto } from './documents.controller';
 import { ExportJobDto, type ExportKindName, type ExportStatusName } from './documents.dto';
+import { type BudgetLineKindName } from './juristic.dto';
 import {
   AgingQuery,
   BudgetActualIncomeDto,
@@ -833,10 +834,10 @@ export class OwnerJuristicReportsController {
   @Can('juristic.budget.read')
   @ApiEndpoint({
     id: 'owner.juristicBudgets.actualIncome',
-    summary: 'Budget vs actual — income',
+    summary: 'Budget vs actual',
     description:
-      'The budget’s income lines against what was billed in its period for its building (common fee, fund, surcharge, other — net of credit notes) and collected; the expense side comes with J2.1 (`expenseSideAvailable: false`) (D-304, D-326).',
-    implements: ['D-304', 'D-326'],
+      'The budget’s income lines against what was billed in its period for its building (common fee, fund, surcharge, other — net of credit notes) and collected, and since J2.1 its expense and fund lines against Σ debits − credits of their accounts in the journals for the building and period (`expenseSideAvailable: true`) (D-304, D-326, D-329).',
+    implements: ['D-304', 'D-326', 'D-329'],
   })
   @ApiSuccess(200, {
     description: 'Income side',
@@ -860,7 +861,20 @@ export class OwnerJuristicReportsController {
       collected: '690000.00',
       billedVsBudgetPct: '49.33',
       collectedVsBilledPct: '93.24',
-      expenseSideAvailable: false,
+      expenseSideAvailable: true,
+      budgetedExpense: '1450000.00',
+      actualExpense: '690000.00',
+      expenseLines: [
+        {
+          budgetLineId: FAKE.uuid,
+          kind: 'expense' as BudgetLineKindName,
+          label: 'ค่าจ้างรักษาความปลอดภัย',
+          accountId: FAKE.uuid,
+          budgeted: '480000.00',
+          actual: '236500.00',
+          remaining: '243500.00',
+        },
+      ],
     },
   })
   @ApiStandardErrors('validation.failed', 'http.not_found', ...T)
@@ -869,7 +883,11 @@ export class OwnerJuristicReportsController {
     @Param('budgetId', ParseUUIDPipe) id: string,
   ): Promise<BudgetActualIncomeDto> {
     const r = await this.reports.actualIncome(ctx, id);
-    return { ...r, billedByKind: r.billedByKind.map((k) => ({ ...k, kind: k.kind as IncomeKindName })) };
+    return {
+      ...r,
+      billedByKind: r.billedByKind.map((k) => ({ ...k, kind: k.kind as IncomeKindName })),
+      expenseLines: r.expenseLines.map((l) => ({ ...l, kind: l.kind as BudgetLineKindName })),
+    };
   }
 }
 

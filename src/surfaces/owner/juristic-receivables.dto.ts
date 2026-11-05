@@ -24,6 +24,7 @@ import { TokenPairDto } from '../shared/auth.dto';
 import { LanguageName } from '../shared/common.dto';
 import { MoneyInput, MoneyOutput } from '../shared/fields';
 import { BuildingLegalFormName } from '../shared/status.enums';
+import { BudgetLineKindName } from './juristic.dto';
 import { ManualPaymentMethodName } from './payments.dto';
 
 // ------------------------------------------------------------------------------------------- enums
@@ -769,6 +770,40 @@ export class IncomeByKindDto {
   amount!: string;
 }
 
+export class BudgetExpenseLineDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  budgetLineId!: string;
+
+  @ApiProperty({ enum: BudgetLineKindName, enumName: 'BudgetLineKind', example: BudgetLineKindName.Expense })
+  kind!: BudgetLineKindName;
+
+  @ApiProperty({ example: 'ค่าจ้างรักษาความปลอดภัย' })
+  label!: string;
+
+  @ApiProperty({
+    format: 'uuid',
+    nullable: true,
+    type: String,
+    example: FAKE.uuid,
+    description: 'The account of the chart the line is measured on; null = no actual (J2.1, D-329).',
+  })
+  accountId!: string | null;
+
+  @MoneyOutput({ example: '480000.00', description: 'Budgeted.' })
+  budgeted!: string;
+
+  @MoneyOutput({
+    example: '236500.00',
+    nullable: true,
+    description:
+      'Σ debits − credits on the account in the budget period for the building (journals); null without an account.',
+  })
+  actual!: string | null;
+
+  @MoneyOutput({ example: '243500.00', nullable: true, description: 'Budgeted − actual.' })
+  remaining!: string | null;
+}
+
 export class BudgetActualIncomeDto {
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   budgetId!: string;
@@ -810,10 +845,22 @@ export class BudgetActualIncomeDto {
   collectedVsBilledPct!: string | null;
 
   @ApiProperty({
-    example: false,
-    description: 'The expense side comes with J2.1 (chart of accounts and journals); false until then.',
+    example: true,
+    description: 'True since J2.1: the expense side below is measured on the journals (D-329).',
   })
   expenseSideAvailable!: boolean;
+
+  @MoneyOutput({ example: '1450000.00', description: 'Σ expense and fund lines of the budget (J2.1).' })
+  budgetedExpense!: string;
+
+  @MoneyOutput({ example: '690000.00', description: 'Σ actual of the lines with an account (J2.1).' })
+  actualExpense!: string;
+
+  @ApiProperty({
+    type: [BudgetExpenseLineDto],
+    description: 'Expense and fund lines against the journals (J2.1, D-329).',
+  })
+  expenseLines!: BudgetExpenseLineDto[];
 }
 
 // ------------------------------------------------------------------------------------------- statements

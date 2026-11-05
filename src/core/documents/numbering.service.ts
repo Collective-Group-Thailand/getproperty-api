@@ -24,6 +24,8 @@ export const SERIES_PREFIX: Partial<Record<DocumentType, string>> = {
   debt_clearance: 'DCL',
   owner_statement: 'STM',
   collection_letter: 'CLT',
+  expense_request: 'EXP',
+  withholding_certificate: 'WHT',
 };
 
 /**

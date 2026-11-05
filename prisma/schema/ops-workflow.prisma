@@ -30,6 +30,8 @@ enum DocumentType {
   debt_clearance
   owner_statement
   collection_letter
+  expense_request
+  withholding_certificate
 
   @@map("document_type")
   @@schema("ops")

@@ -1742,5 +1742,123 @@
       "title": "Too many SOS",
       "detail": "You sent several SOS within an hour. Call the gate or emergency services directly."
     }
+  },
+  "account": {
+    "code_taken": {
+      "title": "Account code in use",
+      "detail": "Another account of the chart already has the code {code}."
+    },
+    "system": {
+      "title": "System account",
+      "detail": "Account {code} is used by the posting rules and cannot be deactivated."
+    }
+  },
+  "journal": {
+    "unbalanced": {
+      "title": "Journal does not balance",
+      "detail": "Debits ({debit}) and credits ({credit}) must be equal."
+    },
+    "not_reversible": {
+      "title": "Correct it at the source",
+      "detail": "A journal posted from a {sourceType} is corrected by its own document (credit note, void, payment reversal), not reversed by hand."
+    },
+    "already_reversed": {
+      "title": "Already reversed",
+      "detail": "This journal already has a reversal."
+    }
+  },
+  "expense": {
+    "invalid_state": {
+      "title": "Not possible now",
+      "detail": "The expense request is {state}; this action is not allowed."
+    },
+    "maker_checker": {
+      "title": "You requested it",
+      "detail": "The requester of an expense never approves it — another approver of its band must decide."
+    },
+    "not_in_band": {
+      "title": "Not your band",
+      "detail": "This amount is approved by: {roles}."
+    },
+    "already_decided": {
+      "title": "Already decided",
+      "detail": "You already decided on this expense request."
+    }
+  },
+  "wht": {
+    "payee_tax_id_missing": {
+      "title": "Payee tax id missing",
+      "detail": "Tax was withheld: record the payee's 13-digit tax id on its party before paying (it is printed on the 50 ทวิ)."
+    },
+    "document_pending": {
+      "title": "Document being prepared",
+      "detail": "The certificate PDF is being built — try again in a moment."
+    }
+  },
+  "fund": {
+    "resolution_required": {
+      "title": "Resolution required",
+      "detail": "Money leaves a fund only with an adopted resolution of its building."
+    },
+    "resolution_invalid": {
+      "title": "Resolution not usable",
+      "detail": "The resolution must be adopted and belong to the fund's building."
+    },
+    "name_taken": {
+      "title": "Fund name in use",
+      "detail": "The building already has a fund of this kind with this name."
+    },
+    "inactive": {
+      "title": "Fund inactive",
+      "detail": "The fund is inactive."
+    },
+    "invalid_state": {
+      "title": "Not possible now",
+      "detail": "The transfer is {state}; this action is not allowed."
+    },
+    "maker_checker": {
+      "title": "You requested it",
+      "detail": "Another user than the requester approves or rejects a fund transfer."
+    },
+    "insufficient": {
+      "title": "Not enough in the fund",
+      "detail": "The fund's bank account holds {balance} THB."
+    }
+  },
+  "petty_cash": {
+    "name_taken": {
+      "title": "Float name in use",
+      "detail": "The building already has a petty cash float with this name."
+    },
+    "inactive": {
+      "title": "Float inactive",
+      "detail": "The petty cash float is inactive."
+    },
+    "not_custodian": {
+      "title": "Not the custodian",
+      "detail": "Only the custodian of the float (or an owner / manager) records its spends."
+    },
+    "insufficient": {
+      "title": "Not enough cash",
+      "detail": "The float holds {balance} THB — top it up first."
+    }
+  },
+  "bank_statement": {
+    "unreadable": {
+      "title": "File not readable",
+      "detail": "The file does not match the bank's format ({reason}, line {line})."
+    },
+    "line_not_open": {
+      "title": "Line not open",
+      "detail": "The line is {state}; undo it first."
+    },
+    "amount_mismatch": {
+      "title": "Amounts differ",
+      "detail": "The line ({line}) and the chosen item ({target}) differ."
+    },
+    "already_matched": {
+      "title": "Already matched",
+      "detail": "This item is matched to another statement line."
+    }
   }
 }

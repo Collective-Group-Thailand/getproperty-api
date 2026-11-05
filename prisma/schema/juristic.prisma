@@ -9,14 +9,20 @@ model RevenueSchedule {
   month         DateTime  @db.Date
   amount        Decimal   @db.Decimal(14, 2)
   recognisedAt  DateTime? @map("recognised_at") @db.Timestamptz(6)
+  recognisedAmount Decimal? @map("recognised_amount") @db.Decimal(14, 2)
+  journalId     String?   @map("journal_id") @db.Uuid
+  creditedAmount Decimal  @default(0) @map("credited_amount") @db.Decimal(14, 2)
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy     String?   @map("created_by") @db.Uuid
 
   tenant      Tenant      @relation("RevenueScheduleTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "revenue_schedule_tenant_id_fkey")
   invoiceLine InvoiceLine @relation(fields: [invoiceLineId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "revenue_schedule_invoice_line_id_fkey")
+  journal     Journal?    @relation(fields: [journalId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "revenue_schedule_journal_id_fkey")
 
   @@unique([invoiceLineId, month], map: "revenue_schedule_invoice_line_id_month_key")
   @@index([tenantId, month], map: "revenue_schedule_tenant_id_month_idx")
+  @@index([month], map: "revenue_schedule_due_idx", where: raw("(recognised_at IS NULL)"))
+  @@index([journalId], map: "revenue_schedule_journal_id_idx", where: raw("(journal_id IS NOT NULL)"))
   @@map("revenue_schedule")
   @@schema("juristic")
 }
@@ -109,6 +115,9 @@ model Resolution {
   documents        ResolutionDocument[]
   budgets          Budget[]
   ratePlanVersions RatePlanVersion[]
+  journals         Journal[]
+  fundTransfers    FundTransfer[]
+  expenseRequests  ExpenseRequest[]
 
   @@unique([buildingId, meetingKind, number], map: "resolution_building_id_meeting_kind_number_key", where: raw("(state <> 'void'::juristic.resolution_state)"))
   @@index([tenantId, buildingId, meetingDate(sort: Desc)], map: "resolution_tenant_id_building_id_meeting_date_idx")
@@ -183,9 +192,11 @@ model BudgetLine {
   createdBy String?        @map("created_by") @db.Uuid
 
   tenant Tenant @relation("BudgetLineTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "budget_line_tenant_id_fkey")
-  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "budget_line_budget_id_fkey")
+  budget  Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "budget_line_budget_id_fkey")
+  account Account? @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "budget_line_account_id_fkey")
 
   @@index([budgetId, sort], map: "budget_line_budget_id_idx")
+  @@index([accountId], map: "budget_line_account_id_idx", where: raw("(account_id IS NOT NULL)"))
   @@map("budget_line")
   @@schema("juristic")
 }

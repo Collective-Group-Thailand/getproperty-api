@@ -418,6 +418,59 @@ export const PERMISSIONS: readonly PermissionDef[] = [
       'Approve or refuse a collections ladder step that needs approval (suspension of common services, lawyer letter, legal action; owner, manager or committee, D-305, D-326)',
     surfaces: ['owner'],
   },
+  // J2.1 light GL, expenses, funds, petty cash, bank statements (D-311, D-312, D-320, D-329)
+  {
+    key: 'juristic.accounting.read',
+    description:
+      'Read the chart of accounts, journals, funds, petty cash, expense requests, WHT certificates, bank statements and the financial statements (D-312, D-329)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.accounting.manage',
+    description:
+      'Edit the chart of accounts, post / reverse manual journals, back-post the ledger, import and match bank statements, export journals (D-312, D-329)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.expense.read',
+    description:
+      'Read expense requests, their approvals and certificates, and petty cash floats (D-311, D-329)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.expense.request',
+    description: 'Draft, edit, submit and cancel expense requests and attach their documents (D-311, D-329)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.expense.approve',
+    description:
+      'Approve or reject an expense request when the role is in its approval band; never one’s own request (maker-checker, D-091, D-311, D-329)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.expense.pay',
+    description:
+      'Record the payment of an approved expense request (money leaves; never the committee, D-320, D-329)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.petty_cash.spend',
+    description: 'Record a petty cash spend with its receipt (the custodian, or an owner / manager, D-329)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.fund.manage',
+    description:
+      'Create funds and petty cash floats, request fund transfers, count petty cash (D-311, D-329)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.fund.approve',
+    description:
+      'Approve or reject a fund transfer requested by another user (out of a fund only with a resolution, D-311, D-329)',
+    surfaces: ['owner'],
+  },
   // platform (/v1/admin)
   { key: 'admin.tenant.read', description: 'List and view tenants', surfaces: ['admin'] },
   // J4.1 gate & visitor (D-315, D-320, D-327)
@@ -623,6 +676,8 @@ const JURISTIC_READ = [
   'juristic.budget.read',
   'juristic.resolution.read',
   'juristic.collections.read',
+  'juristic.accounting.read',
+  'juristic.expense.read',
 ];
 
 /** D-320 (J4.1): the guard records visits at the gate — nothing else. */
@@ -657,6 +712,9 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'staff_task.read',
     'juristic.register.read',
     'juristic.collections.read',
+    'juristic.expense.read',
+    'juristic.expense.request',
+    'juristic.petty_cash.spend',
     'gate.read',
     'gate.incident.read',
     'gate.incident.manage',
@@ -684,6 +742,11 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'juristic.budget.read',
     'juristic.resolution.read',
     'juristic.collections.read',
+    'juristic.accounting.read',
+    'juristic.accounting.manage',
+    'juristic.expense.read',
+    'juristic.expense.request',
+    'juristic.expense.pay',
   ],
   committee: [
     ...JURISTIC_READ,
@@ -691,6 +754,8 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'juristic.resolution.adopt',
     'juristic.payment_plan.approve',
     'juristic.collections.approve',
+    'juristic.expense.approve',
+    'juristic.fund.approve',
     'gate.read',
     'gate.log.read',
     'gate.invite.approve',

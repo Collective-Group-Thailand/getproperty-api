@@ -17,6 +17,9 @@ enum ExportKind {
   etax_monthly_xlsx
   payroll_deduction
   juristic_receivables_csv
+  juristic_journal_csv
+  juristic_journal_express
+  juristic_journal_flowaccount
 
   @@map("export_kind")
   @@schema("ops")

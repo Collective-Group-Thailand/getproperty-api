@@ -1,0 +1,4 @@
+Bangkok Bank statement (synthetic sample, layout UNVERIFIED)
+Trans. Date,Value Date,Description,Cheque No./Ref.,Debit,Credit,Balance,Channel
+05/01/27,05/01/27,TRANSFER IN,BBL0501A001,,"3,600.00","103,600.00",iBanking
+10/01/27,10/01/27,CHEQUE PAID,00123456,"20,000.00",,"83,600.00",Branch

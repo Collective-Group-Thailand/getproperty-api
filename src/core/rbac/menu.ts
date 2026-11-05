@@ -80,6 +80,19 @@ export const OWNER_MENU: readonly MenuEntry[] = [
   { key: 'juristic_receivables', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
   { key: 'juristic_statements', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
   { key: 'juristic_collection_ladder', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
+  // J2.1 (D-311, D-312, D-329): accounting, expenses, funds and petty cash, bank statements
+  { key: 'juristic_accounting', anyOf: ['juristic.accounting.read'], tenantTypes: JURISTIC },
+  {
+    key: 'juristic_expenses',
+    anyOf: ['juristic.expense.read'],
+    tenantTypes: JURISTIC,
+  },
+  {
+    key: 'juristic_funds',
+    anyOf: ['juristic.accounting.read', 'juristic.petty_cash.spend'],
+    tenantTypes: JURISTIC,
+  },
+  { key: 'juristic_bank_statements', anyOf: ['juristic.accounting.manage'], tenantTypes: JURISTIC },
   // J4.1 (D-315, D-327): the gate — juristic estates always; apartments / PM companies once the module is switched on
   { key: 'juristic_gate', anyOf: ['gate.read'], tenantTypes: JURISTIC },
   { key: 'gate', anyOf: ['gate.read'], flag: 'module.gate', tenantTypes: ['apartment', 'pm_company'] },

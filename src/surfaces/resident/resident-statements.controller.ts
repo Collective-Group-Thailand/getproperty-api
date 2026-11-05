@@ -10,6 +10,7 @@ import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 import { DocumentDownloadDto } from '../owner/deposits.dto';
+import { type BudgetLineKindName } from '../owner/juristic.dto';
 import { statementDto } from '../owner/juristic-receivables.controller';
 import { BudgetActualIncomeDto, type IncomeKindName, StatementDto } from '../owner/juristic-receivables.dto';
 import { type LanguageName } from '../shared/common.dto';
@@ -96,7 +97,7 @@ export class ResidentStatementsController {
 
 /**
  * D-304 / D-326: what the juristic person budgeted as income for my building this year against what it billed and
- * collected (income side; expenses come with J2.1). Only for a unit I hold a role on today.
+ * collected (income from billing, expenses from the journals since J2.1). Only for a unit I hold a role on today.
  */
 @ApiTags('resident.statements')
 @ApiSurface(SURFACES.resident)
@@ -109,7 +110,7 @@ export class ResidentBudgetController {
     id: 'resident.units.budgetVsActual',
     summary: 'Budget vs actual of my building',
     description:
-      'The approved budget of the unit’s building whose period contains today: its income lines against what was billed (common fee, fund, surcharge, other) and collected so far; `expenseSideAvailable` is false until J2.1. No approved budget, or no role on the unit today → 404 (D-304, D-309, D-326).',
+      'The approved budget of the unit’s building whose period contains today: its income lines against what was billed (common fee, fund, surcharge, other) and collected so far; the expense and fund lines against the journals of their accounts (J2.1). No approved budget, or no role on the unit today → 404 (D-304, D-309, D-326).',
     implements: ['D-304', 'D-309', 'D-326'],
   })
   @ApiSuccess(200, {
@@ -134,12 +135,29 @@ export class ResidentBudgetController {
       collected: '690000.00',
       billedVsBudgetPct: '49.33',
       collectedVsBilledPct: '93.24',
-      expenseSideAvailable: false,
+      expenseSideAvailable: true,
+      budgetedExpense: '1450000.00',
+      actualExpense: '690000.00',
+      expenseLines: [
+        {
+          budgetLineId: FAKE.uuid,
+          kind: 'expense' as BudgetLineKindName,
+          label: 'ค่าจ้างรักษาความปลอดภัย',
+          accountId: FAKE.uuid,
+          budgeted: '480000.00',
+          actual: '236500.00',
+          remaining: '243500.00',
+        },
+      ],
     },
   })
   @ApiStandardErrors('validation.failed', 'http.not_found')
   async budget(@Param('unitId', ParseUUIDPipe) unitId: string): Promise<BudgetActualIncomeDto> {
     const r = await this.reports.residentBudget(unitId);
-    return { ...r, billedByKind: r.billedByKind.map((k) => ({ ...k, kind: k.kind as IncomeKindName })) };
+    return {
+      ...r,
+      billedByKind: r.billedByKind.map((k) => ({ ...k, kind: k.kind as IncomeKindName })),
+      expenseLines: r.expenseLines.map((l) => ({ ...l, kind: l.kind as BudgetLineKindName })),
+    };
   }
 }

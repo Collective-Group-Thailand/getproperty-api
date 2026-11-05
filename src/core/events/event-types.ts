@@ -348,6 +348,33 @@ export const DOMAIN_EVENT_TYPES = {
     'A juristic office accepted the invitation: unit grants created, workspace linked (D-270, D-326).',
   'juristic.workspace.revoked':
     "A landlord revoked a juristic workspace invitation or link; the office's grants are revoked (D-270, D-326).",
+  // J2.1 (D-311, D-312, D-329)
+  'juristic.account.changed': 'An account of the juristic chart was created or edited (D-329).',
+  'juristic.journal.posted': 'A manual / opening journal was posted (D-312, D-329).',
+  'juristic.journal.reversed': 'A manual journal was reversed by an opposite journal (D-329).',
+  'juristic.expense_request.changed':
+    'An expense request was drafted, edited, got an attachment or an approval (D-329).',
+  'juristic.expense_request.submitted':
+    'An expense request was submitted for approval with its band (D-311, D-329).',
+  'juristic.expense.approval_required':
+    'An expense request waits for approvals of its band (operators in-app + LINE, D-311, D-329).',
+  'juristic.expense_request.approved': 'An expense request got the approvals of its band (D-311, D-329).',
+  'juristic.expense_request.rejected':
+    'An expense request was rejected by an approver with a reason (D-329).',
+  'juristic.expense_request.cancelled': 'An expense request was cancelled before payment (D-329).',
+  'juristic.expense_request.paid': 'An approved expense request was paid and posted (D-311, D-329).',
+  'juristic.withholding_certificate.issued':
+    'A 50 ทวิ withholding-tax certificate was numbered; the worker builds its PDF (D-311, D-329, O-041).',
+  'juristic.withholding_certificate.ready': 'The PDF of a withholding-tax certificate is ready (D-329).',
+  'juristic.fund.changed': 'A fund was created or edited (D-311, D-329).',
+  'juristic.fund_transfer.requested':
+    'A transfer into or out of a fund waits for another user’s approval (D-311, D-329).',
+  'juristic.fund_transfer.posted': 'A fund transfer was approved and posted (D-311, D-329).',
+  'juristic.fund_transfer.rejected': 'A fund transfer was rejected with a reason (D-329).',
+  'juristic.petty_cash.changed': 'A petty cash float was created, spent from or counted (D-329).',
+  'juristic.bank_statement.imported': 'A bank statement file was imported and matched (D-329).',
+  'juristic.bank_statement_line.changed':
+    'A bank statement line was matched, ignored or unmatched by hand (D-329).',
   'juristic.debt_clearance.requested':
     'A debt clearance certificate was requested and waits for its fee / the owner (D-306, D-325).',
   'juristic.debt_clearance.issued':
