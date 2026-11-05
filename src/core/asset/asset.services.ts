@@ -1,3 +1,4 @@
+import { isJuristicTenantType } from '@collective/asset-core';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
@@ -7,6 +8,7 @@ import { uuidv7 } from '@common/ids/uuidv7';
 import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
 import {
+  type BuildingLegalForm,
   type BuildingType,
   type IdDocumentType,
   type PartyType,
@@ -192,6 +194,8 @@ export class BuildingService extends TenantScopedRepository {
       ownerTenantId?: string | null;
       reason: 'pm_contract_start' | 'pm_contract_end' | 'juristic_formed' | 'handover' | 'other';
       sourceRef?: string | null;
+      /** D-302 (J1.1b): required when a juristic tenant takes over a building without a legal form. */
+      legalForm?: BuildingLegalForm;
     },
   ) {
     return this.db.platform(async (tx) => {
@@ -199,6 +203,16 @@ export class BuildingService extends TenantScopedRepository {
       const b = this.found(await tx.building.findFirst({ where: { id: buildingId, deletedAt: null } }));
       const target = await tx.tenant.findFirst({ where: { id: input.operatorTenantId, deletedAt: null } });
       if (!target) throw new DomainException('http.not_found');
+      if (isJuristicTenantType(target.type) && !b.legalForm && !input.legalForm)
+        throw new DomainException('validation.failed', {
+          errors: [
+            {
+              path: 'legalForm',
+              code: 'required',
+              message: 'a building run by a juristic tenant needs its legal form',
+            },
+          ],
+        });
       const owner = input.ownerTenantId === undefined ? b.ownerTenantId : input.ownerTenantId;
       await tx.buildingOperatorPeriod.updateMany({
         where: { buildingId, validTo: null },
@@ -221,6 +235,7 @@ export class BuildingService extends TenantScopedRepository {
         data: {
           operatorTenantId: input.operatorTenantId,
           ownerTenantId: owner,
+          ...(input.legalForm ? { legalForm: input.legalForm } : {}),
           version: { increment: 1 },
           updatedBy: by(),
         },

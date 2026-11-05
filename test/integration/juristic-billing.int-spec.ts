@@ -162,6 +162,12 @@ describe('J1.1a juristic owner billing and billing frequencies (real PostgreSQL)
       .send({ buildingId: ids.condo, kind: 'power', name: 'ไฟ', isDefault: true, frequency: 'annual' })
       .expect(422);
     expect(bad.body.errors).toEqual([expect.objectContaining({ path: 'frequency' })]);
+    // J1.1b (D-304): a juristic common-fee / fund version names an adopted resolution of the building
+    const resolution = await one<{ id: string }>(
+      `INSERT INTO juristic.resolution (tenant_id, building_id, meeting_kind, meeting_date, number, title, text, state, adopted_at)
+       VALUES ($1, $2, 'agm', '2026-12-10', '1/2569', 'อัตราค่าส่วนกลาง 2570', 'อนุมัติอัตรา', 'adopted', now()) RETURNING id`,
+      [jur.tenantId, ids.condo],
+    );
     const plan = async (kind: string, name: string, frequency: string, version: Record<string, unknown>) => {
       const p = await t.http
         .post('/v1/owner/rate-plans')
@@ -172,7 +178,7 @@ describe('J1.1a juristic owner billing and billing frequencies (real PostgreSQL)
       await t.http
         .post(`/v1/owner/rate-plans/${p.body.id}/versions`)
         .set(J())
-        .send({ effectiveFrom: '2027-01-01', ...version })
+        .send({ effectiveFrom: '2027-01-01', resolutionId: resolution.id, ...version })
         .expect(201);
       return p.body.id as string;
     };

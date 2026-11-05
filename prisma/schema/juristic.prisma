@@ -20,3 +20,231 @@ model RevenueSchedule {
   @@map("revenue_schedule")
   @@schema("juristic")
 }
+
+enum MeetingKind {
+  agm
+  egm
+  committee
+
+  @@map("meeting_kind")
+  @@schema("juristic")
+}
+
+enum ResolutionState {
+  draft
+  adopted
+  void
+
+  @@map("resolution_state")
+  @@schema("juristic")
+}
+
+enum ResolutionDocumentKind {
+  minutes
+  attachment
+  notice
+
+  @@map("resolution_document_kind")
+  @@schema("juristic")
+}
+
+enum BudgetState {
+  draft
+  approved
+  superseded
+
+  @@map("budget_state")
+  @@schema("juristic")
+}
+
+enum BudgetLineKind {
+  income
+  expense
+  fund
+
+  @@map("budget_line_kind")
+  @@schema("juristic")
+}
+
+enum BillToKind {
+  named_party
+  agency
+
+  @@map("bill_to_kind")
+  @@schema("juristic")
+}
+
+enum TransferProration {
+  carry_to_buyer
+  refund_seller
+
+  @@map("transfer_proration")
+  @@schema("juristic")
+}
+
+/// D-304 (J1.1b): a meeting resolution (AGM / EGM / committee); draft → adopted → void.
+model Resolution {
+  id           String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String          @map("tenant_id") @db.Uuid
+  buildingId   String          @map("building_id") @db.Uuid
+  meetingKind  MeetingKind     @map("meeting_kind")
+  meetingDate  DateTime        @map("meeting_date") @db.Date
+  number       String
+  title        String
+  text         String
+  votesSummary String?         @map("votes_summary")
+  state        ResolutionState @default(draft)
+  adoptedAt    DateTime?       @map("adopted_at") @db.Timestamptz(6)
+  adoptedBy    String?         @map("adopted_by") @db.Uuid
+  voidedAt     DateTime?       @map("voided_at") @db.Timestamptz(6)
+  voidReason   String?         @map("void_reason")
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy    String?         @map("created_by") @db.Uuid
+  updatedAt    DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy    String?         @map("updated_by") @db.Uuid
+  version      Int             @default(1)
+
+  tenant           Tenant               @relation("ResolutionTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "resolution_tenant_id_fkey")
+  building         Building             @relation("ResolutionBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "resolution_building_id_fkey")
+  documents        ResolutionDocument[]
+  budgets          Budget[]
+  ratePlanVersions RatePlanVersion[]
+
+  @@unique([buildingId, meetingKind, number], map: "resolution_building_id_meeting_kind_number_key", where: raw("(state <> 'void'::juristic.resolution_state)"))
+  @@index([tenantId, buildingId, meetingDate(sort: Desc)], map: "resolution_tenant_id_building_id_meeting_date_idx")
+  @@map("resolution")
+  @@schema("juristic")
+}
+
+/// D-304 (J1.1b): minutes, notices and attachments of a resolution.
+model ResolutionDocument {
+  id           String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String                 @map("tenant_id") @db.Uuid
+  resolutionId String                 @map("resolution_id") @db.Uuid
+  documentId   String                 @map("document_id") @db.Uuid
+  kind         ResolutionDocumentKind @default(attachment)
+  createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy    String?                @map("created_by") @db.Uuid
+
+  tenant     Tenant     @relation("ResolutionDocumentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "resolution_document_tenant_id_fkey")
+  resolution Resolution @relation(fields: [resolutionId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "resolution_document_resolution_id_fkey")
+  document   Document   @relation("ResolutionDocumentDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "resolution_document_document_id_fkey")
+
+  @@unique([resolutionId, documentId], map: "resolution_document_resolution_id_document_id_key")
+  @@index([documentId], map: "resolution_document_document_id_idx")
+  @@map("resolution_document")
+  @@schema("juristic")
+}
+
+/// D-304 (J1.1b): the annual budget of a building, approved with an adopted resolution.
+model Budget {
+  id           String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String      @map("tenant_id") @db.Uuid
+  buildingId   String      @map("building_id") @db.Uuid
+  fiscalYear   Int         @map("fiscal_year") @db.SmallInt
+  name         String
+  periodStart  DateTime    @map("period_start") @db.Date
+  periodEnd    DateTime    @map("period_end") @db.Date
+  state        BudgetState @default(draft)
+  resolutionId String?     @map("resolution_id") @db.Uuid
+  total        Decimal     @default(0) @db.Decimal(14, 2)
+  approvedAt   DateTime?   @map("approved_at") @db.Timestamptz(6)
+  approvedBy   String?     @map("approved_by") @db.Uuid
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy    String?     @map("created_by") @db.Uuid
+  updatedAt    DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy    String?     @map("updated_by") @db.Uuid
+  version      Int         @default(1)
+
+  tenant     Tenant       @relation("BudgetTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "budget_tenant_id_fkey")
+  building   Building     @relation("BudgetBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "budget_building_id_fkey")
+  resolution Resolution?  @relation(fields: [resolutionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "budget_resolution_id_fkey")
+  lines      BudgetLine[]
+
+  @@unique([buildingId, fiscalYear], map: "budget_building_id_fiscal_year_approved_key", where: raw("(state = 'approved'::juristic.budget_state)"))
+  @@unique([buildingId, fiscalYear], map: "budget_building_id_fiscal_year_draft_key", where: raw("(state = 'draft'::juristic.budget_state)"))
+  @@index([tenantId, buildingId, fiscalYear(sort: Desc)], map: "budget_tenant_id_building_id_idx")
+  @@index([resolutionId], map: "budget_resolution_id_idx")
+  @@map("budget")
+  @@schema("juristic")
+}
+
+/// D-304 (J1.1b): a budget line (income / expense / fund).
+model BudgetLine {
+  id        String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String         @map("tenant_id") @db.Uuid
+  budgetId  String         @map("budget_id") @db.Uuid
+  accountId String?        @map("account_id") @db.Uuid
+  kind      BudgetLineKind @default(expense)
+  label     String
+  amount    Decimal        @db.Decimal(14, 2)
+  sort      Int            @default(0) @db.SmallInt
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?        @map("created_by") @db.Uuid
+
+  tenant Tenant @relation("BudgetLineTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "budget_line_tenant_id_fkey")
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "budget_line_budget_id_fkey")
+
+  @@index([budgetId, sort], map: "budget_line_budget_id_idx")
+  @@map("budget_line")
+  @@schema("juristic")
+}
+
+/// D-307 (J1.1b): a co-owner names the party who receives and pays the unit's invoices (written consent).
+model BillTo {
+  id                String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String     @map("tenant_id") @db.Uuid
+  buildingId        String     @map("building_id") @db.Uuid
+  unitId            String     @map("unit_id") @db.Uuid
+  ownerPartyId      String     @map("owner_party_id") @db.Uuid
+  billToPartyId     String     @map("bill_to_party_id") @db.Uuid
+  kind              BillToKind @default(named_party)
+  consentDocumentId String     @map("consent_document_id") @db.Uuid
+  consentNote       String?    @map("consent_note")
+  validFrom         DateTime   @map("valid_from") @db.Date
+  validTo           DateTime?  @map("valid_to") @db.Date
+  endedReason       String?    @map("ended_reason")
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?    @map("created_by") @db.Uuid
+  updatedAt         DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?    @map("updated_by") @db.Uuid
+
+  tenant          Tenant   @relation("BillToTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "bill_to_tenant_id_fkey")
+  building        Building @relation("BillToBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "bill_to_building_id_fkey")
+  unit            Unit     @relation("BillToUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "bill_to_unit_id_fkey")
+  ownerParty      Party    @relation("BillToOwnerParty", fields: [ownerPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "bill_to_owner_party_id_fkey")
+  billToParty     Party    @relation("BillToBillToParty", fields: [billToPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "bill_to_bill_to_party_id_fkey")
+  consentDocument Document @relation("BillToConsentDocument", fields: [consentDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "bill_to_consent_document_id_fkey")
+
+  @@index([unitId, validFrom], map: "bill_to_unit_id_idx")
+  @@index([billToPartyId], map: "bill_to_bill_to_party_id_idx")
+  @@index([ownerPartyId], map: "bill_to_owner_party_id_idx")
+  @@map("bill_to")
+  @@schema("juristic")
+}
+
+/// D-303 / D-324 (J1.1b): a recorded ownership transfer of a unit (append-only).
+model OwnershipTransfer {
+  id               String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String            @map("tenant_id") @db.Uuid
+  buildingId       String            @map("building_id") @db.Uuid
+  unitId           String            @map("unit_id") @db.Uuid
+  transferDate     DateTime          @map("transfer_date") @db.Date
+  fromOwnershipIds String[]          @map("from_ownership_ids") @db.Uuid
+  toOwnershipIds   String[]          @map("to_ownership_ids") @db.Uuid
+  policy           TransferProration
+  creditNoteIds    String[]          @default([]) @map("credit_note_ids") @db.Uuid
+  chargeIds        String[]          @default([]) @map("charge_ids") @db.Uuid
+  note             String?
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?           @map("created_by") @db.Uuid
+
+  tenant   Tenant   @relation("OwnershipTransferTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "ownership_transfer_tenant_id_fkey")
+  building Building @relation("OwnershipTransferBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "ownership_transfer_building_id_fkey")
+  unit     Unit     @relation("OwnershipTransferUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "ownership_transfer_unit_id_fkey")
+
+  @@index([unitId, transferDate], map: "ownership_transfer_unit_id_transfer_date_idx")
+  @@index([tenantId, createdAt(sort: Desc)], map: "ownership_transfer_tenant_id_idx")
+  @@map("ownership_transfer")
+  @@schema("juristic")
+}

@@ -17,6 +17,8 @@ export enum ResidentUnitRoleSourceName {
   Ownership = 'ownership',
   Occupancy = 'occupancy',
   Lease = 'lease',
+  /** A payer a co-owner named (`juristic.bill_to`, D-307): invoices only. */
+  BillTo = 'bill_to',
 }
 
 /** What the resident app may show for a unit (navigation rules of the unit switcher, JRL). */

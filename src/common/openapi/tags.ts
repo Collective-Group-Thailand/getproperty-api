@@ -83,6 +83,12 @@ export const API_TAGS: Record<string, string> = {
   'owner.unitBoard': 'The unit board of a building: floors with unit cards (B2.1, D-100).',
   'owner.units':
     'Units: create (one or floor × pattern), edit, status override, subscription count (D-082, D-151).',
+  'owner.juristicRegister':
+    'Co-owner register of a juristic tenant: owners and shares, plot fields, ownership transfers with proration, bill-to parties (D-303, D-307, D-324).',
+  'owner.juristicResolutions':
+    'Meeting resolutions (AGM / EGM / committee): record, adopt, void, minutes (D-304, D-320).',
+  'owner.juristicBudgets':
+    'Budgets per building and fiscal year, approval with a resolution, rate preview and budget_split rate drafts (D-304, D-324).',
   'owner.unitResidentInvites':
     'Co-owner invitations to the resident app: single-use code, QR / SMS / link, redeemed with an OTP to the register phone (D-309, D-322).',
   'owner.listings':

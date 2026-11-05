@@ -9,7 +9,8 @@ import { type Tx } from '@database/prisma.service';
  * derived roles, not `core.occupancy_role` values (asset-core's enum stays stable).
  */
 export type UnitRoleName = 'co_owner' | 'tenant' | 'co_tenant' | 'family' | 'payer';
-export type UnitRoleSource = 'ownership' | 'occupancy' | 'lease';
+/** `bill_to` (J1.1b, D-307): a payer a co-owner named in `juristic.bill_to` — invoices only, no `unit:` scope. */
+export type UnitRoleSource = 'ownership' | 'occupancy' | 'lease' | 'bill_to';
 
 export const UNIT_ROLE_NAMES: readonly UnitRoleName[] = [
   'co_owner',
@@ -18,7 +19,7 @@ export const UNIT_ROLE_NAMES: readonly UnitRoleName[] = [
   'family',
   'payer',
 ];
-export const UNIT_ROLE_SOURCES: readonly UnitRoleSource[] = ['ownership', 'occupancy', 'lease'];
+export const UNIT_ROLE_SOURCES: readonly UnitRoleSource[] = ['ownership', 'occupancy', 'lease', 'bill_to'];
 
 export interface UnitRole {
   unitId: string;
@@ -137,6 +138,24 @@ export async function residentUnitRoles(tx: Tx, userId: string, today: string): 
     },
     orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
   });
+  // J1.1b (D-307): a bill-to party in force pays the unit's invoices — role payer, source bill_to
+  const billTos = await tx.billTo.findMany({
+    where: {
+      billToPartyId: { in: partyIds },
+      validFrom: { lte: date },
+      OR: [{ validTo: null }, { validTo: { gt: date } }],
+    },
+    select: {
+      id: true,
+      unitId: true,
+      buildingId: true,
+      tenantId: true,
+      billToPartyId: true,
+      validFrom: true,
+      validTo: true,
+    },
+    orderBy: [{ validFrom: 'asc' }, { id: 'asc' }],
+  });
   const out: UnitRole[] = [];
   for (const o of occupancies ?? [])
     out.push({
@@ -179,7 +198,26 @@ export async function residentUnitRoles(tx: Tx, userId: string, today: string): 
     if (l.payerPartyId && partyIds.includes(l.payerPartyId))
       out.push({ ...base, partyId: l.payerPartyId, role: 'payer' });
   }
+  for (const b of billTos ?? [])
+    out.push({
+      unitId: b.unitId,
+      buildingId: b.buildingId,
+      tenantId: b.tenantId,
+      partyId: b.billToPartyId,
+      role: 'payer',
+      source: 'bill_to',
+      sourceId: b.id,
+      from: day(b.validFrom),
+      to: b.validTo ? day(b.validTo) : null,
+    });
   return dedupe(out);
+}
+
+/** Units listed in `/me/units`: the `unit:` scope units, then units where I am only a bill-to payer (invoices). */
+export function listedUnitIds(roles: readonly UnitRole[]): string[] {
+  const out = scopeUnitIds(roles);
+  for (const r of roles) if (r.source === 'bill_to' && !out.includes(r.unitId)) out.push(r.unitId);
+  return out;
 }
 
 function dedupe(roles: UnitRole[]): UnitRole[] {

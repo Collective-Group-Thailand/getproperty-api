@@ -29,6 +29,8 @@ import { ExportsService } from './ops-documents/exports.service';
 import { InvoiceDocumentsService } from './ops-documents/invoice-documents.service';
 import { EtaxHooks } from './ops-etax/etax.hooks';
 import { EtaxService } from './ops-etax/etax.service';
+import { JuristicBudgetsService } from './ops-juristic/budgets.service';
+import { JuristicRegisterService } from './ops-juristic/register.service';
 import { ContractLibraryService } from './ops-leases/contract-library.service';
 import { ContractRenderer } from './ops-leases/contract-renderer';
 import { ContractsService } from './ops-leases/contracts.service';
@@ -133,6 +135,8 @@ const SERVICES = [
   ResidentPrivacyService,
   ResidentDocumentsService,
   UnitResidentInvitationsService,
+  JuristicRegisterService,
+  JuristicBudgetsService,
   ContractRenderer,
   LeasesService,
   LeaseStampDutyService,

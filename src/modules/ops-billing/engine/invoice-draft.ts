@@ -119,6 +119,11 @@ export interface UnitRatePlanInput {
   kind: 'common_fee' | 'fund' | 'service';
   version: RateVersionLike;
   name: string;
+  /**
+   * `budget_split` (J1.1b): the unit's share of the cycle's budget amount, split over the building's units with an
+   * exact sum (`budget-split.ts`), and the weights it was split by. Missing → the unit has no weight (review flag).
+   */
+  split?: { periodAmount: string; weight: string; totalWeight: string } | null;
 }
 
 export interface DraftInput {
@@ -126,7 +131,15 @@ export interface DraftInput {
   period: { start: string; end: string };
   /** `final` = the move-out invoice (D-177): occupancy ends on the move-out date. */
   mode: 'cycle' | 'final';
-  unit: { id: string; unitNo: string; type: string; areaSqm: string | null; ownershipRatio: string | null };
+  unit: {
+    id: string;
+    unitNo: string;
+    type: string;
+    areaSqm: string | null;
+    ownershipRatio: string | null;
+    /** ตารางวา (per_sqwa, J1.1b). */
+    landAreaSqwa?: string | null;
+  };
   /** Bangkok dates the billed party occupies the unit within the period (lease start … move-out / end). */
   occupancy: { from: string; to: string };
   lease: LeaseInput | null;
@@ -142,7 +155,7 @@ export interface DraftInput {
    * period — the unit rate plans are split by share and by ownership days (`ownership-shares.ts`); the occupancy is
    * not used for them. Absent = the unit rate plans bill the whole occupancy (unchanged).
    */
-  ownership?: { partyId: string; rows: OwnershipRow[] };
+  ownership?: { partyId: string; rows: OwnershipRow[]; partyIds?: string[] };
   /** Months the period stands for (monthly 1, quarterly 3, semiannual 6, annual 12): rate amounts are per month. */
   cycleMonths?: number;
 }
@@ -469,23 +482,37 @@ export function computeInvoiceDraft(input: DraftInput): DraftResult {
   //    the cycle; pro-rata by occupancy, or split by ownership share and days when the billed party is an owner
   const months = input.cycleMonths ?? 1;
   for (const p of input.unitRatePlans) {
+    if (p.version.basis === 'budget_split' && !p.split) {
+      // the unit has no weight for the split (ratio / m² / ตร.วา): never guess a share
+      reviewFlags.push('budget_split_weight_missing');
+      continue;
+    }
+    if (p.version.basis === 'per_sqwa' && !input.unit.landAreaSqwa) {
+      reviewFlags.push('land_area_missing');
+      continue;
+    }
     const charge = chargeFor(p.version, {
       areaSqm: input.unit.areaSqm,
       ownershipRatio: input.unit.ownershipRatio,
       unitType: input.unit.type,
+      landAreaSqwa: input.unit.landAreaSqwa ?? null,
+      splitWeight: p.split?.weight ?? null,
+      splitTotal: p.split?.totalWeight ?? null,
     });
     const kind: LineKind =
       p.kind === 'fund' ? 'fund' : p.kind === 'common_fee' ? 'common_fee' : 'other_fixed';
-    const periodExact = new Decimal(charge.exact).times(months);
-    const periodAmount = months === 1 ? charge.amount : m2(periodExact);
+    // budget_split: the building-level split already fixed this unit's period amount (Σ units = the budget, J1.1b)
+    const periodExact = p.split ? new Decimal(p.split.periodAmount) : new Decimal(charge.exact).times(months);
+    const periodAmount = p.split ? p.split.periodAmount : months === 1 ? charge.amount : m2(periodExact);
     const unitPrice =
-      months === 1 || new Decimal(charge.quantity).isZero()
+      (months === 1 && !p.split) || new Decimal(charge.quantity).isZero()
         ? charge.unitPrice
         : periodExact.div(charge.quantity).toDecimalPlaces(4, Decimal.ROUND_HALF_UP).toFixed(4);
     if (input.ownership) {
       const shares = allocateByOwnership(periodAmount, period, input.ownership.rows);
       if (shares.incomplete) reviewFlags.push('ownership_shares_incomplete');
-      for (const slice of shares.slices.filter((x) => x.partyId === input.ownership!.partyId)) {
+      const billed = input.ownership.partyIds ?? [input.ownership.partyId];
+      for (const slice of shares.slices.filter((x) => billed.includes(x.partyId))) {
         const slicePr = proRata(period, { from: slice.from, to: slice.to })!;
         const notes = [
           ...(new Decimal(slice.sharePct).eq(100)

@@ -6,6 +6,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsDateString,
   IsEmail,
   IsEnum,
   IsIn,
@@ -252,6 +253,14 @@ export class MemberDto {
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true, example: FAKE.dateTime })
   joinedAt!: string | null;
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    example: null,
+    description: 'End of a time-boxed membership (auditor, D-320); access stops at this instant.',
+  })
+  accessUntil!: string | null;
 }
 
 export class MemberUpdateDto {
@@ -276,6 +285,16 @@ export class MemberUpdateDto {
   @IsOptional()
   @IsIn(['active', 'suspended'])
   status?: 'active' | 'suspended';
+  @ApiPropertyOptional({
+    type: String,
+    format: 'date-time',
+    example: '2027-03-31T23:59:59+07:00',
+    description:
+      'Required for role `auditor` (D-320): the instant the access ends, within `juristic.auditor_max_days` (422 `membership.access_until_required`). Roles `committee` / `auditor` exist only in juristic tenants (422 `membership.role_not_allowed`).',
+  })
+  @IsOptional()
+  @IsDateString()
+  accessUntil?: string;
 }
 
 export class InvitationDto {
@@ -323,6 +342,15 @@ export class InvitationDto {
 
   @ApiProperty({ format: 'date-time', example: FAKE.dateTime })
   createdAt!: string;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    example: null,
+    description: 'End of a time-boxed membership (auditor, D-320); access stops at this instant.',
+  })
+  accessUntil!: string | null;
 }
 
 export class InvitationCreatedDto extends InvitationDto {
@@ -375,4 +403,14 @@ export class InvitationCreateDto {
   @IsOptional()
   @IsIn(['th', 'en'])
   language?: string;
+  @ApiPropertyOptional({
+    type: String,
+    format: 'date-time',
+    example: '2027-03-31T23:59:59+07:00',
+    description:
+      'Required for role `auditor` (D-320): the instant the access ends, within `juristic.auditor_max_days` (422 `membership.access_until_required`). Roles `committee` / `auditor` exist only in juristic tenants (422 `membership.role_not_allowed`).',
+  })
+  @IsOptional()
+  @IsDateString()
+  accessUntil?: string;
 }

@@ -1,3 +1,4 @@
+import { isJuristicTenantType } from '@collective/asset-core';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
@@ -38,6 +39,8 @@ export interface VersionInput {
   basis: RateBasis;
   minimumCharge?: string | null;
   note?: string | null;
+  /** D-304 (J1.1b): the adopted resolution of the building (juristic common fee / fund). */
+  resolutionId?: string | null;
 }
 
 const UTILITY: Partial<Record<RatePlanKind, 'electric' | 'water'>> = { power: 'electric', water: 'water' };
@@ -317,6 +320,40 @@ export class RatePlansService extends TenantScopedRepository {
    * when the rate is above the utility rate (D-021a); the repeated request carries the acknowledgement id, which must
    * show the same rate and effective date.
    */
+  /**
+   * D-304 / D-324 (J1.1b): a common-fee / fund version of a building operated by a juristic tenant names an
+   * **adopted** resolution of that building while `juristic.rate_requires_resolution` is true (platform / tenant).
+   * A resolution given elsewhere must also be adopted and belong to the plan's building.
+   */
+  private async resolutionFor(
+    tx: Tx,
+    ctx: TenantContext,
+    plan: RatePlanRow,
+    resolutionId: string | null,
+  ): Promise<string | null> {
+    const juristicPlan =
+      (plan.kind === 'common_fee' || plan.kind === 'fund') &&
+      isJuristicTenantType(
+        (await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { type: true } })).type,
+      );
+    if (resolutionId) {
+      const r = await tx.resolution.findFirst({ where: { id: resolutionId, tenantId: ctx.tenantId } });
+      if (!r || r.state !== 'adopted' || (plan.buildingId && r.buildingId !== plan.buildingId))
+        throw new DomainException('rate_plan.resolution_invalid');
+      return r.id;
+    }
+    if (!juristicPlan) return null;
+    const required = await this.settings.valueAt<boolean>(
+      'juristic.rate_requires_resolution',
+      this.clock.now(),
+      {
+        tenantId: ctx.tenantId,
+      },
+    );
+    if (required) throw new DomainException('rate_plan.resolution_required');
+    return null;
+  }
+
   async saveVersion(
     ctx: TenantContext,
     planId: string,
@@ -338,6 +375,9 @@ export class RatePlansService extends TenantScopedRepository {
         errors: problems.map((p) => ({ path: p.path, code: 'rateTiers', message: p.message })),
       });
     const tiers = input.tiers as RateTiers;
+    const resolutionId = await this.db.tenant(ctx, (tx) =>
+      this.resolutionFor(tx, ctx, plan, input.resolutionId ?? null),
+    );
     const existing = plan.versions.find((v) => v.effectiveFrom.toISOString().slice(0, 10) === effectiveFrom);
     if (existing && effectiveFrom <= today) throw new DomainException('rate_plan.version_in_force');
     const evaluation = await this.db.tenant(ctx, (tx) =>
@@ -374,6 +414,7 @@ export class RatePlansService extends TenantScopedRepository {
         aboveCap: evaluation.aboveCap,
         complianceAcknowledgementId: evaluation.aboveCap ? capAck : null,
         note: input.note ?? null,
+        resolutionId,
       };
       const version = existing
         ? await tx.ratePlanVersion.update({ where: { id: existing.id }, data: { ...data, updatedBy: by() } })
@@ -402,6 +443,7 @@ export class RatePlansService extends TenantScopedRepository {
           tiers: tiers as unknown as Prisma.InputJsonValue,
           aboveCap: evaluation.aboveCap,
           acknowledgementId: capAck,
+          resolutionId,
           replaced: Boolean(existing),
         },
       });

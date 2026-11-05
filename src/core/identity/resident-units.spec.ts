@@ -2,6 +2,7 @@ import { type Tx } from '@database/prisma.service';
 
 import {
   leasePartyUnitRole,
+  listedUnitIds,
   occupancyUnitRole,
   occupiedUnitIds,
   residentUnitRoles,
@@ -69,6 +70,21 @@ describe('resident unit roles', () => {
           },
         ]),
     },
+    // J1.1b (D-307): p2 pays unit u4 for its co-owner (bill-to)
+    billTo: {
+      findMany: () =>
+        Promise.resolve([
+          {
+            id: 'bt1',
+            unitId: 'u4',
+            buildingId: 'b2',
+            tenantId: 't2',
+            billToPartyId: 'p2',
+            validFrom: d('2026-10-15'),
+            validTo: null,
+          },
+        ]),
+    },
   } as unknown as Tx;
 
   it('derives co_owner / family / payer with their sources; a lease never adds a unit scope', async () => {
@@ -78,6 +94,7 @@ describe('resident unit roles', () => {
       'u2:co_owner:ownership',
       'u1:family:lease',
       'u1:payer:lease',
+      'u4:payer:bill_to',
     ]);
     expect(roles.find((r) => r.source === 'ownership')).toMatchObject({
       tenantId: 't2',
@@ -85,6 +102,8 @@ describe('resident unit roles', () => {
       to: '2027-03-15',
     });
     expect(scopeUnitIds(roles)).toEqual(['u1', 'u2']);
+    // a bill-to payer lists the unit (invoices) but gets no unit: scope
+    expect(listedUnitIds(roles)).toEqual(['u1', 'u2', 'u4']);
     expect(occupiedUnitIds(roles)).toEqual(['u1']);
   });
 

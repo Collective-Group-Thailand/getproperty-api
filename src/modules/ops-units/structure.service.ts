@@ -1,14 +1,33 @@
+import { isJuristicTenantType } from '@collective/asset-core';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
 import { DomainException } from '@common/errors/domain.exception';
 import { DomainEvents } from '@core/events/domain-events';
 import { mapConflicts } from '@database/pg-errors';
+import { type Tx } from '@database/prisma.service';
 import { TenantScopedRepository, TenantTx } from '@database/tenant-tx';
-import { type BuildingType, type Prisma } from '@generated/prisma/client';
+import {
+  type BuildingLegalForm,
+  type BuildingType,
+  type Prisma,
+  type PropertyKind,
+} from '@generated/prisma/client';
 import { Injectable } from '@nestjs/common';
 
 import { operatedBuilding, visibleBuilding } from './building-access';
+
+/** asset-core 0.8.0 refuses a juristic-operated building without a legal form; the API says it first (422). */
+export const legalFormRequired = () =>
+  new DomainException('validation.failed', {
+    errors: [
+      {
+        path: 'legalForm',
+        code: 'required',
+        message: 'a building run by a juristic tenant needs its legal form',
+      },
+    ],
+  });
 
 const by = () => userIdOf(RequestContext.actor());
 const duplicate = (what: string) => () => new DomainException('asset.duplicate', { params: { what } });
@@ -28,6 +47,11 @@ export class StructureService extends TenantScopedRepository {
     super();
   }
 
+  private async isJuristic(tx: Tx, ctx: TenantContext): Promise<boolean> {
+    const t = await tx.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { type: true } });
+    return isJuristicTenantType(t.type);
+  }
+
   listProperties(ctx: TenantContext) {
     return this.db.tenant(ctx, (tx) =>
       tx.property.findMany({ where: { deletedAt: null }, orderBy: { createdAt: 'asc' } }),
@@ -42,16 +66,30 @@ export class StructureService extends TenantScopedRepository {
 
   createProperty(
     ctx: TenantContext,
-    input: { code: string; name: string; address?: Prisma.InputJsonValue; provinceCode?: string | null },
+    input: {
+      code: string;
+      name: string;
+      address?: Prisma.InputJsonValue;
+      provinceCode?: string | null;
+      kind?: PropertyKind | null;
+    },
   ) {
     return mapConflicts(
       () =>
         this.db.tenant(ctx, async (tx) => {
+          // D-302 (J1.1b): a juristic tenant says what kind of property it runs (condo, village, office…)
+          if (!input.kind && (await this.isJuristic(tx, ctx)))
+            throw new DomainException('validation.failed', {
+              errors: [
+                { path: 'kind', code: 'required', message: 'a juristic tenant names the property kind' },
+              ],
+            });
           const p = await tx.property.create({
             data: {
               tenantId: ctx.tenantId,
               code: input.code,
               name: input.name,
+              kind: input.kind ?? null,
               address: input.address ?? {},
               provinceCode: input.provinceCode ?? null,
               createdBy: by(),
@@ -79,6 +117,7 @@ export class StructureService extends TenantScopedRepository {
       address?: Prisma.InputJsonValue;
       provinceCode?: string | null;
       status?: 'active' | 'inactive';
+      kind?: PropertyKind;
     },
   ) {
     return this.db.tenant(ctx, async (tx) => {
@@ -110,6 +149,7 @@ export class StructureService extends TenantScopedRepository {
       type: BuildingType;
       floorsCount?: number;
       address?: Prisma.InputJsonValue | null;
+      legalForm?: BuildingLegalForm | null;
     },
   ) {
     return mapConflicts(
@@ -118,6 +158,8 @@ export class StructureService extends TenantScopedRepository {
           this.found(
             await tx.property.findFirst({ where: this.own(ctx, { id: input.propertyId, deletedAt: null }) }),
           );
+          // D-302 (J1.1b): a building a juristic tenant operates needs its legal form (asset-core trigger)
+          if (!input.legalForm && (await this.isJuristic(tx, ctx))) throw legalFormRequired();
           // Apartment default (§4.6): the creating tenant is owner and operator.
           const b = await tx.building.create({
             data: {
@@ -130,6 +172,7 @@ export class StructureService extends TenantScopedRepository {
               address: input.address ?? undefined,
               ownerTenantId: ctx.tenantId,
               operatorTenantId: ctx.tenantId,
+              legalForm: input.legalForm ?? null,
               createdBy: by(),
             },
           });
@@ -168,6 +211,7 @@ export class StructureService extends TenantScopedRepository {
       floorsCount?: number;
       address?: Prisma.InputJsonValue | null;
       status?: 'active' | 'inactive';
+      legalForm?: BuildingLegalForm;
     },
   ) {
     return this.db.tenant(ctx, async (tx) => {

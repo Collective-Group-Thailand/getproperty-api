@@ -33,6 +33,7 @@ describe('SubjectService.resident (Asia/Bangkok business date)', () => {
     },
     lease: { findMany: () => Promise.resolve([]) },
     leaseParty: { findMany: () => Promise.resolve([]) },
+    billTo: { findMany: () => Promise.resolve([]) },
   } as unknown as Tx;
 
   it('at 01:30 ICT on 2 Nov (18:30 UTC on 1 Nov) the scope day is 2 Nov', async () => {

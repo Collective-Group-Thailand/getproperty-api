@@ -5,6 +5,7 @@ import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
 import { CLOCK, type Clock } from '../clock/clock';
 import { ROLE_PERMISSIONS, type RoleKey } from '../rbac/catalogue';
 import { type TenantTypeKey } from '../rbac/menu';
+import { membershipExpired } from './juristic-roles';
 
 export interface OperatorAccess {
   tenantId: string;
@@ -77,7 +78,13 @@ export class AccessService implements OnModuleInit {
       }),
     );
     let value: OperatorAccess | null = null;
-    if (membership && membership.tenant.status !== 'deactivated' && !membership.tenant.deletedAt) {
+    // D-320: a time-boxed membership (auditor) grants nothing after its accessUntil
+    if (
+      membership &&
+      membership.tenant.status !== 'deactivated' &&
+      !membership.tenant.deletedAt &&
+      !membershipExpired(membership.moduleScopes, this.clock.now())
+    ) {
       const scopes = (membership.moduleScopes ?? {}) as { buildingIds?: string[] | null };
       value = {
         tenantId,

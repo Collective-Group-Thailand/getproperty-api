@@ -83,6 +83,7 @@ export function invitationDto(i: Invitation): InvitationDto {
     expiresAt: iso(i.expiresAt),
     acceptedAt: isoOrNull(i.acceptedAt),
     createdAt: iso(i.createdAt),
+    accessUntil: isoOrNull(i.accessUntil),
   };
 }
 
@@ -113,6 +114,7 @@ export const MEMBER_EXAMPLE: MemberDto = {
   status: 'active' as MembershipStatusName,
   buildingIds: [FAKE.buildingId],
   joinedAt: FAKE.dateTime,
+  accessUntil: null,
 };
 
 export const INVITATION_EXAMPLE: InvitationDto = {
@@ -127,6 +129,7 @@ export const INVITATION_EXAMPLE: InvitationDto = {
   expiresAt: '2026-11-08T00:15:00+07:00',
   acceptedAt: null,
   createdAt: FAKE.dateTime,
+  accessUntil: null,
 };
 
 type MemberRow = Awaited<ReturnType<MembershipService['list']>>[number];
@@ -142,6 +145,7 @@ export function memberDto(m: MemberRow): MemberDto {
     status: m.status as MembershipStatusName,
     buildingIds: ((m.moduleScopes ?? {}) as { buildingIds?: string[] }).buildingIds ?? null,
     joinedAt: isoOrNull(m.joinedAt),
+    accessUntil: ((m.moduleScopes ?? {}) as { accessUntil?: string }).accessUntil ?? null,
   };
 }
 
@@ -246,6 +250,8 @@ export class OwnerMembersController {
     'http.bad_request',
     'http.not_found',
     'membership.last_owner',
+    'membership.role_not_allowed',
+    'membership.access_until_required',
     'tenant.read_only',
     ...TENANT_ERRORS,
   )
@@ -267,6 +273,7 @@ export class OwnerMembersController {
       status: full.status as MembershipStatusName,
       buildingIds: ((full.moduleScopes ?? {}) as { buildingIds?: string[] }).buildingIds ?? null,
       joinedAt: isoOrNull(full.joinedAt),
+      accessUntil: ((full.moduleScopes ?? {}) as { accessUntil?: string }).accessUntil ?? null,
     };
   }
 
@@ -349,6 +356,8 @@ export class OwnerInvitationsController {
     'http.bad_request',
     'http.not_found',
     'membership.already_member',
+    'membership.role_not_allowed',
+    'membership.access_until_required',
     'provider.unavailable',
     'tenant.read_only',
     ...TENANT_ERRORS,

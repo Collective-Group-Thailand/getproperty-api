@@ -363,6 +363,14 @@
     "already_member": {
       "title": "Already a member",
       "detail": "This person is already a member of the tenant."
+    },
+    "access_until_required": {
+      "title": "End date required",
+      "detail": "An auditor’s access is time-boxed: give the date the access ends (within the allowed maximum)."
+    },
+    "role_not_allowed": {
+      "title": "Role not available",
+      "detail": "Committee and auditor roles exist only in juristic tenants."
     }
   },
   "support": {
@@ -739,6 +747,14 @@
     "in_use": {
       "title": "Rate plan in use",
       "detail": "A rate plan used by leases or invoices cannot be deleted"
+    },
+    "resolution_required": {
+      "title": "Resolution required",
+      "detail": "A common-fee or fund rate of a juristic building needs an adopted meeting resolution of that building. Record and adopt the resolution, then save the rate with it."
+    },
+    "resolution_invalid": {
+      "title": "Resolution not usable",
+      "detail": "The resolution must be adopted and belong to the same building as the rate plan."
     }
   },
   "billing_cycle": {
@@ -1475,6 +1491,28 @@
     "invalid_state": {
       "title": "Sharing is not on",
       "detail": "This building does not share energy figures with getenergy."
+    }
+  },
+  "register": {
+    "shares_exceeded": {
+      "title": "Ownership shares above 100 %",
+      "detail": "The shares of the owners of this unit would sum to more than 100 % on some day."
+    },
+    "transfer_invalid": {
+      "title": "Transfer cannot be recorded",
+      "detail": "The unit has no current owner on the transfer date, or the date is before an owner’s start."
+    }
+  },
+  "budget": {
+    "invalid_state": {
+      "title": "Budget cannot change now",
+      "detail": "Only a draft budget can be edited or approved; an approved budget is replaced by approving a new one."
+    }
+  },
+  "resolution": {
+    "invalid_state": {
+      "title": "Resolution cannot change now",
+      "detail": "Only a draft resolution can be edited; an adopted resolution can only be voided with a reason."
     }
   }
 }

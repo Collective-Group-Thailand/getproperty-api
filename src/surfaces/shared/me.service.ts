@@ -4,6 +4,7 @@ import { bangkokDate } from '@common/time/bangkok';
 import { CLOCK, type Clock } from '@core/clock/clock';
 import { FeatureFlagsService } from '@core/feature-flags/feature-flags.service';
 import {
+  listedUnitIds,
   occupiedUnitIds,
   residentUnitRoles,
   scopeUnitIds,
@@ -41,11 +42,13 @@ import {
 } from './me.dto';
 import {
   type AdminMenuKey,
+  type BuildingLegalFormName,
   type LeasePartyRoleName,
   type LeaseStatusName,
   type OccupancyRoleName,
   type OwnerMenuKey,
   type PlatformRoleName,
+  type PropertyKindName,
   ResidentEntitlement,
 } from './status.enums';
 
@@ -210,8 +213,9 @@ export class MeService {
     // JR (D-322): units I own without living there (co-owners) — scopes, entitlements and `unitRoles`
     const view = await this.unitView(userId);
     const occupied = new Set(units.map((u) => u.unitId));
+    const scoped = new Set(scopeUnitIds(view.roles));
     const owned = view.units
-      .filter((u) => !occupied.has(u.id))
+      .filter((u) => !occupied.has(u.id) && scoped.has(u.id))
       .map((u) => ({ unitId: u.id, tenantId: view.tenantOf(u.id) }));
     const tenants = [
       ...new Set([
@@ -279,7 +283,7 @@ export class MeService {
     const today = bangkokDate(this.clock.now());
     const { roles, units, tenants } = await this.db.platform(async (tx) => {
       const roles = await residentUnitRoles(tx, userId, today);
-      const ids = scopeUnitIds(roles);
+      const ids = listedUnitIds(roles);
       const units = ids.length
         ? await tx.unit.findMany({
             where: { id: { in: ids } },
@@ -287,7 +291,14 @@ export class MeService {
               id: true,
               unitNo: true,
               buildingId: true,
-              building: { select: { name: true, propertyId: true } },
+              building: {
+                select: {
+                  name: true,
+                  propertyId: true,
+                  legalForm: true,
+                  property: { select: { kind: true } },
+                },
+              },
             },
           })
         : [];
@@ -329,7 +340,7 @@ export class MeService {
         .filter((x) => x.startsWith('unit:'))
         .map((x) => x.slice('unit:'.length)),
     );
-    const current = new Set(view.units.map((u) => u.id));
+    const current = new Set(scopeUnitIds(view.roles));
     const refreshRequired = tokenUnits.size !== current.size || [...current].some((u) => !tokenUnits.has(u));
     return {
       units: view.units.map((u) => {
@@ -341,6 +352,8 @@ export class MeService {
           buildingId: u.buildingId,
           buildingName: u.building.name,
           propertyId: u.building.propertyId,
+          propertyKind: (u.building.property.kind ?? null) as PropertyKindName | null,
+          legalForm: (u.building.legalForm ?? null) as BuildingLegalFormName | null,
           tenantId,
           tenantName: view.tenants.find((t) => t.id === tenantId)?.displayName ?? '',
           roles: roles.map((r) => ({
@@ -505,6 +518,8 @@ export function unitCapabilities(roles: readonly UnitRole[]): ResidentUnitCapabi
     ResidentUnitCapability.Contacts,
     ResidentUnitCapability.ServiceRequests,
   ]);
+  // a unit I only pay for (bill-to, D-307) shows its invoices and nothing of the unit itself
+  if (roles.length && roles.every((r) => r.source === 'bill_to')) return [ResidentUnitCapability.Invoices];
   if (roles.some((r) => r.role !== 'family')) out.add(ResidentUnitCapability.Invoices);
   if (occupiedUnitIds(roles).length) {
     out.add(ResidentUnitCapability.Usage);

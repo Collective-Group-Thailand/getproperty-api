@@ -248,7 +248,10 @@ export class UnitResidentInvitationsService {
       this.pending(inv, now);
       const unit = await tx.unit.findUniqueOrThrow({
         where: { id: inv.unitId! },
-        select: { unitNo: true, building: { select: { name: true } } },
+        select: {
+          unitNo: true,
+          building: { select: { name: true, legalForm: true, property: { select: { kind: true } } } },
+        },
       });
       const party = await tx.party.findUniqueOrThrow({
         where: { id: inv.partyId! },
@@ -262,6 +265,8 @@ export class UnitResidentInvitationsService {
         tenantName: tenant.displayName,
         buildingName: unit.building.name,
         unitNo: unit.unitNo,
+        propertyKind: unit.building.property.kind ?? null,
+        legalForm: unit.building.legalForm ?? null,
         partyDisplayName: masked(party.displayName),
         phoneMasked: party.phoneE164 ? maskPhone(party.phoneE164) : null,
         expiresAt: inv.expiresAt,

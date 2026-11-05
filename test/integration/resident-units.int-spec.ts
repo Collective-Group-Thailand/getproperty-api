@@ -280,6 +280,8 @@ describe('resident identity by unit (JR, real PostgreSQL)', () => {
       unitNo: 'A-201',
       partyDisplayName: expect.stringMatching(/^สม•+$/),
     });
+    expect(preview.body).toHaveProperty('propertyKind');
+    expect(preview.body).toHaveProperty('legalForm');
     expect(preview.body.phoneMasked).not.toContain('0000000211');
     // a lease invitation code path does not accept a unit code
     await t.http.get(`/v1/resident/invitations/${second.body.code}`).set(R).expect(404);
@@ -332,6 +334,15 @@ describe('resident identity by unit (JR, real PostgreSQL)', () => {
     expect(units.body.units).toHaveLength(1);
     const unit = units.body.units[0] as MeUnit;
     expect(unit).toMatchObject({ unitId: ids['A-201'], unitNo: 'A-201', tenantId: DEV.tenantId });
+    // CR #41 (J1.1b): the property kind and the building's legal form name the place in the app
+    const place = (
+      await q<{ kind: string | null; legal_form: string | null }>(
+        `SELECT p.kind::text AS kind, b.legal_form::text AS legal_form FROM core.unit u
+           JOIN core.building b ON b.id = u.building_id JOIN core.property p ON p.id = b.property_id WHERE u.id = $1`,
+        [ids['A-201']],
+      )
+    )[0]!;
+    expect(unit).toMatchObject({ propertyKind: place.kind, legalForm: place.legal_form });
     expect(unit.roles).toEqual([
       expect.objectContaining({ role: 'co_owner', source: 'ownership', partyId: ids.coOwner, leaseId: null }),
     ]);

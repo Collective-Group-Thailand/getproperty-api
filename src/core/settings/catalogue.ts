@@ -211,6 +211,39 @@ export const SETTINGS: readonly SettingDef[] = [
     reason: 'seed: B2.3 standard contract default due day (D-191)',
   },
   {
+    key: 'juristic.rate_requires_resolution',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-304 / D-324 (J1.1b, compliance.condo_act.resolution_required ⚖ O-038): a common-fee / fund rate version of a building operated by a juristic tenant must name an adopted resolution of that building; set by the platform admin.',
+    editableBy: ADMIN_COMPLIANCE,
+    value: true,
+    reason: 'seed: D-304 (pack J, J1.1b)',
+  },
+  {
+    key: 'juristic.transfer_proration',
+    valueType: 'string',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-303 / D-324 (J1.1b): an ownership transfer after an advance invoice was issued — "carry_to_buyer" (default: credit note to the seller for the days from the transfer date and the same amount charged to the buyer on the next monthly cycle) or "refund_seller" (credit note to the seller only; the buyer is billed from the next cycle).',
+    editableBy: OWNER_BILLING,
+    value: 'carry_to_buyer',
+    reason: 'seed: D-303 (pack J, J1.1b)',
+    allowedValues: ['carry_to_buyer', 'refund_seller'],
+  },
+  {
+    key: 'juristic.auditor_max_days',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-320 / D-324 (J1.1b): longest time-box of an auditor membership (days from the invitation); the auditor loses access at `accessUntil`.',
+    editableBy: ADMIN,
+    value: 366,
+    reason: 'seed: D-320 (pack J, J1.1b)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 731 ? [] : ['an integer 1–731'],
+  },
+  {
     key: 'billing.advance_open_days',
     valueType: 'int',
     scopeAllowed: ['platform', 'tenant', 'property'],

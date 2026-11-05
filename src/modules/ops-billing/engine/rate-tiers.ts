@@ -8,7 +8,16 @@ import Decimal from 'decimal.js';
  * to 4 decimals (numeric(14,4)).
  */
 export type RatePlanKindName = 'power' | 'water' | 'common_fee' | 'fund' | 'rent' | 'service';
-export type RateBasisName = 'per_unit' | 'per_sqm' | 'per_ownership_ratio' | 'fixed';
+export type RateBasisName =
+  'per_unit' | 'per_sqm' | 'per_ownership_ratio' | 'fixed' | 'per_sqwa' | 'budget_split';
+/** What a `budget_split` budget is divided by (J1.1b, D-324). */
+export type BudgetSplitBy = 'ownership_ratio' | 'area_sqm' | 'land_area_sqwa' | 'per_unit';
+export const BUDGET_SPLIT_BY: readonly BudgetSplitBy[] = [
+  'ownership_ratio',
+  'area_sqm',
+  'land_area_sqwa',
+  'per_unit',
+];
 
 export interface RateTier {
   fromUnits: string;
@@ -20,8 +29,12 @@ export type RateTiers =
   | { kind: 'flat'; unit?: string; pricePerUnit: string }
   | { kind: 'tiered'; unit?: string; tiers: RateTier[] }
   | { kind: 'fixed'; amount: string; byUnitType?: Record<string, string> }
-  /** A budget split by ownership ratio: `amount` per month (default) or per year (÷ 12 a month, J1.1a). */
-  | { kind: 'budget'; amount: string; period?: 'month' | 'year' };
+  /**
+   * A budget: `amount` per month (default) or per year (÷ 12 a month, J1.1a). Basis `per_ownership_ratio` bills
+   * ratio × budget; basis `budget_split` divides the period amount over the building's units by `splitBy` with an
+   * exact sum (J1.1b, `budget-split.ts`).
+   */
+  | { kind: 'budget'; amount: string; period?: 'month' | 'year'; splitBy?: BudgetSplitBy };
 
 export interface RateVersionLike {
   id: string;
@@ -33,14 +46,20 @@ export interface RateVersionLike {
 
 const DEC = /^\d{1,10}(\.\d{1,4})?$/;
 const MONEY = /^\d{1,12}(\.\d{1,2})?$/;
-const UNIT_TYPES = ['room', 'condo_unit', 'house', 'shop', 'parking'];
+const UNIT_TYPES = ['room', 'condo_unit', 'house', 'shop', 'parking', 'plot'];
 
 /** Which tier shapes and bases each plan kind accepts. */
 export const ALLOWED: Record<RatePlanKindName, { basis: RateBasisName[]; kinds: RateTiers['kind'][] }> = {
   power: { basis: ['per_unit'], kinds: ['flat', 'tiered'] },
   water: { basis: ['per_unit'], kinds: ['flat', 'tiered'] },
-  common_fee: { basis: ['per_sqm', 'per_ownership_ratio', 'fixed'], kinds: ['flat', 'budget', 'fixed'] },
-  fund: { basis: ['per_sqm', 'per_ownership_ratio', 'fixed'], kinds: ['flat', 'budget', 'fixed'] },
+  common_fee: {
+    basis: ['per_sqm', 'per_sqwa', 'per_ownership_ratio', 'budget_split', 'fixed'],
+    kinds: ['flat', 'budget', 'fixed'],
+  },
+  fund: {
+    basis: ['per_sqm', 'per_sqwa', 'per_ownership_ratio', 'budget_split', 'fixed'],
+    kinds: ['flat', 'budget', 'fixed'],
+  },
   rent: { basis: ['fixed', 'per_sqm'], kinds: ['fixed', 'flat'] },
   service: { basis: ['fixed', 'per_sqm', 'per_unit'], kinds: ['fixed', 'flat', 'tiered'] },
 };
@@ -66,6 +85,8 @@ export function validateRateVersion(
     per_sqm: ['flat'],
     per_ownership_ratio: ['budget'],
     fixed: ['fixed'],
+    per_sqwa: ['flat'],
+    budget_split: ['budget'],
   };
   if (!pairs[basis].includes(t.kind as RateTiers['kind']))
     problems.push({ path: 'tiers.kind', message: `basis ${basis} needs ${pairs[basis].join(' | ')} tiers` });
@@ -132,6 +153,11 @@ export function validateRateVersion(
         });
       if (f.period !== undefined && f.period !== 'month' && f.period !== 'year')
         problems.push({ path: 'tiers.period', message: 'month | year' });
+      const splitBy = (t as { splitBy?: unknown }).splitBy;
+      if (basis === 'budget_split' && !BUDGET_SPLIT_BY.includes(splitBy as BudgetSplitBy))
+        problems.push({ path: 'tiers.splitBy', message: BUDGET_SPLIT_BY.join(' | ') });
+      if (basis !== 'budget_split' && splitBy !== undefined)
+        problems.push({ path: 'tiers.splitBy', message: 'only for basis budget_split' });
       break;
     }
     default:
@@ -150,6 +176,11 @@ export interface ChargeInput {
   areaSqm?: string | null;
   ownershipRatio?: string | null;
   unitType?: string;
+  /** Land area in ตารางวา (per_sqwa, budget_split by land area). */
+  landAreaSqwa?: string | null;
+  /** budget_split: this unit's weight and the Σ of the weights of the units the budget is split over. */
+  splitWeight?: string | null;
+  splitTotal?: string | null;
 }
 
 export interface TierPart {
@@ -255,6 +286,36 @@ export function chargeFor(
       });
       break;
     }
+    case 'per_sqwa': {
+      if (t.kind !== 'flat') throw new RateEngineError('per_sqwa basis needs flat tiers');
+      if (!input.landAreaSqwa) throw new RateEngineError('the unit has no land area (ตร.วา)');
+      quantity = D(input.landAreaSqwa);
+      unit = 'sqwa';
+      exact = quantity.times(t.pricePerUnit);
+      parts.push({
+        label: 'per_sqwa',
+        units: q3(quantity),
+        pricePerUnit: t.pricePerUnit,
+        amount: exact.toFixed(),
+      });
+      break;
+    }
+    case 'budget_split': {
+      if (t.kind !== 'budget') throw new RateEngineError('budget_split basis needs budget tiers');
+      if (!input.splitWeight || !input.splitTotal || D(input.splitTotal).lte(0))
+        throw new RateEngineError('the unit has no weight for the budget split');
+      quantity = D(input.splitWeight);
+      unit = t.splitBy ?? 'ownership_ratio';
+      const monthly = t.period === 'year' ? D(t.amount).div(12) : D(t.amount);
+      exact = monthly.times(quantity).div(input.splitTotal);
+      parts.push({
+        label: `budget_split:${unit}`,
+        units: quantity.toFixed(6),
+        pricePerUnit: p4(monthly.div(input.splitTotal)),
+        amount: exact.toFixed(),
+      });
+      break;
+    }
     case 'fixed': {
       if (t.kind !== 'fixed') throw new RateEngineError('fixed basis needs fixed tiers');
       quantity = D(1);
@@ -273,7 +334,10 @@ export function chargeFor(
   const minimum = version.minimumCharge ? D(version.minimumCharge) : null;
   const topUp = minimum && amount.lt(minimum) ? minimum.minus(amount) : D(0);
   return {
-    quantity: version.basis === 'per_ownership_ratio' ? quantity.toFixed(3) : q3(quantity),
+    quantity:
+      version.basis === 'per_ownership_ratio' || version.basis === 'budget_split'
+        ? quantity.toFixed(3)
+        : q3(quantity),
     unit,
     unitPrice: p4(unitPrice),
     amount: amount.toFixed(2),
