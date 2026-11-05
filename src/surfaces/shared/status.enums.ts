@@ -108,6 +108,8 @@ export enum OwnerMenuKey {
   JuristicRegister = 'juristic_register',
   JuristicCycles = 'juristic_cycles',
   JuristicBudgets = 'juristic_budgets',
+  JuristicPaymentPlans = 'juristic_payment_plans',
+  JuristicDebtClearances = 'juristic_debt_clearances',
   Members = 'members',
   BankAccounts = 'bank_accounts',
   Settings = 'settings',
@@ -218,6 +220,8 @@ export enum InvoiceLineKindName {
   Discount = 'discount',
   DepositOffset = 'deposit_offset',
   ServiceChargeWork = 'service_charge_work',
+  /** J1.2a (D-325): an instalment of a payment plan, or the rest of a defaulted / cancelled plan. */
+  PlanInstalment = 'plan_instalment',
 }
 
 /** `ops.billing_cycle_status` (D-031). */
@@ -270,6 +274,8 @@ export enum NoteReasonName {
   Other = 'other',
   /** J1.1b (D-324): the days after an ownership transfer on an issued advance invoice. */
   OwnershipTransfer = 'ownership_transfer',
+  /** J1.2a (D-325): the open balance of an invoice moved onto an approved payment plan. */
+  PaymentPlan = 'payment_plan',
 }
 
 /** `ops.invoice_charge_status` (one-off charges queued for the next invoice). */

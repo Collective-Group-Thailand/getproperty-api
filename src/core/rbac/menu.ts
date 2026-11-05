@@ -73,6 +73,9 @@ export const OWNER_MENU: readonly MenuEntry[] = [
     anyOf: ['juristic.budget.read', 'juristic.resolution.read'],
     tenantTypes: JURISTIC,
   },
+  // J1.2a (D-306, D-308): payment plans and debt clearance certificates
+  { key: 'juristic_payment_plans', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
+  { key: 'juristic_debt_clearances', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
   { key: 'members', anyOf: ['tenant.member.read'] },
   { key: 'bank_accounts', anyOf: ['tenant.bank_account.manage'] },
   { key: 'settings', anyOf: ['tenant.settings.read'] },

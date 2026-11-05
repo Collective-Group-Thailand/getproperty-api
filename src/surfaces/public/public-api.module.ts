@@ -5,6 +5,7 @@ import { PublicRentRecordsController } from '../shared/rent-record.controllers';
 import { PublicListingReviewsController } from '../shared/reviews.controllers';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
+import { PublicDocumentsController } from './document-verify.controller';
 import { PublicGuidesController } from './guides.controller';
 import {
   PublicListingsController,
@@ -34,6 +35,7 @@ import { PublicAgencySignupController, PublicSignupController } from './signup.c
     PublicGuidesController,
     PublicHandoffsController,
     PublicListingReviewsController,
+    PublicDocumentsController,
   ],
 })
 export class PublicApiModule {}

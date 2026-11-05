@@ -42,6 +42,18 @@ const flexVersions = (): TemplateSeed['versions'] =>
 /** Operator events of B1.3 (`src/core/notifications/notifiable-events.ts`): th/en text per channel. */
 const OPERATOR_EVENTS: { key: string; description: string; th: [string, string]; en: [string, string] }[] = [
   {
+    key: 'juristic.payment_plan.requested',
+    description: 'Owner: a resident asked for a payment plan of a unit (J1.2a, D-308, D-325)',
+    th: [
+      'คำขอผ่อนชำระ ห้อง {{plan.unitNo}}',
+      '{{party.name}} ขอผ่อนชำระยอด {{plan.principal}} บาท ของห้อง {{plan.unitNo}} เป็น {{plan.instalments}} งวด ตรวจสอบและอนุมัติได้ที่เมนูแผนผ่อนชำระ',
+    ],
+    en: [
+      'Payment plan request for {{plan.unitNo}}',
+      '{{party.name}} asked to pay {{plan.principal}} THB of unit {{plan.unitNo}} in {{plan.instalments}} instalments. Review and approve it under Payment plans.',
+    ],
+  },
+  {
     key: 'storage.threshold_crossed',
     description: 'Owner: storage usage reached a notice threshold of the allowance (D-276: 80 % / 100 %)',
     th: [
@@ -607,6 +619,121 @@ const operatorTemplates = (): TemplateSeed[] =>
     })),
   );
 
+/** J1.2a (D-306, D-308, D-325): resident messages of pack J in LINE, e-mail and SMS (th / en). */
+const RESIDENT_J_EVENTS: {
+  key: string;
+  description: string;
+  th: { subject: string; body: string; sms: string };
+  en: { subject: string; body: string; sms: string };
+}[] = [
+  {
+    key: 'juristic.payment_plan.approved',
+    description: 'My payment plan was approved: instalments and the first due date (J1.2a, D-325)',
+    th: {
+      subject: 'อนุมัติแผนผ่อนชำระ ห้อง {{plan.unitNo}}',
+      body: '{{tenant.name}} อนุมัติแผนผ่อนชำระยอด {{plan.principal}} บาท ของห้อง {{plan.unitNo}} เป็น {{plan.instalments}} งวดแล้ว งวดแรก {{plan.firstAmount}} บาท ครบกำหนด {{plan.firstDueOn}} แต่ละงวดจะอยู่ในใบแจ้งหนี้ประจำเดือน',
+      sms: 'อนุมัติแผนผ่อนชำระห้อง {{plan.unitNo}} {{plan.instalments}} งวด งวดแรก {{plan.firstAmount}} บาท ครบกำหนด {{plan.firstDueOn}}',
+    },
+    en: {
+      subject: 'Payment plan approved — unit {{plan.unitNo}}',
+      body: '{{tenant.name}} approved your plan to pay {{plan.principal}} THB of unit {{plan.unitNo}} in {{plan.instalments}} instalments. The first, {{plan.firstAmount}} THB, is due {{plan.firstDueOn}}; each instalment comes on your monthly invoice.',
+      sms: 'Plan approved for {{plan.unitNo}}: {{plan.instalments}} instalments, first {{plan.firstAmount}} THB due {{plan.firstDueOn}}.',
+    },
+  },
+  {
+    key: 'juristic.payment_plan.defaulted',
+    description:
+      'My payment plan ended because an instalment was not paid in time; the rest is billed (J1.2a, D-325)',
+    th: {
+      subject: 'แผนผ่อนชำระห้อง {{plan.unitNo}} สิ้นสุดลง',
+      body: 'แผนผ่อนชำระของห้อง {{plan.unitNo}} สิ้นสุดลงเพราะมีงวดที่ค้างชำระเกินกำหนด ยอดคงเหลือ {{plan.accelerated}} บาท จะเรียกเก็บในใบแจ้งหนี้ถัดไป หากต้องการคุยเรื่องการชำระ ติดต่อ {{tenant.name}}',
+      sms: 'แผนผ่อนชำระห้อง {{plan.unitNo}} สิ้นสุดลง ยอดคงเหลือ {{plan.accelerated}} บาท จะอยู่ในใบแจ้งหนี้ถัดไป',
+    },
+    en: {
+      subject: 'Payment plan for {{plan.unitNo}} has ended',
+      body: 'The payment plan of unit {{plan.unitNo}} has ended because an instalment was not paid in time. The remaining {{plan.accelerated}} THB will be on your next invoice. To talk about paying it, contact {{tenant.name}}.',
+      sms: 'Payment plan for {{plan.unitNo}} ended; the remaining {{plan.accelerated}} THB will be on your next invoice.',
+    },
+  },
+  {
+    key: 'juristic.debt_clearance.issued',
+    description: 'My debt clearance certificate is ready (J1.2a, D-306)',
+    th: {
+      subject: 'หนังสือรับรองการปลอดหนี้ {{clearance.number}}',
+      body: '{{tenant.name}} ออกหนังสือรับรองการปลอดหนี้เลขที่ {{clearance.number}} ของห้อง {{clearance.unitNo}} ให้แล้ว มีผลถึง {{clearance.validUntil}} เปิดดูและดาวน์โหลดได้ในแอป',
+      sms: 'หนังสือรับรองการปลอดหนี้ {{clearance.number}} ห้อง {{clearance.unitNo}} พร้อมแล้ว มีผลถึง {{clearance.validUntil}}',
+    },
+    en: {
+      subject: 'Debt clearance certificate {{clearance.number}}',
+      body: '{{tenant.name}} issued debt clearance certificate {{clearance.number}} for unit {{clearance.unitNo}}, valid until {{clearance.validUntil}}. Open and download it in the app.',
+      sms: 'Debt clearance certificate {{clearance.number}} for {{clearance.unitNo}} is ready, valid until {{clearance.validUntil}}.',
+    },
+  },
+  {
+    key: 'juristic.debt_clearance.refused',
+    description: 'My debt clearance request was refused, with the reason (J1.2a, D-306)',
+    th: {
+      subject: 'คำขอหนังสือรับรองการปลอดหนี้ ห้อง {{clearance.unitNo}}',
+      body: '{{tenant.name}} ยังออกหนังสือรับรองการปลอดหนี้ของห้อง {{clearance.unitNo}} ไม่ได้ เหตุผล: {{clearance.reason}}',
+      sms: 'ยังออกหนังสือปลอดหนี้ห้อง {{clearance.unitNo}} ไม่ได้: {{clearance.reason}}',
+    },
+    en: {
+      subject: 'Your debt clearance request — unit {{clearance.unitNo}}',
+      body: '{{tenant.name}} could not issue the debt clearance certificate for unit {{clearance.unitNo}}. Reason: {{clearance.reason}}',
+      sms: 'Debt clearance for {{clearance.unitNo}} not issued: {{clearance.reason}}',
+    },
+  },
+  {
+    key: 'slip.duplicate_rejected',
+    description:
+      'My transfer slip was refused: the same transfer was already used on getproperty (J1.2a, D-308)',
+    th: {
+      subject: 'สลิปโอนเงินถูกปฏิเสธ',
+      body: 'สลิปที่ส่งสำหรับใบแจ้งหนี้ {{invoice.number}} ใช้ชำระไม่ได้ เพราะรายการโอนนี้ถูกใช้ชำระในระบบแล้ว การโอนหนึ่งครั้งใช้ชำระได้ครั้งเดียว หากโอนใหม่แล้วกรุณาส่งสลิปใหม่ หรือติดต่อ {{tenant.name}}',
+      sms: 'สลิปสำหรับใบแจ้งหนี้ {{invoice.number}} ใช้ไม่ได้ เพราะรายการโอนนี้ถูกใช้แล้ว',
+    },
+    en: {
+      subject: 'Transfer slip refused',
+      body: 'The slip you sent for invoice {{invoice.number}} cannot be used: this transfer has already paid on getproperty, and one transfer pays once. If you made a new transfer, send its slip, or contact {{tenant.name}}.',
+      sms: 'Your slip for invoice {{invoice.number}} was refused: that transfer was already used.',
+    },
+  },
+];
+
+const residentJTemplates = (): TemplateSeed[] =>
+  RESIDENT_J_EVENTS.flatMap((e) => [
+    {
+      key: e.key,
+      channel: 'line' as const,
+      audience: 'resident' as const,
+      description: e.description,
+      versions: [
+        { language: 'th' as const, subject: null, body: `${e.th.body}\n{{link}}` },
+        { language: 'en' as const, subject: null, body: `${e.en.body}\n{{link}}` },
+      ],
+    },
+    {
+      key: e.key,
+      channel: 'email' as const,
+      audience: 'resident' as const,
+      description: e.description,
+      versions: [
+        { language: 'th' as const, subject: e.th.subject, body: `${e.th.body}\n\n{{link}}` },
+        { language: 'en' as const, subject: e.en.subject, body: `${e.en.body}\n\n{{link}}` },
+      ],
+    },
+    {
+      key: e.key,
+      channel: 'sms' as const,
+      audience: 'resident' as const,
+      description: e.description,
+      versions: [
+        { language: 'th' as const, subject: null, body: e.th.sms },
+        { language: 'en' as const, subject: null, body: e.en.sms },
+      ],
+    },
+  ]);
+
 /**
  * Platform default routing matrix (event × audience × channel). Operator events go in-app and by LINE (urgent ones
  * ignore quiet hours); resident billing messages go by LINE. Tenants override resident routes (B1.3).
@@ -679,6 +806,15 @@ export const NOTIFICATION_ROUTES: {
     channel: 'line',
     urgent: false,
   })),
+  // J1.2a (D-325): LINE and e-mail by default; the SMS templates exist for tenants that route them (cost per message)
+  ...RESIDENT_J_EVENTS.flatMap((e) =>
+    (['line', 'email'] as const).map((channel) => ({
+      eventType: e.key,
+      audience: 'resident',
+      channel,
+      urgent: false,
+    })),
+  ),
 ];
 
 export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
@@ -1281,5 +1417,6 @@ export const NOTIFICATION_TEMPLATES: TemplateSeed[] = [
       },
     ],
   },
+  ...residentJTemplates(),
   ...operatorTemplates(),
 ];

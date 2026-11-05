@@ -785,6 +785,10 @@
     "unavailable": {
       "title": "QR payment unavailable",
       "detail": "The landlord has no QR payment provider; transfer to the account and upload the slip"
+    },
+    "duplicate_slip": {
+      "title": "Slip already used",
+      "detail": "This bank transfer has already been used to pay on getproperty; one transfer pays once."
     }
   },
   "slip": {
@@ -1513,6 +1517,46 @@
     "invalid_state": {
       "title": "Resolution cannot change now",
       "detail": "Only a draft resolution can be edited; an adopted resolution can only be voided with a reason."
+    }
+  },
+  "payment_plan": {
+    "invalid_state": {
+      "title": "Payment plan cannot change",
+      "detail": "The payment plan is not in a state that allows this action."
+    },
+    "open_exists": {
+      "title": "A payment plan is already open",
+      "detail": "This unit already has a proposed or active payment plan for this party."
+    },
+    "nothing_due": {
+      "title": "Nothing to put on a plan",
+      "detail": "There is no outstanding amount large enough to split into instalments."
+    }
+  },
+  "payment_mandate": {
+    "invalid_state": {
+      "title": "Automatic payment cannot change",
+      "detail": "The automatic payment authorisation is not in a state that allows this action."
+    },
+    "open_exists": {
+      "title": "Automatic payment already set up",
+      "detail": "This unit already has a pending or active automatic payment for this party."
+    }
+  },
+  "recurring": {
+    "unavailable": {
+      "title": "Automatic payment not available",
+      "detail": "Automatic payments (direct debit / card) are not available yet."
+    }
+  },
+  "debt_clearance": {
+    "outstanding": {
+      "title": "Amount still outstanding",
+      "detail": "A debt clearance certificate is issued only when nothing is outstanding; {amount} THB is still due — please pay it first."
+    },
+    "invalid_state": {
+      "title": "Debt clearance cannot change",
+      "detail": "The debt clearance request is not in a state that allows this action."
     }
   }
 }

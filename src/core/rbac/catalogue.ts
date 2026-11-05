@@ -386,6 +386,23 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     description: 'Adopt or void a resolution (committee, D-320)',
     surfaces: ['owner'],
   },
+  {
+    key: 'juristic.collections.read',
+    description:
+      'Read payment plans, debt clearance certificates and automatic-payment mandates (D-306, D-308)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.collections.manage',
+    description:
+      'Propose, reject and cancel payment plans; issue or refuse debt clearance certificates (D-306, D-308, D-325)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.payment_plan.approve',
+    description: 'Approve a payment plan (owner, manager or committee, D-308, D-325)',
+    surfaces: ['owner'],
+  },
   // platform (/v1/admin)
   { key: 'admin.tenant.read', description: 'List and view tenants', surfaces: ['admin'] },
   {
@@ -533,6 +550,7 @@ const JURISTIC_READ = [
   'juristic.register.read',
   'juristic.budget.read',
   'juristic.resolution.read',
+  'juristic.collections.read',
 ];
 
 /** Role → permission keys (D-090). */
@@ -563,6 +581,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'community.read',
     'staff_task.read',
     'juristic.register.read',
+    'juristic.collections.read',
   ],
   accountant: [
     'tenant.read',
@@ -586,8 +605,14 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'juristic.register.read',
     'juristic.budget.read',
     'juristic.resolution.read',
+    'juristic.collections.read',
   ],
-  committee: [...JURISTIC_READ, 'juristic.budget.approve', 'juristic.resolution.adopt'],
+  committee: [
+    ...JURISTIC_READ,
+    'juristic.budget.approve',
+    'juristic.resolution.adopt',
+    'juristic.payment_plan.approve',
+  ],
   auditor: [...JURISTIC_READ, 'deposit.read', 'reading.read', 'tenant.audit.read'],
   platform_admin: PERMISSIONS.filter((p) => p.key.startsWith('admin.')).map((p) => p.key),
   support: [

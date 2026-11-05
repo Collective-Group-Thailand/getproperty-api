@@ -27,6 +27,7 @@ enum DocumentType {
   notice
   rent_certificate
   income_summary
+  debt_clearance
 
   @@map("document_type")
   @@schema("ops")

@@ -17,6 +17,7 @@ enum PaymentMethod {
   bank_transfer_manual
   card
   offset
+  recurring
 
   @@map("payment_method")
   @@schema("ops")
@@ -183,7 +184,7 @@ model SlipReview {
   payment      Payment?     @relation("SlipReviewPayment", fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "slip_review_payment_id_fkey")
   payments     Payment[]    @relation("PaymentSlipReview")
 
-  @@unique([tenantId, transRef], map: "slip_review_trans_ref_key", where: raw("((trans_ref IS NOT NULL) AND (status <> ALL (ARRAY['duplicate'::ops.slip_status, 'rejected'::ops.slip_status])))"))
+  @@unique([transRef], map: "slip_review_trans_ref_key", where: raw("((trans_ref IS NOT NULL) AND (status <> ALL (ARRAY['duplicate'::ops.slip_status, 'rejected'::ops.slip_status])))"))
   @@index([tenantId, status], map: "slip_review_tenant_id_status_idx")
   @@index([tenantId, transRef], map: "slip_review_trans_ref_idx")
   @@index([buildingId], map: "slip_review_building_id_idx")
@@ -260,6 +261,7 @@ model Payment {
   allocations      PaymentAllocation[]
   slipReviews      SlipReview[]       @relation("SlipReviewPayment")
   receipts         Receipt[]
+  recurringCharges RecurringCharge[]
   taxInvoices      TaxInvoice[]
   deals            Deal[]
   credits          PayerCredit[]
@@ -290,6 +292,8 @@ model PaymentAllocation {
   paymentId   String    @map("payment_id") @db.Uuid
   invoiceId   String    @map("invoice_id") @db.Uuid
   amount      Decimal   @db.Decimal(14, 2)
+  /// D-325 (J1.2a): the part that paid late-fee (surcharge) lines.
+  surchargeAmount Decimal @default(0) @map("surcharge_amount") @db.Decimal(14, 2)
   allocatedAt DateTime  @default(now()) @map("allocated_at") @db.Timestamptz(6)
   reversedAt  DateTime? @map("reversed_at") @db.Timestamptz(6)
 
@@ -502,5 +506,131 @@ model Refund {
   @@index([evidenceDocumentId], map: "refund_evidence_document_id_idx")
   @@index([recordedBy], map: "refund_recorded_by_idx")
   @@map("refund")
+  @@schema("ops")
+}
+
+enum PaymentMandateState {
+  pending
+  active
+  revoked
+  failed
+
+  @@map("payment_mandate_state")
+  @@schema("ops")
+}
+
+enum PaymentMandateMethod {
+  direct_debit
+  card_token
+
+  @@map("payment_mandate_method")
+  @@schema("ops")
+}
+
+enum PaymentMandateScope {
+  advance_invoices
+  all_invoices
+
+  @@map("payment_mandate_scope")
+  @@schema("ops")
+}
+
+enum RecurringChargeState {
+  pending
+  succeeded
+  failed
+
+  @@map("recurring_charge_state")
+  @@schema("ops")
+}
+
+/// D-308 / D-325 (J1.2a): direct-debit / tokenised-card authorisation of a billed party for a unit (channel
+/// `recurring`); only the provider's reference and a masked hint are stored. Fake adapter until O-020.
+model PaymentMandate {
+  id          String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String        @map("tenant_id") @db.Uuid
+  buildingId  String        @map("building_id") @db.Uuid
+  unitId      String        @map("unit_id") @db.Uuid
+  partyId     String        @map("party_id") @db.Uuid
+  provider    String
+  method      PaymentMandateMethod
+  scope       PaymentMandateScope  @default(advance_invoices)
+  state       PaymentMandateState  @default(pending)
+  mandateRef  String        @map("mandate_ref")
+  masked      String?
+  requestedBy String?       @map("requested_by") @db.Uuid
+  activatedAt DateTime?     @map("activated_at") @db.Timestamptz(6)
+  endedAt     DateTime?     @map("ended_at") @db.Timestamptz(6)
+  endReason   String?       @map("end_reason")
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   String?       @map("created_by") @db.Uuid
+  updatedAt   DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy   String?       @map("updated_by") @db.Uuid
+  version     Int           @default(1)
+
+  tenant    Tenant       @relation("PaymentMandateTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_mandate_tenant_id_fkey")
+  building  Building     @relation("PaymentMandateBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_mandate_building_id_fkey")
+  unit      Unit         @relation("PaymentMandateUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_mandate_unit_id_fkey")
+  party     Party        @relation("PaymentMandateParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_mandate_party_id_fkey")
+  requester UserAccount? @relation("PaymentMandateRequester", fields: [requestedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_mandate_requested_by_fkey")
+  charges   RecurringCharge[]
+
+  @@unique([provider, mandateRef], map: "payment_mandate_provider_mandate_ref_key")
+  @@unique([unitId, partyId], map: "payment_mandate_open_key", where: raw("(state = ANY (ARRAY['pending'::ops.payment_mandate_state, 'active'::ops.payment_mandate_state]))"))
+  @@index([tenantId, state], map: "payment_mandate_tenant_id_state_idx")
+  @@index([partyId], map: "payment_mandate_party_id_idx")
+  @@map("payment_mandate")
+  @@schema("ops")
+}
+
+/// D-325 (J1.2a): one charge of an invoice through an active mandate; succeeded → a `recurring` payment.
+model RecurringCharge {
+  id            String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String               @map("tenant_id") @db.Uuid
+  mandateId     String               @map("mandate_id") @db.Uuid
+  invoiceId     String               @map("invoice_id") @db.Uuid
+  amount        Decimal              @db.Decimal(14, 2)
+  provider      String
+  chargeRef     String?              @map("charge_ref")
+  state         RecurringChargeState @default(pending)
+  paymentId     String?              @map("payment_id") @db.Uuid
+  failureReason String?              @map("failure_reason")
+  requestedAt   DateTime             @default(now()) @map("requested_at") @db.Timestamptz(6)
+  settledAt     DateTime?            @map("settled_at") @db.Timestamptz(6)
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant  Tenant         @relation("RecurringChargeTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "recurring_charge_tenant_id_fkey")
+  mandate PaymentMandate @relation(fields: [mandateId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "recurring_charge_mandate_id_fkey")
+  invoice Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "recurring_charge_invoice_id_fkey")
+  payment Payment?       @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "recurring_charge_payment_id_fkey")
+
+  @@unique([provider, chargeRef], map: "recurring_charge_provider_charge_ref_key", where: raw("(charge_ref IS NOT NULL)"))
+  @@unique([mandateId, invoiceId], map: "recurring_charge_invoice_open_key", where: raw("(state = ANY (ARRAY['pending'::ops.recurring_charge_state, 'succeeded'::ops.recurring_charge_state]))"))
+  @@index([invoiceId], map: "recurring_charge_invoice_id_idx")
+  @@index([tenantId, state], map: "recurring_charge_tenant_id_state_idx")
+  @@map("recurring_charge")
+  @@schema("ops")
+}
+
+/// D-325 (J1.2a): callbacks of the recurring-payment provider, once per (provider, event id).
+model RecurringWebhook {
+  id             String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  provider       String
+  eventId        String         @map("event_id")
+  eventType      String         @map("event_type")
+  tenantId       String?        @map("tenant_id") @db.Uuid
+  signatureValid Boolean        @map("signature_valid")
+  outcome        WebhookOutcome @default(received)
+  detail         String?
+  payload        Json           @default("{}")
+  receivedAt     DateTime       @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt    DateTime?      @map("processed_at") @db.Timestamptz(6)
+
+  tenant Tenant? @relation("RecurringWebhookTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "recurring_webhook_tenant_id_fkey")
+
+  @@unique([provider, eventId], map: "recurring_webhook_provider_event_id_key")
+  @@index([tenantId], map: "recurring_webhook_tenant_id_idx")
+  @@map("recurring_webhook")
   @@schema("ops")
 }

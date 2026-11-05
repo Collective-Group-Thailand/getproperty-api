@@ -293,6 +293,29 @@ export const DOMAIN_EVENT_TYPES = {
     'A meeting resolution was recorded, edited, adopted or voided (D-304, D-324).',
   'juristic.budget.changed':
     'A budget was drafted, edited, approved (superseding the previous approved budget) or turned into a draft rate (D-304, D-324).',
+  // J1.2a slips, plans, recurring channel, debt clearance (D-306, D-308, D-325)
+  'slip.duplicate_rejected':
+    'A slip whose bank reference is already used at another tenant was rejected at once; the resident is told (D-308).',
+  'juristic.payment_plan.requested':
+    'A resident asked for a payment plan of their open invoices of a unit (D-308, D-325).',
+  'juristic.payment_plan.proposed': 'Staff proposed a payment plan for a party of a unit (D-325).',
+  'juristic.payment_plan.approved':
+    'A payment plan was approved: covered invoices credited, instalments scheduled (D-325).',
+  'juristic.payment_plan.rejected': 'A proposed payment plan was rejected with a reason (D-325).',
+  'juristic.payment_plan.cancelled':
+    'A payment plan was cancelled (withdrawn, or cancelled while active with the rest billed at once) (D-325).',
+  'juristic.payment_plan.defaulted':
+    'A payment plan defaulted: an instalment unpaid past the default days; future instalments cancelled, the rest billed, the ladder resumes (D-325).',
+  'juristic.payment_plan.completed': 'Every instalment of a payment plan was paid (D-325).',
+  'juristic.debt_clearance.requested':
+    'A debt clearance certificate was requested and waits for its fee / the owner (D-306, D-325).',
+  'juristic.debt_clearance.issued':
+    'A debt clearance certificate was issued (PDF, number DCL, verification code) (D-306, D-325).',
+  'juristic.debt_clearance.refused': 'A debt clearance request was refused with a reason (D-306, D-325).',
+  'payment_mandate.changed':
+    'An automatic payment mandate was requested, activated, revoked or failed (channel recurring, D-308, D-325).',
+  'recurring_charge.changed':
+    'An invoice was charged through an active mandate, or the provider settled / failed the charge (D-325).',
   // B2.4 deposits and inspections
   'deposit.opened': 'A lease was activated: its deposit is expected (D-023).',
   'deposit.received': 'The deposit and advance rent were received; receipt numbered.',

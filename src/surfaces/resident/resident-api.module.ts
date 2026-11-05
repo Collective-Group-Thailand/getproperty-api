@@ -30,6 +30,7 @@ import {
 } from '../shared/surface.controllers';
 import { SURFACES } from '../surfaces';
 import { systemPingController } from '../system-ping.controller';
+import { ResidentUnitCollectionsController } from './resident-collections.controller';
 import { ResidentInspectionsController } from './resident-inspections.controller';
 import {
   ResidentDocumentsController,
@@ -51,6 +52,7 @@ import {
     ResidentMeController,
     ResidentUnitInvitationsController,
     ResidentUnitUsageController,
+    ResidentUnitCollectionsController,
     ResidentReviewsController,
     ResidentIdentitiesController,
     ResidentIdentityVerificationController,

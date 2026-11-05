@@ -30,6 +30,8 @@ import { InvoiceDocumentsService } from './ops-documents/invoice-documents.servi
 import { EtaxHooks } from './ops-etax/etax.hooks';
 import { EtaxService } from './ops-etax/etax.service';
 import { JuristicBudgetsService } from './ops-juristic/budgets.service';
+import { DebtClearancesService } from './ops-juristic/debt-clearances.service';
+import { PaymentPlansService } from './ops-juristic/payment-plans.service';
 import { JuristicRegisterService } from './ops-juristic/register.service';
 import { ContractLibraryService } from './ops-leases/contract-library.service';
 import { ContractRenderer } from './ops-leases/contract-renderer';
@@ -72,6 +74,7 @@ import { PaymentReadySubscriber } from './ops-payments/payment-ready.subscriber'
 import { PaymentWebhooksService } from './ops-payments/payment-webhooks.service';
 import { PaymentsService } from './ops-payments/payments.service';
 import { ReceiptsService } from './ops-payments/receipts.service';
+import { RecurringPaymentsService } from './ops-payments/recurring-payments.service';
 import { ResidentPaymentsService } from './ops-payments/resident-payments.service';
 import { SettlementsService } from './ops-payments/settlements.service';
 import { SlipsService } from './ops-payments/slips.service';
@@ -137,6 +140,8 @@ const SERVICES = [
   UnitResidentInvitationsService,
   JuristicRegisterService,
   JuristicBudgetsService,
+  PaymentPlansService,
+  DebtClearancesService,
   ContractRenderer,
   LeasesService,
   LeaseStampDutyService,
@@ -172,6 +177,7 @@ const SERVICES = [
   PaymentWebhooksService,
   SettlementsService,
   SlipsService,
+  RecurringPaymentsService,
   ReceiptsService,
   PaymentNotifications,
   ResidentPaymentsService,

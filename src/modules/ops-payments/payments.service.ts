@@ -1,3 +1,4 @@
+import { isJuristicTenantType } from '@collective/asset-core';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
 import { type TenantContext } from '@common/context/tenant-context';
@@ -18,6 +19,7 @@ import {
   type PaymentQrCode,
   Prisma,
 } from '@generated/prisma/client';
+import { type AllocationPolicy, planAllocation } from '@modules/ops-billing/engine/allocation';
 import { InvoicesService } from '@modules/ops-billing/invoices.service';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import Decimal from 'decimal.js';
@@ -466,16 +468,49 @@ export class PaymentsService extends TenantScopedRepository {
     return this.get(ctx, paymentId);
   }
 
+  /** `payments.allocation_policy` of the tenant (D-325): `oldest_first` (default) or `surcharge_first`. */
+  async allocationPolicy(tenantId: string): Promise<AllocationPolicy> {
+    const v = await this.settings.valueAt<string>('payments.allocation_policy', this.clock.now(), {
+      tenantId,
+    });
+    return v === 'surcharge_first' ? 'surcharge_first' : 'oldest_first';
+  }
+
+  /**
+   * The open surcharge (late-fee lines) of each invoice: Σ `late_fee` lines − surcharge already allocated (not
+   * reversed) − credit-note lines on those lines; never above the balance (D-325).
+   */
+  async surchargeOpen(tx: Tx, invoiceIds: string[]): Promise<Map<string, Decimal>> {
+    if (!invoiceIds.length) return new Map();
+    const rows = await tx.$queryRaw<{ id: string; open: string }[]>`
+      SELECT i.id,
+             GREATEST(0, LEAST(i.balance,
+               COALESCE((SELECT sum(l.amount) FROM ops.invoice_line l WHERE l.invoice_id = i.id AND l.line_kind = 'late_fee'), 0)
+               - COALESCE((SELECT sum(a.surcharge_amount) FROM ops.payment_allocation a
+                            WHERE a.invoice_id = i.id AND a.reversed_at IS NULL), 0)
+               - COALESCE((SELECT sum(cl.amount) FROM ops.credit_note_line cl
+                             JOIN ops.credit_note cn ON cn.id = cl.note_id
+                             JOIN ops.invoice_line l ON l.id = cl.ref_invoice_line_id
+                            WHERE cn.invoice_id = i.id AND l.line_kind = 'late_fee'), 0)))::text AS open
+        FROM ops.invoice i WHERE i.id = ANY(${invoiceIds}::uuid[])`;
+    return new Map(rows.map((r) => [r.id, D(r.open)]));
+  }
+
+  /**
+   * Spreads a confirmed payment over open invoices by the tenant's allocation policy (D-044, D-325): the targets are
+   * the payer's open invoices of the unit (or one invoice for a credit offset, or the given set — J1.2b statements);
+   * each is locked and read under the lock (review #3); the rest becomes the payer's credit.
+   */
   private async allocate(
     tx: Tx,
     payment: Payment,
     onlyInvoiceId?: string,
   ): Promise<{
-    allocations: { invoiceId: string; number: string | null; amount: string }[];
+    allocations: { invoiceId: string; number: string | null; amount: string; surcharge: string }[];
     credited: string;
   }> {
-    let remaining = D(payment.amount).plus(D(payment.whtAmount));
-    const targets = onlyInvoiceId
+    const amount = D(payment.amount).plus(D(payment.whtAmount));
+    const candidates = onlyInvoiceId
       ? await tx.invoice.findMany({ where: { id: onlyInvoiceId, status: { in: OPEN }, balance: { gt: 0 } } })
       : payment.payerPartyId
         ? await this.openInvoices(tx, {
@@ -484,37 +519,58 @@ export class PaymentsService extends TenantScopedRepository {
             unitId: payment.unitId,
           })
         : [];
-    const allocations: { invoiceId: string; number: string | null; amount: string }[] = [];
-    for (const inv of targets) {
-      if (remaining.lte(0)) break;
-      // the balance as of now, under the row lock (review #3): never what an earlier read saw
-      const [locked] = await tx.$queryRaw<{ balance: string; status: string }[]>`
-        SELECT balance::text AS balance, status::text AS status FROM ops.invoice WHERE id = ${inv.id}::uuid FOR UPDATE`;
-      if (!locked || !OPEN.includes(locked.status as Invoice['status'])) continue;
-      const take = Decimal.min(remaining, D(locked.balance));
-      if (take.lte(0)) continue;
+    // the balances as of now, under the row locks (review #3): never what an earlier read saw
+    const locked: { id: string; balance: string; status: string }[] = [];
+    for (const inv of [...candidates].sort((a, b) => a.id.localeCompare(b.id))) {
+      const [row] = await tx.$queryRaw<{ id: string; balance: string; status: string }[]>`
+        SELECT id, balance::text AS balance, status::text AS status FROM ops.invoice WHERE id = ${inv.id}::uuid FOR UPDATE`;
+      if (row && OPEN.includes(row.status as Invoice['status'])) locked.push(row);
+    }
+    const surcharge = await this.surchargeOpen(
+      tx,
+      locked.map((l) => l.id),
+    );
+    const plan = planAllocation(
+      amount,
+      locked.map((l) => ({
+        invoiceId: l.id,
+        issuedAt: candidates.find((c) => c.id === l.id)!.issuedAt ?? new Date(0),
+        balance: l.balance,
+        surchargeOpen: (surcharge.get(l.id) ?? D(0)).toFixed(2),
+      })),
+      await this.allocationPolicy(payment.tenantId),
+    );
+    const allocations: { invoiceId: string; number: string | null; amount: string; surcharge: string }[] = [];
+    for (const slice of plan.slices) {
+      const take = D(slice.amount);
       await tx.paymentAllocation.create({
         data: {
           tenantId: payment.tenantId,
           paymentId: payment.id,
-          invoiceId: inv.id,
+          invoiceId: slice.invoiceId,
           amount: take.toFixed(2),
+          surchargeAmount: slice.surcharge,
         },
       });
       const after = await this.invoices.applyBalance(
         tx,
-        inv.id,
+        slice.invoiceId,
         { paid: take, at: payment.paidAt },
         'payment',
       );
       if (D(after.balance).lte(0))
         await tx.paymentQrCode.updateMany({
-          where: { invoiceId: inv.id, status: 'active' },
+          where: { invoiceId: slice.invoiceId, status: 'active' },
           data: { status: 'paid', paidAt: payment.paidAt },
         });
-      allocations.push({ invoiceId: inv.id, number: inv.number, amount: take.toFixed(2) });
-      remaining = remaining.minus(take);
+      allocations.push({
+        invoiceId: slice.invoiceId,
+        number: candidates.find((c) => c.id === slice.invoiceId)?.number ?? null,
+        amount: take.toFixed(2),
+        surcharge: slice.surcharge,
+      });
     }
+    const remaining = D(plan.remainder);
     let credited = new Decimal(0);
     if (remaining.gt(0) && !onlyInvoiceId && payment.payerPartyId) {
       credited = remaining;
@@ -603,6 +659,7 @@ export class PaymentsService extends TenantScopedRepository {
       if (!inv.issuedAt || !OPEN.includes(inv.status))
         throw new DomainException('invoice.invalid_state', { params: { status: inv.status } });
       await this.assertAmount(tx, inv, D(input.amount).plus(input.whtAmount ?? 0));
+      await this.assertManualEvidence(tx, inv.tenantId, input);
       if (input.evidenceDocumentId) {
         const doc = await tx.document.findFirst({
           where: { id: input.evidenceDocumentId, tenantId: ctx.tenantId, deletedAt: null },
@@ -628,6 +685,34 @@ export class PaymentsService extends TenantScopedRepository {
       return payment.id;
     });
     return this.get(ctx, id);
+  }
+
+  /**
+   * D-325 (J1.2a): a juristic tenant records money received outside the platform (cash, a transfer — often from abroad)
+   * only with its evidence **and** a note of at least 5 characters (sender bank, SWIFT reference, who paid).
+   */
+  private async assertManualEvidence(
+    tx: Tx,
+    tenantId: string,
+    input: { evidenceDocumentId?: string | null; notes?: string | null; reference?: string | null },
+  ): Promise<void> {
+    const tenant = await tx.tenant.findUnique({ where: { id: tenantId }, select: { type: true } });
+    if (!tenant || !isJuristicTenantType(tenant.type)) return;
+    const errors: { path: string; code: string; message: string }[] = [];
+    if (!input.evidenceDocumentId)
+      errors.push({
+        path: 'evidenceDocumentId',
+        code: 'required',
+        message: 'a juristic person records a manual payment with its evidence',
+      });
+    const note = [input.reference, input.notes].filter(Boolean).join(' ').trim();
+    if (note.length < 5)
+      errors.push({
+        path: 'notes',
+        code: 'required',
+        message: 'say where the money came from (at least 5 characters)',
+      });
+    if (errors.length) throw new DomainException('validation.failed', { errors });
   }
 
   async reverse(ctx: TenantContext, paymentId: string, reason: string): Promise<PaymentRow> {
