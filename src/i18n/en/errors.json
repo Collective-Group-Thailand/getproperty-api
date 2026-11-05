@@ -1628,5 +1628,71 @@
       "title": "Invitation cannot change",
       "detail": "The state of this invitation does not allow this action."
     }
+  },
+  "gate": {
+    "device_unknown": {
+      "title": "Gate tablet not recognised",
+      "detail": "This tablet is not enrolled or was revoked. Ask the office for a new enrolment code."
+    },
+    "enrol_code_invalid": {
+      "title": "Enrolment code not valid",
+      "detail": "The enrolment code is wrong, already used or expired. Ask the office for a new one."
+    },
+    "pin_invalid": {
+      "title": "Wrong PIN",
+      "detail": "The guard or the PIN is not correct. Try again."
+    },
+    "pin_locked": {
+      "title": "Guard locked",
+      "detail": "Too many wrong PINs. Wait until the lock ends or ask the office to reset the PIN."
+    },
+    "inactive": {
+      "title": "Gate not in use",
+      "detail": "This gate is switched off. Ask the office."
+    },
+    "blacklist_exists": {
+      "title": "Plate already listed",
+      "detail": "This plate is already on the estate blacklist."
+    }
+  },
+  "visit": {
+    "awaiting_answer": {
+      "title": "Waiting for the household",
+      "detail": "The household has not answered yet. Wait for the answer or give a reason to let the visitor in."
+    },
+    "denied": {
+      "title": "Entry refused",
+      "detail": "The household or its policy refused this visit."
+    },
+    "invalid_state": {
+      "title": "Not possible now",
+      "detail": "This visit cannot change like this in its current state."
+    },
+    "offline_too_old": {
+      "title": "Offline record too old",
+      "detail": "This offline record is older than the gate accepts. Record it again as a new visit."
+    }
+  },
+  "visit_invite": {
+    "not_active": {
+      "title": "Invite not active",
+      "detail": "This invite waits for approval, was rejected or was revoked."
+    },
+    "outside_window": {
+      "title": "Invite not valid now",
+      "detail": "This invite is not valid at this time."
+    },
+    "used_up": {
+      "title": "Invite used up",
+      "detail": "This invite has been used as many times as allowed."
+    },
+    "plate_mismatch": {
+      "title": "Different car",
+      "detail": "The plate does not match the car named on the invite."
+    },
+    "window_too_long": {
+      "title": "Window too long",
+      "detail": "The invite window is longer than the estate allows."
+    }
   }
 }

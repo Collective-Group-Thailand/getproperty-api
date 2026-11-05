@@ -19,6 +19,11 @@ import { GatewayConfigService } from './smart-devices/gateway-config.service';
 import { DeviceInstallsService } from './smart-devices/installs.service';
 import { OtaService } from './smart-devices/ota.service';
 import { StaffFieldService } from './smart-devices/staff-field.service';
+import { GateNotifications } from './smart-gate/gate.subscribers';
+import { GateAdminService } from './smart-gate/gate-admin.service';
+import { GateRetentionService } from './smart-gate/gate-retention.service';
+import { GuardAuthService } from './smart-gate/guard-auth.service';
+import { VisitsService } from './smart-gate/visits.service';
 import { BILLED_UNITS } from './smart-health/billed-units.provider';
 import { LossReportExportBuilder } from './smart-health/loss-report-export.builder';
 import { MeterHealthService } from './smart-health/meter-health.service';
@@ -49,6 +54,11 @@ const SERVICES = [
   AccessCredentialsService,
   LocksService,
   AccessViewsService,
+  // J4.1 gate & visitor (D-315, D-327)
+  GuardAuthService,
+  VisitsService,
+  GateAdminService,
+  GateRetentionService,
 ];
 
 /**
@@ -71,6 +81,7 @@ const SERVICES = [
     LossRecomputeSubscriber,
     InspectionReadingsHook,
     LossReportExportBuilder,
+    GateNotifications,
   ],
   exports: [...SERVICES, BILLED_UNITS],
 })

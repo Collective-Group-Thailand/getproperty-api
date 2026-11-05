@@ -13,6 +13,9 @@ export const API_TAGS: Record<string, string> = {
   'resident.system': `${SURFACE_DESCRIPTIONS[SURFACES.resident]} System: ping.`,
   'technician.system': `${SURFACE_DESCRIPTIONS[SURFACES.technician]} System: ping.`,
   'prospect.system': `${SURFACE_DESCRIPTIONS[SURFACES.prospect]} System: ping.`,
+  'guard.system': `${SURFACE_DESCRIPTIONS[SURFACES.guard]} System: ping.`,
+  'guard.gate':
+    'The gate tablet of a guard shift (J4.1): record visits, scan invites, stamp entries and exits, photos, the unit picker, the privacy notice and the gate event stream (D-315, D-320, D-327).',
   'admin.system': `${SURFACE_DESCRIPTIONS[SURFACES.admin]} System: ping and build information.`,
   'device.system': `${SURFACE_DESCRIPTIONS[SURFACES.device]} System: ping.`,
   'webhooks.system': `${SURFACE_DESCRIPTIONS[SURFACES.webhooks]} Ping.`,
@@ -30,6 +33,8 @@ export const API_TAGS: Record<string, string> = {
   'auth.prospect': 'Prospect sign-in for enquiries and viewings: LINE (B7.3, D-252, D-255).',
   'auth.platform':
     'Collective staff sign-in: email + password + mandatory TOTP, enrolment on first sign-in (D-161).',
+  'auth.guard':
+    'Gate tablets and guards (J4.1): tablet enrolment with the one-time code, the roster, PIN sign-in starting a shift (D-320, D-327).',
   'auth.sessions':
     'Refresh-token rotation with reuse detection, logout, JWKS (EdDSA) and the web-push public key (contract §4).',
   'device.identity':
@@ -37,6 +42,8 @@ export const API_TAGS: Record<string, string> = {
   'device.logs': 'Log bundle uploads for the `upload_logs` command (D-131; edge CR-004).',
   'device.bootstrap':
     'Gateway first boot: provisioning code + CSR → certificate from the platform CA, device JWT and MQTT ACL (D-130).',
+  'owner.gates':
+    'Gate & visitors (J4.1): gates, gate tablets (enrol / revoke), guards and PINs, house policies, the estate blacklist, contractor invite approvals and the reason-logged visit log (D-315, D-320, D-327).',
   'owner.me':
     'Who I am in the owner console: tenants, current tenant and type, role, permissions, menu entitlements, feature flags, subscription state; password and TOTP setup.',
   'owner.messaging': 'The operator’s own LINE Official Account: connect, check, disconnect (D-254).',
@@ -298,6 +305,8 @@ export const API_TAGS: Record<string, string> = {
     'Utility loss per billing period with suspects and trend (D-032); billed units from readings until B4.',
   'resident.usage':
     'My daily usage from the meters of my leased unit, or of a unit I live in without a lease (D-063, D-322).',
+  'resident.gate':
+    'My houses at the gate (J4.1): visitors to approve / deny / call me (first answer wins), the house policy, invites (QR) and remembered cars (D-315, D-327).',
   'resident.statements': 'My owner statements across my units, with their PDF (D-307, D-326).',
   'resident.collections':
     'My payment plans, debt clearance certificates and automatic payments for a unit I hold a role on (D-306, D-308, D-325).',

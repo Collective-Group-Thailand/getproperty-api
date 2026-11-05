@@ -13,7 +13,9 @@ export function tenantScopeOf(ctx: TenantContext): TenantScope {
   let actorId: string | null = null;
   if (actor?.type === 'user') {
     // asset-core's session kinds predate prospects (B7.3): a prospect is an outside person like a resident
-    actorKind = actor.audience === 'prospect' ? 'resident' : actor.audience;
+    // a guard (J4.1) is a member of the operating tenant
+    actorKind =
+      actor.audience === 'prospect' ? 'resident' : actor.audience === 'guard' ? 'operator' : actor.audience;
     actorId = actor.publicId;
   } else if (actor?.type === 'device') {
     actorKind = 'device';

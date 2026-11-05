@@ -6,6 +6,7 @@ const SURFACE_SCHEME = {
   '/v1/resident/': 'residentBearer',
   '/v1/technician/': 'technicianBearer',
   '/v1/prospect/': 'prospectBearer',
+  '/v1/guard/': 'guardBearer',
   '/v1/admin/': 'platformBearer',
   '/v1/device/': 'deviceBearer',
 };

@@ -8,6 +8,23 @@ import { type RoleKey } from '../rbac/catalogue';
 import { permissionsOf } from '../tenancy/access.service';
 import { residentUnitRoles, scopeUnitIds } from './resident-units';
 
+/** The scopes of a guard shift token (J4.1): the tenant, the property and gate, the tablet and the shift. */
+export function guardScopes(shift: {
+  id: string;
+  tenantId: string;
+  gateId: string;
+  gateDeviceId: string;
+  gate: { propertyId: string };
+}): string[] {
+  return [
+    `tenant:${shift.tenantId}`,
+    `property:${shift.gate.propertyId}`,
+    `gate:${shift.gateId}`,
+    `gate_device:${shift.gateDeviceId}`,
+    `shift:${shift.id}`,
+  ];
+}
+
 /** What a token says about its subject (contract §4 login response `subject`). */
 export interface Subject {
   id: string;
@@ -168,10 +185,44 @@ export class SubjectService {
     };
   }
 
+  /**
+   * J4.1 (D-320, D-327): a guard on a gate tablet — the shift's scopes (`tenant:`, `property:`, `gate:`, `gate_device:`,
+   * `shift:`) while the shift is open, the tablet active, the guard active and the membership role still `guard`.
+   */
+  async guard(tx: Tx, userId: string, scopes: readonly string[]): Promise<Subject | null> {
+    const shiftId = scopes.find((s) => s.startsWith('shift:'))?.slice('shift:'.length);
+    if (!shiftId) return null;
+    const shift = await tx.guardShift.findUnique({
+      where: { id: shiftId },
+      include: { guard: true, gateDevice: true, gate: true },
+    });
+    if (
+      !shift ||
+      shift.endedAt ||
+      shift.guard.userId !== userId ||
+      shift.guard.state !== 'active' ||
+      shift.gateDevice.state !== 'active' ||
+      shift.gate.state !== 'active'
+    )
+      return null;
+    const membership = await tx.membership.findFirst({
+      where: { userId, tenantId: shift.tenantId, role: 'guard', status: 'active', deletedAt: null },
+    });
+    if (!membership) return null;
+    return {
+      id: userId,
+      type: 'user',
+      audience: 'guard',
+      roles: ['guard'],
+      permissions: [...permissionsOf(['guard'])].sort(),
+      scopes: guardScopes(shift),
+    };
+  }
+
   /** Recomputes the subject of an existing session (refresh). */
   async forSession(
     tx: Tx,
-    session: { audience: Audience; userId: string | null; deviceId: string | null },
+    session: { audience: Audience; userId: string | null; deviceId: string | null; scopes?: string[] },
   ): Promise<Subject | null> {
     if (session.audience === 'device') {
       const device = session.deviceId
@@ -193,6 +244,8 @@ export class SubjectService {
         return this.technician(tx, user.id);
       case 'prospect':
         return this.prospect(user.id);
+      case 'guard':
+        return this.guard(tx, user.id, session.scopes ?? []);
       case 'platform': {
         const s = await this.platform(tx, user.id);
         return s.roles.length ? s : null;

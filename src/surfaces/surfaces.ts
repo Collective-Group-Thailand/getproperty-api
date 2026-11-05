@@ -14,6 +14,7 @@ export const SURFACES = {
   resident: 'resident',
   technician: 'technician',
   prospect: 'prospect',
+  guard: 'guard',
   admin: 'admin',
   device: 'device',
   webhooks: 'webhooks',
@@ -25,9 +26,18 @@ export type Surface = (typeof SURFACES)[keyof typeof SURFACES];
  * Token audiences: `operator` (people working for a tenant: owner, manager, accountant, building staff),
  * `resident` (lessees, co-occupants, condo owners — LIFF), `technician` (external contractors — LIFF, R2),
  * `platform` (Collective Group staff), `device` (gateways), `prospect` (people looking for a place to rent who
- * enquire about a listing or book a viewing — LIFF and web, B7.3, D-252).
+ * enquire about a listing or book a viewing — LIFF and web, B7.3, D-252), `guard` (guards of a property on an enrolled
+ * gate tablet, PIN sign-in, J4.1, D-320).
  */
-export const AUDIENCES = ['operator', 'resident', 'technician', 'platform', 'device', 'prospect'] as const;
+export const AUDIENCES = [
+  'operator',
+  'resident',
+  'technician',
+  'platform',
+  'device',
+  'prospect',
+  'guard',
+] as const;
 export type Audience = (typeof AUDIENCES)[number];
 
 /** OpenAPI security scheme name per audience (`operatorBearer`, …). */
@@ -38,6 +48,7 @@ export const SECURITY_SCHEMES: Record<Audience, string> = {
   platform: 'platformBearer',
   device: 'deviceBearer',
   prospect: 'prospectBearer',
+  guard: 'guardBearer',
 };
 
 /** URL prefix of each surface; `auth` issues tokens and `webhooks` verifies signatures (no audience). */
@@ -48,6 +59,7 @@ export const SURFACE_PREFIX: Record<Surface, string> = {
   resident: '/v1/resident/',
   technician: '/v1/technician/',
   prospect: '/v1/prospect/',
+  guard: '/v1/guard/',
   admin: '/v1/admin/',
   device: '/v1/device/',
   webhooks: '/webhooks/',
@@ -61,6 +73,7 @@ export const SURFACE_AUDIENCE: Record<Surface, Audience | null> = {
   resident: 'resident',
   technician: 'technician',
   prospect: 'prospect',
+  guard: 'guard',
   admin: 'platform',
   device: 'device',
   webhooks: null,
@@ -79,6 +92,8 @@ export const SURFACE_DESCRIPTIONS: Record<Surface, string> = {
     'Technician LINE Mini App (getproperty-liff) — external technicians and contractors, scoped to the work orders assigned to them (`technician` audience; R2).',
   prospect:
     'Prospects (getproperty-liff and the public listing pages of getproperty-web, B7.3) — people looking for a place to rent: enquiries about a listing, viewings, my enquiries (`prospect` audience, D-252, D-255).',
+  guard:
+    'Gate tablet of getproperty-web (`/gate`, J4.1) — guards of a property signed in with a PIN on an enrolled gate tablet: visits, invite scans, entry and exit stamps, the gate event stream (`guard` audience, D-315, D-320, D-327).',
   admin:
     'Platform admin zone — Collective Group staff: tenants, subscriptions, device fleet, tariffs, support, AI usage cost (`platform` audience, D-161).',
   device:

@@ -80,6 +80,9 @@ export const OWNER_MENU: readonly MenuEntry[] = [
   { key: 'juristic_receivables', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
   { key: 'juristic_statements', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
   { key: 'juristic_collection_ladder', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
+  // J4.1 (D-315, D-327): the gate — juristic estates always; apartments / PM companies once the module is switched on
+  { key: 'juristic_gate', anyOf: ['gate.read'], tenantTypes: JURISTIC },
+  { key: 'gate', anyOf: ['gate.read'], flag: 'module.gate', tenantTypes: ['apartment', 'pm_company'] },
   // D-270 (J1.2b): a landlord invites its condo's juristic office for its units in a stub
   { key: 'juristic_workspace_invitations', anyOf: ['tenant.grant.manage'], tenantTypes: ['landlord'] },
   { key: 'members', anyOf: ['tenant.member.read'] },

@@ -10,6 +10,7 @@ import {
   SessionsController,
   TechnicianAuthController,
 } from './auth.controllers';
+import { GuardAuthController } from './guard-auth.controller';
 
 /** `/v1/auth/*` (contract §4): token issuance for every audience, refresh, logout, JWKS (B1.3). */
 @Module({
@@ -21,6 +22,8 @@ import {
     ProspectAuthController,
     PlatformAuthController,
     SessionsController,
+    // J4.1 (D-320): gate tablets and guard PIN sign-in
+    GuardAuthController,
   ],
 })
 export class AuthApiModule {}

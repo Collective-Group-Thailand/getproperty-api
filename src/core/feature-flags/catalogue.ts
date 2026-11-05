@@ -31,6 +31,13 @@ export const FEATURE_FLAGS: readonly FeatureFlagDef[] = [
     rolloutPct: 0,
   },
   {
+    key: 'module.gate',
+    description:
+      'J4.1 (D-315, D-327): the gate & visitor console for apartment and PM tenants (juristic estates always have it); default off until the tenant runs a guarded gate.',
+    defaultEnabled: false,
+    rolloutPct: 0,
+  },
+  {
     key: 'channel.web_push',
     description: 'Web push notifications for operators (B1.3).',
     defaultEnabled: true,

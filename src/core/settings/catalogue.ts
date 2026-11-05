@@ -806,6 +806,151 @@ export const SETTINGS: readonly SettingDef[] = [
     value: 7,
     reason: 'seed: D-145 (B1.3 assumption)',
   },
+  // --- J4.1 gate & visitor (D-315, D-327; PDPA: minimal data, retention that really deletes) ---------------
+  ...(
+    [
+      [
+        'gate.retention_days',
+        90,
+        1,
+        90,
+        'days visits, their photos and plates, ended invites and expired remembered vehicles are kept before the gate-retention job deletes them (D-315: 90; a tenant may only shorten it)',
+        ['platform', 'tenant'],
+      ],
+      [
+        'gate.policy.timeout_seconds',
+        180,
+        60,
+        900,
+        'seconds the gate waits for an answer of the unit before the house policy applies — the estate default of units without their own policy (D-315: 3 minutes)',
+        ['platform', 'tenant', 'property'],
+      ],
+      [
+        'gate.remember_days',
+        30,
+        1,
+        90,
+        'days a "remember this car" entry of a unit stays valid; entries of a remembered car are notify-only (D-315: 30)',
+        ['platform', 'tenant', 'property'],
+      ],
+      [
+        'gate.invite_max_days',
+        30,
+        1,
+        90,
+        'longest window of a resident visitor invite (single or multi use)',
+        ['platform', 'tenant', 'property'],
+      ],
+      [
+        'gate.open_visit_alert_hours',
+        24,
+        1,
+        168,
+        'hours after its entry an open visit (no exit stamp) is reported once to the owner, manager and committee',
+        ['platform', 'tenant', 'property'],
+      ],
+      [
+        'gate.offline_max_hours',
+        24,
+        1,
+        72,
+        'oldest offline-recorded visit a gate tablet may still sync (recordedAt)',
+        ['platform', 'tenant'],
+      ],
+      [
+        'gate.device_enrol_hours',
+        24,
+        1,
+        168,
+        'hours a gate tablet enrolment code stays valid (single use)',
+        ['platform', 'tenant'],
+      ],
+      [
+        'gate.pin_max_attempts',
+        5,
+        3,
+        10,
+        'wrong guard PINs in a row before the guard is locked out for gate.pin_lock_minutes',
+        ['platform', 'tenant'],
+      ],
+      [
+        'gate.pin_lock_minutes',
+        15,
+        1,
+        1440,
+        'minutes a guard stays locked out after too many wrong PINs',
+        ['platform', 'tenant'],
+      ],
+    ] as const
+  ).map(([key, value, min, max, what, scopes]): SettingDef => ({
+    key,
+    valueType: 'int',
+    scopeAllowed: [...scopes],
+    description: `D-315 / D-327 (J4.1): ${what}.`,
+    editableBy: OWNER_SETTINGS,
+    value,
+    reason: 'seed: D-327 (pack J, J4.1)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= min && (v as number) <= max ? [] : [`an integer ${min}–${max}`],
+  })),
+  {
+    key: 'gate.policy.action',
+    valueType: 'string',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-315 / D-327 (J4.1): what the gate does when nobody of a unit answers in time — allow_and_log (let in, residents see the log), deny, or guard_calls (the guard phones the unit; default). Estate default of units without their own policy.',
+    editableBy: OWNER_SETTINGS,
+    value: 'guard_calls',
+    reason: 'seed: D-315 (default guard_calls after 3 minutes)',
+    allowedValues: ['allow_and_log', 'deny', 'guard_calls'],
+  },
+  {
+    key: 'gate.delivery_drop_point',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-315 / D-327 (J4.1): the estate has a delivery drop point — delivery visits enter without waiting for the unit (notify-only) unless the house policy says otherwise.',
+    editableBy: OWNER_SETTINGS,
+    value: false,
+    reason: 'seed: D-327 (conservative: every delivery asks the unit until the estate sets a drop point)',
+  },
+  {
+    key: 'gate.show_arrears',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-315 / D-327 (J4.1, ⚖ O-038): show a yes/no arrears flag of a unit on the gate tablet. Off until counsel confirms it may be shown at all; while off no arrears data is in any guard response.',
+    editableBy: ADMIN_COMPLIANCE,
+    value: false,
+    reason: 'seed: O-038 (off until counsel confirms)',
+  },
+  {
+    key: 'gate.privacy_notice',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-315 / D-327 (J4.1, PDPA D-025, ⚖ draft wording): the purpose notice shown on the gate tablet next to the visitor fields and in the resident gate view — {"version": n, "th": "…", "en": "…"}.',
+    editableBy: OWNER_SETTINGS,
+    value: {
+      version: 1,
+      th: 'นิติบุคคลเก็บทะเบียนรถ ชื่อ (ถ้าให้) เลขบัตร 4 ตัวท้าย (ถ้าให้) และรูปถ่าย (ถ้ามี) ของผู้มาติดต่อ เพื่อความปลอดภัยของผู้อยู่อาศัยและเพื่อแจ้งเจ้าของบ้านที่ท่านมาพบ ไม่เก็บสำเนาหรือรูปบัตรประชาชน ข้อมูลถูกลบอัตโนมัติเมื่อครบ 90 วัน',
+      en: 'The juristic person records the plate, your name (optional), the last 4 digits of your ID (optional) and a photo (if taken) for the safety of residents and to inform the household you visit. No ID card copy or image is kept. The data is deleted automatically after 90 days.',
+    },
+    reason: 'seed: D-315 (⚖ draft wording, to be confirmed with the PDPA notice of O-002)',
+    check: (v) => {
+      const n = v as { version?: unknown; th?: unknown; en?: unknown } | null;
+      return n &&
+        Number.isInteger(n.version) &&
+        typeof n.th === 'string' &&
+        n.th.length > 0 &&
+        n.th.length <= 2000 &&
+        typeof n.en === 'string' &&
+        n.en.length > 0 &&
+        n.en.length <= 2000
+        ? []
+        : ['{"version": int, "th": "1–2000 chars", "en": "1–2000 chars"}'];
+    },
+  },
   {
     key: 'juristic.resident_invite_days',
     valueType: 'int',

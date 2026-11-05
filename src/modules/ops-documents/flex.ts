@@ -293,6 +293,53 @@ export function statementBubble(s: StatementItem, brand: FlexStyle = DEFAULT_FLE
   };
 }
 
+export interface VisitItem {
+  gateName: string;
+  unitNo: string;
+  kindTh: string;
+  plate: string | null;
+  visitorName: string | null;
+  /** "ถ้าไม่ตอบใน 3 นาที รปภ. จะโทรหาคุณ" — the house policy in words (J-DESIGN LIFF visitor approval). */
+  policyLine: string;
+  approveLink: string;
+  denyLink: string;
+  callLink: string;
+}
+
+/**
+ * J4.1 (D-315): the LINE question of the gate — who is at the gate for which house, with approve (filled), call me
+ * (outlined) and deny (link) buttons into the LIFF visit screen; the first answer of the household wins.
+ */
+export function visitBubble(v: VisitItem, brand: FlexStyle = DEFAULT_FLEX_STYLE): FlexBubble {
+  return {
+    type: 'bubble',
+    size: 'kilo',
+    header: header('มีผู้มาติดต่อที่ป้อม', `${v.gateName} · บ้าน / ห้อง ${v.unitNo}`, brand),
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'sm',
+      contents: [
+        row('ประเภท', v.kindTh),
+        row('ทะเบียนรถ', v.plate ?? '-', { weight: 'bold' }),
+        row('ชื่อ', v.visitorName ?? '-'),
+        sep(),
+        text(v.policyLine, { size: 'xs', color: MUTED }),
+      ],
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'sm',
+      contents: [
+        button('ให้เข้า', v.approveLink, brand),
+        button('โทรหาฉัน', v.callLink, brand, 'secondary'),
+        button('ไม่ให้เข้า', v.denyLink, brand, 'link'),
+      ],
+    },
+  };
+}
+
 /** One bubble, or a carousel for several (a resident with several units); at most 12 bubbles. */
 export function flexMessage(altText: string, bubbles: FlexBubble[]): FlexMessage {
   if (!bubbles.length) throw new RangeError('a Flex message needs at least one bubble');

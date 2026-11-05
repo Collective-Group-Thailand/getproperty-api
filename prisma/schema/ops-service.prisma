@@ -170,6 +170,9 @@ model ServiceRequest {
   settlements      ServiceSettlement[]
   messages         ServiceMessage[]
 
+  /// J4.2 (D-317): incidents that opened this request.
+  incidents Incident[]
+
   @@index([tenantId, buildingId, status], map: "service_request_tenant_id_building_id_status_idx")
   @@index([buildingId], map: "service_request_building_id_idx")
   @@index([unitId], map: "service_request_unit_id_idx")

@@ -50,6 +50,14 @@ import { inspectionsController, OwnerDepositsController } from './deposits.contr
 import { OwnerBillingDocumentsController, OwnerExportsController } from './documents.controller';
 import { OwnerEtaxController, OwnerTm30Controller } from './etax-tm30.controller';
 import {
+  OwnerGateBlacklistController,
+  OwnerGateGuardsController,
+  OwnerGateInvitesController,
+  OwnerGatePoliciesController,
+  OwnerGatesController,
+  OwnerGateVisitsController,
+} from './gates.controller';
+import {
   OwnerAssetGrantsController,
   OwnerAuditLogController,
   OwnerDsrController,
@@ -139,6 +147,13 @@ import { OwnerUnitResidentInvitesController } from './unit-resident-invites.cont
 /** `/v1/owner/*` (contract §2): owner console — B1.3 identity, tenancy, settings, tariffs, governance, files; B2.1 properties, buildings, floors, units, board, profiles, utility accounts, meters, asset items, Excel import; B2.2 parties; B2.3 leases, lease templates, lease invitations; B2.4 deposits, inspections. */
 @Module({
   controllers: [
+    // J4.1 gate & visitor (D-315, D-327)
+    OwnerGatesController,
+    OwnerGateGuardsController,
+    OwnerGatePoliciesController,
+    OwnerGateBlacklistController,
+    OwnerGateInvitesController,
+    OwnerGateVisitsController,
     OwnerSubscriptionController,
     OwnerStorageController,
     OwnerInsightsController,

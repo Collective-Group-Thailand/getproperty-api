@@ -44,6 +44,8 @@ import { LocksService } from '@modules/smart-access/locks.service';
 import { DeviceCommandsService } from '@modules/smart-devices/commands.service';
 import { GatewayConfigService } from '@modules/smart-devices/gateway-config.service';
 import { EnergyInsightService } from '@modules/smart-energy/energy-insight.service';
+import { GateRetentionService } from '@modules/smart-gate/gate-retention.service';
+import { VisitsService } from '@modules/smart-gate/visits.service';
 import { MeterHealthService } from '@modules/smart-health/meter-health.service';
 import { UtilityLossService } from '@modules/smart-health/utility-loss.service';
 import { TelemetryMaintenanceService } from '@modules/smart-ingest/telemetry-maintenance.service';
@@ -121,6 +123,10 @@ export const MAINTENANCE_JOBS = {
   'payment-plans': 3_600_000,
   // J1.2b (D-326): collection cases opened / resolved, the next due ladder step of each case run exactly once
   collections: 3_600_000,
+  // J4.1 (D-315, D-327): unanswered visits past their house timeout get the policy; open visits reported once;
+  // visits, photos, plates, ended invites and expired cars deleted after gate.retention_days
+  'gate-visits': 15_000,
+  'gate-retention': 86_400_000,
   // D-252 / O-018: ownership evidence deleted after its retention
   'listing-evidence-purge': 3_600_000,
   // B7.3: viewing reminders (both sides) and the owner's nudge on unanswered enquiries; G7 self-viewing sweep
@@ -189,6 +195,8 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly energyInsight: EnergyInsightService,
     private readonly paymentPlans: PaymentPlansService,
     private readonly collections: CollectionsService,
+    private readonly gateVisits: VisitsService,
+    private readonly gateRetention: GateRetentionService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -352,6 +360,12 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'collections':
         await this.collections.run();
+        break;
+      case 'gate-visits':
+        await this.gateVisits.sweep();
+        break;
+      case 'gate-retention':
+        await this.gateRetention.run();
         break;
       case 'listing-evidence-purge':
         await this.listingModeration.purgeEvidence();

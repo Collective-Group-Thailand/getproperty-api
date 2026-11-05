@@ -254,6 +254,16 @@ export const RETENTION_POLICIES: RetentionSeed[] = [
     action: 'delete',
     legalRef: null,
   },
+  // J4.1 (D-315, D-327): the gate's visits (and their events, photos, plates) — deleted by the gate-retention job per
+  // tenant after gate.retention_days (90, a tenant may shorten it); the generic job only reports this row
+  {
+    target: 'table',
+    targetKey: 'smart.visit',
+    retainFor: '90 days',
+    basis: 'created_at; gate.retention_days per tenant — deleted by the gate-retention job (D-315)',
+    action: 'delete',
+    legalRef: 'D-315',
+  },
   {
     target: 'document_class',
     targetKey: 'id_document',

@@ -1,0 +1,535 @@
+// J4.1 — gate & visitor: gates, gate devices (guard tablets), guards, shifts, visits, visit events, invites,
+// remembered vehicles, house policies, blacklist; incident stub for J4.2 (migration 0074; schema-design §7.5 rows
+// 234–245, §7.6 J4-a … J4-i, D-315, D-320, D-327). Every table RLS:T.
+
+enum GateKind {
+  main
+  side
+  service
+
+  @@map("gate_kind")
+  @@schema("smart")
+}
+
+enum GateState {
+  active
+  inactive
+
+  @@map("gate_state")
+  @@schema("smart")
+}
+
+enum GateDeviceKind {
+  guard_tablet
+  barrier
+  lpr_camera
+
+  @@map("gate_device_kind")
+  @@schema("smart")
+}
+
+enum GateDeviceState {
+  pending
+  active
+  revoked
+
+  @@map("gate_device_state")
+  @@schema("smart")
+}
+
+enum GateGuardState {
+  active
+  revoked
+
+  @@map("gate_guard_state")
+  @@schema("smart")
+}
+
+enum GuardShiftEndReason {
+  signed_out
+  superseded
+  device_revoked
+  guard_revoked
+
+  @@map("guard_shift_end_reason")
+  @@schema("smart")
+}
+
+enum VisitKind {
+  guest
+  delivery
+  contractor
+  resident_vehicle
+  other
+
+  @@map("visit_kind")
+  @@schema("smart")
+}
+
+enum VisitState {
+  requested
+  approved
+  denied
+  timed_out
+  entered
+  exited
+  cancelled
+
+  @@map("visit_state")
+  @@schema("smart")
+}
+
+enum VisitEntryBasis {
+  approval
+  invite
+  remembered_vehicle
+  delivery_drop_point
+  policy
+  guard_override
+  offline
+
+  @@map("visit_entry_basis")
+  @@schema("smart")
+}
+
+enum GatePolicyAction {
+  allow_and_log
+  deny
+  guard_calls
+
+  @@map("gate_policy_action")
+  @@schema("smart")
+}
+
+enum VisitEventKind {
+  created
+  notified
+  answered
+  policy_applied
+  entered
+  exited
+  cancelled
+  photo_added
+  overstayed
+  note
+
+  @@map("visit_event_kind")
+  @@schema("smart")
+}
+
+enum VisitActorKind {
+  guard
+  resident
+  operator
+  system
+  device
+
+  @@map("visit_actor_kind")
+  @@schema("smart")
+}
+
+enum VisitInviteUsage {
+  single
+  multi
+
+  @@map("visit_invite_usage")
+  @@schema("smart")
+}
+
+enum VisitInviteState {
+  pending_approval
+  active
+  rejected
+  revoked
+
+  @@map("visit_invite_state")
+  @@schema("smart")
+}
+
+enum RememberedVehicleKind {
+  resident
+  visitor
+
+  @@map("remembered_vehicle_kind")
+  @@schema("smart")
+}
+
+enum IncidentKind {
+  fire
+  medical
+  intrusion
+  other
+
+  @@map("incident_kind")
+  @@schema("smart")
+}
+
+enum IncidentSource {
+  resident_sos
+  guard
+  device
+
+  @@map("incident_source")
+  @@schema("smart")
+}
+
+enum IncidentState {
+  open
+  acknowledged
+  closed
+
+  @@map("incident_state")
+  @@schema("smart")
+}
+
+/// A gate (guard post) of a property (D-315, D-327).
+model Gate {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  propertyId String    @map("property_id") @db.Uuid
+  name       String
+  kind       GateKind  @default(main)
+  state      GateState @default(active)
+  barrier    Boolean   @default(false)
+  lpr        Boolean   @default(false)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?   @map("created_by") @db.Uuid
+  updatedAt  DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy  String?   @map("updated_by") @db.Uuid
+  version    Int       @default(1)
+
+  tenant   Tenant   @relation("GateTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "gate_tenant_id_fkey")
+  property Property @relation("GateProperty", fields: [propertyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "gate_property_id_fkey")
+
+  devices GateDevice[]
+  shifts  GuardShift[]
+  visits  Visit[]
+  events  VisitEvent[]
+
+  @@unique([propertyId, name], map: "gate_property_id_name_key")
+  @@index([tenantId], map: "gate_tenant_id_idx")
+  @@map("gate")
+  @@schema("smart")
+}
+
+/// A device of a gate: guard tablets enrol with a one-time code and keep a device secret (sha256 only).
+model GateDevice {
+  id             String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String          @map("tenant_id") @db.Uuid
+  gateId         String          @map("gate_id") @db.Uuid
+  kind           GateDeviceKind  @default(guard_tablet)
+  name           String
+  state          GateDeviceState @default(pending)
+  enrolCodeHash  Bytes?          @map("enrol_code_hash")
+  enrolExpiresAt DateTime?       @map("enrol_expires_at") @db.Timestamptz(6)
+  secretHash     Bytes?          @map("secret_hash")
+  enrolledAt     DateTime?       @map("enrolled_at") @db.Timestamptz(6)
+  lastSeenAt     DateTime?       @map("last_seen_at") @db.Timestamptz(6)
+  revokedAt      DateTime?       @map("revoked_at") @db.Timestamptz(6)
+  revokedBy      String?         @map("revoked_by") @db.Uuid
+  revokeReason   String?         @map("revoke_reason")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?         @map("created_by") @db.Uuid
+  updatedAt      DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy      String?         @map("updated_by") @db.Uuid
+  version        Int             @default(1)
+
+  tenant Tenant @relation("GateDeviceTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "gate_device_tenant_id_fkey")
+  gate   Gate   @relation(fields: [gateId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "gate_device_gate_id_fkey")
+
+  shifts GuardShift[]
+
+  @@unique([enrolCodeHash], map: "gate_device_enrol_code_hash_key", where: raw("(enrol_code_hash IS NOT NULL)"))
+  @@unique([secretHash], map: "gate_device_secret_hash_key", where: raw("(secret_hash IS NOT NULL)"))
+  @@index([gateId], map: "gate_device_gate_id_idx")
+  @@map("gate_device")
+  @@schema("smart")
+}
+
+/// A guard of a property: credential-less login (membership role guard) signing in with a PIN on a gate tablet.
+model GateGuard {
+  id             String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String         @map("tenant_id") @db.Uuid
+  propertyId     String         @map("property_id") @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  displayName    String         @map("display_name")
+  pinHash        String         @map("pin_hash")
+  pinSetAt       DateTime       @default(now()) @map("pin_set_at") @db.Timestamptz(6)
+  failedAttempts Int            @default(0) @map("failed_attempts")
+  lockedUntil    DateTime?      @map("locked_until") @db.Timestamptz(6)
+  state          GateGuardState @default(active)
+  revokedAt      DateTime?      @map("revoked_at") @db.Timestamptz(6)
+  revokeReason   String?        @map("revoke_reason")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?        @map("created_by") @db.Uuid
+  updatedAt      DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy      String?        @map("updated_by") @db.Uuid
+  version        Int            @default(1)
+
+  tenant   Tenant      @relation("GateGuardTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "gate_guard_tenant_id_fkey")
+  property Property    @relation("GateGuardProperty", fields: [propertyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "gate_guard_property_id_fkey")
+  user     UserAccount @relation("GateGuardUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "gate_guard_user_id_fkey")
+
+  shifts GuardShift[]
+
+  @@unique([userId], map: "gate_guard_user_id_key")
+  @@index([propertyId], map: "gate_guard_property_id_idx")
+  @@map("gate_guard")
+  @@schema("smart")
+}
+
+/// One PIN sign-in of a guard on a gate tablet; at most one open shift per guard.
+model GuardShift {
+  id              String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String               @map("tenant_id") @db.Uuid
+  gateId          String               @map("gate_id") @db.Uuid
+  gateDeviceId    String               @map("gate_device_id") @db.Uuid
+  guardId         String               @map("guard_id") @db.Uuid
+  sessionFamilyId String               @map("session_family_id") @db.Uuid
+  startedAt       DateTime             @default(now()) @map("started_at") @db.Timestamptz(6)
+  endedAt         DateTime?            @map("ended_at") @db.Timestamptz(6)
+  endReason       GuardShiftEndReason? @map("end_reason")
+
+  tenant     Tenant     @relation("GuardShiftTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "guard_shift_tenant_id_fkey")
+  gate       Gate       @relation(fields: [gateId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "guard_shift_gate_id_fkey")
+  gateDevice GateDevice @relation(fields: [gateDeviceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "guard_shift_gate_device_id_fkey")
+  guard      GateGuard  @relation(fields: [guardId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "guard_shift_guard_id_fkey")
+
+  visits Visit[]
+
+  @@unique([guardId], map: "guard_shift_open_key", where: raw("(ended_at IS NULL)"))
+  @@index([gateId, startedAt(sort: Desc)], map: "guard_shift_gate_id_started_at_idx")
+  @@index([gateDeviceId], map: "guard_shift_gate_device_id_idx")
+  @@map("guard_shift")
+  @@schema("smart")
+}
+
+/// One visit at a gate (D-315): name optional, ID last 4 digits only, photo optional (retention class visitor).
+model Visit {
+  id                 String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String            @map("tenant_id") @db.Uuid
+  gateId             String            @map("gate_id") @db.Uuid
+  propertyId         String            @map("property_id") @db.Uuid
+  unitId             String?           @map("unit_id") @db.Uuid
+  kind               VisitKind
+  state              VisitState        @default(requested)
+  entryBasis         VisitEntryBasis?  @map("entry_basis")
+  plateCategory      String?           @map("plate_category")
+  plateNumber        String?           @map("plate_number")
+  plateProvince      String?           @map("plate_province")
+  visitorName        String?           @map("visitor_name")
+  idLast4            String?           @map("id_last4") @db.Char(4)
+  photoDocumentId    String?           @map("photo_document_id") @db.Uuid
+  inviteId           String?           @map("invite_id") @db.Uuid
+  clientRef          String            @map("client_ref") @db.Uuid
+  note               String?
+  recordedAt         DateTime?         @map("recorded_at") @db.Timestamptz(6)
+  respondBy          DateTime?         @map("respond_by") @db.Timestamptz(6)
+  timeoutAction      GatePolicyAction? @map("timeout_action")
+  decidedAt          DateTime?         @map("decided_at") @db.Timestamptz(6)
+  decidedByUserId    String?           @map("decided_by_user_id") @db.Uuid
+  decisionReason     String?           @map("decision_reason")
+  callMeAt           DateTime?         @map("call_me_at") @db.Timestamptz(6)
+  callMeUserId       String?           @map("call_me_user_id") @db.Uuid
+  enteredAt          DateTime?         @map("entered_at") @db.Timestamptz(6)
+  exitedAt           DateTime?         @map("exited_at") @db.Timestamptz(6)
+  exitedBy           VisitActorKind?   @map("exited_by")
+  cancelledAt        DateTime?         @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason       String?           @map("cancel_reason")
+  overstayNotifiedAt DateTime?         @map("overstay_notified_at") @db.Timestamptz(6)
+  shiftId            String?           @map("shift_id") @db.Uuid
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          String?           @map("created_by") @db.Uuid
+  updatedAt          DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  version            Int               @default(1)
+
+  tenant        Tenant       @relation("VisitTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "visit_tenant_id_fkey")
+  gate          Gate         @relation(fields: [gateId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "visit_gate_id_fkey")
+  property      Property     @relation("VisitProperty", fields: [propertyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "visit_property_id_fkey")
+  unit          Unit?        @relation("VisitUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "visit_unit_id_fkey")
+  photoDocument Document?    @relation("VisitPhotoDocument", fields: [photoDocumentId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "visit_photo_document_id_fkey")
+  invite        VisitInvite? @relation(fields: [inviteId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "visit_invite_id_fkey")
+  shift         GuardShift?  @relation(fields: [shiftId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "visit_shift_id_fkey")
+
+  events VisitEvent[]
+
+  @@unique([gateId, clientRef], map: "visit_gate_id_client_ref_key")
+  @@index([unitId, createdAt(sort: Desc)], map: "visit_unit_id_created_at_idx")
+  @@index([tenantId, createdAt(sort: Desc)], map: "visit_tenant_id_created_at_idx")
+  @@index([gateId, state], map: "visit_gate_id_state_idx")
+  @@index([state, respondBy], map: "visit_state_respond_by_idx")
+  @@index([photoDocumentId], map: "visit_photo_document_id_idx", where: raw("(photo_document_id IS NOT NULL)"))
+  @@index([inviteId], map: "visit_invite_id_idx", where: raw("(invite_id IS NOT NULL)"))
+  @@map("visit")
+  @@schema("smart")
+}
+
+/// Append-only timeline of a visit; id = the domain event id (Last-Event-ID of the gate stream).
+model VisitEvent {
+  id         String         @id @db.Uuid
+  tenantId   String         @map("tenant_id") @db.Uuid
+  gateId     String         @map("gate_id") @db.Uuid
+  visitId    String         @map("visit_id") @db.Uuid
+  kind       VisitEventKind
+  actorKind  VisitActorKind @map("actor_kind")
+  actorId    String?        @map("actor_id") @db.Uuid
+  payload    Json           @default("{}")
+  occurredAt DateTime       @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation("VisitEventTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "visit_event_tenant_id_fkey")
+  gate   Gate   @relation(fields: [gateId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "visit_event_gate_id_fkey")
+  visit  Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "visit_event_visit_id_fkey")
+
+  @@index([visitId, occurredAt], map: "visit_event_visit_id_occurred_at_idx")
+  @@index([gateId, id], map: "visit_event_gate_id_id_idx")
+  @@map("visit_event")
+  @@schema("smart")
+}
+
+/// A resident's pre-registered invite; the QR token is stored as sha256 only.
+model VisitInvite {
+  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  propertyId      String           @map("property_id") @db.Uuid
+  unitId          String           @map("unit_id") @db.Uuid
+  createdByUserId String           @map("created_by_user_id") @db.Uuid
+  usage           VisitInviteUsage
+  visitorKind     VisitKind        @default(guest) @map("visitor_kind")
+  state           VisitInviteState @default(active)
+  validFrom       DateTime         @map("valid_from") @db.Timestamptz(6)
+  validTo         DateTime         @map("valid_to") @db.Timestamptz(6)
+  maxUses         Int              @default(1) @map("max_uses") @db.SmallInt
+  uses            Int              @default(0) @db.SmallInt
+  plateCategory   String?          @map("plate_category")
+  plateNumber     String?          @map("plate_number")
+  plateProvince   String?          @map("plate_province")
+  visitorName     String?          @map("visitor_name")
+  note            String?
+  tokenHash       Bytes            @map("token_hash")
+  approvedAt      DateTime?        @map("approved_at") @db.Timestamptz(6)
+  approvedBy      String?          @map("approved_by") @db.Uuid
+  rejectedAt      DateTime?        @map("rejected_at") @db.Timestamptz(6)
+  rejectedBy      String?          @map("rejected_by") @db.Uuid
+  rejectReason    String?          @map("reject_reason")
+  revokedAt       DateTime?        @map("revoked_at") @db.Timestamptz(6)
+  revokedBy       String?          @map("revoked_by") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  version         Int              @default(1)
+
+  tenant   Tenant   @relation("VisitInviteTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "visit_invite_tenant_id_fkey")
+  property Property @relation("VisitInviteProperty", fields: [propertyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "visit_invite_property_id_fkey")
+  unit     Unit     @relation("VisitInviteUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "visit_invite_unit_id_fkey")
+
+  visits Visit[]
+
+  @@unique([tokenHash], map: "visit_invite_token_hash_key")
+  @@index([unitId, validTo], map: "visit_invite_unit_id_valid_to_idx")
+  @@index([tenantId, state], map: "visit_invite_tenant_id_state_idx")
+  @@map("visit_invite")
+  @@schema("smart")
+}
+
+/// "Remember this car" per unit — entries become notify-only.
+model RememberedVehicle {
+  id              String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String                @map("tenant_id") @db.Uuid
+  propertyId      String                @map("property_id") @db.Uuid
+  unitId          String                @map("unit_id") @db.Uuid
+  kind            RememberedVehicleKind @default(visitor)
+  plateCategory   String                @map("plate_category")
+  plateNumber     String                @map("plate_number")
+  plateProvince   String                @map("plate_province")
+  label           String?
+  expiresAt       DateTime              @map("expires_at") @db.Timestamptz(6)
+  createdByUserId String?               @map("created_by_user_id") @db.Uuid
+  revokedAt       DateTime?             @map("revoked_at") @db.Timestamptz(6)
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  tenant   Tenant   @relation("RememberedVehicleTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "remembered_vehicle_tenant_id_fkey")
+  property Property @relation("RememberedVehicleProperty", fields: [propertyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "remembered_vehicle_property_id_fkey")
+  unit     Unit     @relation("RememberedVehicleUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "remembered_vehicle_unit_id_fkey")
+
+  @@unique([unitId, plateCategory, plateNumber, plateProvince], map: "remembered_vehicle_live_key", where: raw("(revoked_at IS NULL)"))
+  @@index([propertyId, plateNumber], map: "remembered_vehicle_property_id_plate_number_idx")
+  @@map("remembered_vehicle")
+  @@schema("smart")
+}
+
+/// What the gate does when nobody of the unit answers in time; a missing row = the estate defaults.
+model HouseGatePolicy {
+  id                   String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId             String           @map("tenant_id") @db.Uuid
+  unitId               String           @map("unit_id") @db.Uuid
+  timeoutSeconds       Int              @default(180) @map("timeout_seconds")
+  action               GatePolicyAction @default(guard_calls)
+  deliverySkipApproval Boolean?         @map("delivery_skip_approval")
+  householdNote        String?          @map("household_note")
+  createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy            String?          @map("created_by") @db.Uuid
+  updatedAt            DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy            String?          @map("updated_by") @db.Uuid
+  version              Int              @default(1)
+
+  tenant Tenant @relation("HouseGatePolicyTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "house_gate_policy_tenant_id_fkey")
+  unit   Unit   @relation("HouseGatePolicyUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "house_gate_policy_unit_id_fkey")
+
+  @@unique([unitId], map: "house_gate_policy_unit_id_key")
+  @@map("house_gate_policy")
+  @@schema("smart")
+}
+
+/// Plates refused at the estate's gates, with a required reason (audited).
+model GateBlacklist {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  propertyId    String    @map("property_id") @db.Uuid
+  plateCategory String    @map("plate_category")
+  plateNumber   String    @map("plate_number")
+  plateProvince String    @map("plate_province")
+  reason        String
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedBy     String?   @map("revoked_by") @db.Uuid
+  revokeReason  String?   @map("revoke_reason")
+
+  tenant   Tenant   @relation("GateBlacklistTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "gate_blacklist_tenant_id_fkey")
+  property Property @relation("GateBlacklistProperty", fields: [propertyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "gate_blacklist_property_id_fkey")
+
+  @@unique([propertyId, plateCategory, plateNumber, plateProvince], map: "gate_blacklist_live_key", where: raw("(revoked_at IS NULL)"))
+  @@map("gate_blacklist")
+  @@schema("smart")
+}
+
+/// D-317 (J4.2 stub): an SOS / incident of a property linked to the visits active at the time.
+model Incident {
+  id               String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String         @map("tenant_id") @db.Uuid
+  propertyId       String         @map("property_id") @db.Uuid
+  unitId           String?        @map("unit_id") @db.Uuid
+  kind             IncidentKind
+  source           IncidentSource
+  note             String?
+  photoDocumentId  String?        @map("photo_document_id") @db.Uuid
+  state            IncidentState  @default(open)
+  acknowledgedBy   String?        @map("acknowledged_by") @db.Uuid
+  acknowledgedAt   DateTime?      @map("acknowledged_at") @db.Timestamptz(6)
+  serviceRequestId String?        @map("service_request_id") @db.Uuid
+  visitIds         String[]       @default([]) @map("visit_ids") @db.Uuid
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?        @map("created_by") @db.Uuid
+  updatedAt        DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  version          Int            @default(1)
+
+  tenant         Tenant          @relation("IncidentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "incident_tenant_id_fkey")
+  property       Property        @relation("IncidentProperty", fields: [propertyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "incident_property_id_fkey")
+  unit           Unit?           @relation("IncidentUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "incident_unit_id_fkey")
+  photoDocument  Document?       @relation("IncidentPhotoDocument", fields: [photoDocumentId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "incident_photo_document_id_fkey")
+  serviceRequest ServiceRequest? @relation(fields: [serviceRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "incident_service_request_id_fkey")
+
+  @@index([propertyId, createdAt(sort: Desc)], map: "incident_property_id_created_at_idx")
+  @@map("incident")
+  @@schema("smart")
+}
