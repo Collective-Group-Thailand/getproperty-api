@@ -50,6 +50,8 @@ export enum PlateDetectionStateName {
   Dismissed = 'dismissed',
   Expired = 'expired',
   Ignored = 'ignored',
+  /** CR-017 / D-330: read delivered later than gate.lpr.max_event_age_seconds — a past read, never acted on. */
+  Historical = 'historical',
 }
 export enum PlateMatchName {
   ResidentVehicle = 'resident_vehicle',
@@ -365,6 +367,9 @@ export class PlateDetectionDto {
     enum: PlateDetectionStateName,
     enumName: 'PlateDetectionState',
     example: PlateDetectionStateName.Pending,
+    description:
+      '`historical` (D-330, edge CR-017): the read reached the cloud more than gate.lpr.max_event_age_seconds after ' +
+      'the camera read it (queued during an outage) — kept as a past read only: no entry, no barrier open, not claimable.',
   })
   state!: PlateDetectionStateName;
 

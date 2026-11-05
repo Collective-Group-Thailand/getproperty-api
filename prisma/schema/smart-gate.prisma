@@ -191,6 +191,7 @@ enum PlateDetectionState {
   dismissed
   expired
   ignored
+  historical
 
   @@map("plate_detection_state")
   @@schema("smart")

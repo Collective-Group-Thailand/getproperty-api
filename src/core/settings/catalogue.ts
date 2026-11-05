@@ -934,6 +934,18 @@ export const SETTINGS: readonly SettingDef[] = [
       Number.isInteger(v) && (v as number) >= min && (v as number) <= max ? [] : [`an integer ${min}–${max}`],
   })),
   {
+    key: 'gate.lpr.max_event_age_seconds',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-330 (edge CR-017): a plate read that reaches the cloud more than this many seconds after the camera read it (`plate.detected` `data.at`, queued on the edge during an outage) is kept as a past read only — no automatic entry, no automatic barrier open, nothing for the guard to claim.',
+    editableBy: OWNER_SETTINGS,
+    value: 20,
+    reason: 'seed: D-330 (conservative: a late read never opens the gate)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 5 && (v as number) <= 300 ? [] : ['an integer 5–300'],
+  },
+  {
     key: 'gate.lpr.min_confidence',
     valueType: 'decimal',
     scopeAllowed: ['platform', 'tenant', 'property'],

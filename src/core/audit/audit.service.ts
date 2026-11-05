@@ -459,6 +459,7 @@ export const AUDIT_ACTIONS = [
   'gate.edge_device_detached',
   'gate.open_requested',
   'gate.device_event_refused',
+  'gate.plate_read_late',
   'gate.plate_claimed',
   'gate.plate_dismissed',
   'gate.resident_vehicle_added',

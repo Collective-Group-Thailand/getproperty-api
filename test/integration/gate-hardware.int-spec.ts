@@ -562,6 +562,93 @@ describe('J4.2 barrier, LPR, resident open, SOS (real PostgreSQL)', () => {
     await setOwner(jur.token, 'gate.auto_open_known_plates', false);
   });
 
+  it('CR-017: a plate read delivered late after an edge outage never opens the barrier nor enters as live', async () => {
+    t.clock.advance(61_000);
+    await setOwner(jur.token, 'gate.auto_open_known_plates', true);
+    t.clock.advance(1_000);
+    const before = gateOpens(ids.gw).length;
+    // queued on the edge during an outage: read 2 minutes ago, delivered now (> gate.lpr.max_event_age_seconds 20)
+    const lateId = randomUUID();
+    const readAt = new Date(t.clock.now().getTime() - 120_000).toISOString();
+    await deviceEvent(
+      ids.gw,
+      'plate.detected',
+      { gateId: ids.gate, plate: CAR_P, confidence: 0.99, at: readAt },
+      lateId,
+    );
+    // the queue flushes several frames of the same car: one past read kept
+    await deviceEvent(ids.gw, 'plate.detected', {
+      gateId: ids.gate,
+      plate: CAR_P,
+      confidence: 0.99,
+      at: new Date(t.clock.now().getTime() - 118_000).toISOString(),
+    });
+    await settle();
+    expect(gateOpens(ids.gw).length).toBe(before); // no automatic open
+    expect(await q(`SELECT 1 FROM smart.visit WHERE client_ref = $1`, [lateId])).toEqual([]); // no automatic entry
+    const late = await q<{
+      id: string;
+      state: string;
+      match: string;
+      visit_id: string | null;
+      unit_id: string;
+    }>(
+      `SELECT id, state::text, match::text, visit_id, unit_id FROM smart.plate_detection WHERE event_id = $1`,
+      [lateId],
+    );
+    expect(late).toEqual([
+      expect.objectContaining({
+        state: 'historical',
+        match: 'resident_vehicle',
+        visit_id: null,
+        unit_id: ids.u1,
+      }),
+    ]);
+    expect(
+      (await q(`SELECT 1 FROM smart.plate_detection WHERE state = 'historical' AND gate_id = $1`, [ids.gate]))
+        .length,
+    ).toBe(1);
+    expect(
+      await q(`SELECT 1 FROM platform.audit_log WHERE action = 'gate.plate_read_late' AND subject_id = $1`, [
+        late[0]!.id,
+      ]),
+    ).toHaveLength(1);
+    // the guard sees it as a past read: not pending (nothing to claim), listed in the recent reads
+    const pending = (await t.http.get('/v1/guard/plate-detections').set(G()).expect(200)).body as {
+      id: string;
+    }[];
+    expect(pending.map((d) => d.id)).not.toContain(late[0]!.id);
+    const recent = (await t.http.get('/v1/guard/plate-detections?view=recent').set(G()).expect(200)).body as {
+      id: string;
+      state: string;
+    }[];
+    expect(recent.find((d) => d.id === late[0]!.id)).toMatchObject({ state: 'historical' });
+    expect(
+      (await t.http.post(`/v1/guard/plate-detections/${late[0]!.id}/actions/claim`).set(G()).expect(409)).body
+        .code,
+    ).toBe('plate_detection.invalid_state');
+    // a read within the age limit is live: the same car arriving now still enters and opens (a late read never
+    // suppresses the next live read)
+    const liveId = randomUUID();
+    await deviceEvent(
+      ids.gw,
+      'plate.detected',
+      {
+        gateId: ids.gate,
+        plate: CAR_P,
+        confidence: 0.99,
+        at: new Date(t.clock.now().getTime() - 5_000).toISOString(),
+      },
+      liveId,
+    );
+    await settle();
+    expect(await q(`SELECT 1 FROM smart.visit WHERE client_ref = $1`, [liveId])).toHaveLength(1);
+    const opened = gateOpens(ids.gw).slice(before);
+    expect(opened).toHaveLength(1);
+    expect(opened[0]!.args).toMatchObject({ reason: 'lpr_known_plate' });
+    await setOwner(jur.token, 'gate.auto_open_known_plates', false);
+  });
+
   it('unknown and low-confidence plates wait for the guard: listed, claimed once, then 409', async () => {
     t.clock.advance(5_000);
     await plate(ids.gw, ids.gate, { category: 'ฌก', number: '777', province: 'ชลบุรี' }, 0.93, undefined);

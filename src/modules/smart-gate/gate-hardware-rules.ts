@@ -109,3 +109,14 @@ export function visitActiveAt(
 export function sosCancellable(createdAt: Date, now: Date, cancelSeconds: number): boolean {
   return now.getTime() - createdAt.getTime() <= cancelSeconds * 1000;
 }
+
+/**
+ * CR-017 / D-330: a plate read is late (history, never acted on) when the camera read it more than `maxAgeSeconds`
+ * before it reached the cloud, or when its read time is unreadable. A read time slightly ahead of the cloud clock
+ * (gateway clock skew) is live.
+ */
+export function isLateRead(detectedAt: Date, receivedAt: Date, maxAgeSeconds: number): boolean {
+  const t = detectedAt.getTime();
+  if (Number.isNaN(t)) return true;
+  return receivedAt.getTime() - t > maxAgeSeconds * 1000;
+}

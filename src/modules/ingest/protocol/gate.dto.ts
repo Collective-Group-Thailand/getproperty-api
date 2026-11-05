@@ -137,7 +137,13 @@ export class PlateDetectedData {
   @Max(1)
   confidence!: number;
 
-  @JSONSchema({ description: 'Gateway clock', examples: ['2026-11-05T18:00:00+07:00'] })
+  @JSONSchema({
+    description:
+      'Read time (gateway clock). Send the camera read time, also for reads queued offline: a read that reaches the ' +
+      'cloud more than gate.lpr.max_event_age_seconds (20) after it is kept as a past read only — never an automatic ' +
+      'entry or barrier open (D-330, CR-017).',
+    examples: ['2026-11-05T18:00:00+07:00'],
+  })
   @IsISO8601({ strict: true })
   at!: string;
 
