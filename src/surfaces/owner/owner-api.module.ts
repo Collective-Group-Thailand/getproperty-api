@@ -70,6 +70,15 @@ import {
   OwnerPaymentMandatesController,
   OwnerPaymentPlansController,
 } from './juristic-collections.controller';
+import {
+  OwnerCollectionCasesController,
+  OwnerCollectionLaddersController,
+  OwnerJuristicReportsController,
+  OwnerJuristicWorkspaceController,
+  OwnerLetterBatchesController,
+  OwnerStatementsController,
+  OwnerWorkspaceInvitationsController,
+} from './juristic-receivables.controller';
 import { OwnerLeaseStampDutyController, OwnerUnitDocumentsController } from './landlord-documents.controller';
 import { OwnerLeadsController } from './leads.controller';
 import { OwnerLeaseNoticesController } from './lease-notices.controller';
@@ -189,6 +198,13 @@ import { OwnerUnitResidentInvitesController } from './unit-resident-invites.cont
     OwnerPaymentPlansController,
     OwnerDebtClearancesController,
     OwnerPaymentMandatesController,
+    OwnerCollectionLaddersController,
+    OwnerCollectionCasesController,
+    OwnerJuristicReportsController,
+    OwnerStatementsController,
+    OwnerLetterBatchesController,
+    OwnerJuristicWorkspaceController,
+    OwnerWorkspaceInvitationsController,
     OwnerPortfolioController,
     OwnerListingsController,
     OwnerMandatesController,

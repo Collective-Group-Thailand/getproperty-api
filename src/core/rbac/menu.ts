@@ -76,6 +76,12 @@ export const OWNER_MENU: readonly MenuEntry[] = [
   // J1.2a (D-306, D-308): payment plans and debt clearance certificates
   { key: 'juristic_payment_plans', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
   { key: 'juristic_debt_clearances', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
+  // J1.2b (D-305, D-307, D-326): receivables console, statements, the collections ladder
+  { key: 'juristic_receivables', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
+  { key: 'juristic_statements', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
+  { key: 'juristic_collection_ladder', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
+  // D-270 (J1.2b): a landlord invites its condo's juristic office for its units in a stub
+  { key: 'juristic_workspace_invitations', anyOf: ['tenant.grant.manage'], tenantTypes: ['landlord'] },
   { key: 'members', anyOf: ['tenant.member.read'] },
   { key: 'bank_accounts', anyOf: ['tenant.bank_account.manage'] },
   { key: 'settings', anyOf: ['tenant.settings.read'] },

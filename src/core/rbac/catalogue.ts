@@ -403,6 +403,12 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     description: 'Approve a payment plan (owner, manager or committee, D-308, D-325)',
     surfaces: ['owner'],
   },
+  {
+    key: 'juristic.collections.approve',
+    description:
+      'Approve or refuse a collections ladder step that needs approval (suspension of common services, lawyer letter, legal action; owner, manager or committee, D-305, D-326)',
+    surfaces: ['owner'],
+  },
   // platform (/v1/admin)
   { key: 'admin.tenant.read', description: 'List and view tenants', surfaces: ['admin'] },
   {
@@ -612,6 +618,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'juristic.budget.approve',
     'juristic.resolution.adopt',
     'juristic.payment_plan.approve',
+    'juristic.collections.approve',
   ],
   auditor: [...JURISTIC_READ, 'deposit.read', 'reading.read', 'tenant.audit.read'],
   platform_admin: PERMISSIONS.filter((p) => p.key.startsWith('admin.')).map((p) => p.key),

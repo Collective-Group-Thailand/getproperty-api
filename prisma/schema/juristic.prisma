@@ -315,6 +315,7 @@ model PaymentPlan {
   requester         UserAccount?            @relation("PaymentPlanRequester", fields: [requestedByUser], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_plan_requested_by_user_fkey")
   acceleratedCharge InvoiceCharge?          @relation("PaymentPlanAcceleratedCharge", fields: [acceleratedChargeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payment_plan_accelerated_charge_id_fkey")
   instalments       PaymentPlanInstalment[]
+  collectionCases   CollectionCase[]        @relation("CollectionCasePlan")
 
   @@unique([unitId, partyId], map: "payment_plan_open_key", where: raw("(state = ANY (ARRAY['proposed'::juristic.payment_plan_state, 'active'::juristic.payment_plan_state]))"))
   @@index([tenantId, state], map: "payment_plan_tenant_id_state_idx")
@@ -411,5 +412,312 @@ model DebtClearance {
   @@index([tenantId, state], map: "debt_clearance_tenant_id_state_idx")
   @@index([partyId], map: "debt_clearance_party_id_idx")
   @@map("debt_clearance")
+  @@schema("juristic")
+}
+
+// ------------------------------------------------------------------------------------------- J1.2b (D-305, D-307, D-270, D-326; migration 0073)
+
+enum CollectionAction {
+  remind
+  surcharge
+  notice_letter
+  suspend_services
+  lawyer_letter
+  legal_action
+
+  @@map("collection_action")
+  @@schema("juristic")
+}
+
+enum CollectionChannel {
+  line
+  email
+  sms
+  letter
+
+  @@map("collection_channel")
+  @@schema("juristic")
+}
+
+enum CollectionCaseState {
+  open
+  paused
+  resolved
+
+  @@map("collection_case_state")
+  @@schema("juristic")
+}
+
+enum CollectionEventKind {
+  opened
+  step
+  paused
+  resumed
+  dispute_opened
+  dispute_closed
+  resolved
+
+  @@map("collection_event_kind")
+  @@schema("juristic")
+}
+
+enum CollectionOutcome {
+  sent
+  skipped
+  awaiting_approval
+  approved
+  refused
+  failed
+
+  @@map("collection_outcome")
+  @@schema("juristic")
+}
+
+enum LetterBatchState {
+  queued
+  ready
+  failed
+
+  @@map("letter_batch_state")
+  @@schema("juristic")
+}
+
+enum WorkspaceLinkState {
+  invited
+  active
+  revoked
+
+  @@map("workspace_link_state")
+  @@schema("juristic")
+}
+
+/// D-305 / D-326 (J1.2b): the collections ladder of a juristic tenant for one building legal form (from the template).
+model CollectionLadder {
+  id                String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String            @map("tenant_id") @db.Uuid
+  legalForm         BuildingLegalForm @map("legal_form")
+  name              String
+  sourceTemplateKey String            @map("source_template_key")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?           @map("created_by") @db.Uuid
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?           @map("updated_by") @db.Uuid
+  version           Int               @default(1)
+
+  tenant Tenant           @relation("CollectionLadderTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_ladder_tenant_id_fkey")
+  steps  CollectionStep[]
+  cases  CollectionCase[]
+
+  @@unique([tenantId, legalForm], map: "collection_ladder_tenant_id_legal_form_key")
+  @@map("collection_ladder")
+  @@schema("juristic")
+}
+
+/// D-305 / D-326: one step of a ladder (offset after the oldest due date, action, channels, template, approval).
+model CollectionStep {
+  id               String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String              @map("tenant_id") @db.Uuid
+  ladderId         String              @map("ladder_id") @db.Uuid
+  seq              Int                 @db.SmallInt
+  offsetDays       Int                 @map("offset_days")
+  action           CollectionAction
+  channels         CollectionChannel[] @default([])
+  templateKey      String              @map("template_key")
+  requiresApproval Boolean             @default(false) @map("requires_approval")
+  enabled          Boolean             @default(false)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?             @map("created_by") @db.Uuid
+  updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy        String?             @map("updated_by") @db.Uuid
+  version          Int                 @default(1)
+
+  tenant        Tenant            @relation("CollectionStepTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_step_tenant_id_fkey")
+  ladder        CollectionLadder  @relation(fields: [ladderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "collection_step_ladder_id_fkey")
+  awaitingCases CollectionCase[]  @relation("CollectionCaseAwaitingStep")
+  events        CollectionEvent[]
+
+  @@unique([ladderId, seq], map: "collection_step_ladder_id_seq_key")
+  @@map("collection_step")
+  @@schema("juristic")
+}
+
+/// D-305 / D-326: the collections of one billed party for one unit (open → paused ⇄ open → resolved).
+model CollectionCase {
+  id                 String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String              @map("tenant_id") @db.Uuid
+  buildingId         String              @map("building_id") @db.Uuid
+  unitId             String              @map("unit_id") @db.Uuid
+  partyId            String              @map("party_id") @db.Uuid
+  ladderId           String              @map("ladder_id") @db.Uuid
+  legalForm          BuildingLegalForm   @map("legal_form")
+  state              CollectionCaseState @default(open)
+  anchorOn           DateTime            @map("anchor_on") @db.Date
+  openedAt           DateTime            @default(now()) @map("opened_at") @db.Timestamptz(6)
+  nextSeq            Int                 @default(1) @map("next_seq") @db.SmallInt
+  awaitingStepId     String?             @map("awaiting_step_id") @db.Uuid
+  planId             String?             @map("plan_id") @db.Uuid
+  disputeOpenedAt    DateTime?           @map("dispute_opened_at") @db.Timestamptz(6)
+  disputeReason      String?             @map("dispute_reason")
+  pausedAt           DateTime?           @map("paused_at") @db.Timestamptz(6)
+  pausedDays         Int                 @default(0) @map("paused_days")
+  surchargedThrough  DateTime?           @map("surcharged_through") @db.Date
+  resolvedAt         DateTime?           @map("resolved_at") @db.Timestamptz(6)
+  resolveReason      String?             @map("resolve_reason")
+  workflowInstanceId String?             @map("workflow_instance_id") @db.Uuid
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version            Int                 @default(1)
+
+  tenant           Tenant            @relation("CollectionCaseTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_case_tenant_id_fkey")
+  building         Building          @relation("CollectionCaseBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_case_building_id_fkey")
+  unit             Unit              @relation("CollectionCaseUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_case_unit_id_fkey")
+  party            Party             @relation("CollectionCaseParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_case_party_id_fkey")
+  ladder           CollectionLadder  @relation(fields: [ladderId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_case_ladder_id_fkey")
+  awaitingStep     CollectionStep?   @relation("CollectionCaseAwaitingStep", fields: [awaitingStepId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_case_awaiting_step_id_fkey")
+  plan             PaymentPlan?      @relation("CollectionCasePlan", fields: [planId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_case_plan_id_fkey")
+  workflowInstance WorkflowInstance? @relation("CollectionCaseWorkflow", fields: [workflowInstanceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_case_workflow_instance_id_fkey")
+  events           CollectionEvent[]
+
+  @@unique([partyId, unitId], map: "collection_case_open_key", where: raw("(state = ANY (ARRAY['open'::juristic.collection_case_state, 'paused'::juristic.collection_case_state]))"))
+  @@index([tenantId, state], map: "collection_case_tenant_id_state_idx")
+  @@index([unitId], map: "collection_case_unit_id_idx")
+  @@index([planId], map: "collection_case_plan_id_idx", where: raw("(plan_id IS NOT NULL)"))
+  @@map("collection_case")
+  @@schema("juristic")
+}
+
+/// D-305 / D-326: append-only timeline of a collection case; each step has at most one final outcome.
+model CollectionEvent {
+  id              String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String              @map("tenant_id") @db.Uuid
+  caseId          String              @map("case_id") @db.Uuid
+  kind            CollectionEventKind
+  stepId          String?             @map("step_id") @db.Uuid
+  seq             Int?                @db.SmallInt
+  action          CollectionAction?
+  outcome         CollectionOutcome?
+  reason          String?
+  amount          Decimal?            @db.Decimal(14, 2)
+  invoiceChargeId String?             @map("invoice_charge_id") @db.Uuid
+  documentId      String?             @map("document_id") @db.Uuid
+  actorUserId     String?             @map("actor_user_id") @db.Uuid
+  payload         Json                @default("{}")
+  occurredAt      DateTime            @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  tenant        Tenant          @relation("CollectionEventTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_event_tenant_id_fkey")
+  case          CollectionCase  @relation(fields: [caseId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_event_case_id_fkey")
+  step          CollectionStep? @relation(fields: [stepId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_event_step_id_fkey")
+  invoiceCharge InvoiceCharge?  @relation("CollectionEventCharge", fields: [invoiceChargeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_event_invoice_charge_id_fkey")
+  document      Document?       @relation("CollectionEventDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_event_document_id_fkey")
+  actor         UserAccount?    @relation("CollectionEventActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "collection_event_actor_user_id_fkey")
+
+  @@unique([caseId, stepId], map: "collection_event_step_final_key", where: raw("((kind = 'step'::juristic.collection_event_kind) AND (outcome = ANY (ARRAY['sent'::juristic.collection_outcome, 'skipped'::juristic.collection_outcome, 'refused'::juristic.collection_outcome, 'failed'::juristic.collection_outcome])))"))
+  @@unique([caseId, stepId, outcome], map: "collection_event_step_outcome_key", where: raw("(kind = 'step'::juristic.collection_event_kind)"))
+  @@index([caseId, occurredAt], map: "collection_event_case_id_occurred_at_idx")
+  @@index([tenantId, occurredAt(sort: Desc)], map: "collection_event_tenant_id_occurred_at_idx")
+  @@map("collection_event")
+  @@schema("juristic")
+}
+
+/// D-307 / D-326: printable letters (A4, address window) of a month's statements for owners without digital channels.
+model LetterBatch {
+  id           String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String           @map("tenant_id") @db.Uuid
+  periodKey    String           @map("period_key")
+  state        LetterBatchState @default(queued)
+  statementIds String[]         @default([]) @map("statement_ids") @db.Uuid
+  documentId   String?          @map("document_id") @db.Uuid
+  error        String?
+  requestedBy  String?          @map("requested_by") @db.Uuid
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  finishedAt   DateTime?        @map("finished_at") @db.Timestamptz(6)
+
+  tenant     Tenant       @relation("LetterBatchTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "letter_batch_tenant_id_fkey")
+  document   Document?    @relation("LetterBatchDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "letter_batch_document_id_fkey")
+  requester  UserAccount? @relation("LetterBatchRequester", fields: [requestedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "letter_batch_requested_by_fkey")
+  statements Statement[]
+
+  @@index([tenantId, createdAt(sort: Desc)], map: "letter_batch_tenant_id_created_at_idx")
+  @@map("letter_batch")
+  @@schema("juristic")
+}
+
+/// D-307 / D-326: the monthly statement of one owner party across all their units in the tenant (series STM).
+model Statement {
+  id            String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String       @map("tenant_id") @db.Uuid
+  partyId       String       @map("party_id") @db.Uuid
+  number        String
+  periodKey     String       @map("period_key")
+  periodStart   DateTime     @map("period_start") @db.Date
+  periodEnd     DateTime     @map("period_end") @db.Date
+  language      String       @default("th") @db.Char(2)
+  unitIds       String[]     @default([]) @map("unit_ids") @db.Uuid
+  invoiceIds    String[]     @default([]) @map("invoice_ids") @db.Uuid
+  opening       Decimal      @db.Decimal(14, 2)
+  charges       Decimal      @db.Decimal(14, 2)
+  credits       Decimal      @db.Decimal(14, 2)
+  payments      Decimal      @db.Decimal(14, 2)
+  closing       Decimal      @db.Decimal(14, 2)
+  amountDue     Decimal      @map("amount_due") @db.Decimal(14, 2)
+  snapshot      Json         @default("{}")
+  documentId    String?      @map("document_id") @db.Uuid
+  deliveredVia  String[]     @default([]) @map("delivered_via")
+  letterBatchId String?      @map("letter_batch_id") @db.Uuid
+  paymentIds    String[]     @default([]) @map("payment_ids") @db.Uuid
+  issuedAt      DateTime     @default(now()) @map("issued_at") @db.Timestamptz(6)
+  issuedBy      String?      @map("issued_by") @db.Uuid
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant       @relation("StatementTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "statement_tenant_id_fkey")
+  party       Party        @relation("StatementParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "statement_party_id_fkey")
+  document    Document?    @relation("StatementDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "statement_document_id_fkey")
+  letterBatch LetterBatch? @relation(fields: [letterBatchId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "statement_letter_batch_id_fkey")
+  issuer      UserAccount? @relation("StatementIssuer", fields: [issuedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "statement_issued_by_fkey")
+
+  @@unique([tenantId, partyId, periodStart], map: "statement_tenant_id_party_id_period_key")
+  @@unique([tenantId, number], map: "statement_tenant_id_number_key")
+  @@index([tenantId, periodKey], map: "statement_tenant_id_period_key_idx")
+  @@index([partyId], map: "statement_party_id_idx")
+  @@map("statement")
+  @@schema("juristic")
+}
+
+/// D-270 / D-326: a landlord's invitation of its condo's juristic office for its units in a stub building.
+model WorkspaceLink {
+  id               String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String             @map("tenant_id") @db.Uuid
+  buildingId       String             @map("building_id") @db.Uuid
+  unitIds          String[]           @map("unit_ids") @db.Uuid
+  officeName       String             @map("office_name")
+  officePhone      String?            @map("office_phone")
+  state            WorkspaceLinkState @default(invited)
+  codeHash         Bytes              @map("code_hash")
+  codeHint         String             @map("code_hint")
+  expiresAt        DateTime           @map("expires_at") @db.Timestamptz(6)
+  juristicTenantId String?            @map("juristic_tenant_id") @db.Uuid
+  landlordPartyId  String?            @map("landlord_party_id") @db.Uuid
+  grantIds         String[]           @default([]) @map("grant_ids") @db.Uuid
+  invitedBy        String?            @map("invited_by") @db.Uuid
+  acceptedAt       DateTime?          @map("accepted_at") @db.Timestamptz(6)
+  acceptedBy       String?            @map("accepted_by") @db.Uuid
+  revokedAt        DateTime?          @map("revoked_at") @db.Timestamptz(6)
+  revokeReason     String?            @map("revoke_reason")
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version          Int                @default(1)
+
+  tenant         Tenant       @relation("WorkspaceLinkTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workspace_link_tenant_id_fkey")
+  building       Building     @relation("WorkspaceLinkBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workspace_link_building_id_fkey")
+  juristicTenant Tenant?      @relation("WorkspaceLinkJuristicTenant", fields: [juristicTenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workspace_link_juristic_tenant_id_fkey")
+  landlordParty  Party?       @relation("WorkspaceLinkLandlordParty", fields: [landlordPartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workspace_link_landlord_party_id_fkey")
+  inviter        UserAccount? @relation("WorkspaceLinkInviter", fields: [invitedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workspace_link_invited_by_fkey")
+  accepter       UserAccount? @relation("WorkspaceLinkAccepter", fields: [acceptedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "workspace_link_accepted_by_fkey")
+
+  @@unique([codeHash], map: "workspace_link_code_hash_key")
+  @@index([tenantId, state], map: "workspace_link_tenant_id_state_idx")
+  @@index([juristicTenantId], map: "workspace_link_juristic_tenant_id_idx", where: raw("(juristic_tenant_id IS NOT NULL)"))
+  @@map("workspace_link")
   @@schema("juristic")
 }

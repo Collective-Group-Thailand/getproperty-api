@@ -42,6 +42,30 @@ const flexVersions = (): TemplateSeed['versions'] =>
 /** Operator events of B1.3 (`src/core/notifications/notifiable-events.ts`): th/en text per channel. */
 const OPERATOR_EVENTS: { key: string; description: string; th: [string, string]; en: [string, string] }[] = [
   {
+    key: 'juristic.collection.approval_required',
+    description: 'Owner / manager: a collections ladder step waits for approval (J1.2b, D-305, D-326)',
+    th: [
+      'รออนุมัติขั้นตอนติดตาม ห้อง {{collection.unitNo}}',
+      'ขั้นตอน {{collection.action}} ของห้อง {{collection.unitNo}} ({{collection.partyName}}) ยอดที่ต้องชำระ {{collection.amountDue}} บาท รอการอนุมัติจากผู้จัดการหรือกรรมการ ที่เมนูติดตามยอดค้าง',
+    ],
+    en: [
+      'Collections step to approve — {{collection.unitNo}}',
+      'The {{collection.action}} step for unit {{collection.unitNo}} ({{collection.partyName}}), {{collection.amountDue}} THB to pay, waits for a manager or committee approval under Receivables.',
+    ],
+  },
+  {
+    key: 'juristic.collection.legal_action',
+    description: 'Owner / manager: the start of legal action was recorded after approval (J1.2b, D-326)',
+    th: [
+      'บันทึกการดำเนินคดี ห้อง {{collection.unitNo}}',
+      'บันทึกเริ่มดำเนินการทางกฎหมายสำหรับห้อง {{collection.unitNo}} ({{collection.partyName}}) ยอดที่ต้องชำระ {{collection.amountDue}} บาท แล้ว ติดตามต่อกับทนายของนิติบุคคล',
+    ],
+    en: [
+      'Legal action recorded — {{collection.unitNo}}',
+      'The start of legal action for unit {{collection.unitNo}} ({{collection.partyName}}), {{collection.amountDue}} THB to pay, was recorded. Follow up with the juristic person’s counsel.',
+    ],
+  },
+  {
     key: 'juristic.payment_plan.requested',
     description: 'Owner: a resident asked for a payment plan of a unit (J1.2a, D-308, D-325)',
     th: [
@@ -587,6 +611,7 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
 /** Operator audiences per event: workflow → owner + manager; device/meter health → owner + manager + staff. */
 const operatorAudiences = (key: string): string[] =>
   key.startsWith('workflow.') ||
+  key.startsWith('juristic.collection.') ||
   key === 'billing_cycle.computed' ||
   key === 'slip.review_requested' ||
   key === 'payment.held'
@@ -626,6 +651,120 @@ const RESIDENT_J_EVENTS: {
   th: { subject: string; body: string; sms: string };
   en: { subject: string; body: string; sms: string };
 }[] = [
+  // J1.2b (D-305, D-307, D-326): statements and the collections ladder — "ยอดที่ต้องชำระ", never ลูกหนี้ (PDPA tone)
+  {
+    key: 'juristic.statement.ready',
+    description: 'My monthly statement across my units is ready (J1.2b, D-307, D-326)',
+    th: {
+      subject: 'ใบแจ้งยอด {{statement.number}} ประจำเดือน {{statement.period}}',
+      body: '{{tenant.name}} ส่งใบแจ้งยอดเลขที่ {{statement.number}} ประจำเดือน {{statement.period}} ของห้อง / แปลง {{statement.units}} ยอดที่ต้องชำระ {{statement.amountDue}} บาท เปิดดูและชำระได้ในแอป',
+      sms: 'ใบแจ้งยอด {{statement.number}} ({{statement.period}}) ยอดที่ต้องชำระ {{statement.amountDue}} บาท',
+    },
+    en: {
+      subject: 'Statement {{statement.number}} for {{statement.period}}',
+      body: '{{tenant.name}} sent statement {{statement.number}} for {{statement.period}} covering {{statement.units}}. Amount to pay: {{statement.amountDue}} THB. Open and pay it in the app.',
+      sms: 'Statement {{statement.number}} ({{statement.period}}): {{statement.amountDue}} THB to pay.',
+    },
+  },
+  {
+    key: 'juristic.collection.reminder',
+    description: 'A friendly reminder of what I have to pay for a unit (J1.2b collections ladder, D-326)',
+    th: {
+      subject: 'แจ้งยอดที่ต้องชำระ ห้อง {{collection.unitNo}}',
+      body: '{{tenant.name}} ขอแจ้งยอดที่ต้องชำระของห้อง / แปลง {{collection.unitNo}} จำนวน {{collection.amountDue}} บาท ครบกำหนดตั้งแต่ {{collection.oldestDueOn}} ชำระได้ในแอป หากชำระแล้ว ขออภัยและขอบคุณค่ะ',
+      sms: 'ห้อง {{collection.unitNo}} ยอดที่ต้องชำระ {{collection.amountDue}} บาท ครบกำหนด {{collection.oldestDueOn}} หากชำระแล้วขออภัย',
+    },
+    en: {
+      subject: 'Amount to pay — unit {{collection.unitNo}}',
+      body: '{{tenant.name}}: the amount to pay for unit {{collection.unitNo}} is {{collection.amountDue}} THB, due since {{collection.oldestDueOn}}. You can pay in the app. If you have already paid, thank you and please ignore this message.',
+      sms: 'Unit {{collection.unitNo}}: {{collection.amountDue}} THB to pay, due since {{collection.oldestDueOn}}.',
+    },
+  },
+  {
+    key: 'juristic.collection.surcharge_added',
+    description: 'A late-payment surcharge will be on my next invoice (J1.2b, D-305, D-326)',
+    th: {
+      subject: 'เงินเพิ่มกรณีชำระล่าช้า ห้อง {{collection.unitNo}}',
+      body: '{{tenant.name}} แจ้งว่ามีเงินเพิ่มกรณีชำระล่าช้า {{collection.amount}} บาท ของห้อง / แปลง {{collection.unitNo}} ซึ่งจะอยู่ในใบแจ้งหนี้ถัดไป ยอดที่ต้องชำระตอนนี้ {{collection.amountDue}} บาท',
+      sms: 'ห้อง {{collection.unitNo}} มีเงินเพิ่ม {{collection.amount}} บาท ในใบแจ้งหนี้ถัดไป',
+    },
+    en: {
+      subject: 'Late-payment surcharge — unit {{collection.unitNo}}',
+      body: '{{tenant.name}}: a late-payment surcharge of {{collection.amount}} THB for unit {{collection.unitNo}} will be on your next invoice. Amount to pay now: {{collection.amountDue}} THB.',
+      sms: 'Unit {{collection.unitNo}}: a {{collection.amount}} THB surcharge will be on your next invoice.',
+    },
+  },
+  {
+    key: 'juristic.collection.notice_letter',
+    description: 'A notice letter about what I have to pay was issued (J1.2b, D-326)',
+    th: {
+      subject: 'หนังสือแจ้งยอดที่ต้องชำระ ห้อง {{collection.unitNo}}',
+      body: '{{tenant.name}} ส่งหนังสือแจ้งยอดที่ต้องชำระของห้อง / แปลง {{collection.unitNo}} จำนวน {{collection.amountDue}} บาท กรุณาชำระหรือติดต่อสำนักงานนิติบุคคล',
+      sms: 'ห้อง {{collection.unitNo}} มีหนังสือแจ้งยอดที่ต้องชำระ {{collection.amountDue}} บาท',
+    },
+    en: {
+      subject: 'Notice of the amount to pay — unit {{collection.unitNo}}',
+      body: '{{tenant.name}} sent a notice letter for unit {{collection.unitNo}}: {{collection.amountDue}} THB to pay. Please pay or contact the juristic office.',
+      sms: 'Unit {{collection.unitNo}}: notice letter, {{collection.amountDue}} THB to pay.',
+    },
+  },
+  {
+    key: 'juristic.collection.lawyer_letter',
+    description: "A lawyer's letter about what I have to pay was issued after approval (J1.2b, D-326)",
+    th: {
+      subject: 'หนังสือจากทนายความ ห้อง {{collection.unitNo}}',
+      body: '{{tenant.name}} แจ้งว่ามีหนังสือจากทนายความเรื่องยอดที่ต้องชำระของห้อง / แปลง {{collection.unitNo}} จำนวน {{collection.amountDue}} บาท กรุณาติดต่อสำนักงานนิติบุคคล',
+      sms: 'ห้อง {{collection.unitNo}} มีหนังสือจากทนายความ ยอดที่ต้องชำระ {{collection.amountDue}} บาท',
+    },
+    en: {
+      subject: "Lawyer's letter — unit {{collection.unitNo}}",
+      body: "{{tenant.name}}: a lawyer's letter about the {{collection.amountDue}} THB to pay for unit {{collection.unitNo}} was issued. Please contact the juristic office.",
+      sms: "Unit {{collection.unitNo}}: lawyer's letter, {{collection.amountDue}} THB to pay.",
+    },
+  },
+  {
+    key: 'juristic.collection.services_suspended',
+    description:
+      'Named common services were suspended after approval — never utilities or entry (J1.2b, D-326)',
+    th: {
+      subject: 'ระงับบริการส่วนกลาง ห้อง {{collection.unitNo}}',
+      body: '{{tenant.name}} ระงับบริการส่วนกลาง ({{collection.services}}) ของห้อง / แปลง {{collection.unitNo}} ชั่วคราวตามมติ เนื่องจากยอดที่ต้องชำระ {{collection.amountDue}} บาท น้ำ ไฟ และการเข้าออกห้องไม่ถูกระงับ บริการจะกลับมาเมื่อชำระแล้ว',
+      sms: 'ห้อง {{collection.unitNo}} ระงับบริการส่วนกลางชั่วคราว ({{collection.services}}) จนกว่าจะชำระ {{collection.amountDue}} บาท',
+    },
+    en: {
+      subject: 'Common services suspended — unit {{collection.unitNo}}',
+      body: '{{tenant.name}} has suspended common services ({{collection.services}}) for unit {{collection.unitNo}} while {{collection.amountDue}} THB remains to pay. Water, power and entry to your unit are not affected; the services return once paid.',
+      sms: 'Unit {{collection.unitNo}}: common services ({{collection.services}}) suspended until {{collection.amountDue}} THB is paid.',
+    },
+  },
+  {
+    key: 'juristic.collection.dispute_opened',
+    description: 'My dispute on a unit was recorded; reminders pause (J1.2b, D-326)',
+    th: {
+      subject: 'รับเรื่องโต้แย้งยอด ห้อง {{collection.unitNo}}',
+      body: '{{tenant.name}} รับเรื่องโต้แย้งยอดของห้อง / แปลง {{collection.unitNo}} แล้ว ({{collection.reason}}) ระหว่างตรวจสอบจะไม่มีการแจ้งเตือนเรื่องยอดที่ต้องชำระ',
+      sms: 'รับเรื่องโต้แย้งยอดห้อง {{collection.unitNo}} แล้ว ระหว่างตรวจสอบงดแจ้งเตือน',
+    },
+    en: {
+      subject: 'Dispute recorded — unit {{collection.unitNo}}',
+      body: '{{tenant.name}} recorded your dispute for unit {{collection.unitNo}} ({{collection.reason}}). No reminders are sent while it is reviewed.',
+      sms: 'Dispute for unit {{collection.unitNo}} recorded; reminders paused.',
+    },
+  },
+  {
+    key: 'juristic.collection.dispute_closed',
+    description: 'The review of my dispute on a unit is finished (J1.2b, D-326)',
+    th: {
+      subject: 'ผลการตรวจสอบเรื่องโต้แย้ง ห้อง {{collection.unitNo}}',
+      body: '{{tenant.name}} ตรวจสอบเรื่องโต้แย้งของห้อง / แปลง {{collection.unitNo}} แล้ว: {{collection.reason}} ยอดที่ต้องชำระตอนนี้ {{collection.amountDue}} บาท',
+      sms: 'ตรวจสอบเรื่องโต้แย้งห้อง {{collection.unitNo}} แล้ว ยอดที่ต้องชำระ {{collection.amountDue}} บาท',
+    },
+    en: {
+      subject: 'Dispute reviewed — unit {{collection.unitNo}}',
+      body: '{{tenant.name}} finished reviewing your dispute for unit {{collection.unitNo}}: {{collection.reason}}. Amount to pay now: {{collection.amountDue}} THB.',
+      sms: 'Dispute for unit {{collection.unitNo}} reviewed; {{collection.amountDue}} THB to pay.',
+    },
+  },
   {
     key: 'juristic.payment_plan.approved',
     description: 'My payment plan was approved: instalments and the first due date (J1.2a, D-325)',
@@ -710,6 +849,8 @@ const residentJTemplates = (): TemplateSeed[] =>
       versions: [
         { language: 'th' as const, subject: null, body: `${e.th.body}\n{{link}}` },
         { language: 'en' as const, subject: null, body: `${e.en.body}\n{{link}}` },
+        // J1.2b (D-326): the statement goes out as a LINE Flex summary (version 2)
+        ...(e.key === 'juristic.statement.ready' ? flexVersions() : []),
       ],
     },
     {

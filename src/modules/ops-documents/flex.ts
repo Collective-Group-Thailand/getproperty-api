@@ -254,6 +254,45 @@ export function depositStatementBubble(
   };
 }
 
+export interface StatementItem {
+  number: string;
+  issuerName: string;
+  periodKey: string;
+  units: string[];
+  charges: string;
+  payments: string;
+  amountDue: string;
+  link: string;
+}
+
+/**
+ * D-307 / D-326 (J1.2b): the owner statement summary — every unit of the owner in one bubble, the month's charges and
+ * payments and what is to pay now ("ยอดที่ต้องชำระ"; never the word ลูกหนี้ in resident messages).
+ */
+export function statementBubble(s: StatementItem, brand: FlexStyle = DEFAULT_FLEX_STYLE): FlexBubble {
+  const units =
+    s.units.length > 6 ? `${s.units.slice(0, 6).join(', ')} +${s.units.length - 6}` : s.units.join(', ');
+  return {
+    type: 'bubble',
+    size: 'kilo',
+    header: header('ใบแจ้งยอด', `${s.issuerName} · ${s.periodKey}`, brand),
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'sm',
+      contents: [
+        row('เลขที่', s.number),
+        row('ห้อง / แปลง', units || '-'),
+        row('เรียกเก็บเดือนนี้', baht(s.charges)),
+        row('รับชำระแล้ว', baht(s.payments)),
+        sep(),
+        row('ยอดที่ต้องชำระ', baht(s.amountDue), { weight: 'bold', color: brand.primary }),
+      ],
+    },
+    footer: { type: 'box', layout: 'vertical', contents: [button('ดูใบแจ้งยอด', s.link, brand)] },
+  };
+}
+
 /** One bubble, or a carousel for several (a resident with several units); at most 12 bubbles. */
 export function flexMessage(altText: string, bubbles: FlexBubble[]): FlexMessage {
   if (!bubbles.length) throw new RangeError('a Flex message needs at least one bubble');

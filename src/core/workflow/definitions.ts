@@ -160,6 +160,19 @@ export const WORKFLOW_DEFINITIONS: readonly WorkflowDefinitionSpec[] = [
     ],
   },
   {
+    key: 'collection_case',
+    version: 1,
+    description:
+      'D-305 / D-326 (J1.2b): collections of one billed party × unit of a juristic tenant — open while something is overdue; paused while a payment plan is active or a dispute is open; resolved when nothing is owed. Ladder steps run from the hourly `collections` job (exactly once per case).',
+    initial: 'open',
+    states: [{ key: 'open' }, { key: 'paused' }, { key: 'resolved', terminal: true }],
+    transitions: [
+      { from: 'open', event: 'pause', to: 'paused' },
+      { from: 'paused', event: 'resume', to: 'open' },
+      { from: ['open', 'paused'], event: 'resolve', to: 'resolved' },
+    ],
+  },
+  {
     key: 'service_request',
     version: 1,
     description:

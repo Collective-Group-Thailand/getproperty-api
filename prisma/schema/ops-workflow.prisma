@@ -28,6 +28,8 @@ enum DocumentType {
   rent_certificate
   income_summary
   debt_clearance
+  owner_statement
+  collection_letter
 
   @@map("document_type")
   @@schema("ops")
@@ -85,6 +87,7 @@ model WorkflowInstance {
   serviceRequests  ServiceRequest[]
   workOrders       WorkOrder[]
   tm30Exports Tm30Export[]
+  collectionCases CollectionCase[] @relation("CollectionCaseWorkflow")
 
   @@unique([subjectType, subjectId, definitionId], map: "workflow_instance_subject_type_subject_id_definition_id_key", where: raw("(closed_at IS NULL)"))
   @@index([tenantId, definitionId, state], map: "workflow_instance_tenant_id_definition_id_state_idx")

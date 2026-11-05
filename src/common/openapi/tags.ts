@@ -91,6 +91,14 @@ export const API_TAGS: Record<string, string> = {
     'Payment plans of a juristic tenant: proposals and resident requests, approval (owner / manager / committee), instalments, default and cancel (D-308, D-325).',
   'owner.juristicDebtClearances':
     'Debt clearance certificates (หนังสือรับรองการปลอดหนี้): issued only when nothing is outstanding, number DCL, verification QR (D-306, D-325).',
+  'owner.juristicCollections':
+    'Collections ladder per legal form, collection cases (timeline, disputes, approvals), receivables console, aging and collection-rate reports (D-305, D-326).',
+  'owner.juristicStatements':
+    'Owner statements across all units of an owner (number STM, PDF, LINE Flex), statement payments, printable letter batches (D-307, D-326).',
+  'owner.juristicWorkspace':
+    'D-270 workspace of a juristic office: the units landlords linked, common-fee bills to those landlords (D-270, D-326).',
+  'owner.juristicWorkspaceInvitations':
+    "A landlord invites its condo's juristic office for its units in a stub building; list and revoke (D-270, D-326).",
   'owner.paymentMandates':
     'Automatic payment mandates (direct debit / card, channel recurring; fake until O-020) set up by residents (D-308, D-325).',
   'owner.juristicBudgets':
@@ -290,6 +298,7 @@ export const API_TAGS: Record<string, string> = {
     'Utility loss per billing period with suspects and trend (D-032); billed units from readings until B4.',
   'resident.usage':
     'My daily usage from the meters of my leased unit, or of a unit I live in without a lease (D-063, D-322).',
+  'resident.statements': 'My owner statements across my units, with their PDF (D-307, D-326).',
   'resident.collections':
     'My payment plans, debt clearance certificates and automatic payments for a unit I hold a role on (D-306, D-308, D-325).',
   'resident.units':
@@ -344,6 +353,8 @@ export const API_TAGS: Record<string, string> = {
   'prospect.rentRecord': 'My rent record, shared with an enquiry or as a letter (D-256).',
   'prospect.contracts':
     'Contract documents I sign as a prospect (reservation): read and e-sign (D-062, D-294).',
+  'public.juristicWorkspaces':
+    "A condo's juristic office accepts a landlord's invitation and signs in to its free workspace (D-270, D-326).",
   'public.documents':
     'Check a document issued through getproperty (debt clearance certificate) by its verification code — unit number and initials only (D-306).',
   'public.rentRecords': 'Check a rent record letter by its verification code (D-256).',

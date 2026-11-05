@@ -12,19 +12,25 @@ import {
   evaluateEntryNotice,
   evaluateForbiddenClause,
   evaluateInvoiceLeadTime,
+  evaluateJuristicNoCutoff,
   evaluateLateFeePolicy,
+  evaluateLetterWording,
   evaluateNoCutoff,
   evaluateNoForfeiture,
   evaluateNoMidtermIncrease,
   evaluateNoRenewalFee,
   evaluateNoticePeriod,
   evaluateScope,
+  evaluateSurchargeCap,
+  evaluateSuspendServices,
   evaluateTariffCap,
   evaluateTerminationNotice,
   evaluateWaterMinimum,
   type ForbiddenClauseContext,
   type InvoiceLeadTimeContext,
+  type JuristicNoCutoffContext,
   type LateFeePolicyContext,
+  type LetterWordingContext,
   type MidtermIncreaseContext,
   type NoCutoffContext,
   type NoForfeitureContext,
@@ -32,6 +38,8 @@ import {
   type NoticePeriodContext,
   type RuleCheck,
   type ScopeContext,
+  type SurchargeCapContext,
+  type SuspendServicesContext,
   type TariffCapContext,
   type TerminationNoticeContext,
   type WaterMinimumContext,
@@ -46,7 +54,8 @@ import {
  * settings it reads and a pure `evaluate(context)` (evaluators.ts); `rules.spec.ts` proves pass, warning and refusal
  * for every rule. `pnpm compliance:report` prints the table into docs/compliance.md.
  */
-export type RuleTarget = 'tenant' | 'lease' | 'rate_plan' | 'invoice' | 'deposit' | 'access' | 'notice';
+export type RuleTarget =
+  'tenant' | 'lease' | 'rate_plan' | 'invoice' | 'deposit' | 'access' | 'notice' | 'collection_step';
 
 /** The context each rule's evaluator takes. */
 export interface RuleContexts {
@@ -68,6 +77,13 @@ export interface RuleContexts {
   'compliance.no_cutoff': NoCutoffContext;
   'compliance.forbidden_clause': ForbiddenClauseContext;
   'compliance.late_fee_policy': LateFeePolicyContext;
+  'compliance.condo_act_surcharge_cap': SurchargeCapContext;
+  'compliance.condo_act_suspend_services': SuspendServicesContext;
+  'compliance.condo_act_letter_wording': LetterWordingContext;
+  'compliance.land_allocation_surcharge_cap': SurchargeCapContext;
+  'compliance.land_allocation_suspend_services': SuspendServicesContext;
+  'compliance.land_allocation_transfer_notice': LetterWordingContext;
+  'compliance.juristic_no_utility_cutoff': JuristicNoCutoffContext;
 }
 export type ComplianceRuleId = keyof RuleContexts;
 
@@ -85,6 +101,9 @@ interface RuleDef<K extends ComplianceRuleId> {
 export type ComplianceRuleDef = { [K in ComplianceRuleId]: RuleDef<K> }[ComplianceRuleId];
 
 const ANN = 'ประกาศ คกก.ว่าด้วยสัญญา 2568';
+const CONDO = 'พ.ร.บ.อาคารชุด condo_act';
+const LAND = 'พ.ร.บ.การจัดสรรที่ดิน 2543 land_allocation_act';
+const O038 = 'section to be confirmed by counsel (O-038)';
 
 export const COMPLIANCE_RULES: readonly ComplianceRuleDef[] = [
   {
@@ -270,6 +289,105 @@ export const COMPLIANCE_RULES: readonly ComplianceRuleDef[] = [
     descriptionEn: 'Late fees only when enabled and stated in the contract (proportionate) ⚖.',
     settingsUsed: ['late_fee.enabled'],
     evaluate: evaluateLateFeePolicy,
+  },
+  // J1.2b (D-305, D-326; docs/juristic-gap.md §6): juristic collections — identifiers only, never statute text; every
+  // section is to be confirmed by counsel (O-038); the gating settings default to the safe value (off).
+  {
+    id: 'compliance.condo_act_surcharge_cap',
+    legalRef: `${CONDO}:late_payment_surcharge — ${O038}`,
+    defaultSeverity: 'block',
+    appliesTo: ['collection_step'],
+    descriptionTh: 'เงินเพิ่มกรณีชำระล่าช้า (อาคารชุด) ต้องเปิดใช้และไม่เกินเพดานที่กำหนด ⚖',
+    descriptionEn: 'Late-payment surcharge (condominium) only when enabled and within the configured cap ⚖.',
+    settingsUsed: [
+      'juristic.surcharge.enabled',
+      'juristic.surcharge.rate_pct_per_year',
+      'juristic.surcharge.condo_act.rate_cap',
+      'juristic.surcharge.condo_act.escalated_rate_cap',
+      'juristic.surcharge.condo_act.escalate_after_days',
+    ],
+    evaluate: evaluateSurchargeCap,
+  },
+  {
+    id: 'compliance.condo_act_suspend_services',
+    legalRef: `${CONDO}:suspension_of_common_services — ${O038}`,
+    defaultSeverity: 'block',
+    appliesTo: ['collection_step'],
+    descriptionTh:
+      'ระงับบริการส่วนกลางได้เฉพาะเมื่อเปิดใช้ ค้างชำระครบระยะขั้นต่ำ และได้รับอนุมัติ — ไม่ตัดน้ำไฟหรือการเข้าห้อง ⚖',
+    descriptionEn:
+      'Common services may be suspended only when enabled, after the minimum overdue period and with an approval — never utilities or entry ⚖.',
+    settingsUsed: [
+      'juristic.suspend_services.enabled',
+      'juristic.suspend_services.condo_act.min_overdue_days',
+      'juristic.suspend_services.services',
+    ],
+    evaluate: evaluateSuspendServices,
+  },
+  {
+    id: 'compliance.condo_act_letter_wording',
+    legalRef: `${CONDO}:demand_letters — ${O038}`,
+    defaultSeverity: 'block',
+    appliesTo: ['collection_step'],
+    descriptionTh: 'หนังสือแจ้งเตือน / หนังสือทนายส่งได้เฉพาะแบบที่ทนายตรวจแล้ว ⚖',
+    descriptionEn: 'Notice and lawyer letters only from a counsel-approved template ⚖.',
+    settingsUsed: ['juristic.letters.condo_act.template_version'],
+    evaluate: evaluateLetterWording,
+  },
+  {
+    id: 'compliance.land_allocation_surcharge_cap',
+    legalRef: `${LAND}:late_payment_surcharge — ${O038}`,
+    defaultSeverity: 'block',
+    appliesTo: ['collection_step'],
+    descriptionTh: 'เงินเพิ่มกรณีชำระล่าช้า (หมู่บ้านจัดสรร) ต้องเปิดใช้และไม่เกินเพดานที่กำหนด ⚖',
+    descriptionEn:
+      'Late-payment surcharge (housing estate) only when enabled and within the configured cap ⚖.',
+    settingsUsed: [
+      'juristic.surcharge.enabled',
+      'juristic.surcharge.rate_pct_per_year',
+      'juristic.surcharge.land_allocation_act.rate_cap',
+      'juristic.surcharge.land_allocation_act.escalated_rate_cap',
+      'juristic.surcharge.land_allocation_act.escalate_after_days',
+    ],
+    evaluate: evaluateSurchargeCap,
+  },
+  {
+    id: 'compliance.land_allocation_suspend_services',
+    legalRef: `${LAND}:suspension_of_services — ${O038}`,
+    defaultSeverity: 'block',
+    appliesTo: ['collection_step'],
+    descriptionTh:
+      'ระงับบริการสาธารณะของหมู่บ้านได้เฉพาะเมื่อเปิดใช้ ค้างชำระครบระยะขั้นต่ำ และได้รับอนุมัติ — ไม่ตัดน้ำไฟหรือการเข้าบ้าน ⚖',
+    descriptionEn:
+      'Estate services may be suspended only when enabled, after the minimum overdue period and with an approval — never utilities or entry ⚖.',
+    settingsUsed: [
+      'juristic.suspend_services.enabled',
+      'juristic.suspend_services.land_allocation_act.min_overdue_days',
+      'juristic.suspend_services.services',
+    ],
+    evaluate: evaluateSuspendServices,
+  },
+  {
+    id: 'compliance.land_allocation_transfer_notice',
+    legalRef: `${LAND}:arrears_and_transfer — ${O038}`,
+    defaultSeverity: 'block',
+    appliesTo: ['collection_step'],
+    descriptionTh:
+      'ข้อความเรื่องยอดค้างกับการจดทะเบียนโอน และหนังสือแจ้งเตือน ใช้ได้เฉพาะแบบที่ทนายตรวจแล้ว ⚖',
+    descriptionEn:
+      'Wording about arrears and the registration of a transfer, and demand letters, only from a counsel-approved template ⚖.',
+    settingsUsed: ['juristic.letters.land_allocation_act.template_version'],
+    evaluate: evaluateLetterWording,
+  },
+  {
+    id: 'compliance.juristic_no_utility_cutoff',
+    legalRef: 'D-024 / D-157 (platform rule, not a statute) — no utility cut-off for arrears',
+    defaultSeverity: 'block',
+    appliesTo: ['collection_step', 'access'],
+    descriptionTh: 'ขั้นตอนติดตามยอดค้างไม่ตัดไฟ ตัดน้ำ หรือระงับการเข้าห้อง / ประตูหมู่บ้าน',
+    descriptionEn: 'No collections step cuts power or water or revokes unit / gate access for arrears.',
+    settingsUsed: [],
+    evaluate: evaluateJuristicNoCutoff,
   },
 ];
 

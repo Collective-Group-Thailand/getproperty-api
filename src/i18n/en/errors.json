@@ -283,6 +283,34 @@
     "invoice_immutable": {
       "title": "Issued invoices are immutable",
       "detail": "An issued invoice cannot be changed or deleted; issue a credit/debit note or void and re-issue it."
+    },
+    "condo_act_surcharge_cap": {
+      "title": "Surcharge not available (condominium)",
+      "detail": "A late-payment surcharge runs only when switched on with a cap confirmed by counsel, and never above it (D-305, O-038)."
+    },
+    "condo_act_suspend_services": {
+      "title": "Common services cannot be suspended",
+      "detail": "Only common services, only when switched on, after the minimum overdue period and with an approval — never utilities or entry (D-305, O-038)."
+    },
+    "condo_act_letter_wording": {
+      "title": "Letter not available yet",
+      "detail": "Notice and lawyer letters are sent only from a counsel-approved template (D-305, O-038)."
+    },
+    "land_allocation_surcharge_cap": {
+      "title": "Surcharge not available (housing estate)",
+      "detail": "A late-payment surcharge runs only when switched on with a cap confirmed by counsel, and never above it (D-305, O-038)."
+    },
+    "land_allocation_suspend_services": {
+      "title": "Estate services cannot be suspended",
+      "detail": "Only estate services, only when switched on, after the minimum overdue period and with an approval — never utilities or entry (D-305, O-038)."
+    },
+    "land_allocation_transfer_notice": {
+      "title": "Wording not available yet",
+      "detail": "Wording on arrears and the registration of a transfer, and demand letters, only from a counsel-approved template (D-305, O-038)."
+    },
+    "juristic_no_utility_cutoff": {
+      "title": "No cut-off for arrears",
+      "detail": "No collections step cuts power or water or revokes unit / gate access for arrears (D-024, D-157)."
     }
   },
   "device": {
@@ -1557,6 +1585,48 @@
     "invalid_state": {
       "title": "Debt clearance cannot change",
       "detail": "The debt clearance request is not in a state that allows this action."
+    }
+  },
+  "collections": {
+    "legal_review_required": {
+      "title": "Legal review required",
+      "detail": "This measure cannot be enabled until counsel confirms its rule ({reason}) (D-305, O-038)."
+    },
+    "approval_required": {
+      "title": "Approval required",
+      "detail": "Suspension of services, lawyer letters and legal action always need an approval."
+    },
+    "invalid_state": {
+      "title": "Case cannot change",
+      "detail": "The state of this collection case does not allow this action."
+    },
+    "no_pending_approval": {
+      "title": "Nothing waits for approval",
+      "detail": "This collection case has no step waiting for an approval."
+    }
+  },
+  "statement": {
+    "nothing_due": {
+      "title": "Nothing to pay",
+      "detail": "Every invoice of this statement is already paid."
+    },
+    "document_pending": {
+      "title": "Document being prepared",
+      "detail": "The PDF is being prepared; try again shortly."
+    }
+  },
+  "workspace": {
+    "not_a_stub": {
+      "title": "This building already has its juristic person",
+      "detail": "Only a condo without a juristic person on getproperty can be offered a workspace (D-270)."
+    },
+    "invitation_invalid": {
+      "title": "Invitation not found",
+      "detail": "The invitation code is wrong, used, revoked or expired."
+    },
+    "invalid_state": {
+      "title": "Invitation cannot change",
+      "detail": "The state of this invitation does not allow this action."
     }
   }
 }

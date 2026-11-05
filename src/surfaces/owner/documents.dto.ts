@@ -158,6 +158,8 @@ export enum ExportKindName {
   LossReportCsv = 'loss_report_csv',
   EtaxMonthlyXlsx = 'etax_monthly_xlsx',
   PayrollDeduction = 'payroll_deduction',
+  /** J1.2b (D-326): the juristic receivables list as CSV. */
+  JuristicReceivablesCsv = 'juristic_receivables_csv',
 }
 
 /** `ops.job_status`. */

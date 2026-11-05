@@ -30,9 +30,13 @@ import { InvoiceDocumentsService } from './ops-documents/invoice-documents.servi
 import { EtaxHooks } from './ops-etax/etax.hooks';
 import { EtaxService } from './ops-etax/etax.service';
 import { JuristicBudgetsService } from './ops-juristic/budgets.service';
+import { CollectionReportsService } from './ops-juristic/collection-reports.service';
+import { CollectionsService } from './ops-juristic/collections.service';
 import { DebtClearancesService } from './ops-juristic/debt-clearances.service';
+import { JuristicWorkspaceService } from './ops-juristic/juristic-workspace.service';
 import { PaymentPlansService } from './ops-juristic/payment-plans.service';
 import { JuristicRegisterService } from './ops-juristic/register.service';
+import { StatementsService } from './ops-juristic/statements.service';
 import { ContractLibraryService } from './ops-leases/contract-library.service';
 import { ContractRenderer } from './ops-leases/contract-renderer';
 import { ContractsService } from './ops-leases/contracts.service';
@@ -142,6 +146,10 @@ const SERVICES = [
   JuristicBudgetsService,
   PaymentPlansService,
   DebtClearancesService,
+  CollectionsService,
+  StatementsService,
+  CollectionReportsService,
+  JuristicWorkspaceService,
   ContractRenderer,
   LeasesService,
   LeaseStampDutyService,

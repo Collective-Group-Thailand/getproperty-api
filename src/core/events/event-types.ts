@@ -307,6 +307,47 @@ export const DOMAIN_EVENT_TYPES = {
   'juristic.payment_plan.defaulted':
     'A payment plan defaulted: an instalment unpaid past the default days; future instalments cancelled, the rest billed, the ladder resumes (D-325).',
   'juristic.payment_plan.completed': 'Every instalment of a payment plan was paid (D-325).',
+  // J1.2b collections ladder, statements, D-270 workspace (D-305, D-307, D-270, D-326)
+  'juristic.collection_case.opened':
+    'A collection case opened for a billed party × unit of a juristic tenant (an invoice became overdue, D-305).',
+  'juristic.collection_case.paused':
+    'A collection case paused: a payment plan became active or a dispute was opened (D-305, D-326).',
+  'juristic.collection_case.resumed':
+    'A collection case resumed: the plan defaulted / ended or the dispute was closed (D-305, D-326).',
+  'juristic.collection_case.resolved': 'A collection case was resolved: nothing is owed any more (D-326).',
+  'juristic.collection.step_executed':
+    'A ladder step ran for a case (reminder, surcharge, letter, suspension, legal action) or was skipped / refused (D-305, D-326).',
+  'juristic.collection.approval_required':
+    'A ladder step that needs approval is due and waits for the manager / committee (D-305, D-326).',
+  'juristic.collection.reminder': 'A ladder reminder for the billed party (resident notice, D-326).',
+  'juristic.collection.surcharge_added':
+    'A ladder surcharge was queued for the next invoice (resident notice, D-305, D-326).',
+  'juristic.collection.notice_letter': 'A ladder notice letter was issued (resident notice, D-326).',
+  'juristic.collection.lawyer_letter': 'A ladder lawyer letter was issued (resident notice, D-326).',
+  'juristic.collection.services_suspended':
+    'Named common services were suspended after approval (resident notice; never utilities or entry, D-326).',
+  'juristic.collection.legal_action':
+    'The start of legal action was recorded after approval (operators, D-326).',
+  'juristic.collection.dispute_opened':
+    'A dispute was opened on a collection case; the ladder pauses (resident notice, D-326).',
+  'juristic.collection.dispute_closed':
+    'A dispute on a collection case was closed; the ladder resumes (resident notice, D-326).',
+  'juristic.collection_ladder.changed': 'A step of a collections ladder was edited (D-326).',
+  'juristic.statement.issued':
+    'An owner statement was issued (number STM); the worker renders its PDF (D-307, D-326).',
+  'juristic.statement.ready':
+    'An owner statement PDF is ready; the party gets the LINE Flex summary / e-mail (D-307, D-326).',
+  'juristic.statement.paid':
+    'A payment of an owner statement was booked over its invoices (one payment per unit, D-326).',
+  'juristic.letter_batch.requested':
+    'A printable letter batch of statements was requested; the worker renders it (D-307, D-326).',
+  'juristic.letter_batch.ready': 'A printable letter batch PDF is ready (D-326).',
+  'juristic.workspace.invited':
+    "A landlord invited its condo's juristic office for its units in a stub building (D-270, D-326).",
+  'juristic.workspace.linked':
+    'A juristic office accepted the invitation: unit grants created, workspace linked (D-270, D-326).',
+  'juristic.workspace.revoked':
+    "A landlord revoked a juristic workspace invitation or link; the office's grants are revoked (D-270, D-326).",
   'juristic.debt_clearance.requested':
     'A debt clearance certificate was requested and waits for its fee / the owner (D-306, D-325).',
   'juristic.debt_clearance.issued':

@@ -1,3 +1,4 @@
+import { isJuristicTenantType } from '@collective/asset-core';
 import { Semaphore } from '@common/concurrency/semaphore';
 import { userIdOf } from '@common/context/actor';
 import { RequestContext } from '@common/context/request-context';
@@ -341,7 +342,13 @@ export class InvoicesService extends TenantScopedRepository {
       }),
     ];
     const lateFees = inv.lines.filter((l) => l.lineKind === 'late_fee');
-    if (lateFees.length) {
+    // D-326 (J1.2b): a juristic tenant's late fees are ladder surcharges, checked by the legal form's surcharge rule
+    // when they are queued (compliance.condo_act_surcharge_cap / land_allocation_surcharge_cap); D-045's lease rule
+    // does not apply to them
+    const juristic = isJuristicTenantType(
+      (await tx.tenant.findUnique({ where: { id: inv.tenantId }, select: { type: true } }))?.type,
+    );
+    if (lateFees.length && !juristic) {
       const enabled = await this.settings.at('late_fee.enabled', at, { tenantId: inv.tenantId });
       const lease = inv.leaseId
         ? await tx.lease.findUnique({ where: { id: inv.leaseId }, include: { lines: true } })

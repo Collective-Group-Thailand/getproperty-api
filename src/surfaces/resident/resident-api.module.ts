@@ -36,6 +36,7 @@ import {
   ResidentDocumentsController,
   ResidentNotificationPreferencesController,
 } from './resident-profile.controller';
+import { ResidentBudgetController, ResidentStatementsController } from './resident-statements.controller';
 import { ResidentCsatSurveyController } from './resident-survey.controller';
 import {
   ResidentMeUnitsController,
@@ -53,6 +54,8 @@ import {
     ResidentUnitInvitationsController,
     ResidentUnitUsageController,
     ResidentUnitCollectionsController,
+    ResidentStatementsController,
+    ResidentBudgetController,
     ResidentReviewsController,
     ResidentIdentitiesController,
     ResidentIdentityVerificationController,
