@@ -93,6 +93,10 @@ export const OWNER_MENU: readonly MenuEntry[] = [
     tenantTypes: JURISTIC,
   },
   { key: 'juristic_bank_statements', anyOf: ['juristic.accounting.manage'], tenantTypes: JURISTIC },
+  // J2.2 (D-310, D-331): vendors, service contracts, quotation rounds
+  { key: 'juristic_vendors', anyOf: ['juristic.vendor.read'], tenantTypes: JURISTIC },
+  { key: 'juristic_vendor_contracts', anyOf: ['juristic.vendor.read'], tenantTypes: JURISTIC },
+  { key: 'juristic_quotations', anyOf: ['juristic.vendor.read'], tenantTypes: JURISTIC },
   // J4.1 (D-315, D-327): the gate — juristic estates always; apartments / PM companies once the module is switched on
   { key: 'juristic_gate', anyOf: ['gate.read'], tenantTypes: JURISTIC },
   { key: 'gate', anyOf: ['gate.read'], flag: 'module.gate', tenantTypes: ['apartment', 'pm_company'] },

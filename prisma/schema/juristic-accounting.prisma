@@ -197,6 +197,7 @@ model Account {
   expenseLines        ExpenseRequestLine[]
   pettyCashEntries    PettyCashEntry[]
   bankStatements      BankStatement[]
+  vendorContracts     VendorContract[]
 
   @@unique([tenantId, code], map: "account_tenant_id_code_key")
   @@unique([tenantId, role], map: "account_tenant_id_role_key", where: raw("((role IS NOT NULL) AND (fund_id IS NULL))"))
@@ -374,6 +375,10 @@ model ExpenseRequest {
   paidBy            String?               @map("paid_by") @db.Uuid
   journalId         String?               @map("journal_id") @db.Uuid
   note              String?
+  /// J2.2 (D-331): the vendor paid, the contract / instalment and the quotation round behind the request.
+  vendorId          String?               @map("vendor_id") @db.Uuid
+  vendorContractId  String?               @map("vendor_contract_id") @db.Uuid
+  quotationRoundId  String?               @map("quotation_round_id") @db.Uuid
   createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy         String?               @map("created_by") @db.Uuid
   updatedAt         DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -395,8 +400,15 @@ model ExpenseRequest {
   approvals      ExpenseApproval[]
   certificate    WithholdingCertificate?
   pettyCashEntry PettyCashEntry?
+  vendor         Vendor?                 @relation(fields: [vendorId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_vendor_id_fkey")
+  vendorContract VendorContract?         @relation("ExpenseRequestVendorContract", fields: [vendorContractId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_vendor_contract_id_fkey")
+  quotationRound QuotationRound?         @relation("ExpenseRequestQuotationRound", fields: [quotationRoundId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_quotation_round_id_fkey")
+  instalment     VendorContractInstalment? @relation("VendorContractInstalmentExpense")
+  awardedFrom    QuotationRound[]        @relation("QuotationRoundOutcomeExpense")
 
   @@unique([tenantId, number], map: "expense_request_tenant_id_number_key", where: raw("(number IS NOT NULL)"))
+  @@index([vendorId], map: "expense_request_vendor_id_idx", where: raw("(vendor_id IS NOT NULL)"))
+  @@index([vendorContractId], map: "expense_request_vendor_contract_id_idx", where: raw("(vendor_contract_id IS NOT NULL)"))
   @@index([tenantId, state, createdAt(sort: Desc)], map: "expense_request_tenant_id_state_idx")
   @@index([buildingId], map: "expense_request_building_id_idx")
   @@index([fundId], map: "expense_request_fund_id_idx", where: raw("(fund_id IS NOT NULL)"))

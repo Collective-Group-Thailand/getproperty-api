@@ -366,6 +366,29 @@ export const DOMAIN_EVENT_TYPES = {
   'juristic.withholding_certificate.issued':
     'A 50 ทวิ withholding-tax certificate was numbered; the worker builds its PDF (D-311, D-329, O-041).',
   'juristic.withholding_certificate.ready': 'The PDF of a withholding-tax certificate is ready (D-329).',
+  // J2.2 (D-310, D-331)
+  'juristic.vendor.changed': 'A vendor was registered, edited, blocked or unblocked (D-310, D-331).',
+  'juristic.vendor_contract.changed': 'A vendor contract was drafted, edited or got a document (D-331).',
+  'juristic.vendor_contract.activated':
+    'A vendor contract came into force; its instalments were scheduled (D-310, D-331).',
+  'juristic.vendor_contract.renewed': 'A renewal draft of a vendor contract was created (D-331).',
+  'juristic.vendor_contract.terminated':
+    'A vendor contract was terminated; later instalments cancelled, its preventive plans stopped (D-331).',
+  'juristic.vendor_contract.expired': 'A vendor contract passed its end date (D-331).',
+  'juristic.vendor_contract.expiring':
+    'A vendor contract ends within an alert threshold (90 / 60 / 30 days; operators in-app + LINE, D-310, D-331).',
+  'juristic.vendor_contract.instalment_requested':
+    'An instalment of a vendor contract became a submitted expense request (D-331).',
+  'juristic.quotation_round.changed': 'A quotation round was opened or received a quotation (D-310, D-331).',
+  'juristic.quotation_round.award_requested':
+    'An award of a quotation round waits for the approvals of its band (D-310, D-331).',
+  'juristic.quotation.approval_required':
+    'The award of a quotation round waits for approvals (operators in-app + LINE, D-310, D-331).',
+  'juristic.quotation_round.awarded':
+    'A quotation round was awarded; its contract or expense request draft was created (D-310, D-331).',
+  'juristic.quotation_round.cancelled': 'A quotation round was cancelled (D-331).',
+  'juristic.vendor_evaluation.recorded':
+    'The monthly evaluation of a vendor contract was recorded (D-310, D-331).',
   'juristic.fund.changed': 'A fund was created or edited (D-311, D-329).',
   'juristic.fund_transfer.requested':
     'A transfer into or out of a fund waits for another user’s approval (D-311, D-329).',

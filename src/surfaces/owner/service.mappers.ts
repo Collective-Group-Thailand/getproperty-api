@@ -284,6 +284,8 @@ export function maintenancePlanDto(p: MaintenancePlanRow): MaintenancePlanDto {
     assigneePartyId: p.assigneePartyId,
     isActive: p.isActive,
     lastWorkOrderId: p.lastWorkOrderId,
+    vendorContractId: p.vendorContractId,
+    vendorName: p.vendorContract?.vendor.name ?? null,
     version: p.version,
   };
 }
@@ -434,5 +436,7 @@ export const MAINTENANCE_PLAN_EXAMPLE = {
   assigneePartyId: null,
   isActive: true,
   lastWorkOrderId: null,
+  vendorContractId: null,
+  vendorName: null,
   version: 1,
 };

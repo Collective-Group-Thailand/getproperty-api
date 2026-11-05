@@ -110,6 +110,12 @@ export const API_TAGS: Record<string, string> = {
     'Funds (own ledger and bank account; out only with a resolution and another user’s approval) and petty cash floats (spends with receipts, counts) (D-311, D-329).',
   'owner.juristicBankStatements':
     'Bank statement import (KBank / SCB / BBL / KTB column maps as data), idempotent re-import, automatic and manual matching to payments, expenses and fund transfers (D-329).',
+  'owner.juristicVendors':
+    'Vendors of juristic tenants: a party with its tax id (for the 50 ทวิ), categories, contact and a masked bank account; blocking (D-310, D-331).',
+  'owner.juristicVendorContracts':
+    'Service contracts with vendors: scope, SLA terms, term and renewal notice, instalments → scheduled expense requests, penalty clauses, documents, expiry alerts 90 / 60 / 30, renewal and termination, monthly evaluations with SLA breaches pulled from work orders (D-310, D-331).',
+  'owner.juristicQuotations':
+    'Quotation rounds: ≥ 3 quotations above juristic.quotation_threshold (or a recorded reason), award by resolution or approval band (maker-checker) into a contract or an expense request draft (D-091, D-310, D-331).',
   'owner.juristicWorkspace':
     'D-270 workspace of a juristic office: the units landlords linked, common-fee bills to those landlords (D-270, D-326).',
   'owner.juristicWorkspaceInvitations':

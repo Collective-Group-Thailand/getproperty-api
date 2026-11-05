@@ -216,6 +216,10 @@ export function expenseDto(ctx: TenantContext, r: ExpenseRow): ExpenseRequestDto
     pettyCashId: r.pettyCashId,
     fundId: r.fundId,
     resolutionId: r.resolutionId,
+    vendorId: r.vendorId,
+    vendorName: r.vendor?.name ?? null,
+    vendorContractId: r.vendorContractId,
+    quotationRoundId: r.quotationRoundId,
     state: r.state as ExpenseStateName,
     amount: r.amount.toFixed(2),
     whtAmount: r.whtAmount.toFixed(2),
@@ -448,6 +452,10 @@ const EXPENSE_EXAMPLE: ExpenseRequestDto = {
   pettyCashId: null,
   fundId: null,
   resolutionId: null,
+  vendorId: FAKE.uuid,
+  vendorName: 'บริษัท รักษาความปลอดภัย จำกัด',
+  vendorContractId: FAKE.uuid,
+  quotationRoundId: null,
   state: 'submitted' as ExpenseStateName,
   amount: '42800.00',
   whtAmount: '1200.00',
@@ -1218,7 +1226,7 @@ export class OwnerExpenseRequestsController {
       version: 1,
     },
   })
-  @ApiStandardErrors('fund.resolution_required', 'fund.resolution_invalid', ...WRITE)
+  @ApiStandardErrors('fund.resolution_required', 'fund.resolution_invalid', 'vendor.blocked', ...WRITE)
   async create(
     @CurrentTenant() ctx: TenantContext,
     @Body() body: ExpenseCreateDto,
@@ -1247,6 +1255,7 @@ export class OwnerExpenseRequestsController {
     'concurrency.stale',
     'fund.resolution_required',
     'fund.resolution_invalid',
+    'vendor.blocked',
     ...WRITE,
   )
   async update(
@@ -1288,7 +1297,7 @@ export class OwnerExpenseRequestsController {
     id: 'owner.juristicExpenses.submit',
     summary: 'Submit for approval',
     description:
-      'Gives the gapless number `EXP-YYYY-NNNNN` and snapshots the approval band of `juristic.approval_bands` for the amount (roles + approvals needed); the band’s roles hear `juristic.expense.approval_required` (in-app + LINE; the committee on the manager routes). Audited. Requires `Idempotency-Key` (D-311, D-329).',
+      'Gives the gapless number `EXP-YYYY-NNNNN` and snapshots the approval band of `juristic.approval_bands` for the amount (roles + approvals needed); a vendor purchase (`vendorId`, no contract) above `juristic.quotation_threshold` needs an awarded `quotationRoundId` of that vendor (422 `expense.quotations_required`, D-310 / D-331); the band’s roles hear `juristic.expense.approval_required` (in-app + LINE; the committee on the manager routes). Audited. Requires `Idempotency-Key` (D-311, D-329).',
     implements: ['D-311', 'D-329'],
   })
   @ApiSuccess(200, {
@@ -1296,7 +1305,7 @@ export class OwnerExpenseRequestsController {
     type: ExpenseRequestDto,
     example: { ...EXPENSE_EXAMPLE, approvalsGiven: 0, approvals: [] },
   })
-  @ApiStandardErrors(...EXPENSE_ERRORS)
+  @ApiStandardErrors('expense.quotations_required', ...EXPENSE_ERRORS)
   async submit(
     @CurrentTenant() ctx: TenantContext,
     @Param('expenseRequestId', ParseUUIDPipe) id: string,

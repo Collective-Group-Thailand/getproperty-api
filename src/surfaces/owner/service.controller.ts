@@ -983,8 +983,8 @@ export class OwnerMaintenancePlansController {
     id: 'owner.maintenancePlans.create',
     summary: 'Plan preventive maintenance of equipment',
     description:
-      'Every `intervalDays` from `nextDueOn`: the worker opens a preventive work order `leadDays` before (assigned to the plan’s staff member or technician when set).',
-    implements: ['D-072'],
+      'Every `intervalDays` from `nextDueOn`: the worker opens a preventive work order `leadDays` before (assigned to the plan’s staff member or technician when set). J2.2: `vendorContractId` runs the plan under a vendor contract of the building (lift, pumps, fire system) — work orders wait while the contract is not active and go to the vendor when the plan has no assignee; another tenant’s contract is 404 (D-072, D-331).',
+    implements: ['D-072', 'D-331'],
   })
   @ApiJsonBody(MaintenancePlanCreateDto, {
     assetItemId: FAKE.uuid,
@@ -993,7 +993,7 @@ export class OwnerMaintenancePlansController {
     nextDueOn: FAKE.date,
   })
   @ApiSuccess(201, { description: 'Planned', type: MaintenancePlanDto, example: MAINTENANCE_PLAN_EXAMPLE })
-  @ApiStandardErrors(...WRITE)
+  @ApiStandardErrors('vendor_contract.invalid_state', ...WRITE)
   async create(
     @CurrentTenant() ctx: TenantContext,
     @Body() body: MaintenancePlanCreateDto,
@@ -1028,12 +1028,13 @@ export class OwnerMaintenancePlansController {
   @ApiEndpoint({
     id: 'owner.maintenancePlans.update',
     summary: 'Change a maintenance plan',
-    description: 'Interval, lead days, next due date, assignee; `isActive=false` pauses it.',
-    implements: ['D-072'],
+    description:
+      'Interval, lead days, next due date, assignee, vendor contract (J2.2, `null` detaches it); `isActive=false` pauses it (D-072, D-331).',
+    implements: ['D-072', 'D-331'],
   })
   @ApiJsonBody(MaintenancePlanUpdateDto, { intervalDays: 60, isActive: true })
   @ApiSuccess(200, { description: 'Changed', type: MaintenancePlanDto, example: MAINTENANCE_PLAN_EXAMPLE })
-  @ApiStandardErrors(...WRITE)
+  @ApiStandardErrors('vendor_contract.invalid_state', ...WRITE)
   async update(
     @CurrentTenant() ctx: TenantContext,
     @Param('maintenancePlanId', ParseUUIDPipe) id: string,

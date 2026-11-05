@@ -125,3 +125,48 @@ export function whtRatesProblems(value: unknown): string[] {
   });
   return out;
 }
+
+// ------------------------------------------------------------------------------------------- J2.2 (D-310, D-331)
+
+export interface EvaluationCriterion {
+  key: string;
+  labelTh: string;
+  labelEn: string;
+}
+
+/** Criteria a vendor contract is scored on each month (1–5 each; assumption, editable). */
+export const DEFAULT_EVALUATION_CRITERIA: EvaluationCriterion[] = [
+  { key: 'quality', labelTh: 'คุณภาพงาน', labelEn: 'Quality of work' },
+  { key: 'timeliness', labelTh: 'ความตรงต่อเวลา', labelEn: 'Timeliness' },
+  { key: 'communication', labelTh: 'การสื่อสารและการรายงาน', labelEn: 'Communication and reporting' },
+  { key: 'safety', labelTh: 'ความปลอดภัยและการปฏิบัติตามข้อกำหนด', labelEn: 'Safety and compliance' },
+];
+
+export function evaluationCriteriaProblems(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 12) return ['1–12 criteria'];
+  const keys = new Set<string>();
+  const out: string[] = [];
+  value.forEach((c: unknown, i) => {
+    const crit = c as Partial<EvaluationCriterion> | null;
+    if (!crit || typeof crit !== 'object') return void out.push(`criterion ${i}: an object`);
+    if (typeof crit.key !== 'string' || !/^[a-z][a-z0-9_]{1,40}$/.test(crit.key))
+      out.push(`criterion ${i}: key`);
+    else if (keys.has(crit.key)) out.push(`criterion ${i}: duplicate key`);
+    else keys.add(crit.key);
+    for (const f of ['labelTh', 'labelEn'] as const)
+      if (typeof crit[f] !== 'string' || !crit[f].trim() || crit[f].length > 120)
+        out.push(`criterion ${i}: ${f}`);
+  });
+  return out;
+}
+
+/** Expiry alert thresholds: 1–5 distinct whole days 1–365. */
+export function alertDaysProblems(value: unknown): string[] {
+  return Array.isArray(value) &&
+    value.length >= 1 &&
+    value.length <= 5 &&
+    value.every((d) => Number.isInteger(d) && (d as number) >= 1 && (d as number) <= 365) &&
+    new Set(value).size === value.length
+    ? []
+    : ['1–5 distinct whole days 1–365'];
+}

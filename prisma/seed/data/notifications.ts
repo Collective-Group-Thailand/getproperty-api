@@ -107,6 +107,32 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     ],
   },
   {
+    key: 'juristic.vendor_contract.expiring',
+    description:
+      'Owner / manager / committee (manager routes): a vendor contract ends within an alert threshold — 90 / 60 / 30 days (J2.2, D-310, D-331)',
+    th: [
+      'สัญญา {{contract.title}} จะสิ้นสุดใน {{contract.daysLeft}} วัน',
+      'สัญญากับ {{contract.vendorName}} อาคาร {{contract.buildingName}} สิ้นสุดวันที่ {{contract.endsOn}} แจ้งต่ออายุหรือยกเลิกภายในวันที่ {{contract.noticeBy}} ดูผลประเมินและต่อสัญญาได้ที่เมนูสัญญาผู้รับจ้าง',
+    ],
+    en: [
+      'Contract {{contract.title}} ends in {{contract.daysLeft}} days',
+      'The contract with {{contract.vendorName}} for {{contract.buildingName}} ends on {{contract.endsOn}}; give notice to renew or end it by {{contract.noticeBy}}. Review the evaluations and renew under Vendor contracts.',
+    ],
+  },
+  {
+    key: 'juristic.quotation.approval_required',
+    description:
+      'Owner / manager / committee (manager routes): the award of a quotation round waits for the approvals of its band (J2.2, D-310, D-331)',
+    th: [
+      'รออนุมัติผลเปรียบเทียบราคา {{round.title}}',
+      'ขออนุมัติคัดเลือก {{round.vendorName}} ราคา {{round.amount}} บาท ({{round.quotations}} ใบเสนอราคา) ต้องได้รับการอนุมัติ {{round.approvals}} ท่าน พิจารณาได้ที่เมนูเปรียบเทียบราคา',
+    ],
+    en: [
+      'Award to approve — {{round.title}}',
+      'Awarding {{round.vendorName}} at {{round.amount}} THB ({{round.quotations}} quotation(s)) needs {{round.approvals}} approval(s). Review it under Quotations.',
+    ],
+  },
+  {
     key: 'juristic.collection.legal_action',
     description: 'Owner / manager: the start of legal action was recorded after approval (J1.2b, D-326)',
     th: [
@@ -670,6 +696,8 @@ const operatorAudiences = (key: string): string[] =>
         key.startsWith('gate.') ||
         key.startsWith('juristic.collection.') ||
         key.startsWith('juristic.expense.') ||
+        key.startsWith('juristic.vendor_contract.') ||
+        key.startsWith('juristic.quotation.') ||
         key === 'billing_cycle.computed' ||
         key === 'slip.review_requested' ||
         key === 'payment.held'

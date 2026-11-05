@@ -118,6 +118,8 @@ model Resolution {
   journals         Journal[]
   fundTransfers    FundTransfer[]
   expenseRequests  ExpenseRequest[]
+  quotationRounds  QuotationRound[]
+  vendorContracts  VendorContract[]
 
   @@unique([buildingId, meetingKind, number], map: "resolution_building_id_meeting_kind_number_key", where: raw("(state <> 'void'::juristic.resolution_state)"))
   @@index([tenantId, buildingId, meetingDate(sort: Desc)], map: "resolution_tenant_id_building_id_meeting_date_idx")

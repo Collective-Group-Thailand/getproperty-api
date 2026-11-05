@@ -53,6 +53,7 @@ export const EXPENSE_INCLUDE = {
   approvals: { orderBy: { createdAt: 'asc' } },
   building: { select: { id: true, name: true } },
   certificate: { select: { id: true, number: true, documentId: true, tax: true } },
+  vendor: { select: { id: true, name: true } },
 } as const satisfies Prisma.ExpenseRequestInclude;
 export type ExpenseRow = Prisma.ExpenseRequestGetPayload<{ include: typeof EXPENSE_INCLUDE }>;
 
@@ -73,6 +74,10 @@ export interface ExpenseInput {
   pettyCashId?: string | null;
   fundId?: string | null;
   resolutionId?: string | null;
+  /** J2.2 (D-331): the vendor paid (payee party and name come from it), its contract, the awarded quotation round. */
+  vendorId?: string | null;
+  vendorContractId?: string | null;
+  quotationRoundId?: string | null;
   note?: string | null;
   lines?: ExpenseLineInput[];
   /** Top-ups only: the amount to add to the float. */
@@ -318,9 +323,52 @@ export class ExpensesService extends TenantScopedRepository implements EventSubs
     return { lines: out, amount, wht };
   }
 
+  /**
+   * J2.2 (D-331): an expense request paid to a vendor — the vendor is active, its contract (same vendor and building)
+   * and the quotation round (awarded to that vendor, same building) belong to this tenant; cross-tenant ids are 404.
+   */
+  private async vendorLinks(
+    tx: Tx,
+    ctx: TenantContext,
+    input: ExpenseInput,
+    kind: ExpenseKind,
+  ): Promise<{ partyId: string; name: string }> {
+    if (kind !== 'expense') throw invalid('vendorId', 'kind', 'a top-up has no vendor');
+    const v = await tx.vendor.findFirst({ where: { id: input.vendorId!, tenantId: ctx.tenantId } });
+    if (!v) throw new DomainException('http.not_found');
+    if (v.state !== 'active') throw new DomainException('vendor.blocked');
+    if (input.vendorContractId) {
+      const c = await tx.vendorContract.findFirst({
+        where: { id: input.vendorContractId, tenantId: ctx.tenantId },
+      });
+      if (!c) throw new DomainException('http.not_found');
+      if (c.vendorId !== v.id || c.buildingId !== input.buildingId)
+        throw invalid('vendorContractId', 'vendor', 'a contract of the vendor for the building');
+      if (c.state === 'draft') throw invalid('vendorContractId', 'state', 'an active contract');
+    }
+    if (input.quotationRoundId) {
+      const r = await tx.quotationRound.findFirst({
+        where: { id: input.quotationRoundId, tenantId: ctx.tenantId },
+        include: { awardedQuotation: { select: { vendorId: true } } },
+      });
+      if (!r) throw new DomainException('http.not_found');
+      if (r.state !== 'awarded' || r.awardedQuotation?.vendorId !== v.id || r.buildingId !== input.buildingId)
+        throw invalid('quotationRoundId', 'awarded', 'a round of the building awarded to the vendor');
+    }
+    return { partyId: v.partyId, name: v.name };
+  }
+
   private async header(tx: Tx, ctx: TenantContext, input: ExpenseInput, kind: ExpenseKind) {
     await this.ownBuilding(tx, ctx, input.buildingId);
     let payeeName = input.payeeName ?? null;
+    if (input.vendorId) {
+      const vendorPayee = await this.vendorLinks(tx, ctx, input, kind);
+      if (input.payeePartyId && input.payeePartyId !== vendorPayee.partyId)
+        throw invalid('payeePartyId', 'vendor', 'the vendor’s party (or leave it out)');
+      input.payeePartyId = vendorPayee.partyId;
+      payeeName = payeeName ?? vendorPayee.name;
+    } else if (input.vendorContractId || input.quotationRoundId)
+      throw invalid('vendorId', 'required', 'the vendor of the contract / quotation round');
     if (input.payeePartyId) {
       const p = await tx.party.findFirst({
         where: { id: input.payeePartyId, tenantId: ctx.tenantId, deletedAt: null },
@@ -352,53 +400,75 @@ export class ExpensesService extends TenantScopedRepository implements EventSubs
   }
 
   async create(ctx: TenantContext, input: ExpenseInput): Promise<ExpenseRow> {
+    const requestedBy = this.actorId();
     const id = await this.db.tenant(ctx, async (tx) => {
       await this.ledger.assertJuristic(tx, ctx.tenantId);
-      await this.ledger.ensureChart(tx, ctx.tenantId);
-      const kind = input.kind ?? 'expense';
-      const h = await this.header(tx, ctx, input, kind);
-      const l = await this.linesOf(tx, ctx, kind, input, h.pettyAccountId);
-      const row = await tx.expenseRequest.create({
-        data: {
-          tenantId: ctx.tenantId,
-          buildingId: input.buildingId,
-          kind,
-          title: input.title,
-          payeePartyId: input.payeePartyId ?? null,
-          payeeName: h.payeeName,
-          pettyCashId: input.pettyCashId ?? null,
-          fundId: input.fundId ?? null,
-          resolutionId: input.resolutionId ?? null,
-          note: input.note ?? null,
-          amount: l.amount.toFixed(2),
-          whtAmount: l.wht.toFixed(2),
-          netAmount: l.amount.minus(l.wht).toFixed(2),
-          requestedBy: this.actorId(),
-          createdBy: by(),
-          lines: {
-            create: l.lines.map((x, i) => ({ tenantId: ctx.tenantId, lineNo: i + 1, ...x })),
-          },
-        },
-      });
-      await this.audit.record(tx, {
-        action: 'juristic.expense_drafted',
-        tenantId: ctx.tenantId,
-        buildingId: input.buildingId,
-        subjectType: 'juristic.expense_request',
-        subjectId: row.id,
-        metadata: { kind, amount: row.amount.toFixed(2), wht: row.whtAmount.toFixed(2) },
-      });
-      await this.events.record(tx, {
-        type: 'juristic.expense_request.changed',
-        aggregateType: 'expense_request',
-        aggregateId: row.id,
-        tenantId: ctx.tenantId,
-        buildingId: input.buildingId,
-        payload: { expenseRequestId: row.id, state: 'draft' },
-      });
-      return row.id;
+      return (await this.createIn(tx, ctx, { ...input }, requestedBy)).id;
     });
     return this.get(ctx, id);
+  }
+
+  /**
+   * Drafts an expense request inside the caller's transaction (J2.2: also the vendor-contracts job and quotation
+   * awards, with the requester they name — the maker of maker-checker).
+   */
+  async createIn(
+    tx: Tx,
+    ctx: TenantContext,
+    input: ExpenseInput,
+    requestedBy: string,
+  ): Promise<{ id: string }> {
+    await this.ledger.ensureChart(tx, ctx.tenantId);
+    const kind = input.kind ?? 'expense';
+    const h = await this.header(tx, ctx, input, kind);
+    const l = await this.linesOf(tx, ctx, kind, input, h.pettyAccountId);
+    const row = await tx.expenseRequest.create({
+      data: {
+        tenantId: ctx.tenantId,
+        buildingId: input.buildingId,
+        kind,
+        title: input.title,
+        payeePartyId: input.payeePartyId ?? null,
+        payeeName: h.payeeName,
+        pettyCashId: input.pettyCashId ?? null,
+        fundId: input.fundId ?? null,
+        resolutionId: input.resolutionId ?? null,
+        vendorId: input.vendorId ?? null,
+        vendorContractId: input.vendorContractId ?? null,
+        quotationRoundId: input.quotationRoundId ?? null,
+        note: input.note ?? null,
+        amount: l.amount.toFixed(2),
+        whtAmount: l.wht.toFixed(2),
+        netAmount: l.amount.minus(l.wht).toFixed(2),
+        requestedBy,
+        createdBy: by() ?? requestedBy,
+        lines: {
+          create: l.lines.map((x, i) => ({ tenantId: ctx.tenantId, lineNo: i + 1, ...x })),
+        },
+      },
+    });
+    await this.audit.record(tx, {
+      action: 'juristic.expense_drafted',
+      tenantId: ctx.tenantId,
+      buildingId: input.buildingId,
+      subjectType: 'juristic.expense_request',
+      subjectId: row.id,
+      metadata: {
+        kind,
+        amount: row.amount.toFixed(2),
+        wht: row.whtAmount.toFixed(2),
+        ...(row.vendorId ? { vendorId: row.vendorId, vendorContractId: row.vendorContractId } : {}),
+      },
+    });
+    await this.events.record(tx, {
+      type: 'juristic.expense_request.changed',
+      aggregateType: 'expense_request',
+      aggregateId: row.id,
+      tenantId: ctx.tenantId,
+      buildingId: input.buildingId,
+      payload: { expenseRequestId: row.id, state: 'draft' },
+    });
+    return { id: row.id };
   }
 
   async update(
@@ -418,16 +488,24 @@ export class ExpensesService extends TenantScopedRepository implements EventSubs
         buildingId: r.buildingId,
         kind: r.kind,
         title: input.title ?? r.title,
-        payeePartyId: input.payeePartyId !== undefined ? input.payeePartyId : r.payeePartyId,
+        payeePartyId:
+          input.payeePartyId !== undefined
+            ? input.payeePartyId
+            : input.vendorId !== undefined
+              ? null
+              : r.payeePartyId,
         payeeName:
           input.payeeName !== undefined
             ? input.payeeName
-            : input.payeePartyId !== undefined
+            : input.payeePartyId !== undefined || input.vendorId !== undefined
               ? null
               : r.payeeName,
         pettyCashId: r.pettyCashId,
         fundId: input.fundId !== undefined ? input.fundId : r.fundId,
         resolutionId: input.resolutionId !== undefined ? input.resolutionId : r.resolutionId,
+        vendorId: input.vendorId !== undefined ? input.vendorId : r.vendorId,
+        vendorContractId: input.vendorContractId !== undefined ? input.vendorContractId : r.vendorContractId,
+        quotationRoundId: input.quotationRoundId !== undefined ? input.quotationRoundId : r.quotationRoundId,
         note: input.note !== undefined ? input.note : r.note,
         lines:
           input.lines ??
@@ -451,6 +529,9 @@ export class ExpensesService extends TenantScopedRepository implements EventSubs
           payeeName: h.payeeName,
           fundId: merged.fundId ?? null,
           resolutionId: merged.resolutionId ?? null,
+          vendorId: merged.vendorId ?? null,
+          vendorContractId: merged.vendorContractId ?? null,
+          quotationRoundId: merged.quotationRoundId ?? null,
           note: merged.note ?? null,
           amount: l.amount.toFixed(2),
           whtAmount: l.wht.toFixed(2),
@@ -533,65 +614,93 @@ export class ExpensesService extends TenantScopedRepository implements EventSubs
   async submit(ctx: TenantContext, id: string): Promise<ExpenseRow> {
     await this.db.tenant(ctx, async (tx) => {
       await this.ledger.assertJuristic(tx, ctx.tenantId);
-      await this.lock(tx, id);
-      const r = await this.load(tx, ctx, id);
-      if (r.state !== 'draft')
-        throw new DomainException('expense.invalid_state', { params: { state: r.state } });
-      if (!r.lines.length || D(r.amount).lte(0)) throw invalid('lines', 'required', 'at least one line');
-      const now = this.clock.now();
-      const bands = await this.settings.valueAt<ApprovalBand[]>('juristic.approval_bands', now, {
-        tenantId: ctx.tenantId,
-      });
-      const band = bandFor(bands, r.amount);
-      const number = await this.numbering.next(tx, ctx.tenantId, 'expense_request', now);
-      await tx.expenseRequest.update({
-        where: { id },
-        data: {
-          state: 'submitted',
-          number,
-          submittedAt: now,
-          band: band as unknown as Prisma.InputJsonValue,
-          approvalsRequired: band.approvals,
-          approverRoles: band.roles,
-          updatedBy: by(),
-          version: { increment: 1 },
-        },
-      });
-      await this.audit.record(tx, {
-        action: 'juristic.expense_submitted',
-        tenantId: ctx.tenantId,
-        buildingId: r.buildingId,
-        subjectType: 'juristic.expense_request',
-        subjectId: id,
-        metadata: { number, amount: r.amount.toFixed(2), band: band.key, approvals: band.approvals },
-      });
-      const payload = {
-        expenseRequestId: id,
-        number,
-        title: r.title,
-        amount: r.amount.toFixed(2),
-        roles: band.roles,
-        approvalsRequired: band.approvals,
-        requestedBy: r.requestedBy,
-      };
-      await this.events.record(tx, {
-        type: 'juristic.expense_request.submitted',
-        aggregateType: 'expense_request',
-        aggregateId: id,
-        tenantId: ctx.tenantId,
-        buildingId: r.buildingId,
-        payload,
-      });
-      await this.events.record(tx, {
-        type: 'juristic.expense.approval_required',
-        aggregateType: 'expense_request',
-        aggregateId: id,
-        tenantId: ctx.tenantId,
-        buildingId: r.buildingId,
-        payload,
-      });
+      await this.submitIn(tx, ctx, id);
     });
     return this.get(ctx, id);
+  }
+
+  /** Submits a draft inside the caller's transaction (J2.2: the vendor-contracts job submits instalment requests). */
+  async submitIn(tx: Tx, ctx: TenantContext, id: string): Promise<void> {
+    await this.lock(tx, id);
+    const r = await this.load(tx, ctx, id);
+    if (r.state !== 'draft')
+      throw new DomainException('expense.invalid_state', { params: { state: r.state } });
+    if (!r.lines.length || D(r.amount).lte(0)) throw invalid('lines', 'required', 'at least one line');
+    const now = this.clock.now();
+    await this.assertQuotations(tx, ctx, r, now);
+    const bands = await this.settings.valueAt<ApprovalBand[]>('juristic.approval_bands', now, {
+      tenantId: ctx.tenantId,
+    });
+    const band = bandFor(bands, r.amount);
+    const number = await this.numbering.next(tx, ctx.tenantId, 'expense_request', now);
+    await tx.expenseRequest.update({
+      where: { id },
+      data: {
+        state: 'submitted',
+        number,
+        submittedAt: now,
+        band: band as unknown as Prisma.InputJsonValue,
+        approvalsRequired: band.approvals,
+        approverRoles: band.roles,
+        updatedBy: by(),
+        version: { increment: 1 },
+      },
+    });
+    await this.audit.record(tx, {
+      action: 'juristic.expense_submitted',
+      tenantId: ctx.tenantId,
+      buildingId: r.buildingId,
+      subjectType: 'juristic.expense_request',
+      subjectId: id,
+      metadata: { number, amount: r.amount.toFixed(2), band: band.key, approvals: band.approvals },
+    });
+    const payload = {
+      expenseRequestId: id,
+      number,
+      title: r.title,
+      amount: r.amount.toFixed(2),
+      roles: band.roles,
+      approvalsRequired: band.approvals,
+      requestedBy: r.requestedBy,
+    };
+    await this.events.record(tx, {
+      type: 'juristic.expense_request.submitted',
+      aggregateType: 'expense_request',
+      aggregateId: id,
+      tenantId: ctx.tenantId,
+      buildingId: r.buildingId,
+      payload,
+    });
+    await this.events.record(tx, {
+      type: 'juristic.expense.approval_required',
+      aggregateType: 'expense_request',
+      aggregateId: id,
+      tenantId: ctx.tenantId,
+      buildingId: r.buildingId,
+      payload,
+    });
+  }
+
+  /**
+   * D-310 / D-331: a vendor purchase above `juristic.quotation_threshold` (not under a contract — the contract went
+   * through its own round) is submitted only with a quotation round awarded to that vendor.
+   */
+  private async assertQuotations(tx: Tx, ctx: TenantContext, r: ExpenseRow, now: Date): Promise<void> {
+    if (!r.vendorId || r.vendorContractId || r.kind !== 'expense') return;
+    const threshold = await this.settings.valueAt<string>('juristic.quotation_threshold', now, {
+      tenantId: ctx.tenantId,
+    });
+    if (!D(r.amount).gt(threshold ?? '0')) return;
+    if (r.quotationRoundId) {
+      const round = await tx.quotationRound.findFirst({
+        where: { id: r.quotationRoundId, tenantId: ctx.tenantId, state: 'awarded' },
+        include: { awardedQuotation: { select: { vendorId: true } } },
+      });
+      if (round?.awardedQuotation?.vendorId === r.vendorId) return;
+    }
+    throw new DomainException('expense.quotations_required', {
+      params: { threshold: D(threshold ?? '0').toFixed(2) },
+    });
   }
 
   /** One approval / rejection by a band role holder who is not the requester (maker-checker, D-091). */

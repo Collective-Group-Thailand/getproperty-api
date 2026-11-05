@@ -1024,6 +1024,24 @@ export class MaintenancePlanDto {
   @ApiProperty({ type: String, format: 'uuid', nullable: true, example: null })
   lastWorkOrderId!: string | null;
 
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: null,
+    description:
+      'J2.2 (D-331): the vendor contract the work is done under — work orders wait while the contract is not active and go to the vendor when the plan has no assignee of its own.',
+  })
+  vendorContractId!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: null,
+    description: 'The contract vendor’s name (J2.2).',
+  })
+  vendorName!: string | null;
+
   @ApiProperty({ type: 'integer', example: 1 })
   version!: number;
 }
@@ -1096,6 +1114,17 @@ export class MaintenancePlanUpdateDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description:
+      'J2.2 (D-331): a vendor contract (draft or active) of the plan’s building — e.g. the lift, pump or fire-system maintenance contract.',
+  })
+  @IsOptional()
+  @IsUUID()
+  vendorContractId?: string | null;
 }
 
 export class MaintenancePlanCreateDto extends MaintenancePlanUpdateDto {
