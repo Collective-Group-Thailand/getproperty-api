@@ -12,6 +12,7 @@ import { csvOf } from '@modules/ops-receivables/exports/sheets';
 import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
 import Decimal from 'decimal.js';
 
+import { AccountingReportsService } from './accounting/accounting-reports.service';
 import {
   agingBounds,
   type AgingReport,
@@ -72,7 +73,7 @@ export interface ReceivablesQuery {
  * unit or owner, sort by amount or age; per row the owner and context, outstanding, surcharge, oldest overdue months,
  * next ladder step with its legal-review flag, channels) and its CSV export (`juristic_receivables_csv`, worker);
  * aging in the juristic buckets (`juristic.aging_buckets`) per building and overall; collection rate per billing cycle
- * and within `juristic.kpi_collection_days` of the due date; budget vs actual — income side (expense side J2.1).
+ * and within `juristic.kpi_collection_days` of the due date; budget vs actual — income from billing, expenses from the journals (J2.1, D-329).
  */
 @Injectable()
 export class CollectionReportsService extends TenantScopedRepository implements ExportBuilder, OnModuleInit {
@@ -83,6 +84,7 @@ export class CollectionReportsService extends TenantScopedRepository implements 
     private readonly payments: PaymentsService,
     private readonly settings: SettingsService,
     private readonly exports: ExportsService,
+    private readonly accounting: AccountingReportsService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
     super();
@@ -560,7 +562,7 @@ export class CollectionReportsService extends TenantScopedRepository implements 
   /**
    * `GET /v1/owner/juristic/budgets/{id}/actual-income` (D-304, income side): the budget's income lines against what
    * was billed in its period for its building (invoice lines by kind, net of credit-note lines) and collected (paid
-   * on those invoices in the period). The expense side comes with J2.1's journals.
+   * on those invoices in the period), and since J2.1 the expense and fund lines against the journals of their accounts.
    */
   actualIncome(ctx: TenantContext, budgetId: string) {
     return this.db.tenant(ctx, async (tx) => {
@@ -597,6 +599,20 @@ export class CollectionReportsService extends TenantScopedRepository implements 
         actual.set(g, (actual.get(g) ?? D(0)).plus(D(r.billed).minus(r.credited)));
       }
       const budgeted = b.lines.filter((l) => l.kind === 'income').reduce((s, l) => s.plus(D(l.amount)), D(0));
+      // J2.1 (D-329): the expense side from the journals
+      const expense = await this.accounting.budgetExpenseSide(tx, ctx.tenantId, {
+        buildingId: b.buildingId,
+        periodStart: day(b.periodStart),
+        periodEnd: day(b.periodEnd),
+        lines: b.lines.map((l) => ({
+          id: l.id,
+          kind: l.kind,
+          label: l.label,
+          amount: l.amount,
+          accountId: l.accountId,
+          sort: l.sort,
+        })),
+      });
       const billed = [...actual.values()].reduce((s, v) => s.plus(v), D(0));
       const collected = D(paid?.collected ?? 0);
       return {
@@ -619,7 +635,8 @@ export class CollectionReportsService extends TenantScopedRepository implements 
         collected: collected.toFixed(2),
         billedVsBudgetPct: ratePct(billed, budgeted),
         collectedVsBilledPct: ratePct(collected, billed),
-        expenseSideAvailable: false,
+        expenseSideAvailable: true,
+        ...expense,
       };
     });
   }

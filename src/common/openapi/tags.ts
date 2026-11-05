@@ -102,6 +102,14 @@ export const API_TAGS: Record<string, string> = {
     'Collections ladder per legal form, collection cases (timeline, disputes, approvals), receivables console, aging and collection-rate reports (D-305, D-326).',
   'owner.juristicStatements':
     'Owner statements across all units of an owner (number STM, PDF, LINE Flex), statement payments, printable letter batches (D-307, D-326).',
+  'owner.juristicAccounting':
+    'Light GL of juristic tenants: chart of accounts, balanced and immutable journals (posted from billing and payments, revenue recognition, manual), back-posting, income statement, balance sheet, trial balance, ledger vs receivables, journal exports CSV / Express / FlowAccount (D-312, D-329).',
+  'owner.juristicExpenses':
+    'Expense requests with approval bands and maker-checker, payments, attachments, 50 ทวิ withholding-tax certificates (D-091, D-311, D-329, ⚖ O-041).',
+  'owner.juristicFunds':
+    'Funds (own ledger and bank account; out only with a resolution and another user’s approval) and petty cash floats (spends with receipts, counts) (D-311, D-329).',
+  'owner.juristicBankStatements':
+    'Bank statement import (KBank / SCB / BBL / KTB column maps as data), idempotent re-import, automatic and manual matching to payments, expenses and fund transfers (D-329).',
   'owner.juristicWorkspace':
     'D-270 workspace of a juristic office: the units landlords linked, common-fee bills to those landlords (D-270, D-326).',
   'owner.juristicWorkspaceInvitations':

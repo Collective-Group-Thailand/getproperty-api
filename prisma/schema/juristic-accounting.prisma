@@ -1,0 +1,620 @@
+// juristic schema — J2.1 light GL, funds, expenses, withholding tax, petty cash, bank statements (D-311, D-312, D-329;
+// migration 0076, schema-design §7.5 rows 251–266).
+
+enum AccountType {
+  asset
+  liability
+  equity
+  income
+  expense
+
+  @@map("account_type")
+  @@schema("juristic")
+}
+
+enum JournalSource {
+  invoice
+  invoice_void
+  credit_note
+  debit_note
+  payment
+  payment_reversal
+  refund
+  revenue_recognition
+  expense_payment
+  petty_cash
+  fund_transfer
+  manual
+  opening
+  reversal
+
+  @@map("journal_source")
+  @@schema("juristic")
+}
+
+enum FundKind {
+  sinking
+  reserve
+  other
+
+  @@map("fund_kind")
+  @@schema("juristic")
+}
+
+enum FundTransferDirection {
+  in
+  out
+
+  @@map("fund_transfer_direction")
+  @@schema("juristic")
+}
+
+enum FundTransferState {
+  requested
+  posted
+  rejected
+  cancelled
+
+  @@map("fund_transfer_state")
+  @@schema("juristic")
+}
+
+enum ExpenseKind {
+  expense
+  petty_cash_top_up
+
+  @@map("expense_kind")
+  @@schema("juristic")
+}
+
+enum ExpenseState {
+  draft
+  submitted
+  approved
+  rejected
+  paid
+  cancelled
+
+  @@map("expense_state")
+  @@schema("juristic")
+}
+
+enum ExpenseDecision {
+  approved
+  rejected
+
+  @@map("expense_decision")
+  @@schema("juristic")
+}
+
+enum ExpensePaymentMethod {
+  bank_transfer
+  cheque
+  cash
+  fund
+
+  @@map("expense_payment_method")
+  @@schema("juristic")
+}
+
+enum ExpenseAttachmentKind {
+  quotation
+  invoice
+  receipt
+  payment_evidence
+  other
+
+  @@map("expense_attachment_kind")
+  @@schema("juristic")
+}
+
+enum WhtForm {
+  pnd3
+  pnd53
+
+  @@map("wht_form")
+  @@schema("juristic")
+}
+
+enum PettyCashEntryKind {
+  top_up
+  spend
+  count_difference
+
+  @@map("petty_cash_entry_kind")
+  @@schema("juristic")
+}
+
+enum BankLineMatch {
+  none
+  payment
+  expense
+  fund_transfer
+  ignored
+
+  @@map("bank_line_match")
+  @@schema("juristic")
+}
+
+/// D-311 / D-329 (J2.1): a fund of a building (sinking fund first) with its own ledger and bank account.
+model Fund {
+  id            String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  buildingId    String   @map("building_id") @db.Uuid
+  kind          FundKind @default(sinking)
+  name          String
+  bankAccountId String?  @map("bank_account_id") @db.Uuid
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?  @map("created_by") @db.Uuid
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy     String?  @map("updated_by") @db.Uuid
+  version       Int      @default(1)
+
+  tenant          Tenant             @relation("FundTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fund_tenant_id_fkey")
+  building        Building           @relation("FundBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fund_building_id_fkey")
+  bankAccount     TenantBankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fund_bank_account_id_fkey")
+  accounts        Account[]
+  journals        Journal[]
+  transfers       FundTransfer[]
+  expenseRequests ExpenseRequest[]
+
+  @@unique([buildingId, kind, name], map: "fund_building_id_kind_name_key")
+  @@index([tenantId], map: "fund_tenant_id_idx")
+  @@index([bankAccountId], map: "fund_bank_account_id_idx", where: raw("(bank_account_id IS NOT NULL)"))
+  @@map("fund")
+  @@schema("juristic")
+}
+
+/// D-312 / D-329 (J2.1): the chart of accounts of a juristic tenant (copied from a legal-form template, then edited).
+model Account {
+  id                String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String      @map("tenant_id") @db.Uuid
+  code              String
+  nameTh            String      @map("name_th")
+  nameEn            String      @map("name_en")
+  type              AccountType
+  role              String?
+  fundId            String?     @map("fund_id") @db.Uuid
+  bankAccountId     String?     @map("bank_account_id") @db.Uuid
+  isSystem          Boolean     @default(false) @map("is_system")
+  isActive          Boolean     @default(true) @map("is_active")
+  sourceTemplateKey String?     @map("source_template_key")
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?     @map("created_by") @db.Uuid
+  updatedAt         DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?     @map("updated_by") @db.Uuid
+  version           Int         @default(1)
+
+  tenant              Tenant               @relation("AccountTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "account_tenant_id_fkey")
+  fund                Fund?                @relation(fields: [fundId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "account_fund_id_fkey")
+  bankAccount         TenantBankAccount?   @relation(fields: [bankAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "account_bank_account_id_fkey")
+  budgetLines         BudgetLine[]
+  journalLines        JournalLine[]
+  fundTransfers       FundTransfer[]
+  pettyCash           PettyCash?
+  paidExpenses        ExpenseRequest[]
+  expenseLines        ExpenseRequestLine[]
+  pettyCashEntries    PettyCashEntry[]
+  bankStatements      BankStatement[]
+
+  @@unique([tenantId, code], map: "account_tenant_id_code_key")
+  @@unique([tenantId, role], map: "account_tenant_id_role_key", where: raw("((role IS NOT NULL) AND (fund_id IS NULL))"))
+  @@unique([fundId, role], map: "account_fund_id_role_key", where: raw("(fund_id IS NOT NULL)"))
+  @@index([bankAccountId], map: "account_bank_account_id_idx", where: raw("(bank_account_id IS NOT NULL)"))
+  @@map("account")
+  @@schema("juristic")
+}
+
+/// D-312 / D-329 (J2.1): a double-entry journal (balanced at commit, immutable — reversal journals only).
+model Journal {
+  id                String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String        @map("tenant_id") @db.Uuid
+  buildingId        String        @map("building_id") @db.Uuid
+  postedOn          DateTime      @map("posted_on") @db.Date
+  sourceType        JournalSource @map("source_type")
+  sourceId          String?       @map("source_id") @db.Uuid
+  memo              String
+  reversesJournalId String?       @map("reverses_journal_id") @db.Uuid
+  resolutionId      String?       @map("resolution_id") @db.Uuid
+  fundId            String?       @map("fund_id") @db.Uuid
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?       @map("created_by") @db.Uuid
+
+  tenant           Tenant            @relation("JournalTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "journal_tenant_id_fkey")
+  building         Building          @relation("JournalBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "journal_building_id_fkey")
+  reverses         Journal?          @relation("JournalReversal", fields: [reversesJournalId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "journal_reverses_journal_id_fkey")
+  reversedBy       Journal[]         @relation("JournalReversal")
+  resolution       Resolution?       @relation(fields: [resolutionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "journal_resolution_id_fkey")
+  fund             Fund?             @relation(fields: [fundId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "journal_fund_id_fkey")
+  lines            JournalLine[]
+  revenueSchedules RevenueSchedule[]
+  fundTransfers    FundTransfer[]
+  expenseRequests  ExpenseRequest[]
+  pettyCashEntries PettyCashEntry[]
+
+  @@unique([tenantId, sourceType, sourceId], map: "journal_source_key", where: raw("(source_id IS NOT NULL)"))
+  @@unique([reversesJournalId], map: "journal_reverses_journal_id_key", where: raw("(reverses_journal_id IS NOT NULL)"))
+  @@index([tenantId, buildingId, postedOn], map: "journal_tenant_id_building_id_posted_on_idx")
+  @@index([resolutionId], map: "journal_resolution_id_idx", where: raw("(resolution_id IS NOT NULL)"))
+  @@index([fundId], map: "journal_fund_id_idx", where: raw("(fund_id IS NOT NULL)"))
+  @@map("journal")
+  @@schema("juristic")
+}
+
+/// D-312 (J2.1): one side of a journal (a debit or a credit on an account).
+model JournalLine {
+  id        String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String  @map("tenant_id") @db.Uuid
+  journalId String  @map("journal_id") @db.Uuid
+  lineNo    Int     @map("line_no") @db.SmallInt
+  accountId String  @map("account_id") @db.Uuid
+  debit     Decimal @default(0) @db.Decimal(14, 2)
+  credit    Decimal @default(0) @db.Decimal(14, 2)
+  unitId    String? @map("unit_id") @db.Uuid
+  partyId   String? @map("party_id") @db.Uuid
+  memo      String?
+
+  tenant  Tenant  @relation("JournalLineTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "journal_line_tenant_id_fkey")
+  journal Journal @relation(fields: [journalId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "journal_line_journal_id_fkey")
+  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "journal_line_account_id_fkey")
+  unit    Unit?   @relation("JournalLineUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "journal_line_unit_id_fkey")
+  party   Party?  @relation("JournalLineParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "journal_line_party_id_fkey")
+
+  @@unique([journalId, lineNo], map: "journal_line_journal_id_line_no_key")
+  @@index([accountId], map: "journal_line_account_id_idx")
+  @@index([tenantId], map: "journal_line_tenant_id_idx")
+  @@index([unitId], map: "journal_line_unit_id_idx", where: raw("(unit_id IS NOT NULL)"))
+  @@index([partyId], map: "journal_line_party_id_idx", where: raw("(party_id IS NOT NULL)"))
+  @@map("journal_line")
+  @@schema("juristic")
+}
+
+/// D-311 / D-329 (J2.1): money into or out of a fund; out needs a resolution and another user's approval.
+model FundTransfer {
+  id               String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String                @map("tenant_id") @db.Uuid
+  buildingId       String                @map("building_id") @db.Uuid
+  fundId           String                @map("fund_id") @db.Uuid
+  direction        FundTransferDirection
+  amount           Decimal               @db.Decimal(14, 2)
+  counterAccountId String                @map("counter_account_id") @db.Uuid
+  transferOn       DateTime              @map("transfer_on") @db.Date
+  resolutionId     String?               @map("resolution_id") @db.Uuid
+  reference        String?
+  note             String?
+  state            FundTransferState     @default(requested)
+  requestedBy      String                @map("requested_by") @db.Uuid
+  requestedAt      DateTime              @default(now()) @map("requested_at") @db.Timestamptz(6)
+  decidedBy        String?               @map("decided_by") @db.Uuid
+  decidedAt        DateTime?             @map("decided_at") @db.Timestamptz(6)
+  decisionReason   String?               @map("decision_reason")
+  journalId        String?               @map("journal_id") @db.Uuid
+  updatedAt        DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version          Int                   @default(1)
+
+  tenant         Tenant       @relation("FundTransferTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fund_transfer_tenant_id_fkey")
+  building       Building     @relation("FundTransferBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fund_transfer_building_id_fkey")
+  fund           Fund         @relation(fields: [fundId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fund_transfer_fund_id_fkey")
+  counterAccount Account      @relation(fields: [counterAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fund_transfer_counter_account_id_fkey")
+  resolution     Resolution?  @relation(fields: [resolutionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fund_transfer_resolution_id_fkey")
+  requester      UserAccount  @relation("FundTransferRequester", fields: [requestedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fund_transfer_requested_by_fkey")
+  decider        UserAccount? @relation("FundTransferDecider", fields: [decidedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fund_transfer_decided_by_fkey")
+  journal        Journal?     @relation(fields: [journalId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fund_transfer_journal_id_fkey")
+
+  @@index([fundId, requestedAt(sort: Desc)], map: "fund_transfer_fund_id_idx")
+  @@index([tenantId, state], map: "fund_transfer_tenant_id_state_idx")
+  @@map("fund_transfer")
+  @@schema("juristic")
+}
+
+/// D-311 / D-329 (J2.1): a petty cash float of a building held by a custodian (own GL account).
+model PettyCash {
+  id              String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  buildingId      String   @map("building_id") @db.Uuid
+  name            String
+  custodianUserId String   @map("custodian_user_id") @db.Uuid
+  floatAmount     Decimal  @map("float_amount") @db.Decimal(14, 2)
+  accountId       String   @map("account_id") @db.Uuid
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy       String?  @map("created_by") @db.Uuid
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy       String?  @map("updated_by") @db.Uuid
+  version         Int      @default(1)
+
+  tenant          Tenant           @relation("PettyCashTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "petty_cash_tenant_id_fkey")
+  building        Building         @relation("PettyCashBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "petty_cash_building_id_fkey")
+  custodian       UserAccount      @relation("PettyCashCustodian", fields: [custodianUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "petty_cash_custodian_user_id_fkey")
+  account         Account          @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "petty_cash_account_id_fkey")
+  entries         PettyCashEntry[]
+  counts          PettyCashCount[]
+  expenseRequests ExpenseRequest[]
+
+  @@unique([buildingId, name], map: "petty_cash_building_id_name_key")
+  @@unique([accountId], map: "petty_cash_account_id_key")
+  @@index([tenantId], map: "petty_cash_tenant_id_idx")
+  @@map("petty_cash")
+  @@schema("juristic")
+}
+
+/// D-311 / D-329 (J2.1): a spending request (or petty cash top-up) with approval bands and maker-checker.
+model ExpenseRequest {
+  id                String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String                @map("tenant_id") @db.Uuid
+  buildingId        String                @map("building_id") @db.Uuid
+  number            String?               @db.Citext
+  kind              ExpenseKind           @default(expense)
+  title             String
+  payeePartyId      String?               @map("payee_party_id") @db.Uuid
+  payeeName         String                @map("payee_name")
+  pettyCashId       String?               @map("petty_cash_id") @db.Uuid
+  fundId            String?               @map("fund_id") @db.Uuid
+  resolutionId      String?               @map("resolution_id") @db.Uuid
+  state             ExpenseState          @default(draft)
+  amount            Decimal               @default(0) @db.Decimal(14, 2)
+  whtAmount         Decimal               @default(0) @map("wht_amount") @db.Decimal(14, 2)
+  netAmount         Decimal               @default(0) @map("net_amount") @db.Decimal(14, 2)
+  band              Json?
+  approvalsRequired Int?                  @map("approvals_required") @db.SmallInt
+  approverRoles     String[]              @default([]) @map("approver_roles")
+  requestedBy       String                @map("requested_by") @db.Uuid
+  submittedAt       DateTime?             @map("submitted_at") @db.Timestamptz(6)
+  approvedAt        DateTime?             @map("approved_at") @db.Timestamptz(6)
+  rejectedAt        DateTime?             @map("rejected_at") @db.Timestamptz(6)
+  decisionReason    String?               @map("decision_reason")
+  cancelledAt       DateTime?             @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason      String?               @map("cancel_reason")
+  paidAt            DateTime?             @map("paid_at") @db.Timestamptz(6)
+  paidOn            DateTime?             @map("paid_on") @db.Date
+  paymentMethod     ExpensePaymentMethod? @map("payment_method")
+  paymentReference  String?               @map("payment_reference")
+  paidFromAccountId String?               @map("paid_from_account_id") @db.Uuid
+  paidBy            String?               @map("paid_by") @db.Uuid
+  journalId         String?               @map("journal_id") @db.Uuid
+  note              String?
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?               @map("created_by") @db.Uuid
+  updatedAt         DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?               @map("updated_by") @db.Uuid
+  version           Int                   @default(1)
+
+  tenant         Tenant                  @relation("ExpenseRequestTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_tenant_id_fkey")
+  building       Building                @relation("ExpenseRequestBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_building_id_fkey")
+  payeeParty     Party?                  @relation("ExpenseRequestPayee", fields: [payeePartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_payee_party_id_fkey")
+  pettyCash      PettyCash?              @relation(fields: [pettyCashId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_petty_cash_id_fkey")
+  fund           Fund?                   @relation(fields: [fundId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_fund_id_fkey")
+  resolution     Resolution?             @relation(fields: [resolutionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_resolution_id_fkey")
+  requester      UserAccount             @relation("ExpenseRequestRequester", fields: [requestedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_requested_by_fkey")
+  payer          UserAccount?            @relation("ExpenseRequestPayer", fields: [paidBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_paid_by_fkey")
+  paidFrom       Account?                @relation(fields: [paidFromAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_paid_from_account_id_fkey")
+  journal        Journal?                @relation(fields: [journalId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_journal_id_fkey")
+  lines          ExpenseRequestLine[]
+  attachments    ExpenseAttachment[]
+  approvals      ExpenseApproval[]
+  certificate    WithholdingCertificate?
+  pettyCashEntry PettyCashEntry?
+
+  @@unique([tenantId, number], map: "expense_request_tenant_id_number_key", where: raw("(number IS NOT NULL)"))
+  @@index([tenantId, state, createdAt(sort: Desc)], map: "expense_request_tenant_id_state_idx")
+  @@index([buildingId], map: "expense_request_building_id_idx")
+  @@index([fundId], map: "expense_request_fund_id_idx", where: raw("(fund_id IS NOT NULL)"))
+  @@index([pettyCashId], map: "expense_request_petty_cash_id_idx", where: raw("(petty_cash_id IS NOT NULL)"))
+  @@map("expense_request")
+  @@schema("juristic")
+}
+
+/// D-329 (J2.1): a line of an expense request (expense account, amount incl. VAT, optional WHT snapshot).
+model ExpenseRequestLine {
+  id               String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  expenseRequestId String   @map("expense_request_id") @db.Uuid
+  lineNo           Int      @map("line_no") @db.SmallInt
+  accountId        String   @map("account_id") @db.Uuid
+  description      String
+  amount           Decimal  @db.Decimal(14, 2)
+  vatAmount        Decimal  @default(0) @map("vat_amount") @db.Decimal(14, 2)
+  whtKey           String?  @map("wht_key")
+  whtIncomeType    String?  @map("wht_income_type")
+  whtRate          Decimal? @map("wht_rate") @db.Decimal(5, 2)
+  whtAmount        Decimal  @default(0) @map("wht_amount") @db.Decimal(14, 2)
+
+  tenant         Tenant         @relation("ExpenseRequestLineTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_line_tenant_id_fkey")
+  expenseRequest ExpenseRequest @relation(fields: [expenseRequestId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "expense_request_line_expense_request_id_fkey")
+  account        Account        @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_line_account_id_fkey")
+
+  @@unique([expenseRequestId, lineNo], map: "expense_request_line_request_id_line_no_key")
+  @@index([accountId], map: "expense_request_line_account_id_idx")
+  @@map("expense_request_line")
+  @@schema("juristic")
+}
+
+/// D-329 (J2.1): quotations, vendor invoice / receipt and payment evidence of an expense request.
+model ExpenseAttachment {
+  id               String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String                @map("tenant_id") @db.Uuid
+  expenseRequestId String                @map("expense_request_id") @db.Uuid
+  documentId       String                @map("document_id") @db.Uuid
+  kind             ExpenseAttachmentKind
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy        String?               @map("created_by") @db.Uuid
+
+  tenant         Tenant         @relation("ExpenseAttachmentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_attachment_tenant_id_fkey")
+  expenseRequest ExpenseRequest @relation(fields: [expenseRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_attachment_expense_request_id_fkey")
+  document       Document       @relation("ExpenseAttachmentDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_attachment_document_id_fkey")
+
+  @@unique([expenseRequestId, documentId], map: "expense_attachment_request_id_document_id_key")
+  @@index([documentId], map: "expense_attachment_document_id_idx")
+  @@map("expense_attachment")
+  @@schema("juristic")
+}
+
+/// D-091 / D-329 (J2.1): one approver's decision on an expense request (append-only, approver ≠ requester).
+model ExpenseApproval {
+  id               String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String          @map("tenant_id") @db.Uuid
+  expenseRequestId String          @map("expense_request_id") @db.Uuid
+  approverUserId   String          @map("approver_user_id") @db.Uuid
+  role             String
+  decision         ExpenseDecision
+  reason           String?
+  bandKey          String          @map("band_key")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant         Tenant         @relation("ExpenseApprovalTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_approval_tenant_id_fkey")
+  expenseRequest ExpenseRequest @relation(fields: [expenseRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_approval_expense_request_id_fkey")
+  approver       UserAccount    @relation("ExpenseApprovalApprover", fields: [approverUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_approval_approver_user_id_fkey")
+
+  @@unique([expenseRequestId, approverUserId], map: "expense_approval_request_id_approver_key")
+  @@index([tenantId], map: "expense_approval_tenant_id_idx")
+  @@map("expense_approval")
+  @@schema("juristic")
+}
+
+/// D-311 / D-329 (J2.1, ⚖ O-041): 50 ทวิ withholding-tax certificate of a paid expense request (series WHT).
+model WithholdingCertificate {
+  id               String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  buildingId       String   @map("building_id") @db.Uuid
+  expenseRequestId String   @map("expense_request_id") @db.Uuid
+  payeePartyId     String   @map("payee_party_id") @db.Uuid
+  payeeName        String   @map("payee_name")
+  payeeTaxIdHint   String   @map("payee_tax_id_hint")
+  form             WhtForm
+  number           String   @db.Citext
+  items            Json
+  base             Decimal  @db.Decimal(14, 2)
+  tax              Decimal  @db.Decimal(14, 2)
+  paidOn           DateTime @map("paid_on") @db.Date
+  documentId       String?  @map("document_id") @db.Uuid
+  issuedAt         DateTime @default(now()) @map("issued_at") @db.Timestamptz(6)
+  issuedBy         String?  @map("issued_by") @db.Uuid
+
+  tenant         Tenant         @relation("WithholdingCertificateTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "withholding_certificate_tenant_id_fkey")
+  building       Building       @relation("WithholdingCertificateBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "withholding_certificate_building_id_fkey")
+  expenseRequest ExpenseRequest @relation(fields: [expenseRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "withholding_certificate_expense_request_id_fkey")
+  payeeParty     Party          @relation("WithholdingCertificatePayee", fields: [payeePartyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "withholding_certificate_payee_party_id_fkey")
+  document       Document?      @relation("WithholdingCertificateDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "withholding_certificate_document_id_fkey")
+
+  @@unique([tenantId, number], map: "withholding_certificate_tenant_id_number_key")
+  @@unique([expenseRequestId], map: "withholding_certificate_expense_request_id_key")
+  @@index([payeePartyId], map: "withholding_certificate_payee_party_id_idx")
+  @@map("withholding_certificate")
+  @@schema("juristic")
+}
+
+/// D-329 (J2.1): a cash count of a petty cash float (reconciliation).
+model PettyCashCount {
+  id            String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  pettyCashId   String   @map("petty_cash_id") @db.Uuid
+  countedOn     DateTime @map("counted_on") @db.Date
+  countedAmount Decimal  @map("counted_amount") @db.Decimal(14, 2)
+  bookBalance   Decimal  @map("book_balance") @db.Decimal(14, 2)
+  difference    Decimal  @db.Decimal(14, 2)
+  note          String?
+  countedBy     String?  @map("counted_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant    Tenant           @relation("PettyCashCountTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "petty_cash_count_tenant_id_fkey")
+  pettyCash PettyCash        @relation(fields: [pettyCashId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "petty_cash_count_petty_cash_id_fkey")
+  entries   PettyCashEntry[]
+
+  @@index([pettyCashId, countedOn(sort: Desc)], map: "petty_cash_count_petty_cash_id_idx")
+  @@map("petty_cash_count")
+  @@schema("juristic")
+}
+
+/// D-329 (J2.1): a movement of a petty cash float (top-up, spend with receipt, count difference) with its journal.
+model PettyCashEntry {
+  id                String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String             @map("tenant_id") @db.Uuid
+  pettyCashId       String             @map("petty_cash_id") @db.Uuid
+  kind              PettyCashEntryKind
+  amount            Decimal            @db.Decimal(14, 2)
+  entryOn           DateTime           @map("entry_on") @db.Date
+  description       String
+  accountId         String?            @map("account_id") @db.Uuid
+  receiptDocumentId String?            @map("receipt_document_id") @db.Uuid
+  expenseRequestId  String?            @map("expense_request_id") @db.Uuid
+  countId           String?            @map("count_id") @db.Uuid
+  journalId         String             @map("journal_id") @db.Uuid
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?            @map("created_by") @db.Uuid
+
+  tenant          Tenant          @relation("PettyCashEntryTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "petty_cash_entry_tenant_id_fkey")
+  pettyCash       PettyCash       @relation(fields: [pettyCashId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "petty_cash_entry_petty_cash_id_fkey")
+  account         Account?        @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "petty_cash_entry_account_id_fkey")
+  receiptDocument Document?       @relation("PettyCashEntryReceipt", fields: [receiptDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "petty_cash_entry_receipt_document_id_fkey")
+  expenseRequest  ExpenseRequest? @relation(fields: [expenseRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "petty_cash_entry_expense_request_id_fkey")
+  count           PettyCashCount? @relation(fields: [countId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "petty_cash_entry_count_id_fkey")
+  journal         Journal         @relation(fields: [journalId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "petty_cash_entry_journal_id_fkey")
+
+  @@unique([expenseRequestId], map: "petty_cash_entry_expense_request_id_key", where: raw("(expense_request_id IS NOT NULL)"))
+  @@index([pettyCashId, entryOn], map: "petty_cash_entry_petty_cash_id_idx")
+  @@map("petty_cash_entry")
+  @@schema("juristic")
+}
+
+/// D-329 (J2.1): an imported bank statement file (idempotent by checksum per bank account).
+model BankStatement {
+  id             String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  bankAccountId  String    @map("bank_account_id") @db.Uuid
+  accountId      String    @map("account_id") @db.Uuid
+  formatKey      String    @map("format_key")
+  fileName       String    @map("file_name")
+  fileDocumentId String?   @map("file_document_id") @db.Uuid
+  checksum       Bytes
+  periodStart    DateTime? @map("period_start") @db.Date
+  periodEnd      DateTime? @map("period_end") @db.Date
+  lineCount      Int       @default(0) @map("line_count")
+  duplicateCount Int       @default(0) @map("duplicate_count")
+  importedAt     DateTime  @default(now()) @map("imported_at") @db.Timestamptz(6)
+  importedBy     String?   @map("imported_by") @db.Uuid
+
+  tenant       Tenant              @relation("BankStatementTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "bank_statement_tenant_id_fkey")
+  bankAccount  TenantBankAccount   @relation(fields: [bankAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "bank_statement_bank_account_id_fkey")
+  account      Account             @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "bank_statement_account_id_fkey")
+  fileDocument Document?           @relation("BankStatementFile", fields: [fileDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "bank_statement_file_document_id_fkey")
+  lines        BankStatementLine[]
+
+  @@unique([bankAccountId, checksum], map: "bank_statement_bank_account_id_checksum_key")
+  @@index([tenantId, importedAt(sort: Desc)], map: "bank_statement_tenant_id_imported_at_idx")
+  @@map("bank_statement")
+  @@schema("juristic")
+}
+
+/// D-329 (J2.1): a line of an imported bank statement (+ money in) and its match.
+model BankStatementLine {
+  id            String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String        @map("tenant_id") @db.Uuid
+  statementId   String        @map("statement_id") @db.Uuid
+  bankAccountId String        @map("bank_account_id") @db.Uuid
+  lineNo        Int           @map("line_no")
+  bookedOn      DateTime      @map("booked_on") @db.Date
+  amount        Decimal       @db.Decimal(14, 2)
+  description   String        @default("")
+  reference     String?
+  balance       Decimal?      @db.Decimal(14, 2)
+  lineKey       Bytes         @map("line_key")
+  matchKind     BankLineMatch @default(none) @map("match_kind")
+  matchId       String?       @map("match_id") @db.Uuid
+  matchMethod   String?       @map("match_method")
+  matchedBy     String?       @map("matched_by") @db.Uuid
+  matchedAt     DateTime?     @map("matched_at") @db.Timestamptz(6)
+  ignoreReason  String?       @map("ignore_reason")
+  version       Int           @default(1)
+
+  tenant      Tenant            @relation("BankStatementLineTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "bank_statement_line_tenant_id_fkey")
+  statement   BankStatement     @relation(fields: [statementId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "bank_statement_line_statement_id_fkey")
+  bankAccount TenantBankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "bank_statement_line_bank_account_id_fkey")
+
+  @@unique([bankAccountId, lineKey], map: "bank_statement_line_bank_account_id_line_key_key")
+  @@unique([matchKind, matchId], map: "bank_statement_line_match_key", where: raw("(match_id IS NOT NULL)"))
+  @@index([statementId, lineNo], map: "bank_statement_line_statement_id_idx")
+  @@index([tenantId, bookedOn], map: "bank_statement_line_unmatched_idx", where: raw("(match_kind = 'none'::juristic.bank_line_match)"))
+  @@map("bank_statement_line")
+  @@schema("juristic")
+}

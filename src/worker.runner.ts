@@ -18,6 +18,7 @@ import { IntegrationDeliveryService } from '@modules/bridge-integrations/integra
 import { RentalHandoffsService } from '@modules/bridge-integrations/rental-handoffs.service';
 import { BillingCyclesService } from '@modules/ops-billing/billing-cycles.service';
 import { EtaxService } from '@modules/ops-etax/etax.service';
+import { LedgerService } from '@modules/ops-juristic/accounting/ledger.service';
 import { CollectionsService } from '@modules/ops-juristic/collections.service';
 import { PaymentPlansService } from '@modules/ops-juristic/payment-plans.service';
 import { LeaseRenewalsService } from '@modules/ops-leases/lease-renewals.service';
@@ -124,6 +125,8 @@ export const MAINTENANCE_JOBS = {
   'payment-plans': 3_600_000,
   // J1.2b (D-326): collection cases opened / resolved, the next due ladder step of each case run exactly once
   collections: 3_600_000,
+  // J2.1 (D-329): back-posts journals of juristic tenants and recognises advance-billed revenue month by month
+  'juristic-ledger': 3_600_000,
   // J4.1 (D-315, D-327): unanswered visits past their house timeout get the policy; open visits reported once;
   // visits, photos, plates, ended invites and expired cars deleted after gate.retention_days
   'gate-visits': 15_000,
@@ -196,6 +199,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly energyInsight: EnergyInsightService,
     private readonly paymentPlans: PaymentPlansService,
     private readonly collections: CollectionsService,
+    private readonly juristicLedger: LedgerService,
     private readonly gateVisits: VisitsService,
     private readonly gateHardware: GateHardwareService,
     private readonly gateRetention: GateRetentionService,
@@ -362,6 +366,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'collections':
         await this.collections.run();
+        break;
+      case 'juristic-ledger':
+        await this.juristicLedger.run();
         break;
       case 'gate-visits':
         await this.gateVisits.sweep();

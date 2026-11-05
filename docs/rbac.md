@@ -17,7 +17,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (113)
+## Permissions (122)
 | Permission | Surfaces | owner | manager | staff | accountant | committee | auditor | guard | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | View the tenant profile and company data |
@@ -98,6 +98,15 @@
 | `juristic.collections.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Propose, reject and cancel payment plans; issue or refuse debt clearance certificates (D-306, D-308, D-325) |
 | `juristic.payment_plan.approve` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  | Approve a payment plan (owner, manager or committee, D-308, D-325) |
 | `juristic.collections.approve` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  | Approve or refuse a collections ladder step that needs approval (suspension of common services, lawyer letter, legal action; owner, manager or committee, D-305, D-326) |
+| `juristic.accounting.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  |  | Read the chart of accounts, journals, funds, petty cash, expense requests, WHT certificates, bank statements and the financial statements (D-312, D-329) |
+| `juristic.accounting.manage` | owner | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  | Edit the chart of accounts, post / reverse manual journals, back-post the ledger, import and match bank statements, export journals (D-312, D-329) |
+| `juristic.expense.read` | owner | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | Read expense requests, their approvals and certificates, and petty cash floats (D-311, D-329) |
+| `juristic.expense.request` | owner | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | Draft, edit, submit and cancel expense requests and attach their documents (D-311, D-329) |
+| `juristic.expense.approve` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  | Approve or reject an expense request when the role is in its approval band; never one’s own request (maker-checker, D-091, D-311, D-329) |
+| `juristic.expense.pay` | owner | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  | Record the payment of an approved expense request (money leaves; never the committee, D-320, D-329) |
+| `juristic.petty_cash.spend` | owner | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | Record a petty cash spend with its receipt (the custodian, or an owner / manager, D-329) |
+| `juristic.fund.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Create funds and petty cash floats, request fund transfers, count petty cash (D-311, D-329) |
+| `juristic.fund.approve` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  | Approve or reject a fund transfer requested by another user (out of a fund only with a resolution, D-311, D-329) |
 | `admin.tenant.read` | admin |  |  |  |  |  |  |  | ✓ | ✓ | ✓ | ✓ | List and view tenants |
 | `gate.read` | owner, staff | ✓ | ✓ | ✓ |  | ✓ |  |  |  |  |  |  | See gates, devices, guards, house policies, the blacklist and invites (not the visit log) |
 | `gate.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Create and edit gates, enrol / revoke gate tablets, house policies, the blacklist (D-327) |

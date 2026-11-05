@@ -398,6 +398,10 @@ model TenantBankAccount {
   payments        Payment[]
   webhooks        PaymentWebhook[]
   settlementFiles  PaymentSettlementFile[]
+  juristicFunds          Fund[]
+  juristicAccounts       Account[]
+  bankStatements         BankStatement[]
+  bankStatementLines     BankStatementLine[]
 
   @@unique([tenantId], map: "tenant_bank_account_tenant_id_default_key", where: raw("(is_default AND (state = 'active'::platform.bank_account_state))"))
   @@index([paymentProvider, providerMerchantRefHash], map: "tenant_bank_account_provider_merchant_idx", where: raw("(provider_merchant_ref_hash IS NOT NULL)"))

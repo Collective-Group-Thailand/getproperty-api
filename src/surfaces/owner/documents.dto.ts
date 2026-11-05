@@ -160,6 +160,9 @@ export enum ExportKindName {
   PayrollDeduction = 'payroll_deduction',
   /** J1.2b (D-326): the juristic receivables list as CSV. */
   JuristicReceivablesCsv = 'juristic_receivables_csv',
+  JuristicJournalCsv = 'juristic_journal_csv',
+  JuristicJournalExpress = 'juristic_journal_express',
+  JuristicJournalFlowaccount = 'juristic_journal_flowaccount',
 }
 
 /** `ops.job_status`. */

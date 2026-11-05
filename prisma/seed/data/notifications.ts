@@ -94,6 +94,19 @@ const OPERATOR_EVENTS: { key: string; description: string; th: [string, string];
     ],
   },
   {
+    key: 'juristic.expense.approval_required',
+    description:
+      'Owner / manager / committee (manager routes): an expense request waits for the approvals of its band (J2.1, D-311, D-329)',
+    th: [
+      'รออนุมัติเบิกจ่าย {{expense.number}}',
+      'คำขอเบิกจ่าย {{expense.number}} {{expense.title}} จำนวน {{expense.amount}} บาท ต้องได้รับการอนุมัติ {{expense.approvals}} ท่าน พิจารณาได้ที่เมนูค่าใช้จ่าย',
+    ],
+    en: [
+      'Expense to approve — {{expense.number}}',
+      'Expense request {{expense.number}} {{expense.title}}, {{expense.amount}} THB, needs {{expense.approvals}} approval(s). Review it under Expenses.',
+    ],
+  },
+  {
     key: 'juristic.collection.legal_action',
     description: 'Owner / manager: the start of legal action was recorded after approval (J1.2b, D-326)',
     th: [
@@ -656,6 +669,7 @@ const operatorAudiences = (key: string): string[] =>
     : key.startsWith('workflow.') ||
         key.startsWith('gate.') ||
         key.startsWith('juristic.collection.') ||
+        key.startsWith('juristic.expense.') ||
         key === 'billing_cycle.computed' ||
         key === 'slip.review_requested' ||
         key === 'payment.held'

@@ -17,6 +17,12 @@ import {
   recordBytesProblems,
   TENANT_TYPES,
 } from '../storage/storage-settings';
+import {
+  approvalBandsProblems,
+  DEFAULT_APPROVAL_BANDS,
+  DEFAULT_WHT_RATES,
+  whtRatesProblems,
+} from './juristic-accounting-settings';
 
 export type SettingValueType =
   'string' | 'int' | 'decimal' | 'bool' | 'json' | 'duration' | 'money' | 'date' | 'time';
@@ -421,6 +427,40 @@ export const SETTINGS: readonly SettingDef[] = [
       )
         ? []
         : ['ascending positive whole days'],
+  },
+  {
+    key: 'juristic.approval_bands',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-311 / D-329 (J2.1): expense approval bands — ascending `upTo` amounts (THB, the last null) → `roles` (owner · manager · committee) and the number of distinct `approvals` (1–5) needed; the requester never approves (maker-checker, D-091). Defaults are an assumption until the juristic sets its own (regulations / AGM).',
+    editableBy: OWNER_SETTINGS,
+    value: DEFAULT_APPROVAL_BANDS,
+    reason: 'seed: D-329 (pack J, J2.1) — assumed defaults, editable',
+    check: approvalBandsProblems,
+  },
+  {
+    key: 'juristic.wht_rates',
+    valueType: 'json',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-311 / D-329 (J2.1, ⚖ O-041): withholding-tax rates a juristic person applies when paying vendors — data (key, th / en label, income type printed on the 50 ทวิ, rate %, verified). Seeded with the common 1 / 2 / 3 / 5 % rates marked `verified: false` until a tax adviser confirms them for condominium / housing-estate juristic persons.',
+    editableBy: OWNER_BILLING,
+    value: DEFAULT_WHT_RATES,
+    reason: 'seed: D-329 (pack J, J2.1) — pending verification O-041',
+    check: whtRatesProblems,
+  },
+  {
+    key: 'juristic.bank_match_days',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-329 (J2.1): bank statement matching window — a statement line matches a payment / paid expense / fund transfer of the same amount booked within this many days.',
+    editableBy: OWNER_BILLING,
+    value: 3,
+    reason: 'seed: D-329 (pack J, J2.1)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 31 ? [] : ['an integer 0–31'],
   },
   {
     key: 'juristic.kpi_collection_days',

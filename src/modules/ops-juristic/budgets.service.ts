@@ -430,6 +430,12 @@ export class JuristicBudgetsService extends TenantScopedRepository {
   }
 
   private async writeLines(tx: Tx, ctx: TenantContext, budgetId: string, lines: BudgetLineInput[]) {
+    // J2.1 (D-329): a line's account must be an account of the tenant's chart (FK since migration 0076)
+    const accountIds = [...new Set(lines.map((l) => l.accountId).filter((a): a is string => Boolean(a)))];
+    if (accountIds.length) {
+      const found = await tx.account.count({ where: { id: { in: accountIds }, tenantId: ctx.tenantId } });
+      if (found !== accountIds.length) throw new DomainException('http.not_found');
+    }
     await tx.budgetLine.deleteMany({ where: { budgetId } });
     if (lines.length)
       await tx.budgetLine.createMany({

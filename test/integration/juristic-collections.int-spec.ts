@@ -834,7 +834,7 @@ describe('J1.2b collections ladder, statements, D-270 workspace, reports (real P
       billed: '28000.00',
       collected: '0.00',
       billedVsBudgetPct: '51.85',
-      expenseSideAvailable: false,
+      expenseSideAvailable: true, // J2.1 (D-329): the expense side from the journals
     });
     expect(r.billedByKind[0]).toEqual({ kind: 'common_fee', amount: '28000.00' });
     // residents see the approved budget of their building for the current year (income side)
