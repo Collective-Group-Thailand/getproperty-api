@@ -110,6 +110,8 @@ export const API_TAGS: Record<string, string> = {
     'Funds (own ledger and bank account; out only with a resolution and another user’s approval) and petty cash floats (spends with receipts, counts) (D-311, D-329).',
   'owner.juristicBankStatements':
     'Bank statement import (KBank / SCB / BBL / KTB column maps as data), idempotent re-import, automatic and manual matching to payments, expenses and fund transfers (D-329).',
+  'owner.juristicImports':
+    'Import wizard of a juristic building moving from a legacy system: templates (register, opening balances, 12 months of payment history, bank opening balances, legacy bills), row-level validation in Thai / English, reconciliation with the bank statements, commit in one transaction, rollback of exactly what was created until go-live, parallel cycle, go-live; full export of every juristic table (D-313, D-332).',
   'owner.juristicVendors':
     'Vendors of juristic tenants: a party with its tax id (for the 50 ทวิ), categories, contact and a masked bank account; blocking (D-310, D-331).',
   'owner.juristicVendorContracts':

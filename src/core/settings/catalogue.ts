@@ -477,6 +477,28 @@ export const SETTINGS: readonly SettingDef[] = [
     check: (v) => (typeof v === 'string' && /^\d{1,12}(\.\d{1,2})?$/.test(v) ? [] : ['a money string ≥ 0']),
   },
   {
+    key: 'juristic.import.parallel_cycle_required',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-313 / D-332 (J3.1): an import goes live only after one billing cycle was compared with the legacy bills (the parallel cycle).',
+    editableBy: OWNER_SETTINGS,
+    value: true,
+    reason: 'seed: D-313 (pack J, J3.1)',
+    check: (v) => (typeof v === 'boolean' ? [] : ['true or false']),
+  },
+  {
+    key: 'juristic.import.allow_unexplained_differences',
+    valueType: 'bool',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-332 (J3.1): when true, an import may go live with unexplained per-unit differences of the parallel cycle if the request acknowledges them (recorded); false (default) blocks go-live until each is explained.',
+    editableBy: OWNER_SETTINGS,
+    value: false,
+    reason: 'seed: D-332 (pack J, J3.1) — conservative',
+    check: (v) => (typeof v === 'boolean' ? [] : ['true or false']),
+  },
+  {
     key: 'juristic.contract_expiry_alert_days',
     valueType: 'json',
     scopeAllowed: ['platform', 'tenant'],

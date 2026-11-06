@@ -120,6 +120,7 @@ export enum OwnerMenuKey {
   JuristicVendors = 'juristic_vendors',
   JuristicVendorContracts = 'juristic_vendor_contracts',
   JuristicQuotations = 'juristic_quotations',
+  JuristicImport = 'juristic_import',
   JuristicWorkspaceInvitations = 'juristic_workspace_invitations',
   /** J4.1 (D-315, D-327): gate & visitors — juristic estates; `gate` for apartment / PM tenants behind `module.gate`. */
   JuristicGate = 'juristic_gate',
@@ -236,6 +237,8 @@ export enum InvoiceLineKindName {
   ServiceChargeWork = 'service_charge_work',
   /** J1.2a (D-325): an instalment of a payment plan, or the rest of a defaulted / cancelled plan. */
   PlanInstalment = 'plan_instalment',
+  /** J3.1 (D-332): a balance brought forward from the legacy system by an import. */
+  OpeningBalance = 'opening_balance',
 }
 
 /** `ops.billing_cycle_status` (D-031). */

@@ -20,6 +20,7 @@ enum ExportKind {
   juristic_journal_csv
   juristic_journal_express
   juristic_journal_flowaccount
+  juristic_full_export
 
   @@map("export_kind")
   @@schema("ops")

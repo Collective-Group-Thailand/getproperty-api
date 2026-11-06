@@ -32,6 +32,7 @@ enum DocumentType {
   collection_letter
   expense_request
   withholding_certificate
+  opening_balance
 
   @@map("document_type")
   @@schema("ops")

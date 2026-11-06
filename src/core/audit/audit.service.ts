@@ -212,6 +212,18 @@ export const AUDIT_ACTIONS = [
   'juristic.workspace_linked',
   'juristic.workspace_revoked',
   'juristic.workspace_invoice_issued',
+  // J3.1 (D-313, D-332)
+  'juristic.import_created',
+  'juristic.import_file_uploaded',
+  'juristic.import_file_removed',
+  'juristic.import_validated',
+  'juristic.import_reconciled',
+  'juristic.import_committed',
+  'juristic.import_rolled_back',
+  'juristic.import_parallel_cycle_compared',
+  'juristic.import_difference_explained',
+  'juristic.import_went_live',
+  'juristic.import_cancelled',
   // J2.1 (D-311, D-312, D-329)
   'juristic.ledger_back_posted',
   'juristic.account_created',

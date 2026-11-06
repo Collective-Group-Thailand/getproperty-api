@@ -575,6 +575,38 @@
     "preview_stale": {
       "title": "Preview out of date",
       "detail": "The building or the file changed since the preview; preview again."
+    },
+    "invalid_state": {
+      "title": "Import not in this state",
+      "detail": "The import job is not in a state that allows this action."
+    },
+    "job_open": {
+      "title": "An import is already open",
+      "detail": "This building already has an open import job; finish, roll back or cancel it first."
+    },
+    "reconciliation_unexplained": {
+      "title": "Differences not explained",
+      "detail": "The reconciliation found differences; explain them with a note and an attachment before committing."
+    },
+    "bill_to_consent_required": {
+      "title": "Bill-to consents missing",
+      "detail": "The register names bill-to payers; attach the owners' signed consents to commit."
+    },
+    "go_live_pending": {
+      "title": "Import not live yet",
+      "detail": "The building's legacy import is committed but not live; nothing is issued before go-live."
+    },
+    "rollback_blocked": {
+      "title": "Rollback blocked",
+      "detail": "Other records now refer to what the import created; the rollback was not done."
+    },
+    "parallel_cycle_missing": {
+      "title": "Parallel cycle missing",
+      "detail": "Compare one billing cycle with the legacy bills before going live."
+    },
+    "differences_unexplained": {
+      "title": "Cycle differences unexplained",
+      "detail": "Explain every per-unit difference of the parallel cycle (or acknowledge them where the setting allows it) before going live."
     }
   },
   "party": {

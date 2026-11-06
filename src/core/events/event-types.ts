@@ -366,6 +366,15 @@ export const DOMAIN_EVENT_TYPES = {
   'juristic.withholding_certificate.issued':
     'A 50 ทวิ withholding-tax certificate was numbered; the worker builds its PDF (D-311, D-329, O-041).',
   'juristic.withholding_certificate.ready': 'The PDF of a withholding-tax certificate is ready (D-329).',
+  // J3.1 (D-313, D-332)
+  'juristic.import.created': 'A legacy-system import job of a juristic building was opened (D-313, D-332).',
+  'juristic.import.committed':
+    'An import was committed: register, opening-balance drafts and payment history written in one transaction (D-332).',
+  'juristic.import.rolled_back':
+    'A committed import was rolled back: exactly what it created was deleted (D-332).',
+  'juristic.import.went_live':
+    'An import went live: opening balances issued (series OPB), bank opening journals posted (D-313, D-332).',
+  'juristic.import.cancelled': 'An import job was cancelled before its commit (D-332).',
   // J2.2 (D-310, D-331)
   'juristic.vendor.changed': 'A vendor was registered, edited, blocked or unblocked (D-310, D-331).',
   'juristic.vendor_contract.changed': 'A vendor contract was drafted, edited or got a document (D-331).',

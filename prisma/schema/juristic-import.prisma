@@ -1,0 +1,203 @@
+// J3.1 import wizard: legacy-system migration of a juristic building (D-313, D-332; migration 0079).
+
+enum ImportState {
+  draft
+  validated
+  reconciled
+  committed
+  live
+  rolled_back
+  cancelled
+
+  @@map("import_state")
+  @@schema("juristic")
+}
+
+enum ImportSheet {
+  register
+  opening_balance
+  payment_history
+  bank_balance
+  legacy_bills
+
+  @@map("import_sheet")
+  @@schema("juristic")
+}
+
+/// One legacy-system import of a building (D-313, D-332): files, validation, reconciliation, commit, rollback, go-live.
+model ImportJob {
+  id                        String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                  String      @map("tenant_id") @db.Uuid
+  buildingId                String      @map("building_id") @db.Uuid
+  number                    Int
+  state                     ImportState @default(draft)
+  asOfDate                  DateTime    @map("as_of_date") @db.Date
+  note                      String?
+  computedTotals            Json        @default("{}") @map("computed_totals")
+  declaredReceivables       Decimal?    @map("declared_receivables") @db.Decimal(14, 2)
+  reconciliation            Json?
+  reconciliationNote        String?     @map("reconciliation_note")
+  reconciliationDocumentId  String?     @map("reconciliation_document_id") @db.Uuid
+  reconciledAt              DateTime?   @map("reconciled_at") @db.Timestamptz(6)
+  reconciledBy              String?     @map("reconciled_by") @db.Uuid
+  billToConsentDocumentId   String?     @map("bill_to_consent_document_id") @db.Uuid
+  committedAt               DateTime?   @map("committed_at") @db.Timestamptz(6)
+  committedBy               String?     @map("committed_by") @db.Uuid
+  liveAt                    DateTime?   @map("live_at") @db.Timestamptz(6)
+  liveBy                    String?     @map("live_by") @db.Uuid
+  notifyOpeningBalances     Boolean?    @map("notify_opening_balances")
+  rolledBackAt              DateTime?   @map("rolled_back_at") @db.Timestamptz(6)
+  rolledBackBy              String?     @map("rolled_back_by") @db.Uuid
+  rollbackReason            String?     @map("rollback_reason")
+  cancelledAt               DateTime?   @map("cancelled_at") @db.Timestamptz(6)
+  cancelledBy               String?     @map("cancelled_by") @db.Uuid
+  parallelCycleId           String?     @map("parallel_cycle_id") @db.Uuid
+  parallelRunAt             DateTime?   @map("parallel_run_at") @db.Timestamptz(6)
+  differencesAcknowledgedAt DateTime?   @map("differences_acknowledged_at") @db.Timestamptz(6)
+  differencesAcknowledgedBy String?     @map("differences_acknowledged_by") @db.Uuid
+  createdAt                 DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                 String?     @map("created_by") @db.Uuid
+  updatedAt                 DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy                 String?     @map("updated_by") @db.Uuid
+  version                   Int         @default(1)
+
+  tenant                 Tenant        @relation("ImportJobTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_job_tenant_id_fkey")
+  building               Building      @relation("ImportJobBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_job_building_id_fkey")
+  reconciliationDocument Document?     @relation("ImportJobReconciliationDocument", fields: [reconciliationDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_job_reconciliation_document_id_fkey")
+  billToConsentDocument  Document?     @relation("ImportJobBillToConsentDocument", fields: [billToConsentDocumentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_job_bill_to_consent_document_id_fkey")
+  parallelCycle          BillingCycle? @relation(fields: [parallelCycleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_job_parallel_cycle_id_fkey")
+
+  files          ImportFile[]
+  rows           ImportRow[]
+  created        ImportCreated[]
+  legacyPayments LegacyPayment[]
+  differences    ImportCycleDifference[]
+  invoices       Invoice[]
+
+  @@unique([tenantId, number], map: "import_job_tenant_id_number_key")
+  @@unique([buildingId], map: "import_job_building_open_key", where: raw("(state = ANY (ARRAY['draft'::juristic.import_state, 'validated'::juristic.import_state, 'reconciled'::juristic.import_state, 'committed'::juristic.import_state]))"))
+  @@index([tenantId, state], map: "import_job_tenant_id_state_idx")
+  @@index([reconciliationDocumentId], map: "import_job_reconciliation_document_id_idx")
+  @@index([billToConsentDocumentId], map: "import_job_bill_to_consent_document_id_idx")
+  @@index([parallelCycleId], map: "import_job_parallel_cycle_id_idx")
+  @@map("import_job")
+  @@schema("juristic")
+}
+
+/// The file of one sheet of an import job (D-332).
+model ImportFile {
+  id           String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String      @map("tenant_id") @db.Uuid
+  jobId        String      @map("job_id") @db.Uuid
+  sheet        ImportSheet
+  documentId   String      @map("document_id") @db.Uuid
+  fileName     String      @map("file_name")
+  format       String
+  sha256       Bytes
+  rowCount     Int         @default(0) @map("row_count")
+  errorCount   Int         @default(0) @map("error_count")
+  warningCount Int         @default(0) @map("warning_count")
+  uploadedAt   DateTime    @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  uploadedBy   String?     @map("uploaded_by") @db.Uuid
+
+  tenant   Tenant    @relation("ImportFileTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_file_tenant_id_fkey")
+  job      ImportJob @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_file_job_id_fkey")
+  document Document  @relation("ImportFileDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_file_document_id_fkey")
+
+  @@unique([jobId, sheet], map: "import_file_job_id_sheet_key")
+  @@index([documentId], map: "import_file_document_id_idx")
+  @@map("import_file")
+  @@schema("juristic")
+}
+
+/// One normalised row of an import file with its field errors and warnings (D-332).
+model ImportRow {
+  id       String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId String      @map("tenant_id") @db.Uuid
+  jobId    String      @map("job_id") @db.Uuid
+  sheet    ImportSheet
+  rowNo    Int         @map("row_no")
+  data     Json
+  errors   Json        @default("[]")
+  warnings Json        @default("[]")
+
+  tenant Tenant    @relation("ImportRowTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_row_tenant_id_fkey")
+  job    ImportJob @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_row_job_id_fkey")
+
+  @@unique([jobId, sheet, rowNo], map: "import_row_job_id_sheet_row_no_key")
+  @@index([jobId, sheet], map: "import_row_errors_idx", where: raw("(errors <> '[]'::jsonb)"))
+  @@map("import_row")
+  @@schema("juristic")
+}
+
+/// Every row an import commit created, in order — what the rollback deletes (D-332).
+model ImportCreated {
+  id       String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  jobId    String @map("job_id") @db.Uuid
+  seq      Int
+  entity   String
+  entityId String @map("entity_id") @db.Uuid
+
+  tenant Tenant    @relation("ImportCreatedTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_created_tenant_id_fkey")
+  job    ImportJob @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_created_job_id_fkey")
+
+  @@unique([jobId, entity, entityId], map: "import_created_job_id_entity_entity_id_key")
+  @@index([jobId, seq], map: "import_created_job_id_seq_idx")
+  @@map("import_created")
+  @@schema("juristic")
+}
+
+/// A payment the legacy system received — history only (D-332).
+model LegacyPayment {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  buildingId String   @map("building_id") @db.Uuid
+  jobId      String   @map("job_id") @db.Uuid
+  unitId     String   @map("unit_id") @db.Uuid
+  partyId    String?  @map("party_id") @db.Uuid
+  paidOn     DateTime @map("paid_on") @db.Date
+  amount     Decimal  @db.Decimal(14, 2)
+  method     String
+  reference  String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?  @map("created_by") @db.Uuid
+
+  tenant   Tenant    @relation("LegacyPaymentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "legacy_payment_tenant_id_fkey")
+  building Building  @relation("LegacyPaymentBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "legacy_payment_building_id_fkey")
+  job      ImportJob @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "legacy_payment_job_id_fkey")
+  unit     Unit      @relation("LegacyPaymentUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "legacy_payment_unit_id_fkey")
+  party    Party?    @relation("LegacyPaymentParty", fields: [partyId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "legacy_payment_party_id_fkey")
+
+  @@index([tenantId, unitId, paidOn(sort: Desc)], map: "legacy_payment_tenant_id_unit_id_paid_on_idx")
+  @@index([jobId], map: "legacy_payment_job_id_idx")
+  @@index([buildingId], map: "legacy_payment_building_id_idx")
+  @@index([unitId], map: "legacy_payment_unit_id_idx")
+  @@index([partyId], map: "legacy_payment_party_id_idx")
+  @@map("legacy_payment")
+  @@schema("juristic")
+}
+
+/// Per unit, the parallel cycle against the legacy bill (D-313, D-332).
+model ImportCycleDifference {
+  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  jobId       String    @map("job_id") @db.Uuid
+  unitId      String?   @map("unit_id") @db.Uuid
+  unitNo      String    @map("unit_no")
+  computed    Decimal   @db.Decimal(14, 2)
+  legacy      Decimal   @db.Decimal(14, 2)
+  difference  Decimal   @db.Decimal(14, 2)
+  explanation String?
+  explainedAt DateTime? @map("explained_at") @db.Timestamptz(6)
+  explainedBy String?   @map("explained_by") @db.Uuid
+
+  tenant Tenant    @relation("ImportCycleDifferenceTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_cycle_difference_tenant_id_fkey")
+  job    ImportJob @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_cycle_difference_job_id_fkey")
+  unit   Unit?     @relation("ImportCycleDifferenceUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "import_cycle_difference_unit_id_fkey")
+
+  @@unique([jobId, unitNo], map: "import_cycle_difference_job_id_unit_no_key")
+  @@index([unitId], map: "import_cycle_difference_unit_id_idx")
+  @@map("import_cycle_difference")
+  @@schema("juristic")
+}
