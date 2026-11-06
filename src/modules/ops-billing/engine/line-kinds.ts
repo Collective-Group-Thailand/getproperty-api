@@ -24,7 +24,8 @@ export type LineKind =
   | 'discount'
   | 'deposit_offset'
   | 'service_charge_work'
-  | 'plan_instalment';
+  | 'plan_instalment'
+  | 'opening_balance';
 
 export interface LineKindRule {
   lineKind: LineKind;
@@ -213,6 +214,16 @@ export const LINE_KIND_RULES: readonly LineKindRule[] = [
     allowedWhenSetting: null,
     description:
       'An instalment of an approved payment plan (the debt the plan covers, credited on the original invoices), or the rest of a defaulted / cancelled plan billed at once (D-308, D-325).',
+  },
+  {
+    lineKind: 'opening_balance',
+    sourceType: 'adjustment',
+    requiresLeaseLine: false,
+    requiresMeter: false,
+    complianceRuleId: null,
+    allowedWhenSetting: null,
+    description:
+      'A balance brought forward from the legacy system by an import (principal per period; source common_fee or fund), issued at go-live in series OPB (D-313, D-332).',
   },
 ];
 

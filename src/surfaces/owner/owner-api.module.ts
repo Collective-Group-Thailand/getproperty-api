@@ -92,6 +92,7 @@ import {
   OwnerPaymentMandatesController,
   OwnerPaymentPlansController,
 } from './juristic-collections.controller';
+import { OwnerJuristicImportsController } from './juristic-imports.controller';
 import {
   OwnerCollectionCasesController,
   OwnerCollectionLaddersController,
@@ -249,6 +250,7 @@ import { OwnerUnitResidentInvitesController } from './unit-resident-invites.cont
     OwnerBankStatementLinesController,
     OwnerVendorsController,
     OwnerVendorContractsController,
+    OwnerJuristicImportsController,
     OwnerQuotationRoundsController,
     OwnerStatementsController,
     OwnerLetterBatchesController,

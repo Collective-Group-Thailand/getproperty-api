@@ -79,13 +79,16 @@ export function lineKindAccount(kind: string): AccountKey {
       return 'receivable';
     case 'deposit_offset':
       return 'deposits';
+    // an import's opening balance (D-332): the legacy books already earned it — accumulated surplus
+    case 'opening_balance':
+      return 'accumulated_surplus';
     default:
       return 'income_other';
   }
 }
 
 /** Accounts a line reaches directly even when billed in advance (not revenue: nothing to recognise). */
-const NOT_REVENUE = new Set<AccountKey>(['fund_equity', 'receivable', 'deposits']);
+const NOT_REVENUE = new Set<AccountKey>(['fund_equity', 'receivable', 'deposits', 'accumulated_surplus']);
 export const isRevenueKind = (kind: string): boolean => !NOT_REVENUE.has(lineKindAccount(kind));
 
 export interface BilledLine {

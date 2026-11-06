@@ -17,6 +17,8 @@ export const LARGE_BODY_ROUTES: readonly { pattern: RegExp; limit: string }[] = 
   { pattern: /^\/v1\/resident\/invoices\/[^/]+\/slips(\?|$)/, limit: '7mb' },
   // J4.1: a gate photo of a visit arrives inline (base64, ≤ 2 MB decoded)
   { pattern: /^\/v1\/guard\/visits\/[^/]+\/photo(\?|$)/, limit: '3mb' },
+  // J3.1: an import file of a legacy system may arrive inline (base64, ≤ 5 MB decoded)
+  { pattern: /^\/v1\/owner\/juristic\/imports\/[^/]+\/(files|parallel-cycle)(\?|$)/, limit: '7mb' },
 ];
 
 /**

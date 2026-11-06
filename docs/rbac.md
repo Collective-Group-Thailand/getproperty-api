@@ -17,7 +17,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (125)
+## Permissions (128)
 | Permission | Surfaces | owner | manager | staff | accountant | committee | auditor | guard | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | View the tenant profile and company data |
@@ -110,6 +110,9 @@
 | `juristic.vendor.read` | owner | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | Read vendors, service contracts (SLA, instalments, documents, evaluations, preventive plans) and quotation rounds (D-310, D-331) |
 | `juristic.vendor.manage` | owner | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  | Register and block vendors; draft, activate, renew and terminate service contracts; run quotation rounds and ask for an award (D-310, D-331) |
 | `juristic.vendor.evaluate` | owner | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  | Record the monthly evaluation of a vendor contract (D-310, D-331) |
+| `juristic.import.read` | owner | ✓ | ✓ |  |  | ✓ | ✓ |  |  |  |  |  | See legacy-system import jobs, their rows, reconciliation and parallel cycle (D-313, D-332) |
+| `juristic.import.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Run a legacy-system import: upload, validate, reconcile, commit, roll back, compare the parallel cycle, go live (D-313, D-332) |
+| `juristic.export.run` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Export every juristic table of the tenant as a CSV ZIP (D-332) |
 | `admin.tenant.read` | admin |  |  |  |  |  |  |  | ✓ | ✓ | ✓ | ✓ | List and view tenants |
 | `gate.read` | owner, staff | ✓ | ✓ | ✓ |  | ✓ |  |  |  |  |  |  | See gates, devices, guards, house policies, the blacklist and invites (not the visit log) |
 | `gate.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Create and edit gates, enrol / revoke gate tablets, house policies, the blacklist (D-327) |

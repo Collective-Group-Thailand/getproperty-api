@@ -148,6 +148,8 @@ export class InvoicesService extends TenantScopedRepository {
                 replacesInvoiceId: target.replacesInvoiceId ?? undefined,
                 billingCycleId: null,
                 isFinal: false,
+                // an import's opening-balance drafts are not replaced by an ad-hoc draft (D-332)
+                importJobId: null,
               }),
       },
       select: { id: true },
@@ -477,6 +479,10 @@ export class InvoicesService extends TenantScopedRepository {
       ackId: string | null;
       throwOnRefusal: boolean;
       skipped?: { invoiceId: string; reason: string }[];
+      /** The number series (default `invoice`; opening balances of an import use `opening_balance`, D-332). */
+      docType?: 'invoice' | 'opening_balance';
+      /** false: issued without the resident's invoice message (`notify: false` in the event payload, D-332). */
+      notify?: boolean;
     },
   ): Promise<Invoice | null> {
     await tx.$queryRaw`SELECT id FROM ops.invoice WHERE id = ${id}::uuid FOR UPDATE`;
@@ -484,12 +490,19 @@ export class InvoicesService extends TenantScopedRepository {
     if (inv.status !== 'draft') return inv.issuedAt ? inv : null;
     const skip = (
       reason: string,
-      code: 'invoice.not_ready' | 'invoice.invalid_state' = 'invoice.not_ready',
+      code: 'invoice.not_ready' | 'invoice.invalid_state' | 'import.go_live_pending' = 'invoice.not_ready',
     ) => {
       if (opts.throwOnRefusal) throw new DomainException(code, { params: { reason } });
       opts.skipped?.push({ invoiceId: id, reason });
       return null;
     };
+    // D-332 (J3.1): while a legacy import of the building is committed and not live, the legacy system still bills —
+    // nothing of the building is issued (no double billing, no notification, no ladder) except at go-live
+    if (inv.importJobId === null) {
+      const pending = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM juristic.import_job WHERE building_id = ${inv.buildingId}::uuid AND state = 'committed' LIMIT 1`;
+      if (pending.length) return skip('import_go_live_pending', 'import.go_live_pending');
+    }
     const blocking = inv.reviewFlags.filter((f) => !f.startsWith('acknowledgement_required'));
     if (blocking.length) return skip(blocking.join(','));
     // above-cap lines without an acknowledgement take the one given now (D-021a)
@@ -555,7 +568,7 @@ export class InvoicesService extends TenantScopedRepository {
       priorBalance: priorBalance.toFixed(2),
     });
     // the gapless number is taken last (§4.4): the series row stays locked only for the final writes
-    const number = await this.numbering.next(tx, inv.tenantId, 'invoice', now);
+    const number = await this.numbering.next(tx, inv.tenantId, opts.docType ?? 'invoice', now);
     snapshot.number = number;
     await tx.invoice.update({
       where: { id },
@@ -658,6 +671,8 @@ export class InvoicesService extends TenantScopedRepository {
         billingCycleId: inv.billingCycleId,
         isFinal: inv.isFinal,
         hasAboveCapLine: inv.hasAboveCapLine,
+        ...(inv.importJobId ? { importJobId: inv.importJobId } : {}),
+        ...(opts.notify === false ? { notify: false } : {}),
       },
     });
     return issued;

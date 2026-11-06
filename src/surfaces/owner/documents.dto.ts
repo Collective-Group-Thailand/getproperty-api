@@ -163,6 +163,8 @@ export enum ExportKindName {
   JuristicJournalCsv = 'juristic_journal_csv',
   JuristicJournalExpress = 'juristic_journal_express',
   JuristicJournalFlowaccount = 'juristic_journal_flowaccount',
+  /** J3.1 (D-332): every juristic table of the tenant as a CSV ZIP. */
+  JuristicFullExport = 'juristic_full_export',
 }
 
 /** `ops.job_status`. */

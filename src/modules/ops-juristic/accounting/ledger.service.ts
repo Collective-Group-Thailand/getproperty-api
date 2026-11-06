@@ -36,6 +36,19 @@ import {
   toLines,
 } from './posting';
 
+/**
+ * An import's opening-balance invoice (D-332): principal and surcharge brought forward are accumulated surplus (the
+ * legacy books earned them), a fund contribution brought forward is the fund's equity.
+ */
+const openingKind = (importJobId: string | null, kind: string, sourceType: string): string =>
+  importJobId === null
+    ? kind
+    : kind === 'opening_balance' && sourceType === 'fund'
+      ? 'fund'
+      : kind === 'opening_balance' || kind === 'late_fee'
+        ? 'opening_balance'
+        : kind;
+
 const by = () => userIdOf(RequestContext.actor());
 const D = (v: Decimal.Value | { toString(): string }) => new Decimal(v.toString());
 const day = (d: Date) => d.toISOString().slice(0, 10);
@@ -417,7 +430,7 @@ export class LedgerService extends TenantScopedRepository implements EventSubscr
         unitId: inv.unitId,
         partyId: inv.billedPartyId,
         lines: inv.lines.map((l) => ({
-          kind: l.lineKind,
+          kind: openingKind(inv.importJobId, l.lineKind, l.sourceType),
           amount: l.amount,
           scheduled: l.revenueSchedule.length > 0,
         })),
@@ -457,7 +470,10 @@ export class LedgerService extends TenantScopedRepository implements EventSubscr
   async postCreditNote(tx: Tx, noteId: string): Promise<Journal | null> {
     const note = await tx.creditNote.findUnique({
       where: { id: noteId },
-      include: { invoice: true, lines: { orderBy: { lineNo: 'asc' } } },
+      include: {
+        invoice: true,
+        lines: { orderBy: { lineNo: 'asc' }, include: { refInvoiceLine: { select: { sourceType: true } } } },
+      },
     });
     if (!note || note.status === 'void') return null;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`journal:credit_note:${note.id}`}))`;
@@ -491,7 +507,11 @@ export class LedgerService extends TenantScopedRepository implements EventSubscr
           fromUnearned = a.fromUnearned;
         }
       }
-      lines.push({ kind: l.lineKind, amount: l.amount, fromUnearned });
+      lines.push({
+        kind: openingKind(note.invoice.importJobId, l.lineKind, l.refInvoiceLine?.sourceType ?? ''),
+        amount: l.amount,
+        fromUnearned,
+      });
     }
     return this.post(tx, {
       tenantId: note.tenantId,

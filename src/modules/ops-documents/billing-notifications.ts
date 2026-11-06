@@ -28,7 +28,8 @@ export class BillingNotifications implements OnModuleInit {
   onModuleInit(): void {
     const invoice: NotifiableResolver = async (tx, e) => {
       const id = e.payload.invoiceId as string | undefined;
-      if (!id || !e.tenantId) return null;
+      // opening balances issued silently at an import's go-live (D-332): no invoice message
+      if (!id || !e.tenantId || e.payload.notify === false) return null;
       const inv = await tx.invoice.findUnique({ where: { id } });
       if (!inv?.snapshot || !inv.issuedAt) return null;
       const view = invoiceView(inv.snapshot as unknown as InvoiceSnapshot, {
