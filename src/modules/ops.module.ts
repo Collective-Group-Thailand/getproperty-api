@@ -43,6 +43,8 @@ import { JuristicFullExportService } from './ops-juristic/imports/full-export.se
 import { ImportsService } from './ops-juristic/imports/imports.service';
 import { JuristicWorkspaceService } from './ops-juristic/juristic-workspace.service';
 import { PaymentPlansService } from './ops-juristic/payment-plans.service';
+import { ManagementContractsService } from './ops-juristic/pm/management-contracts.service';
+import { PmPortfolioService } from './ops-juristic/pm/pm-portfolio.service';
 import { JuristicRegisterService } from './ops-juristic/register.service';
 import { StatementsService } from './ops-juristic/statements.service';
 import { QuotationsService } from './ops-juristic/vendors/quotations.service';
@@ -171,6 +173,8 @@ const SERVICES = [
   VendorEvaluationsService,
   ImportsService,
   HandoversService,
+  ManagementContractsService,
+  PmPortfolioService,
   JuristicFullExportService,
   ContractRenderer,
   LeasesService,

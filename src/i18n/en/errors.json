@@ -1984,5 +1984,49 @@
       "title": "Totals differ from the handover",
       "detail": "What would be recorded does not equal the totals the developer sent; nothing was recorded."
     }
+  },
+  "management_contract": {
+    "invalid_state": {
+      "title": "Contract not in this state",
+      "detail": "The management contract is not in a state that allows this action."
+    },
+    "overlap": {
+      "title": "Another manager for these dates",
+      "detail": "The building already has a management contract offered or active for an overlapping period."
+    },
+    "offer_expired": {
+      "title": "Offer start date passed",
+      "detail": "The start date of the offer has passed; the juristic office has to offer the contract again with a new start date."
+    },
+    "resolution_required": {
+      "title": "Resolution required",
+      "detail": "Offering a management contract needs the adopted resolution that appoints the manager."
+    },
+    "resolution_invalid": {
+      "title": "Resolution cannot be used",
+      "detail": "The resolution must be adopted and belong to the same building."
+    },
+    "pm_tenant_invalid": {
+      "title": "Not a PM company on getproperty",
+      "detail": "The company named is not an active property management company on getproperty."
+    }
+  },
+  "pm_staff": {
+    "not_member": {
+      "title": "Not a member of the company",
+      "detail": "Only active members of the PM company can be assigned to a building."
+    },
+    "outside_term": {
+      "title": "Outside the contract term",
+      "detail": "The assignment must lie inside the term of the management contract."
+    },
+    "overlap": {
+      "title": "Already assigned",
+      "detail": "This person is already assigned to the building for some of these days."
+    },
+    "ended": {
+      "title": "Assignment already ended",
+      "detail": "The assignment has already ended."
+    }
   }
 }

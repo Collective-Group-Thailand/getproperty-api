@@ -199,6 +199,7 @@ model Account {
   pettyCashEntries    PettyCashEntry[]
   bankStatements      BankStatement[]
   vendorContracts     VendorContract[]
+  managementContracts ManagementContract[]
 
   @@unique([tenantId, code], map: "account_tenant_id_code_key")
   @@unique([tenantId, role], map: "account_tenant_id_role_key", where: raw("((role IS NOT NULL) AND (fund_id IS NULL))"))
@@ -381,6 +382,7 @@ model ExpenseRequest {
   vendorId          String?               @map("vendor_id") @db.Uuid
   vendorContractId  String?               @map("vendor_contract_id") @db.Uuid
   quotationRoundId  String?               @map("quotation_round_id") @db.Uuid
+  managementContractId String?            @map("management_contract_id") @db.Uuid
   createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy         String?               @map("created_by") @db.Uuid
   updatedAt         DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -407,10 +409,13 @@ model ExpenseRequest {
   quotationRound QuotationRound?         @relation("ExpenseRequestQuotationRound", fields: [quotationRoundId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_quotation_round_id_fkey")
   instalment     VendorContractInstalment? @relation("VendorContractInstalmentExpense")
   awardedFrom    QuotationRound[]        @relation("QuotationRoundOutcomeExpense")
+  managementContract ManagementContract? @relation("ExpenseRequestManagementContract", fields: [managementContractId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "expense_request_management_contract_id_fkey")
+  managementFeeCharge ManagementFeeCharge? @relation("ManagementFeeChargeExpense")
 
   @@unique([tenantId, number], map: "expense_request_tenant_id_number_key", where: raw("(number IS NOT NULL)"))
   @@index([vendorId], map: "expense_request_vendor_id_idx", where: raw("(vendor_id IS NOT NULL)"))
   @@index([vendorContractId], map: "expense_request_vendor_contract_id_idx", where: raw("(vendor_contract_id IS NOT NULL)"))
+  @@index([managementContractId], map: "expense_request_management_contract_id_idx", where: raw("(management_contract_id IS NOT NULL)"))
   @@index([tenantId, state, createdAt(sort: Desc)], map: "expense_request_tenant_id_state_idx")
   @@index([buildingId], map: "expense_request_building_id_idx")
   @@index([fundId], map: "expense_request_fund_id_idx", where: raw("(fund_id IS NOT NULL)"))

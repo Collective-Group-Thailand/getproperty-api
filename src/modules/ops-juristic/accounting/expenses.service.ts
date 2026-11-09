@@ -78,6 +78,8 @@ export interface ExpenseInput {
   vendorId?: string | null;
   vendorContractId?: string | null;
   quotationRoundId?: string | null;
+  /** J3.3 (D-334): the management contract whose period fee this request is (set by the job only, never by a DTO). */
+  managementContractId?: string | null;
   note?: string | null;
   lines?: ExpenseLineInput[];
   /** Top-ups only: the amount to add to the float. */
@@ -436,6 +438,7 @@ export class ExpensesService extends TenantScopedRepository implements EventSubs
         vendorId: input.vendorId ?? null,
         vendorContractId: input.vendorContractId ?? null,
         quotationRoundId: input.quotationRoundId ?? null,
+        managementContractId: input.managementContractId ?? null,
         note: input.note ?? null,
         amount: l.amount.toFixed(2),
         whtAmount: l.wht.toFixed(2),
@@ -686,7 +689,8 @@ export class ExpensesService extends TenantScopedRepository implements EventSubs
    * through its own round) is submitted only with a quotation round awarded to that vendor.
    */
   private async assertQuotations(tx: Tx, ctx: TenantContext, r: ExpenseRow, now: Date): Promise<void> {
-    if (!r.vendorId || r.vendorContractId || r.kind !== 'expense') return;
+    // J3.3 (D-334): a management fee rests on the adopted resolution that appointed the manager, like a contract
+    if (!r.vendorId || r.vendorContractId || r.managementContractId || r.kind !== 'expense') return;
     const threshold = await this.settings.valueAt<string>('juristic.quotation_threshold', now, {
       tenantId: ctx.tenantId,
     });

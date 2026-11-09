@@ -23,6 +23,7 @@ import { CollectionsService } from '@modules/ops-juristic/collections.service';
 import { HandoversService } from '@modules/ops-juristic/handovers/handovers.service';
 import { ImportsService } from '@modules/ops-juristic/imports/imports.service';
 import { PaymentPlansService } from '@modules/ops-juristic/payment-plans.service';
+import { ManagementContractsService } from '@modules/ops-juristic/pm/management-contracts.service';
 import { VendorsService } from '@modules/ops-juristic/vendors/vendors.service';
 import { LeaseRenewalsService } from '@modules/ops-leases/lease-renewals.service';
 import { LeasesService } from '@modules/ops-leases/leases.service';
@@ -136,6 +137,9 @@ export const MAINTENANCE_JOBS = {
   'juristic-imports': 86_400_000,
   // J3.2 (D-333): rejections of developer handovers delivered to getbuild through the port (waits while it is off)
   'juristic-handovers': 600_000,
+  // J3.3 (D-334): fees of ended billing periods → submitted expense requests of the juristic (once per contract ×
+  // period); management contracts past their end → ended (PM grant revoked)
+  'management-contracts': 3_600_000,
   // J4.1 (D-315, D-327): unanswered visits past their house timeout get the policy; open visits reported once;
   // visits, photos, plates, ended invites and expired cars deleted after gate.retention_days
   'gate-visits': 15_000,
@@ -212,6 +216,7 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly vendorContracts: VendorsService,
     private readonly juristicImports: ImportsService,
     private readonly juristicHandovers: HandoversService,
+    private readonly managementContracts: ManagementContractsService,
     private readonly gateVisits: VisitsService,
     private readonly gateHardware: GateHardwareService,
     private readonly gateRetention: GateRetentionService,
@@ -390,6 +395,9 @@ export class WorkerRunner implements OnApplicationBootstrap, OnApplicationShutdo
         break;
       case 'juristic-handovers':
         await this.juristicHandovers.maintain();
+        break;
+      case 'management-contracts':
+        await this.managementContracts.run();
         break;
       case 'gate-visits':
         await this.gateVisits.sweep();

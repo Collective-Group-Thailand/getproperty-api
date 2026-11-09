@@ -385,6 +385,23 @@ export const DOMAIN_EVENT_TYPES = {
     'A juristic office rejected a developer handover with a reason; getbuild is told through the port (D-333).',
   'juristic.handover.formed':
     'The juristic person of a handed-over building was formed; the developer handed the operation over (D-150 D1, D-333).',
+  // J3.3 (D-150 C3, D-334)
+  'juristic.management_contract.changed':
+    'A management contract with a PM company was drafted or edited (D-334).',
+  'juristic.management_contract.offered':
+    'A juristic tenant offered a management contract to a PM company (adopted resolution attached, D-334).',
+  'juristic.management_contract.accepted':
+    'A PM company accepted a management contract; it got a read grant on the building for the term (D-334).',
+  'juristic.management_contract.declined': 'A PM company declined a management contract offer (D-334).',
+  'juristic.management_contract.cancelled':
+    'A juristic tenant cancelled a draft or offered management contract (D-334).',
+  'juristic.management_contract.terminated':
+    'A management contract was terminated by either side; the PM grant was revoked or cut at the date (D-334).',
+  'juristic.management_contract.ended':
+    'A management contract reached its end date; the PM grant ended (D-334).',
+  'juristic.management_fee.requested':
+    'The management fee of an ended period became a submitted expense request of the juristic tenant (D-334).',
+  'pm.staff_assignment.changed': 'A PM company assigned a member to a managed building or ended it (D-334).',
   // J2.2 (D-310, D-331)
   'juristic.vendor.changed': 'A vendor was registered, edited, blocked or unblocked (D-310, D-331).',
   'juristic.vendor_contract.changed': 'A vendor contract was drafted, edited or got a document (D-331).',

@@ -114,6 +114,13 @@ export const API_TAGS: Record<string, string> = {
     'Import wizard of a juristic building moving from a legacy system: templates (register, opening balances, 12 months of payment history, bank opening balances, legacy bills), row-level validation in Thai / English, reconciliation with the bank statements, commit in one transaction, rollback of exactly what was created until go-live, parallel cycle, go-live; full export of every juristic table (D-313, D-332).',
   'owner.juristicHandovers':
     'Developer handovers from getbuild: the inbox of the juristic office — review of the totals, acceptance (register, advance common fees as owners’ credit, first fund contributions, receivables brought forward as OPB invoices, all equal to the payload), rejection back to getbuild, the juristic person’s formation switching the operator period (D-150 D1, D-314, D-333).',
+  'owner.juristicManagementContracts':
+    'Management contracts of a juristic building with a PM company: draft, offer with the adopted resolution, cancel, terminate; the fee of each ended period as a submitted expense request (never paid automatically); the PM staff assigned to the building (D-150 C3, D-334).',
+  'owner.pmPortfolio':
+    'PM company portfolio: the buildings managed today under an active contract and a live read grant, with collection rate, arrears, budget use, open work / SLA and expiring contracts per building — aggregates only (D-150 C3, D-334).',
+  'owner.pmContracts':
+    'PM company side of management contracts: offers to accept or decline, termination, the fee requested per period (D-334).',
+  'owner.pmStaff': 'PM company staff board and assignments of members to managed buildings (D-334).',
   'owner.juristicVendors':
     'Vendors of juristic tenants: a party with its tax id (for the 50 ทวิ), categories, contact and a masked bank account; blocking (D-310, D-331).',
   'owner.juristicVendorContracts':
