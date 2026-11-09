@@ -29,6 +29,7 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 | JW3 | web | done | web 32f942e (6d3755e) JW3a · 7899e05 (749376d) JW3b | apiCommit 1e364785afaf | — | JW3a import wizard · JW3b handover inbox + review/accept/reject/formed, /portfolio for pm_company (buildings, staff board, contracts), office-side management contracts (draft editor follow-up); unit 1850; budgets ≤ 228 KB |
 | J-CR | api | done | api 1b89544 (1ad0276) | 1052 paths (+9) | O-045 | D-335; cheap web CRs + LIFF #37–#52 answered, rest backlog in PROGRESS; unit 755 (+2 skipped), int 618/619 (0 failed) |
 | JS-ui | liff | done | liff 764621c (4a1bb52) | — | — | shared ui re-sync from web 32f942e; shared:check --strict 0 drift; lazy API client keeps every page ≤ 180 KB; unit 996 |
+| JS-adopt | web, liff, edge | done | web ad0e414 (6848b58) · liff adf6e50 (fe8b56f) · edge cd8a037 | web apiCommit d33fed129a51 · liff sourceCommit d33fed1… | — | contract re-adopted at api d33fed1, J-CR answers consumed, decisions.md synced to web/liff/edge; web unit 1862, liff unit 1001; budgets met (/gate 175.5 KB, LIFF max 179.8 KB) |
 | e2e | all | todo | | | | deferred runs |
 | Review | all | todo | | | | |
 | Report | api | todo | | | | |
@@ -56,3 +57,5 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 **2026-11-10 ~01:40** — J3.3 merged (api ae3c0d7). Chore JS-ui merged in liff (764621c: shared ui re-synced from web 32f942e, shared:check --strict 0 drift, lhci green after lazy API client); J-DESIGN §7 +117 rows from web/liff PROGRESS. Next: JW3b (web) beside the cheap-CR api step.
 
 **2026-11-10 ~04:00** — JW3b merged (web 7899e05) and J-CR merged (api 1b89544). Next: web + LIFF re-adopt the contract at the final api, decisions.md copy, then deferred e2e.
+
+**2026-11-10 ~06:20** — server restart stopped the adopt agents; resumed and merged (web ad0e414, liff adf6e50, edge cd8a037). Next: deferred e2e on final HEADs.
