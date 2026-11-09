@@ -122,6 +122,11 @@ export enum OwnerMenuKey {
   JuristicQuotations = 'juristic_quotations',
   JuristicImport = 'juristic_import',
   JuristicHandovers = 'juristic_handovers',
+  /** J3.3 (D-334): management contracts (juristic); portfolio, staff board, contracts (pm_company). */
+  JuristicManagementContracts = 'juristic_management_contracts',
+  PmPortfolio = 'pm_portfolio',
+  PmStaff = 'pm_staff',
+  PmContracts = 'pm_contracts',
   JuristicWorkspaceInvitations = 'juristic_workspace_invitations',
   /** J4.1 (D-315, D-327): gate & visitors — juristic estates; `gate` for apartment / PM tenants behind `module.gate`. */
   JuristicGate = 'juristic_gate',

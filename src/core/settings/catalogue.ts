@@ -522,6 +522,18 @@ export const SETTINGS: readonly SettingDef[] = [
       Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 60 ? [] : ['an integer 0–60'],
   },
   {
+    key: 'pm.portfolio_expiring_days',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant'],
+    description:
+      'D-334 (J3.3): the PM portfolio flags service contracts of a managed building that end within this many days.',
+    editableBy: OWNER_SETTINGS,
+    value: 90,
+    reason: 'seed: D-334 (pack J, J3.3) — assumption',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 7 && (v as number) <= 365 ? [] : ['an integer 7–365'],
+  },
+  {
     key: 'juristic.vendor_evaluation_criteria',
     valueType: 'json',
     scopeAllowed: ['platform', 'tenant'],

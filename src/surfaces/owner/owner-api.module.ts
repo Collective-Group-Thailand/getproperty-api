@@ -94,6 +94,7 @@ import {
 } from './juristic-collections.controller';
 import { OwnerJuristicHandoversController } from './juristic-handovers.controller';
 import { OwnerJuristicImportsController } from './juristic-imports.controller';
+import { OwnerJuristicManagementContractsController } from './juristic-management-contracts.controller';
 import {
   OwnerCollectionCasesController,
   OwnerCollectionLaddersController,
@@ -131,6 +132,11 @@ import {
   partiesController,
 } from './parties.controller';
 import { OwnerPaymentsController } from './payments.controller';
+import {
+  OwnerPmContractsController,
+  OwnerPmPortfolioController,
+  OwnerPmStaffController,
+} from './pm-portfolio.controller';
 import { OwnerPortfolioController } from './portfolio.controller';
 import { OwnerDashboardController, OwnerReceivablesController } from './receivables.controller';
 import {
@@ -253,6 +259,10 @@ import { OwnerUnitResidentInvitesController } from './unit-resident-invites.cont
     OwnerVendorContractsController,
     OwnerJuristicImportsController,
     OwnerJuristicHandoversController,
+    OwnerJuristicManagementContractsController,
+    OwnerPmPortfolioController,
+    OwnerPmContractsController,
+    OwnerPmStaffController,
     OwnerQuotationRoundsController,
     OwnerStatementsController,
     OwnerLetterBatchesController,

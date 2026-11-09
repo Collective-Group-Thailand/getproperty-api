@@ -17,7 +17,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (130)
+## Permissions (137)
 | Permission | Surfaces | owner | manager | staff | accountant | committee | auditor | guard | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | View the tenant profile and company data |
@@ -115,6 +115,13 @@
 | `juristic.export.run` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Export every juristic table of the tenant as a CSV ZIP (D-332) |
 | `juristic.handover.read` | owner | ✓ | ✓ |  |  | ✓ | ✓ |  |  |  |  |  | See the developer handovers sent to the juristic office and their totals (D-314, D-333) |
 | `juristic.handover.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Accept or reject a developer handover and record the juristic person's formation (D-314, D-333) |
+| `juristic.management_contract.read` | owner | ✓ | ✓ |  | ✓ | ✓ | ✓ |  |  |  |  |  | See the management contracts with PM companies, their fee requests and the PM staff assigned to the building (D-334) |
+| `juristic.management_contract.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Draft, offer, cancel and terminate management contracts with PM companies (offer needs an adopted resolution, D-334) |
+| `pm.portfolio.read` | owner | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  |  |  | PM company: the portfolio of managed buildings with collection, arrears, budget use, open work and expiring contracts (staff: assigned buildings only, D-334) |
+| `pm.contract.read` | owner | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  | PM company: management contracts offered to or held by the company and their fee requests (D-334) |
+| `pm.contract.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | PM company: accept, decline or terminate a management contract (D-334) |
+| `pm.staff.read` | owner | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  | PM company: the staff board — who is assigned to which managed building (staff: own assignments, D-334) |
+| `pm.staff.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | PM company: assign members to managed buildings and end assignments (D-334) |
 | `admin.tenant.read` | admin |  |  |  |  |  |  |  | ✓ | ✓ | ✓ | ✓ | List and view tenants |
 | `gate.read` | owner, staff | ✓ | ✓ | ✓ |  | ✓ |  |  |  |  |  |  | See gates, devices, guards, house policies, the blacklist and invites (not the visit log) |
 | `gate.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Create and edit gates, enrol / revoke gate tablets, house policies, the blacklist (D-327) |

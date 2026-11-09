@@ -114,6 +114,7 @@ model Vendor {
   quotations      Quotation[]
   evaluations     VendorEvaluation[]
   expenseRequests ExpenseRequest[]
+  managementContracts ManagementContract[]
 
   @@unique([tenantId, partyId], map: "vendor_tenant_id_party_id_key")
   @@index([tenantId, state], map: "vendor_tenant_id_state_idx")

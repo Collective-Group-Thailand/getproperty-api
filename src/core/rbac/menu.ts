@@ -101,6 +101,15 @@ export const OWNER_MENU: readonly MenuEntry[] = [
   { key: 'juristic_import', anyOf: ['juristic.import.read'], tenantTypes: JURISTIC },
   // J3.2 (D-314, D-333): developer handovers from getbuild
   { key: 'juristic_handovers', anyOf: ['juristic.handover.read'], tenantTypes: JURISTIC },
+  // J3.3 (D-334): management contracts with PM companies (juristic) and the PM company's portfolio
+  {
+    key: 'juristic_management_contracts',
+    anyOf: ['juristic.management_contract.read'],
+    tenantTypes: JURISTIC,
+  },
+  { key: 'pm_portfolio', anyOf: ['pm.portfolio.read'], tenantTypes: ['pm_company'] },
+  { key: 'pm_staff', anyOf: ['pm.staff.read'], tenantTypes: ['pm_company'] },
+  { key: 'pm_contracts', anyOf: ['pm.contract.read'], tenantTypes: ['pm_company'] },
   // J4.1 (D-315, D-327): the gate — juristic estates always; apartments / PM companies once the module is switched on
   { key: 'juristic_gate', anyOf: ['gate.read'], tenantTypes: JURISTIC },
   { key: 'gate', anyOf: ['gate.read'], flag: 'module.gate', tenantTypes: ['apartment', 'pm_company'] },

@@ -1,0 +1,162 @@
+// J3.3 PM company portfolio (D-150 C3, D-334; migration 0081).
+
+enum ManagementContractState {
+  draft
+  offered
+  active
+  declined
+  cancelled
+  ended
+  terminated
+
+  @@map("management_contract_state")
+  @@schema("juristic")
+}
+
+enum ManagementFeePeriod {
+  monthly
+  quarterly
+  annual
+
+  @@map("management_fee_period")
+  @@schema("juristic")
+}
+
+enum PmAssignmentRole {
+  building_manager
+  assistant_manager
+  accountant
+  technician
+  admin_officer
+  security_supervisor
+  other
+
+  @@map("pm_assignment_role")
+  @@schema("juristic")
+}
+
+/// D-334 (J3.3): a pm_company tenant manages a building of a juristic tenant; tenant pair RLS (juristic + PM).
+model ManagementContract {
+  id                   String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId             String                  @map("tenant_id") @db.Uuid
+  pmTenantId           String                  @map("pm_tenant_id") @db.Uuid
+  buildingId           String                  @map("building_id") @db.Uuid
+  vendorId             String                  @map("vendor_id") @db.Uuid
+  title                String
+  scope                String?
+  fee                  Decimal                 @db.Decimal(14, 2)
+  vatAmount            Decimal                 @default(0) @map("vat_amount") @db.Decimal(14, 2)
+  feePeriod            ManagementFeePeriod     @default(monthly) @map("fee_period")
+  dueDay               Int                     @default(5) @map("due_day") @db.SmallInt
+  startsOn             DateTime                @map("starts_on") @db.Date
+  endsOn               DateTime                @map("ends_on") @db.Date
+  expenseAccountId     String?                 @map("expense_account_id") @db.Uuid
+  whtKey               String?                 @map("wht_key")
+  resolutionId         String?                 @map("resolution_id") @db.Uuid
+  documentId           String?                 @map("document_id") @db.Uuid
+  grantId              String?                 @map("grant_id") @db.Uuid
+  state                ManagementContractState @default(draft)
+  offeredAt            DateTime?               @map("offered_at") @db.Timestamptz(6)
+  offeredBy            String?                 @map("offered_by") @db.Uuid
+  acceptedAt           DateTime?               @map("accepted_at") @db.Timestamptz(6)
+  acceptedBy           String?                 @map("accepted_by") @db.Uuid
+  declinedAt           DateTime?               @map("declined_at") @db.Timestamptz(6)
+  declineReason        String?                 @map("decline_reason")
+  cancelledAt          DateTime?               @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason         String?                 @map("cancel_reason")
+  terminatedOn         DateTime?               @map("terminated_on") @db.Date
+  terminatedAt         DateTime?               @map("terminated_at") @db.Timestamptz(6)
+  terminatedBy         String?                 @map("terminated_by") @db.Uuid
+  terminatedByTenantId String?                 @map("terminated_by_tenant_id") @db.Uuid
+  terminationReason    String?                 @map("termination_reason")
+  endedAt              DateTime?               @map("ended_at") @db.Timestamptz(6)
+  note                 String?
+  createdAt            DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy            String?                 @map("created_by") @db.Uuid
+  updatedAt            DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy            String?                 @map("updated_by") @db.Uuid
+  version              Int                     @default(1)
+
+  tenant         Tenant            @relation("ManagementContractTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_contract_tenant_id_fkey")
+  pmTenant       Tenant            @relation("ManagementContractPmTenant", fields: [pmTenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_contract_pm_tenant_id_fkey")
+  building       Building          @relation("ManagementContractBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_contract_building_id_fkey")
+  vendor         Vendor            @relation(fields: [vendorId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_contract_vendor_id_fkey")
+  expenseAccount Account?          @relation(fields: [expenseAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_contract_expense_account_id_fkey")
+  resolution     Resolution?       @relation(fields: [resolutionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_contract_resolution_id_fkey")
+  document       Document?         @relation("ManagementContractDocument", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_contract_document_id_fkey")
+  grant          AssetAccessGrant? @relation("ManagementContractGrant", fields: [grantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_contract_grant_id_fkey")
+  offerer        UserAccount?      @relation("ManagementContractOfferer", fields: [offeredBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_contract_offered_by_fkey")
+  acceptor       UserAccount?      @relation("ManagementContractAcceptor", fields: [acceptedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_contract_accepted_by_fkey")
+  terminator     UserAccount?      @relation("ManagementContractTerminator", fields: [terminatedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_contract_terminated_by_fkey")
+
+  charges         ManagementFeeCharge[]
+  assignments     PmStaffAssignment[]
+  expenseRequests ExpenseRequest[]      @relation("ExpenseRequestManagementContract")
+
+  @@unique([buildingId, pmTenantId, startsOn], map: "management_contract_building_pm_starts_key")
+  @@index([tenantId, state], map: "management_contract_tenant_id_state_idx")
+  @@index([pmTenantId, state], map: "management_contract_pm_tenant_id_state_idx")
+  @@index([endsOn], map: "management_contract_ends_on_idx", where: raw("(state = 'active'::juristic.management_contract_state)"))
+  @@map("management_contract")
+  @@schema("juristic")
+}
+
+/// D-334 (J3.3): the management fee of one period of a contract → one submitted expense request (UQ contract × period).
+model ManagementFeeCharge {
+  id               String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  contractId       String   @map("contract_id") @db.Uuid
+  periodKey        String   @map("period_key")
+  periodStart      DateTime @map("period_start") @db.Date
+  periodEnd        DateTime @map("period_end") @db.Date
+  serviceDays      Int      @map("service_days") @db.SmallInt
+  periodDays       Int      @map("period_days") @db.SmallInt
+  amount           Decimal  @db.Decimal(14, 2)
+  vatAmount        Decimal  @default(0) @map("vat_amount") @db.Decimal(14, 2)
+  dueOn            DateTime @map("due_on") @db.Date
+  expenseRequestId String   @map("expense_request_id") @db.Uuid
+  requestedAt      DateTime @default(now()) @map("requested_at") @db.Timestamptz(6)
+
+  tenant         Tenant             @relation("ManagementFeeChargeTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_fee_charge_tenant_id_fkey")
+  contract       ManagementContract @relation(fields: [contractId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_fee_charge_contract_id_fkey")
+  expenseRequest ExpenseRequest     @relation("ManagementFeeChargeExpense", fields: [expenseRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "management_fee_charge_expense_request_id_fkey")
+
+  @@unique([contractId, periodKey], map: "management_fee_charge_contract_id_period_key_key")
+  @@unique([expenseRequestId], map: "management_fee_charge_expense_request_id_key")
+  @@index([tenantId, periodStart(sort: Desc)], map: "management_fee_charge_tenant_id_idx")
+  @@map("management_fee_charge")
+  @@schema("juristic")
+}
+
+/// D-334 (J3.3): a member of a pm_company tenant assigned to a building it manages (staff board).
+model PmStaffAssignment {
+  id         String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String           @map("tenant_id") @db.Uuid
+  contractId String           @map("contract_id") @db.Uuid
+  buildingId String           @map("building_id") @db.Uuid
+  userId     String           @map("user_id") @db.Uuid
+  role       PmAssignmentRole
+  shift      String?
+  startsOn   DateTime         @map("starts_on") @db.Date
+  endsOn     DateTime?        @map("ends_on") @db.Date
+  endedAt    DateTime?        @map("ended_at") @db.Timestamptz(6)
+  endedBy    String?          @map("ended_by") @db.Uuid
+  note       String?
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy  String?          @map("created_by") @db.Uuid
+  updatedAt  DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy  String?          @map("updated_by") @db.Uuid
+  version    Int              @default(1)
+
+  tenant   Tenant             @relation("PmStaffAssignmentTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "pm_staff_assignment_tenant_id_fkey")
+  contract ManagementContract @relation(fields: [contractId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "pm_staff_assignment_contract_id_fkey")
+  building Building           @relation("PmStaffAssignmentBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "pm_staff_assignment_building_id_fkey")
+  user     UserAccount        @relation("PmStaffAssignmentUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "pm_staff_assignment_user_id_fkey")
+  ender    UserAccount?       @relation("PmStaffAssignmentEnder", fields: [endedBy], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "pm_staff_assignment_ended_by_fkey")
+
+  @@index([tenantId, buildingId], map: "pm_staff_assignment_tenant_id_idx")
+  @@index([contractId], map: "pm_staff_assignment_contract_id_idx")
+  @@index([userId], map: "pm_staff_assignment_user_id_idx")
+  @@map("pm_staff_assignment")
+  @@schema("juristic")
+}

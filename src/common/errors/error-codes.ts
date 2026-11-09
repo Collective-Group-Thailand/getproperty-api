@@ -336,6 +336,17 @@ export const ERROR_CODES = {
   // G8 (D-299): getbuild rental handoff, employer housing, relocation network
   'handoff.invalid_state': HttpStatus.CONFLICT,
   'handoff.landlord_required': HttpStatus.UNPROCESSABLE_ENTITY,
+  // J3.3 (D-334): management contracts and PM staff
+  'management_contract.invalid_state': HttpStatus.CONFLICT,
+  'management_contract.overlap': HttpStatus.CONFLICT,
+  'management_contract.offer_expired': HttpStatus.CONFLICT,
+  'management_contract.resolution_required': HttpStatus.UNPROCESSABLE_ENTITY,
+  'management_contract.resolution_invalid': HttpStatus.UNPROCESSABLE_ENTITY,
+  'management_contract.pm_tenant_invalid': HttpStatus.UNPROCESSABLE_ENTITY,
+  'pm_staff.not_member': HttpStatus.UNPROCESSABLE_ENTITY,
+  'pm_staff.outside_term': HttpStatus.UNPROCESSABLE_ENTITY,
+  'pm_staff.overlap': HttpStatus.CONFLICT,
+  'pm_staff.ended': HttpStatus.CONFLICT,
   // J3.2 (D-314, D-333): developer handover from getbuild
   'handover.invalid_state': HttpStatus.CONFLICT,
   'handover.not_due': HttpStatus.CONFLICT,

@@ -224,6 +224,18 @@ export const AUDIT_ACTIONS = [
   'juristic.import_difference_explained',
   'juristic.import_went_live',
   'juristic.import_cancelled',
+  // J3.3 (D-150 C3, D-334)
+  'juristic.management_contract_drafted',
+  'juristic.management_contract_updated',
+  'juristic.management_contract_offered',
+  'juristic.management_contract_cancelled',
+  'juristic.management_contract_accepted',
+  'juristic.management_contract_declined',
+  'juristic.management_contract_terminated',
+  'juristic.management_contract_ended',
+  'juristic.management_fee_requested',
+  'pm.staff_assignment_created',
+  'pm.staff_assignment_ended',
   // J3.2 (D-314, D-333)
   'juristic.handover_received',
   'juristic.handover_superseded',

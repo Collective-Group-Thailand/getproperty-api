@@ -519,6 +519,47 @@ export const PERMISSIONS: readonly PermissionDef[] = [
       "Accept or reject a developer handover and record the juristic person's formation (D-314, D-333)",
     surfaces: ['owner'],
   },
+  // J3.3 PM company portfolio (D-150 C3, D-334)
+  {
+    key: 'juristic.management_contract.read',
+    description:
+      'See the management contracts with PM companies, their fee requests and the PM staff assigned to the building (D-334)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.management_contract.manage',
+    description:
+      'Draft, offer, cancel and terminate management contracts with PM companies (offer needs an adopted resolution, D-334)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'pm.portfolio.read',
+    description:
+      'PM company: the portfolio of managed buildings with collection, arrears, budget use, open work and expiring contracts (staff: assigned buildings only, D-334)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'pm.contract.read',
+    description:
+      'PM company: management contracts offered to or held by the company and their fee requests (D-334)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'pm.contract.manage',
+    description: 'PM company: accept, decline or terminate a management contract (D-334)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'pm.staff.read',
+    description:
+      'PM company: the staff board — who is assigned to which managed building (staff: own assignments, D-334)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'pm.staff.manage',
+    description: 'PM company: assign members to managed buildings and end assignments (D-334)',
+    surfaces: ['owner'],
+  },
   // platform (/v1/admin)
   { key: 'admin.tenant.read', description: 'List and view tenants', surfaces: ['admin'] },
   // J4.1 gate & visitor (D-315, D-320, D-327)
@@ -729,6 +770,7 @@ const JURISTIC_READ = [
   'juristic.vendor.read',
   'juristic.import.read',
   'juristic.handover.read',
+  'juristic.management_contract.read',
 ];
 
 /** D-320 (J4.1): the guard records visits at the gate — nothing else. */
@@ -770,6 +812,8 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'gate.read',
     'gate.incident.read',
     'gate.incident.manage',
+    'pm.portfolio.read',
+    'pm.staff.read',
   ],
   accountant: [
     'tenant.read',
@@ -801,6 +845,9 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly string[]>> = {
     'juristic.expense.pay',
     'juristic.vendor.read',
     'juristic.vendor.manage',
+    'juristic.management_contract.read',
+    'pm.portfolio.read',
+    'pm.contract.read',
   ],
   committee: [
     ...JURISTIC_READ,
