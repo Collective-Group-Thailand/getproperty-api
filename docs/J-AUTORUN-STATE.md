@@ -26,7 +26,9 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 | J3.1 | api | done | api 0b42645 (d2991e6) |  |  | D-332; migration 0079 — import wizard, OPB series, go-live, full export |
 | J3.2 | api | done | api a5332b0 (ac28baa) | 1025 paths (+7) | — | D-333; migration 0080 — handover intake/supersede, admin assign, inbox review/accept/reject, juristic-formed, retry job; getbuild fake (O-033); unit 745 (+2 skipped), int 601/602 (0 failed) |
 | J3.3 | api | done | api ae3c0d7 (b4ff761) | 1043 paths (+18) | O-044 | D-334; migration 0081 — management contracts → monthly expense requests (arrears, prorated), PM read-only grant, staff board, committee isolation; unit 752 (+2 skipped), int 608/609 (0 failed) |
-| JW3 | web | todo |  |  |  | JW3a done: web 32f942e (6d3755e) import wizard; JW3b (handover inbox + /portfolio) todo |
+| JW3 | web | done | web 32f942e (6d3755e) JW3a · 7899e05 (749376d) JW3b | apiCommit 1e364785afaf | — | JW3a import wizard · JW3b handover inbox + review/accept/reject/formed, /portfolio for pm_company (buildings, staff board, contracts), office-side management contracts (draft editor follow-up); unit 1850; budgets ≤ 228 KB |
+| J-CR | api | done | api 1b89544 (1ad0276) | 1052 paths (+9) | O-045 | D-335; cheap web CRs + LIFF #37–#52 answered, rest backlog in PROGRESS; unit 755 (+2 skipped), int 618/619 (0 failed) |
+| JS-ui | liff | done | liff 764621c (4a1bb52) | — | — | shared ui re-sync from web 32f942e; shared:check --strict 0 drift; lazy API client keeps every page ≤ 180 KB; unit 996 |
 | e2e | all | todo | | | | deferred runs |
 | Review | all | todo | | | | |
 | Report | api | todo | | | | |
@@ -52,3 +54,5 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 **2026-11-09 22:40** — J3.2 merged (api a5332b0, ff on the Mac). Next: J3.3 (PM company portfolio).
 
 **2026-11-10 ~01:40** — J3.3 merged (api ae3c0d7). Chore JS-ui merged in liff (764621c: shared ui re-synced from web 32f942e, shared:check --strict 0 drift, lhci green after lazy API client); J-DESIGN §7 +117 rows from web/liff PROGRESS. Next: JW3b (web) beside the cheap-CR api step.
+
+**2026-11-10 ~04:00** — JW3b merged (web 7899e05) and J-CR merged (api 1b89544). Next: web + LIFF re-adopt the contract at the final api, decisions.md copy, then deferred e2e.
