@@ -24,7 +24,7 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 | J2.2 | api | done | api fb2a22f (6b4084e fix + 7810317) |  |  | D-330 late-plate safety (CR-017), D-331; migrations 0077–0078 — vendors, contracts, quotations |
 | JW2 | web | done | web 9dae497 (d86f05b) JW2a · 6911ce7 (ed8e1a3) JW2b |  |  | JW2a accounting, expenses, funds, petty cash, bank statements · JW2b vendors, contracts, quotations, evaluations |
 | J3.1 | api | done | api 0b42645 (d2991e6) |  |  | D-332; migration 0079 — import wizard, OPB series, go-live, full export |
-| J3.2 | api | running | branch feat/J3.2-developer-handover @ 1a3ca7d (WIP) |  |  | handover consumer written, integration green before pause; remaining: re-run gates, squash, merge |
+| J3.2 | api | done | api a5332b0 (ac28baa) | 1025 paths (+7) | — | D-333; migration 0080 — handover intake/supersede, admin assign, inbox review/accept/reject, juristic-formed, retry job; getbuild fake (O-033); unit 745 (+2 skipped), int 601/602 (0 failed) |
 | J3.3 | api | todo | | | | |
 | JW3 | web | todo |  |  |  | JW3a done: web 32f942e (6d3755e) import wizard; JW3b (handover inbox + /portfolio) todo |
 | e2e | all | todo | | | | deferred runs |
@@ -48,3 +48,5 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 **2026-11-05 ~14:30** — the cloud session lost its Mac connection; J1.2b → J3.1, JW1–JW3a, JL1, JL4, JE1 finished in the sandbox and were carried over as bundles in `_xfer/j/resume/`.
 
 **2026-11-09 21:20** — session_01UnpBfz2oYacVHd9Vgetpo4 resumed: bundles imported fast-forward (api 0b42645, web 32f942e, liff e0c3972, edge 559653b, asset-core 7dcf39c); branch feat/J3.2-developer-handover restored at 1a3ca7d. Next: finish J3.2, then J3.3 → JW3b → sync chores → e2e → Review → Report.
+
+**2026-11-09 22:40** — J3.2 merged (api a5332b0, ff on the Mac). Next: J3.3 (PM company portfolio).
