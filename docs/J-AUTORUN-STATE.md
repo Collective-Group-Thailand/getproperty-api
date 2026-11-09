@@ -12,21 +12,21 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 | J1.1a | api | done | api 72b3a97a (d02f9e0) | 804 paths, frequency fields | — | D-323; migration 0070; fixed co-owner full billing, transfer double billing, owner-only cycles + valid_to off-by-one; frequencies monthly/quarterly/semiannual/annual keyed (property, frequency, period_key); juristic.revenue_schedule; unit 635, int 525/526 (0 failed) |
 | J1.1b | api | done | api a03b192 (31fc29f) | 821 paths (+17) | — | D-324; migration 0071; register/transfers/bill-to/resolutions/budgets endpoints; per_sqwa + budget_split; committee/auditor roles; CR #41 done; unit 643 (+2 skipped), int 536/537 (0 failed) |
 | J1.2a | api | done | api ba8ee73 (16bfc67) | 843 paths | — | D-325; migration 0072; platform-unique slip ref, allocation policy + credit, payment plans, recurring (fake, mode off in uat/prod), debt clearance DCL + public verify; unit 655, int 544/545 (0 failed). Before deploying 0072: run the duplicate slip-ref query in deployment.md. Web needs /verify/<code> page |
-| J1.2b | api | todo | | | | collections ladder on the workflow engine, statements, D-270 workspace, aging/KPI reports |
-| JW1 | web | todo | | | | |
-| JL1 | liff | todo | | | | |
-| J4.1 | api | todo | | | | |
-| J4.2 | api | todo | | | | |
-| JE1 | edge | todo | | | | |
-| JW4 | web | todo | | | | |
-| JL4 | liff | todo | | | | |
-| J2.1 | api | todo | | | | |
-| J2.2 | api | todo | | | | |
-| JW2 | web | todo | | | | |
-| J3.1 | api | todo | | | | |
-| J3.2 | api | todo | | | | |
+| J1.2b | api | done | api ed938f2 (b04a1ff) |  |  | D-326; migration 0073 — collections ladder, statements, D-270 workspace, aging/KPI |
+| JW1 | web | done | web 684d12d (dc450a1) JW1a · 3d513cf (59aaf17) JW1b |  |  | JW1a register, transfers, budgets/resolutions, onboarding · JW1b receivables, ladder, statements, plans, debt clearance, /verify, D-270 |
+| JL1 | liff | done | liff 1905695 (a3ec548) |  |  | my common fees, statements, plans, debt clearance, auto-pay |
+| J4.1 | api | done | api 5127e3f (21cf453) |  |  | D-327; migration 0074 — guard audience, visits, invites, retention |
+| J4.2 | api | done | api b3e89b8 (d39c3f0) |  |  | D-328; migration 0075 — device protocol 1.3, barrier/LPR, resident open, SOS |
+| JE1 | edge | done | edge 559653b (cf549ad) | protocol 1.3 |  | barrier GPIO/Modbus, LPR http-push, relay safety |
+| JW4 | web | done | web 40726d1 (b8c0360) |  |  | /gate kiosk (175 KB), gate admin |
+| JL4 | liff | done | liff e0c3972 (dc1d4ab) |  |  | visitors from LINE, invites, open barrier, SOS |
+| J2.1 | api | done | api c0a216c (9232500) |  | O-043 | D-329; migration 0076 — light GL, funds, expenses, 50 ทวิ, bank statements |
+| J2.2 | api | done | api fb2a22f (6b4084e fix + 7810317) |  |  | D-330 late-plate safety (CR-017), D-331; migrations 0077–0078 — vendors, contracts, quotations |
+| JW2 | web | done | web 9dae497 (d86f05b) JW2a · 6911ce7 (ed8e1a3) JW2b |  |  | JW2a accounting, expenses, funds, petty cash, bank statements · JW2b vendors, contracts, quotations, evaluations |
+| J3.1 | api | done | api 0b42645 (d2991e6) |  |  | D-332; migration 0079 — import wizard, OPB series, go-live, full export |
+| J3.2 | api | running | branch feat/J3.2-developer-handover @ 1a3ca7d (WIP) |  |  | handover consumer written, integration green before pause; remaining: re-run gates, squash, merge |
 | J3.3 | api | todo | | | | |
-| JW3 | web | todo | | | | |
+| JW3 | web | todo |  |  |  | JW3a done: web 32f942e (6d3755e) import wizard; JW3b (handover inbox + /portfolio) todo |
 | e2e | all | todo | | | | deferred runs |
 | Review | all | todo | | | | |
 | Report | api | todo | | | | |
@@ -44,3 +44,7 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 **2026-11-05 ~10:30** — J1.1b merged (ff). Next: J1.2a (api).
 
 **2026-11-05 ~13:30** — third server restart during J1.2a; resumed; merged (ff). Next: J1.2b.
+
+**2026-11-05 ~14:30** — the cloud session lost its Mac connection; J1.2b → J3.1, JW1–JW3a, JL1, JL4, JE1 finished in the sandbox and were carried over as bundles in `_xfer/j/resume/`.
+
+**2026-11-09 21:20** — session_01UnpBfz2oYacVHd9Vgetpo4 resumed: bundles imported fast-forward (api 0b42645, web 32f942e, liff e0c3972, edge 559653b, asset-core 7dcf39c); branch feat/J3.2-developer-handover restored at 1a3ca7d. Next: finish J3.2, then J3.3 → JW3b → sync chores → e2e → Review → Report.
