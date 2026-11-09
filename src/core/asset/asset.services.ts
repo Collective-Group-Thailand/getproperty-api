@@ -198,78 +198,85 @@ export class BuildingService extends TenantScopedRepository {
       legalForm?: BuildingLegalForm;
     },
   ) {
-    return this.db.platform(async (tx) => {
-      const now = this.clock.now();
-      const b = this.found(await tx.building.findFirst({ where: { id: buildingId, deletedAt: null } }));
-      const target = await tx.tenant.findFirst({ where: { id: input.operatorTenantId, deletedAt: null } });
-      if (!target) throw new DomainException('http.not_found');
-      if (isJuristicTenantType(target.type) && !b.legalForm && !input.legalForm)
-        throw new DomainException('validation.failed', {
-          errors: [
-            {
-              path: 'legalForm',
-              code: 'required',
-              message: 'a building run by a juristic tenant needs its legal form',
-            },
-          ],
-        });
-      const owner = input.ownerTenantId === undefined ? b.ownerTenantId : input.ownerTenantId;
-      await tx.buildingOperatorPeriod.updateMany({
-        where: { buildingId, validTo: null },
-        data: { validTo: now },
+    return this.db.platform((tx) => this.changeOperatorInTx(tx, buildingId, input));
+  }
+
+  /** `changeOperator` inside the caller's transaction (J3.2: a handover's juristic formation, D-333). */
+  async changeOperatorInTx(
+    tx: Tx,
+    buildingId: string,
+    input: Parameters<BuildingService['changeOperator']>[1],
+  ) {
+    const now = this.clock.now();
+    const b = this.found(await tx.building.findFirst({ where: { id: buildingId, deletedAt: null } }));
+    const target = await tx.tenant.findFirst({ where: { id: input.operatorTenantId, deletedAt: null } });
+    if (!target) throw new DomainException('http.not_found');
+    if (isJuristicTenantType(target.type) && !b.legalForm && !input.legalForm)
+      throw new DomainException('validation.failed', {
+        errors: [
+          {
+            path: 'legalForm',
+            code: 'required',
+            message: 'a building run by a juristic tenant needs its legal form',
+          },
+        ],
       });
-      await tx.buildingOperatorPeriod.create({
-        data: {
-          tenantId: b.tenantId,
-          buildingId,
-          ownerTenantId: owner,
-          operatorTenantId: input.operatorTenantId,
-          validFrom: now,
-          reason: input.reason,
-          sourceRef: input.sourceRef ?? null,
-          createdBy: by(),
-        },
-      });
-      const updated = await tx.building.update({
-        where: { id: buildingId },
-        data: {
-          operatorTenantId: input.operatorTenantId,
-          ownerTenantId: owner,
-          ...(input.legalForm ? { legalForm: input.legalForm } : {}),
-          version: { increment: 1 },
-          updatedBy: by(),
-        },
-      });
-      const revoked = await tx.assetAccessGrant.updateMany({
-        where: { buildingId, granteeTenantId: input.operatorTenantId, revokedAt: null },
-        data: { revokedAt: now, revokedBy: by(), revokeReason: 'grantee became the operator' },
-      });
-      await this.audit.record(tx, {
-        action: 'building.operator_changed',
-        tenantId: b.tenantId,
-        buildingId,
-        subjectType: 'core.building',
-        subjectId: buildingId,
-        before: { operatorTenantId: b.operatorTenantId, ownerTenantId: b.ownerTenantId },
-        after: { operatorTenantId: input.operatorTenantId, ownerTenantId: owner, reason: input.reason },
-        metadata: { grantsRevoked: revoked.count },
-      });
-      await this.events.record(tx, {
-        type: 'building.operator_changed',
-        aggregateType: 'building',
-        aggregateId: buildingId,
-        tenantId: b.tenantId,
-        buildingId,
-        payload: {
-          buildingId,
-          previousOperatorTenantId: b.operatorTenantId,
-          operatorTenantId: input.operatorTenantId,
-          ownerTenantId: owner,
-          reason: input.reason,
-        },
-      });
-      return updated;
+    const owner = input.ownerTenantId === undefined ? b.ownerTenantId : input.ownerTenantId;
+    await tx.buildingOperatorPeriod.updateMany({
+      where: { buildingId, validTo: null },
+      data: { validTo: now },
     });
+    await tx.buildingOperatorPeriod.create({
+      data: {
+        tenantId: b.tenantId,
+        buildingId,
+        ownerTenantId: owner,
+        operatorTenantId: input.operatorTenantId,
+        validFrom: now,
+        reason: input.reason,
+        sourceRef: input.sourceRef ?? null,
+        createdBy: by(),
+      },
+    });
+    const updated = await tx.building.update({
+      where: { id: buildingId },
+      data: {
+        operatorTenantId: input.operatorTenantId,
+        ownerTenantId: owner,
+        ...(input.legalForm ? { legalForm: input.legalForm } : {}),
+        version: { increment: 1 },
+        updatedBy: by(),
+      },
+    });
+    const revoked = await tx.assetAccessGrant.updateMany({
+      where: { buildingId, granteeTenantId: input.operatorTenantId, revokedAt: null },
+      data: { revokedAt: now, revokedBy: by(), revokeReason: 'grantee became the operator' },
+    });
+    await this.audit.record(tx, {
+      action: 'building.operator_changed',
+      tenantId: b.tenantId,
+      buildingId,
+      subjectType: 'core.building',
+      subjectId: buildingId,
+      before: { operatorTenantId: b.operatorTenantId, ownerTenantId: b.ownerTenantId },
+      after: { operatorTenantId: input.operatorTenantId, ownerTenantId: owner, reason: input.reason },
+      metadata: { grantsRevoked: revoked.count },
+    });
+    await this.events.record(tx, {
+      type: 'building.operator_changed',
+      aggregateType: 'building',
+      aggregateId: buildingId,
+      tenantId: b.tenantId,
+      buildingId,
+      payload: {
+        buildingId,
+        previousOperatorTenantId: b.operatorTenantId,
+        operatorTenantId: input.operatorTenantId,
+        ownerTenantId: owner,
+        reason: input.reason,
+      },
+    });
+    return updated;
   }
 }
 

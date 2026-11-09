@@ -1732,6 +1732,61 @@
           "type": "https://errors.getproperty.co/handoff.landlord_required"
         }
       },
+      "problem.handover.invalid": {
+        "summary": "handover.invalid",
+        "value": {
+          "code": "handover.invalid",
+          "detail": "การส่งมอบมีปัญหาตามที่แสดงในหน้าตรวจสอบ ให้ปฏิเสธพร้อมเหตุผลหรือแก้ข้อมูลอาคารก่อน",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 422,
+          "title": "รับการส่งมอบไม่ได้",
+          "type": "https://errors.getproperty.co/handover.invalid"
+        }
+      },
+      "problem.handover.invalid_state": {
+        "summary": "handover.invalid_state",
+        "value": {
+          "code": "handover.invalid_state",
+          "detail": "การส่งมอบนี้อยู่ในสถานะที่ทำรายการนี้ไม่ได้",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "การส่งมอบไม่อยู่ในสถานะนี้",
+          "type": "https://errors.getproperty.co/handover.invalid_state"
+        }
+      },
+      "problem.handover.not_due": {
+        "summary": "handover.not_due",
+        "value": {
+          "code": "handover.not_due",
+          "detail": "ยังไม่ถึงวันส่งมอบของผู้พัฒนาโครงการ รับการส่งมอบได้ตั้งแต่วันนั้น",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ยังไม่ถึงวันส่งมอบ",
+          "type": "https://errors.getproperty.co/handover.not_due"
+        }
+      },
+      "problem.handover.totals_mismatch": {
+        "summary": "handover.totals_mismatch",
+        "value": {
+          "code": "handover.totals_mismatch",
+          "detail": "ยอดที่จะบันทึกไม่เท่ากับยอดรวมที่ผู้พัฒนาโครงการส่งมา จึงไม่ได้บันทึกสิ่งใด",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ยอดรวมไม่ตรงกับการส่งมอบ",
+          "type": "https://errors.getproperty.co/handover.totals_mismatch"
+        }
+      },
+      "problem.handover.unit_owned": {
+        "summary": "handover.unit_owned",
+        "value": {
+          "code": "handover.unit_owned",
+          "detail": "มีห้องในการส่งมอบที่มีเจ้าของปัจจุบันในทะเบียนแล้ว การส่งมอบจะบันทึกเจ้าของซ้ำ",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 409,
+          "title": "ห้องมีเจ้าของอยู่แล้ว",
+          "type": "https://errors.getproperty.co/handover.unit_owned"
+        }
+      },
       "problem.http.bad_request": {
         "summary": "http.bad_request",
         "value": {
@@ -5650,6 +5705,222 @@
           "publishedAt",
           "updatedAt",
           "version"
+        ],
+        "type": "object"
+      },
+      "AdminHandoverAssignDto": {
+        "properties": {
+          "developerTenantId": {
+            "description": "The developer’s getproperty tenant (`pm_company`) when it operates the building until the juristic person is formed (D-150 D1).",
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "juristicTenantId": {
+            "description": "A juristic tenant.",
+            "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "juristicTenantId"
+        ],
+        "type": "object"
+      },
+      "AdminHandoverDto": {
+        "properties": {
+          "acceptedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "asOfDate": {
+            "example": "2026-10-31",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "buildingId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "buildingName": {
+            "example": "อาคาร A",
+            "type": "string"
+          },
+          "buildingRef": {
+            "example": "bldg-a",
+            "type": "string"
+          },
+          "contractVersion": {
+            "description": "Contract version of the event (1 register only, 2 with finance).",
+            "example": 2,
+            "type": "number"
+          },
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "developerRef": {
+            "example": "dev-tenant-42",
+            "type": "string"
+          },
+          "developerTenantId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "formedOn": {
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "integrationEventId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "lastDeliveryError": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nextActions": {
+            "example": [
+              "accept",
+              "reject"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "receivingBank": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandoverBankDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "registrationNo": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectReason": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectionAttempts": {
+            "example": 0,
+            "type": "number"
+          },
+          "rejectionDeliveredAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requestedHandoverAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HandoverState"
+              }
+            ],
+            "example": "pending_review"
+          },
+          "tenantId": {
+            "example": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totals": {
+            "$ref": "#/components/schemas/HandoverTotalsDto"
+          },
+          "version": {
+            "example": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "contractVersion",
+          "developerRef",
+          "buildingRef",
+          "buildingName",
+          "requestedHandoverAt",
+          "asOfDate",
+          "totals",
+          "receivingBank",
+          "developerTenantId",
+          "buildingId",
+          "acceptedAt",
+          "rejectedAt",
+          "rejectReason",
+          "rejectionDeliveredAt",
+          "formedOn",
+          "registrationNo",
+          "nextActions",
+          "createdAt",
+          "version",
+          "tenantId",
+          "integrationEventId",
+          "rejectionAttempts",
+          "lastDeliveryError"
         ],
         "type": "object"
       },
@@ -24947,6 +25218,282 @@
         ],
         "type": "object"
       },
+      "HandoverAppliedDto": {
+        "properties": {
+          "credits": {
+            "description": "Σ owners’ credit recorded. Unit: THB, decimal string (D-046).",
+            "example": "4492800.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "fundContributions": {
+            "description": "Σ posted into the sinking fund. Unit: THB, decimal string (D-046).",
+            "example": "5070000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "openingInvoices": {
+            "example": 31,
+            "type": "number"
+          },
+          "openingInvoicesTotal": {
+            "description": "Σ opening-balance invoices issued. Unit: THB, decimal string (D-046).",
+            "example": "37200.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credits",
+          "openingInvoices",
+          "openingInvoicesTotal",
+          "fundContributions"
+        ],
+        "type": "object"
+      },
+      "HandoverBankDto": {
+        "properties": {
+          "accountName": {
+            "example": "นิติบุคคลอาคารชุดตัวอย่าง",
+            "type": "string"
+          },
+          "accountNoMasked": {
+            "description": "Masked: last 4 digits only.",
+            "example": "XXX-X-XX1234",
+            "type": "string"
+          },
+          "bankCode": {
+            "example": "014",
+            "type": "string"
+          },
+          "bankName": {
+            "example": "ธนาคารตัวอย่าง",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "matchedBankAccountId": {
+            "description": "The tenant bank account with the same bank and last 4 digits (journals post to it), else null.",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "bankCode",
+          "bankName",
+          "accountName",
+          "accountNoMasked",
+          "matchedBankAccountId"
+        ],
+        "type": "object"
+      },
+      "HandoverOwnerDto": {
+        "properties": {
+          "displayName": {
+            "example": "ผู้ซื้อ ตัวอย่าง",
+            "type": "string"
+          },
+          "partyRef": {
+            "example": "p-1",
+            "type": "string"
+          },
+          "sharePct": {
+            "example": "100.0000",
+            "type": "string"
+          }
+        },
+        "required": [
+          "partyRef",
+          "displayName",
+          "sharePct"
+        ],
+        "type": "object"
+      },
+      "HandoverProblemCode": {
+        "enum": [
+          "owner_missing",
+          "party_unknown",
+          "unit_unknown",
+          "floor_unknown",
+          "shares_exceeded",
+          "duplicate_unit_no",
+          "receivable_after_as_of"
+        ],
+        "type": "string"
+      },
+      "HandoverProblemDto": {
+        "properties": {
+          "code": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HandoverProblemCode"
+              }
+            ],
+            "example": "owner_missing"
+          },
+          "ref": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unitRef": {
+            "example": "u-101",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "unitRef",
+          "ref"
+        ],
+        "type": "object"
+      },
+      "HandoverState": {
+        "enum": [
+          "received",
+          "pending_review",
+          "accepted",
+          "rejected",
+          "superseded"
+        ],
+        "type": "string"
+      },
+      "HandoverTotalsDto": {
+        "properties": {
+          "advanceCommonFees": {
+            "description": "Σ advance common fees. Unit: THB, decimal string (D-046).",
+            "example": "4492800.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "firstFundContributions": {
+            "description": "Σ first sinking-fund contributions. Unit: THB, decimal string (D-046).",
+            "example": "5070000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "floors": {
+            "example": 8,
+            "type": "number"
+          },
+          "ownerships": {
+            "example": 336,
+            "type": "number"
+          },
+          "parties": {
+            "example": 330,
+            "type": "number"
+          },
+          "receivableItems": {
+            "example": 31,
+            "type": "number"
+          },
+          "receivablesBroughtForward": {
+            "description": "Σ receivables brought forward. Unit: THB, decimal string (D-046).",
+            "example": "37200.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "units": {
+            "example": 312,
+            "type": "number"
+          },
+          "unitsWithMoney": {
+            "example": 312,
+            "type": "number"
+          }
+        },
+        "required": [
+          "units",
+          "floors",
+          "parties",
+          "ownerships",
+          "unitsWithMoney",
+          "advanceCommonFees",
+          "firstFundContributions",
+          "receivablesBroughtForward",
+          "receivableItems"
+        ],
+        "type": "object"
+      },
+      "HandoverUnitDto": {
+        "properties": {
+          "advanceCommonFees": {
+            "description": "Advance common fees. Unit: THB, decimal string (D-046).",
+            "example": "14400.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "advancePeriodFrom": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "advancePeriodTo": {
+            "example": "2027-10-31",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "firstFundContribution": {
+            "description": "First fund contribution. Unit: THB, decimal string (D-046).",
+            "example": "16250.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "owners": {
+            "items": {
+              "$ref": "#/components/schemas/HandoverOwnerDto"
+            },
+            "type": "array"
+          },
+          "receivableItems": {
+            "example": 1,
+            "type": "number"
+          },
+          "receivablesBroughtForward": {
+            "description": "Receivables brought forward. Unit: THB, decimal string (D-046).",
+            "example": "1200.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "unitNo": {
+            "example": "A-101",
+            "type": "string"
+          },
+          "unitRef": {
+            "example": "u-101",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unitRef",
+          "unitNo",
+          "owners",
+          "advanceCommonFees",
+          "advancePeriodFrom",
+          "advancePeriodTo",
+          "firstFundContribution",
+          "receivablesBroughtForward",
+          "receivableItems"
+        ],
+        "type": "object"
+      },
       "HealthIndicatorState": {
         "properties": {
           "mode": {
@@ -29491,6 +30038,421 @@
           "other"
         ],
         "type": "string"
+      },
+      "JuristicHandoverAcceptDto": {
+        "properties": {
+          "legalForm": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BuildingLegalForm"
+              }
+            ],
+            "description": "Required when getbuild did not send the building’s legal form (D-302)."
+          },
+          "notifyOpeningBalances": {
+            "default": true,
+            "description": "Send each opening balance to its owner like a new invoice (false: issued silently).",
+            "type": "boolean"
+          },
+          "propertyKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PropertyKind"
+              }
+            ],
+            "description": "When getbuild did not send it; default from the building type (condo → condo, house cluster → village)."
+          }
+        },
+        "type": "object"
+      },
+      "JuristicHandoverDto": {
+        "properties": {
+          "acceptedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "asOfDate": {
+            "example": "2026-10-31",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "buildingId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "buildingName": {
+            "example": "อาคาร A",
+            "type": "string"
+          },
+          "buildingRef": {
+            "example": "bldg-a",
+            "type": "string"
+          },
+          "contractVersion": {
+            "description": "Contract version of the event (1 register only, 2 with finance).",
+            "example": 2,
+            "type": "number"
+          },
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "developerRef": {
+            "example": "dev-tenant-42",
+            "type": "string"
+          },
+          "developerTenantId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "formedOn": {
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "nextActions": {
+            "example": [
+              "accept",
+              "reject"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "receivingBank": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandoverBankDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "registrationNo": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectReason": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectionDeliveredAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requestedHandoverAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HandoverState"
+              }
+            ],
+            "example": "pending_review"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/HandoverTotalsDto"
+          },
+          "version": {
+            "example": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "contractVersion",
+          "developerRef",
+          "buildingRef",
+          "buildingName",
+          "requestedHandoverAt",
+          "asOfDate",
+          "totals",
+          "receivingBank",
+          "developerTenantId",
+          "buildingId",
+          "acceptedAt",
+          "rejectedAt",
+          "rejectReason",
+          "rejectionDeliveredAt",
+          "formedOn",
+          "registrationNo",
+          "nextActions",
+          "createdAt",
+          "version"
+        ],
+        "type": "object"
+      },
+      "JuristicHandoverFormedDto": {
+        "properties": {
+          "formedOn": {
+            "description": "Registration date (not after today).",
+            "example": "2026-12-15",
+            "format": "date",
+            "type": "string"
+          },
+          "registrationNo": {
+            "example": "นต.123/2569",
+            "maxLength": 100,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "formedOn"
+        ],
+        "type": "object"
+      },
+      "JuristicHandoverReviewDto": {
+        "properties": {
+          "acceptedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "applied": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandoverAppliedDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the acceptance recorded (accepted only)."
+          },
+          "asOfDate": {
+            "example": "2026-10-31",
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "buildingId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "buildingName": {
+            "example": "อาคาร A",
+            "type": "string"
+          },
+          "buildingRef": {
+            "example": "bldg-a",
+            "type": "string"
+          },
+          "contractVersion": {
+            "description": "Contract version of the event (1 register only, 2 with finance).",
+            "example": 2,
+            "type": "number"
+          },
+          "createdAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "developerRef": {
+            "example": "dev-tenant-42",
+            "type": "string"
+          },
+          "developerTenantId": {
+            "example": null,
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "formedOn": {
+            "example": null,
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "nextActions": {
+            "example": [
+              "accept",
+              "reject"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "partiesToAttach": {
+            "description": "Parties matched to existing ones (same LINE id or an earlier handover).",
+            "example": 0,
+            "type": "number"
+          },
+          "partiesToCreate": {
+            "example": 330,
+            "type": "number"
+          },
+          "problems": {
+            "items": {
+              "$ref": "#/components/schemas/HandoverProblemDto"
+            },
+            "type": "array"
+          },
+          "receivingBank": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandoverBankDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "registrationNo": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectReason": {
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectedAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectionDeliveredAt": {
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requestedHandoverAt": {
+            "example": "2026-11-01T00:15:00+07:00",
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HandoverState"
+              }
+            ],
+            "example": "pending_review"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/HandoverTotalsDto"
+          },
+          "units": {
+            "items": {
+              "$ref": "#/components/schemas/HandoverUnitDto"
+            },
+            "type": "array"
+          },
+          "version": {
+            "example": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "contractVersion",
+          "developerRef",
+          "buildingRef",
+          "buildingName",
+          "requestedHandoverAt",
+          "asOfDate",
+          "totals",
+          "receivingBank",
+          "developerTenantId",
+          "buildingId",
+          "acceptedAt",
+          "rejectedAt",
+          "rejectReason",
+          "rejectionDeliveredAt",
+          "formedOn",
+          "registrationNo",
+          "nextActions",
+          "createdAt",
+          "version",
+          "problems",
+          "units",
+          "partiesToAttach",
+          "partiesToCreate",
+          "applied"
+        ],
+        "type": "object"
       },
       "JuristicImportCommitDto": {
         "properties": {
@@ -40328,6 +41290,7 @@
           "juristic_vendor_contracts",
           "juristic_quotations",
           "juristic_import",
+          "juristic_handovers",
           "juristic_workspace_invitations",
           "juristic_gate",
           "gate",
@@ -85040,6 +86003,589 @@
         ],
         "x-required-permissions": [
           "admin.integration_event.read"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/juristic-handovers": {
+      "get": {
+        "description": "Every `building.handover.requested` stored by the integration receiver, newest first (`received` = waiting for a juristic tenant), with the rejection delivery state (D-314, D-333).\n\nImplements: D-314, D-333.",
+        "operationId": "admin.juristicHandovers.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sort field; each endpoint validates it against its own allow-list.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "example": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "description": "Free-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/HandoverState"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "acceptedAt": null,
+                      "asOfDate": "2026-10-31",
+                      "buildingId": null,
+                      "buildingName": "อาคาร A",
+                      "buildingRef": "bldg-a",
+                      "contractVersion": 2,
+                      "createdAt": "2026-11-01T00:15:00+07:00",
+                      "developerRef": "dev-tenant-42",
+                      "developerTenantId": null,
+                      "formedOn": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "integrationEventId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "lastDeliveryError": null,
+                      "nextActions": [],
+                      "receivingBank": {
+                        "accountName": "นิติบุคคลอาคารชุดตัวอย่าง",
+                        "accountNoMasked": "XXX-X-XX1234",
+                        "bankCode": "014",
+                        "bankName": "ธนาคารตัวอย่าง",
+                        "matchedBankAccountId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                      },
+                      "registrationNo": null,
+                      "rejectReason": null,
+                      "rejectedAt": null,
+                      "rejectionAttempts": 0,
+                      "rejectionDeliveredAt": null,
+                      "requestedHandoverAt": "2026-11-01T00:15:00+07:00",
+                      "state": "received",
+                      "tenantId": null,
+                      "totals": {
+                        "advanceCommonFees": "4492800.00",
+                        "firstFundContributions": "5070000.00",
+                        "floors": 8,
+                        "ownerships": 336,
+                        "parties": 330,
+                        "receivableItems": 31,
+                        "receivablesBroughtForward": "37200.00",
+                        "units": 312,
+                        "unitsWithMoney": 312
+                      },
+                      "version": 1
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "perPage": 25,
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/AdminHandoverDto"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "One page of results",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Developer handovers received from getbuild",
+        "tags": [
+          "admin.juristicHandovers"
+        ],
+        "x-required-permissions": [
+          "admin.integration_event.read"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/juristic-handovers/{handoverId}/actions/assign": {
+      "post": {
+        "description": "Received or pending handovers: the juristic tenant (created by the platform first, D-324) gets it in its inbox; optionally the developer’s `pm_company` tenant, which then operates the building until the juristic person is formed (D-150 D1). Audited; requires `Idempotency-Key` (D-333).\n\nImplements: D-150, D-333.",
+        "operationId": "admin.juristicHandovers.assign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "handoverId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "developerTenantId": null,
+                    "juristicTenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/AdminHandoverAssignDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "acceptedAt": null,
+                  "asOfDate": "2026-10-31",
+                  "buildingId": null,
+                  "buildingName": "อาคาร A",
+                  "buildingRef": "bldg-a",
+                  "contractVersion": 2,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "developerRef": "dev-tenant-42",
+                  "developerTenantId": null,
+                  "formedOn": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "integrationEventId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "lastDeliveryError": null,
+                  "nextActions": [],
+                  "receivingBank": {
+                    "accountName": "นิติบุคคลอาคารชุดตัวอย่าง",
+                    "accountNoMasked": "XXX-X-XX1234",
+                    "bankCode": "014",
+                    "bankName": "ธนาคารตัวอย่าง",
+                    "matchedBankAccountId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                  },
+                  "registrationNo": null,
+                  "rejectReason": null,
+                  "rejectedAt": null,
+                  "rejectionAttempts": 0,
+                  "rejectionDeliveredAt": null,
+                  "requestedHandoverAt": "2026-11-01T00:15:00+07:00",
+                  "state": "pending_review",
+                  "tenantId": "0d0c7a4e-5b0e-4c55-9d7c-3f2b8a1e6c11",
+                  "totals": {
+                    "advanceCommonFees": "4492800.00",
+                    "firstFundContributions": "5070000.00",
+                    "floors": 8,
+                    "ownerships": 336,
+                    "parties": 330,
+                    "receivableItems": 31,
+                    "receivablesBroughtForward": "37200.00",
+                    "units": 312,
+                    "unitsWithMoney": 312
+                  },
+                  "version": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminHandoverDto"
+                }
+              }
+            },
+            "description": "Assigned",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "handover.invalid_state": {
+                    "$ref": "#/components/examples/problem.handover.invalid_state"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `handover.invalid_state`, `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Send a handover to a juristic tenant",
+        "tags": [
+          "admin.juristicHandovers"
+        ],
+        "x-required-permissions": [
+          "admin.tenant.manage"
         ],
         "x-surface": "admin"
       }
@@ -198070,6 +199616,1657 @@
         ],
         "x-required-permissions": [
           "juristic.fund.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/juristic/handovers": {
+      "get": {
+        "description": "The handovers getbuild sent for buildings of this juristic tenant (assigned by the platform or to the tenant already holding the building), newest first; filter by state. Juristic tenants only (D-314, D-333).\n\nImplements: D-314, D-333.",
+        "operationId": "owner.juristicHandovers.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sort field; each endpoint validates it against its own allow-list.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "example": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "description": "Free-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/HandoverState"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "acceptedAt": null,
+                      "asOfDate": "2026-10-31",
+                      "buildingId": null,
+                      "buildingName": "อาคาร A",
+                      "buildingRef": "bldg-a",
+                      "contractVersion": 2,
+                      "createdAt": "2026-11-01T00:15:00+07:00",
+                      "developerRef": "dev-tenant-42",
+                      "developerTenantId": null,
+                      "formedOn": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "nextActions": [
+                        "accept",
+                        "reject"
+                      ],
+                      "receivingBank": {
+                        "accountName": "นิติบุคคลอาคารชุดตัวอย่าง",
+                        "accountNoMasked": "XXX-X-XX1234",
+                        "bankCode": "014",
+                        "bankName": "ธนาคารตัวอย่าง",
+                        "matchedBankAccountId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                      },
+                      "registrationNo": null,
+                      "rejectReason": null,
+                      "rejectedAt": null,
+                      "rejectionDeliveredAt": null,
+                      "requestedHandoverAt": "2026-11-01T00:15:00+07:00",
+                      "state": "pending_review",
+                      "totals": {
+                        "advanceCommonFees": "4492800.00",
+                        "firstFundContributions": "5070000.00",
+                        "floors": 8,
+                        "ownerships": 336,
+                        "parties": 330,
+                        "receivableItems": 31,
+                        "receivablesBroughtForward": "37200.00",
+                        "units": 312,
+                        "unitsWithMoney": 312
+                      },
+                      "version": 1
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "perPage": 25,
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/JuristicHandoverDto"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "One page of results",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Developer handovers",
+        "tags": [
+          "owner.juristicHandovers"
+        ],
+        "x-required-permissions": [
+          "juristic.handover.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/juristic/handovers/{handoverId}": {
+      "get": {
+        "description": "Totals of the payload (units, parties, ownerships, Σ advance common fees, Σ first fund contributions, Σ receivables brought forward), per-unit money with the owners on the as-of date, the problems that block an acceptance, how many parties are matched to existing ones (same LINE id), the receiving bank account (masked) and the tenant bank account it matches; after acceptance what was recorded (equal to the payload). Party contact data getbuild encrypts is never kept (D-025). D-314, D-333.\n\nImplements: D-314, D-333.",
+        "operationId": "owner.juristicHandovers.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "handoverId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "acceptedAt": null,
+                  "applied": null,
+                  "asOfDate": "2026-10-31",
+                  "buildingId": null,
+                  "buildingName": "อาคาร A",
+                  "buildingRef": "bldg-a",
+                  "contractVersion": 2,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "developerRef": "dev-tenant-42",
+                  "developerTenantId": null,
+                  "formedOn": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "accept",
+                    "reject"
+                  ],
+                  "partiesToAttach": 0,
+                  "partiesToCreate": 330,
+                  "problems": [],
+                  "receivingBank": {
+                    "accountName": "นิติบุคคลอาคารชุดตัวอย่าง",
+                    "accountNoMasked": "XXX-X-XX1234",
+                    "bankCode": "014",
+                    "bankName": "ธนาคารตัวอย่าง",
+                    "matchedBankAccountId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                  },
+                  "registrationNo": null,
+                  "rejectReason": null,
+                  "rejectedAt": null,
+                  "rejectionDeliveredAt": null,
+                  "requestedHandoverAt": "2026-11-01T00:15:00+07:00",
+                  "state": "pending_review",
+                  "totals": {
+                    "advanceCommonFees": "4492800.00",
+                    "firstFundContributions": "5070000.00",
+                    "floors": 8,
+                    "ownerships": 336,
+                    "parties": 330,
+                    "receivableItems": 31,
+                    "receivablesBroughtForward": "37200.00",
+                    "units": 312,
+                    "unitsWithMoney": 312
+                  },
+                  "units": [
+                    {
+                      "advanceCommonFees": "14400.00",
+                      "advancePeriodFrom": "2026-11-01",
+                      "advancePeriodTo": "2027-10-31",
+                      "firstFundContribution": "16250.00",
+                      "owners": [
+                        {
+                          "displayName": "ผู้ซื้อ ตัวอย่าง",
+                          "partyRef": "p-1",
+                          "sharePct": "100.0000"
+                        }
+                      ],
+                      "receivableItems": 1,
+                      "receivablesBroughtForward": "1200.00",
+                      "unitNo": "A-101",
+                      "unitRef": "u-101"
+                    }
+                  ],
+                  "version": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/JuristicHandoverReviewDto"
+                }
+              }
+            },
+            "description": "Review",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Review a developer handover",
+        "tags": [
+          "owner.juristicHandovers"
+        ],
+        "x-required-permissions": [
+          "juristic.handover.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/juristic/handovers/{handoverId}/actions/accept": {
+      "post": {
+        "description": "From the handover date (409 `handover.not_due` before) and without problems (422 `handover.invalid`), in one transaction: the property and the building (legal form from getbuild or the body; owner = this tenant, operator = the developer until the juristic person is formed when the platform named one, else this tenant), floors, units (an existing unit with current owners → 409 `handover.unit_owned`), parties (never duplicated: same LINE id or an earlier handover), ownerships, LINE logins linked; advance common fees as each owner’s credit by share (paying the next invoices, never set off against debt brought forward), first fund contributions into the sinking fund, receivables brought forward as opening-balance invoices issued now (series OPB, normal due date), journals per unit. The recorded totals must equal the payload (409 `handover.totals_mismatch`, nothing recorded). Audited and evented; requires `Idempotency-Key` (D-314, D-333).\n\nImplements: D-314, D-333.",
+        "operationId": "owner.juristicHandovers.accept",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "handoverId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "legalForm": "condo_act",
+                    "notifyOpeningBalances": true
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/JuristicHandoverAcceptDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "acceptedAt": "2026-11-01T00:15:00+07:00",
+                  "applied": {
+                    "credits": "4492800.00",
+                    "fundContributions": "5070000.00",
+                    "openingInvoices": 31,
+                    "openingInvoicesTotal": "37200.00"
+                  },
+                  "asOfDate": "2026-10-31",
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "buildingName": "อาคาร A",
+                  "buildingRef": "bldg-a",
+                  "contractVersion": 2,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "developerRef": "dev-tenant-42",
+                  "developerTenantId": null,
+                  "formedOn": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [
+                    "juristic_formed"
+                  ],
+                  "partiesToAttach": 0,
+                  "partiesToCreate": 330,
+                  "problems": [],
+                  "receivingBank": {
+                    "accountName": "นิติบุคคลอาคารชุดตัวอย่าง",
+                    "accountNoMasked": "XXX-X-XX1234",
+                    "bankCode": "014",
+                    "bankName": "ธนาคารตัวอย่าง",
+                    "matchedBankAccountId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                  },
+                  "registrationNo": null,
+                  "rejectReason": null,
+                  "rejectedAt": null,
+                  "rejectionDeliveredAt": null,
+                  "requestedHandoverAt": "2026-11-01T00:15:00+07:00",
+                  "state": "accepted",
+                  "totals": {
+                    "advanceCommonFees": "4492800.00",
+                    "firstFundContributions": "5070000.00",
+                    "floors": 8,
+                    "ownerships": 336,
+                    "parties": 330,
+                    "receivableItems": 31,
+                    "receivablesBroughtForward": "37200.00",
+                    "units": 312,
+                    "unitsWithMoney": 312
+                  },
+                  "units": [
+                    {
+                      "advanceCommonFees": "14400.00",
+                      "advancePeriodFrom": "2026-11-01",
+                      "advancePeriodTo": "2027-10-31",
+                      "firstFundContribution": "16250.00",
+                      "owners": [
+                        {
+                          "displayName": "ผู้ซื้อ ตัวอย่าง",
+                          "partyRef": "p-1",
+                          "sharePct": "100.0000"
+                        }
+                      ],
+                      "receivableItems": 1,
+                      "receivablesBroughtForward": "1200.00",
+                      "unitNo": "A-101",
+                      "unitRef": "u-101"
+                    }
+                  ],
+                  "version": 2
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/JuristicHandoverReviewDto"
+                }
+              }
+            },
+            "description": "Accepted",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "handover.invalid_state": {
+                    "$ref": "#/components/examples/problem.handover.invalid_state"
+                  },
+                  "handover.not_due": {
+                    "$ref": "#/components/examples/problem.handover.not_due"
+                  },
+                  "handover.totals_mismatch": {
+                    "$ref": "#/components/examples/problem.handover.totals_mismatch"
+                  },
+                  "handover.unit_owned": {
+                    "$ref": "#/components/examples/problem.handover.unit_owned"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `handover.invalid_state`, `handover.not_due`, `handover.totals_mismatch`, `handover.unit_owned`, `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "handover.invalid": {
+                    "$ref": "#/components/examples/problem.handover.invalid"
+                  },
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "register.shares_exceeded": {
+                    "$ref": "#/components/examples/problem.register.shares_exceeded"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `handover.invalid`, `idempotency.key_reused`, `register.shares_exceeded`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Accept a developer handover",
+        "tags": [
+          "owner.juristicHandovers"
+        ],
+        "x-required-permissions": [
+          "juristic.handover.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/juristic/handovers/{handoverId}/actions/juristic-formed": {
+      "post": {
+        "description": "Accepted handovers, once: while the developer operates the building its operator period closes and the juristic tenant’s opens (reason `juristic_formed`; nothing is copied — residents, invoices and credits stay on the building); the developer keeps a `warranty` grant until the last building / unit warranty end of the handover. `juristic.formed` goes to getbuild through the integration outbox. Audited; requires `Idempotency-Key` (D-150 D1, D-333).\n\nImplements: D-150, D-314, D-333.",
+        "operationId": "owner.juristicHandovers.juristicFormed",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "handoverId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "formedOn": "2026-12-15",
+                    "registrationNo": "นต.123/2569"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/JuristicHandoverFormedDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "acceptedAt": "2026-11-01T00:15:00+07:00",
+                  "applied": {
+                    "credits": "4492800.00",
+                    "fundContributions": "5070000.00",
+                    "openingInvoices": 31,
+                    "openingInvoicesTotal": "37200.00"
+                  },
+                  "asOfDate": "2026-10-31",
+                  "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                  "buildingName": "อาคาร A",
+                  "buildingRef": "bldg-a",
+                  "contractVersion": 2,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "developerRef": "dev-tenant-42",
+                  "developerTenantId": null,
+                  "formedOn": "2026-12-15",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [],
+                  "partiesToAttach": 0,
+                  "partiesToCreate": 330,
+                  "problems": [],
+                  "receivingBank": {
+                    "accountName": "นิติบุคคลอาคารชุดตัวอย่าง",
+                    "accountNoMasked": "XXX-X-XX1234",
+                    "bankCode": "014",
+                    "bankName": "ธนาคารตัวอย่าง",
+                    "matchedBankAccountId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                  },
+                  "registrationNo": "นต.123/2569",
+                  "rejectReason": null,
+                  "rejectedAt": null,
+                  "rejectionDeliveredAt": null,
+                  "requestedHandoverAt": "2026-11-01T00:15:00+07:00",
+                  "state": "accepted",
+                  "totals": {
+                    "advanceCommonFees": "4492800.00",
+                    "firstFundContributions": "5070000.00",
+                    "floors": 8,
+                    "ownerships": 336,
+                    "parties": 330,
+                    "receivableItems": 31,
+                    "receivablesBroughtForward": "37200.00",
+                    "units": 312,
+                    "unitsWithMoney": 312
+                  },
+                  "units": [
+                    {
+                      "advanceCommonFees": "14400.00",
+                      "advancePeriodFrom": "2026-11-01",
+                      "advancePeriodTo": "2027-10-31",
+                      "firstFundContribution": "16250.00",
+                      "owners": [
+                        {
+                          "displayName": "ผู้ซื้อ ตัวอย่าง",
+                          "partyRef": "p-1",
+                          "sharePct": "100.0000"
+                        }
+                      ],
+                      "receivableItems": 1,
+                      "receivablesBroughtForward": "1200.00",
+                      "unitNo": "A-101",
+                      "unitRef": "u-101"
+                    }
+                  ],
+                  "version": 2
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/JuristicHandoverReviewDto"
+                }
+              }
+            },
+            "description": "Recorded",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "handover.invalid_state": {
+                    "$ref": "#/components/examples/problem.handover.invalid_state"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `handover.invalid_state`, `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Record the juristic person’s formation",
+        "tags": [
+          "owner.juristicHandovers"
+        ],
+        "x-required-permissions": [
+          "juristic.handover.manage"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/juristic/handovers/{handoverId}/actions/reject": {
+      "post": {
+        "description": "Pending handovers only: refused with a reason (5–1000) that goes back to getbuild through the handoff port (retried by the job `juristic-handovers`; waits while `GETBUILD_MODE=off`, O-033); getbuild may then send a corrected handover. Nothing is recorded in the register. Audited; requires `Idempotency-Key` (D-333).\n\nImplements: D-314, D-333.",
+        "operationId": "owner.juristicHandovers.reject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "handoverId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "default": {
+                  "summary": "Example",
+                  "value": {
+                    "reason": "ยอดเงินกองทุนไม่ตรงกับสมุดบัญชี โปรดตรวจสอบและส่งใหม่"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/JuristicImportRollbackDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "acceptedAt": null,
+                  "applied": null,
+                  "asOfDate": "2026-10-31",
+                  "buildingId": null,
+                  "buildingName": "อาคาร A",
+                  "buildingRef": "bldg-a",
+                  "contractVersion": 2,
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "developerRef": "dev-tenant-42",
+                  "developerTenantId": null,
+                  "formedOn": null,
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "nextActions": [],
+                  "partiesToAttach": 0,
+                  "partiesToCreate": 330,
+                  "problems": [],
+                  "receivingBank": {
+                    "accountName": "นิติบุคคลอาคารชุดตัวอย่าง",
+                    "accountNoMasked": "XXX-X-XX1234",
+                    "bankCode": "014",
+                    "bankName": "ธนาคารตัวอย่าง",
+                    "matchedBankAccountId": "3b241101-e2bb-4255-8caf-4136c566a962"
+                  },
+                  "registrationNo": null,
+                  "rejectReason": "ยอดเงินกองทุนไม่ตรงกับสมุดบัญชี โปรดตรวจสอบและส่งใหม่",
+                  "rejectedAt": "2026-11-01T00:15:00+07:00",
+                  "rejectionDeliveredAt": null,
+                  "requestedHandoverAt": "2026-11-01T00:15:00+07:00",
+                  "state": "rejected",
+                  "totals": {
+                    "advanceCommonFees": "4492800.00",
+                    "firstFundContributions": "5070000.00",
+                    "floors": 8,
+                    "ownerships": 336,
+                    "parties": 330,
+                    "receivableItems": 31,
+                    "receivablesBroughtForward": "37200.00",
+                    "units": 312,
+                    "unitsWithMoney": 312
+                  },
+                  "units": [
+                    {
+                      "advanceCommonFees": "14400.00",
+                      "advancePeriodFrom": "2026-11-01",
+                      "advancePeriodTo": "2027-10-31",
+                      "firstFundContribution": "16250.00",
+                      "owners": [
+                        {
+                          "displayName": "ผู้ซื้อ ตัวอย่าง",
+                          "partyRef": "p-1",
+                          "sharePct": "100.0000"
+                        }
+                      ],
+                      "receivableItems": 1,
+                      "receivablesBroughtForward": "1200.00",
+                      "unitNo": "A-101",
+                      "unitRef": "u-101"
+                    }
+                  ],
+                  "version": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/JuristicHandoverReviewDto"
+                }
+              }
+            },
+            "description": "Rejected",
+            "headers": {
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/IdempotentReplayed"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.bad_request": {
+                    "$ref": "#/components/examples/problem.http.bad_request"
+                  },
+                  "idempotency.key_invalid": {
+                    "$ref": "#/components/examples/problem.idempotency.key_invalid"
+                  },
+                  "idempotency.key_required": {
+                    "$ref": "#/components/examples/problem.idempotency.key_required"
+                  },
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.bad_request`, `idempotency.key_invalid`, `idempotency.key_required`, `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "handover.invalid_state": {
+                    "$ref": "#/components/examples/problem.handover.invalid_state"
+                  },
+                  "idempotency.in_progress": {
+                    "$ref": "#/components/examples/problem.idempotency.in_progress"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `handover.invalid_state`, `idempotency.in_progress`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "idempotency.key_reused": {
+                    "$ref": "#/components/examples/problem.idempotency.key_reused"
+                  },
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `idempotency.key_reused`, `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Reject a developer handover",
+        "tags": [
+          "owner.juristicHandovers"
+        ],
+        "x-required-permissions": [
+          "juristic.handover.manage"
         ],
         "x-surface": "owner"
       }
@@ -375422,6 +378619,10 @@
       "name": "admin.integrationEvents"
     },
     {
+      "description": "Developer handovers received from getbuild and their assignment to a juristic tenant (D-314, D-333).",
+      "name": "admin.juristicHandovers"
+    },
+    {
       "description": "Listing moderation queue and owner verification decisions (D-252).",
       "name": "admin.listings"
     },
@@ -375760,6 +378961,10 @@
     {
       "description": "Funds (own ledger and bank account; out only with a resolution and another user’s approval) and petty cash floats (spends with receipts, counts) (D-311, D-329).",
       "name": "owner.juristicFunds"
+    },
+    {
+      "description": "Developer handovers from getbuild: the inbox of the juristic office — review of the totals, acceptance (register, advance common fees as owners’ credit, first fund contributions, receivables brought forward as OPB invoices, all equal to the payload), rejection back to getbuild, the juristic person’s formation switching the operator period (D-150 D1, D-314, D-333).",
+      "name": "owner.juristicHandovers"
     },
     {
       "description": "Import wizard of a juristic building moving from a legacy system: templates (register, opening balances, 12 months of payment history, bank opening balances, legacy bills), row-level validation in Thai / English, reconciliation with the bank statements, commit in one transaction, rollback of exactly what was created until go-live, parallel cycle, go-live; full export of every juristic table (D-313, D-332).",

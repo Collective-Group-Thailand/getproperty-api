@@ -507,6 +507,18 @@ export const PERMISSIONS: readonly PermissionDef[] = [
     description: 'Export every juristic table of the tenant as a CSV ZIP (D-332)',
     surfaces: ['owner'],
   },
+  // J3.2 developer handover (D-314, D-333)
+  {
+    key: 'juristic.handover.read',
+    description: 'See the developer handovers sent to the juristic office and their totals (D-314, D-333)',
+    surfaces: ['owner'],
+  },
+  {
+    key: 'juristic.handover.manage',
+    description:
+      "Accept or reject a developer handover and record the juristic person's formation (D-314, D-333)",
+    surfaces: ['owner'],
+  },
   // platform (/v1/admin)
   { key: 'admin.tenant.read', description: 'List and view tenants', surfaces: ['admin'] },
   // J4.1 gate & visitor (D-315, D-320, D-327)
@@ -716,6 +728,7 @@ const JURISTIC_READ = [
   'juristic.expense.read',
   'juristic.vendor.read',
   'juristic.import.read',
+  'juristic.handover.read',
 ];
 
 /** D-320 (J4.1): the guard records visits at the gate — nothing else. */

@@ -89,6 +89,7 @@ enum CreditEntryKind {
   applied
   refunded
   reversed
+  handover_advance
 
   @@map("credit_entry_kind")
   @@schema("ops")
@@ -453,9 +454,11 @@ model PayerCredit {
   invoiceId  String?         @map("invoice_id") @db.Uuid
   refundId   String?         @map("refund_id") @db.Uuid
   note       String?
+  handoverId String?         @map("handover_id") @db.Uuid
   createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy  String?         @map("created_by") @db.Uuid
 
+  handover Handover? @relation(fields: [handoverId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payer_credit_handover_id_fkey")
   tenant   Tenant   @relation("PayerCreditTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payer_credit_tenant_id_fkey")
   building Building @relation("PayerCreditBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payer_credit_building_id_fkey")
   unit     Unit?    @relation("PayerCreditUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "payer_credit_unit_id_fkey")
@@ -471,6 +474,7 @@ model PayerCredit {
   @@index([paymentId], map: "payer_credit_payment_id_idx")
   @@index([invoiceId], map: "payer_credit_invoice_id_idx")
   @@index([refundId], map: "payer_credit_refund_id_idx")
+  @@index([handoverId], map: "payer_credit_handover_id_idx", where: raw("(handover_id IS NOT NULL)"))
   @@map("payer_credit")
   @@schema("ops")
 }

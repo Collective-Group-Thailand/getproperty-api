@@ -375,6 +375,16 @@ export const DOMAIN_EVENT_TYPES = {
   'juristic.import.went_live':
     'An import went live: opening balances issued (series OPB), bank opening journals posted (D-313, D-332).',
   'juristic.import.cancelled': 'An import job was cancelled before its commit (D-332).',
+  // J3.2 (D-314, D-333)
+  'juristic.handover.received':
+    'getbuild sent a building handover (building.handover.requested); stored for the juristic office (D-314, D-333).',
+  'juristic.handover.assigned': 'A developer handover reached the inbox of a juristic tenant (D-333).',
+  'juristic.handover.accepted':
+    'A juristic office accepted a developer handover: register, advance-fee credits, fund contributions and opening balances recorded (D-314, D-333).',
+  'juristic.handover.rejected':
+    'A juristic office rejected a developer handover with a reason; getbuild is told through the port (D-333).',
+  'juristic.handover.formed':
+    'The juristic person of a handed-over building was formed; the developer handed the operation over (D-150 D1, D-333).',
   // J2.2 (D-310, D-331)
   'juristic.vendor.changed': 'A vendor was registered, edited, blocked or unblocked (D-310, D-331).',
   'juristic.vendor_contract.changed': 'A vendor contract was drafted, edited or got a document (D-331).',

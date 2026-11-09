@@ -17,7 +17,7 @@
 | `field_engineer` | platform | วิศวกรภาคสนาม | Field engineer | Device fleet, installs (D-090, D-033). |
 | `finance` | platform | การเงิน | Finance | Subscriptions and platform AR (D-090, D-091). |
 
-## Permissions (128)
+## Permissions (130)
 | Permission | Surfaces | owner | manager | staff | accountant | committee | auditor | guard | platform_admin | support | field_engineer | finance | Description |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | `tenant.read` | owner, staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | View the tenant profile and company data |
@@ -113,6 +113,8 @@
 | `juristic.import.read` | owner | ✓ | ✓ |  |  | ✓ | ✓ |  |  |  |  |  | See legacy-system import jobs, their rows, reconciliation and parallel cycle (D-313, D-332) |
 | `juristic.import.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Run a legacy-system import: upload, validate, reconcile, commit, roll back, compare the parallel cycle, go live (D-313, D-332) |
 | `juristic.export.run` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Export every juristic table of the tenant as a CSV ZIP (D-332) |
+| `juristic.handover.read` | owner | ✓ | ✓ |  |  | ✓ | ✓ |  |  |  |  |  | See the developer handovers sent to the juristic office and their totals (D-314, D-333) |
+| `juristic.handover.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Accept or reject a developer handover and record the juristic person's formation (D-314, D-333) |
 | `admin.tenant.read` | admin |  |  |  |  |  |  |  | ✓ | ✓ | ✓ | ✓ | List and view tenants |
 | `gate.read` | owner, staff | ✓ | ✓ | ✓ |  | ✓ |  |  |  |  |  |  | See gates, devices, guards, house policies, the blacklist and invites (not the visit log) |
 | `gate.manage` | owner | ✓ | ✓ |  |  |  |  |  |  |  |  |  | Create and edit gates, enrol / revoke gate tablets, house policies, the blacklist (D-327) |

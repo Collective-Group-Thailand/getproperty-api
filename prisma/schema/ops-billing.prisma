@@ -304,6 +304,7 @@ model Invoice {
   overdueSince        DateTime?        @map("overdue_since") @db.Date
   reminderCount       Int              @default(0) @map("reminder_count") @db.SmallInt
   importJobId         String?          @map("import_job_id") @db.Uuid
+  handoverId          String?          @map("handover_id") @db.Uuid
   createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy           String?          @map("created_by") @db.Uuid
   updatedAt           DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -320,6 +321,7 @@ model Invoice {
   replacedBy         Invoice?            @relation("InvoiceReplacedBy", fields: [replacedByInvoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_replaced_by_fkey")
   replacedInvoices   Invoice[]           @relation("InvoiceReplacedBy")
   importJob          ImportJob?          @relation(fields: [importJobId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_import_job_id_fkey")
+  handover           Handover?           @relation(fields: [handoverId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_handover_id_fkey")
   replaces           Invoice?            @relation("InvoiceReplaces", fields: [replacesInvoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "invoice_replaces_fkey")
   replacements       Invoice[]           @relation("InvoiceReplaces")
   lines              InvoiceLine[]       @relation("InvoiceLines")
@@ -343,6 +345,7 @@ model Invoice {
   @@index([tenantId, buildingId, status, dueDate], map: "invoice_tenant_id_building_id_status_due_date_idx")
   @@index([leaseId, periodStart(sort: Desc)], map: "invoice_lease_id_period_start_idx")
   @@index([importJobId], map: "invoice_import_job_id_idx", where: raw("(import_job_id IS NOT NULL)"))
+  @@index([handoverId], map: "invoice_handover_id_idx", where: raw("(handover_id IS NOT NULL)"))
   @@index([billedPartyId, status], map: "invoice_billed_party_id_status_idx")
   @@index([billingCycleId], map: "invoice_billing_cycle_id_idx")
   @@index([unitId], map: "invoice_unit_id_idx")

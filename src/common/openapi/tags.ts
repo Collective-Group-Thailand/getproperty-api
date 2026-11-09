@@ -112,6 +112,8 @@ export const API_TAGS: Record<string, string> = {
     'Bank statement import (KBank / SCB / BBL / KTB column maps as data), idempotent re-import, automatic and manual matching to payments, expenses and fund transfers (D-329).',
   'owner.juristicImports':
     'Import wizard of a juristic building moving from a legacy system: templates (register, opening balances, 12 months of payment history, bank opening balances, legacy bills), row-level validation in Thai / English, reconciliation with the bank statements, commit in one transaction, rollback of exactly what was created until go-live, parallel cycle, go-live; full export of every juristic table (D-313, D-332).',
+  'owner.juristicHandovers':
+    'Developer handovers from getbuild: the inbox of the juristic office — review of the totals, acceptance (register, advance common fees as owners’ credit, first fund contributions, receivables brought forward as OPB invoices, all equal to the payload), rejection back to getbuild, the juristic person’s formation switching the operator period (D-150 D1, D-314, D-333).',
   'owner.juristicVendors':
     'Vendors of juristic tenants: a party with its tax id (for the 50 ทวิ), categories, contact and a masked bank account; blocking (D-310, D-331).',
   'owner.juristicVendorContracts':
@@ -297,6 +299,8 @@ export const API_TAGS: Record<string, string> = {
   'admin.devices':
     'Device fleet: registration, inventory import, assignment, fleet counts, OTA rings, certificate revocation, retirement, provisioning codes and commands (D-033, D-130, D-131).',
   'admin.buildings': 'Building operator changes (D-152).',
+  'admin.juristicHandovers':
+    'Developer handovers received from getbuild and their assignment to a juristic tenant (D-314, D-333).',
   'admin.notifications': 'In-app inbox of the platform user.',
   'admin.pushSubscriptions': 'Web push (VAPID) subscriptions of the admin browser.',
   'admin.realtime': 'Realtime auth and the server-sent events stream (contract §6).',

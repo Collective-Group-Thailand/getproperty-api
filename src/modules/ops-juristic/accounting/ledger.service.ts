@@ -37,8 +37,8 @@ import {
 } from './posting';
 
 /**
- * An import's opening-balance invoice (D-332): principal and surcharge brought forward are accumulated surplus (the
- * legacy books earned them), a fund contribution brought forward is the fund's equity.
+ * An import's (D-332) or a developer handover's (D-333) opening-balance invoice: principal and surcharge brought forward
+ * are accumulated surplus (the earlier books earned them), a fund contribution brought forward is the fund's equity.
  */
 const openingKind = (importJobId: string | null, kind: string, sourceType: string): string =>
   importJobId === null
@@ -430,7 +430,7 @@ export class LedgerService extends TenantScopedRepository implements EventSubscr
         unitId: inv.unitId,
         partyId: inv.billedPartyId,
         lines: inv.lines.map((l) => ({
-          kind: openingKind(inv.importJobId, l.lineKind, l.sourceType),
+          kind: openingKind(inv.importJobId ?? inv.handoverId, l.lineKind, l.sourceType),
           amount: l.amount,
           scheduled: l.revenueSchedule.length > 0,
         })),
@@ -508,7 +508,11 @@ export class LedgerService extends TenantScopedRepository implements EventSubscr
         }
       }
       lines.push({
-        kind: openingKind(note.invoice.importJobId, l.lineKind, l.refInvoiceLine?.sourceType ?? ''),
+        kind: openingKind(
+          note.invoice.importJobId ?? note.invoice.handoverId,
+          l.lineKind,
+          l.refInvoiceLine?.sourceType ?? '',
+        ),
         amount: l.amount,
         fromUnearned,
       });

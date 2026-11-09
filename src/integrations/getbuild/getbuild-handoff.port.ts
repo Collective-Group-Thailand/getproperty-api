@@ -36,6 +36,18 @@ export interface GetbuildInvitation extends GetbuildUnitRef {
   expiresAt: string;
 }
 
+/** A juristic office refused a building handover (D-333): getbuild corrects and sends a new event. */
+export interface GetbuildHandoverRejection {
+  handoverId: string;
+  /** The idempotency key of the refused `building.handover.requested`. */
+  idempotencyKey: string;
+  developerRef: string;
+  propertyRef: string;
+  buildingRef: string;
+  reason: string;
+  rejectedAt: string;
+}
+
 /** The provider is switched off (`GETBUILD_MODE=off`, O-033: no getbuild API agreed yet). */
 export class GetbuildUnavailableError extends Error {
   constructor() {
@@ -56,6 +68,11 @@ export interface GetbuildHandoffPort {
   unitFacts(ref: GetbuildUnitRef): Promise<GetbuildUnitFacts | null>;
   /** Hands the invitation to getbuild for the buyer (idempotent per handoff on getbuild's side). */
   deliverInvitation(invitation: GetbuildInvitation): Promise<void>;
+  /**
+   * Tells getbuild that the juristic office rejected a handover (J3.2, D-333; no asset-core event type exists for it
+   * yet, O-033) — idempotent per handover on getbuild's side.
+   */
+  handoverRejected(rejection: GetbuildHandoverRejection): Promise<void>;
 }
 
 /** `GETBUILD_MODE=off`: no facts (the draft is prefilled from the event only) and nothing can be delivered. */
@@ -65,6 +82,9 @@ export class GetbuildHandoffUnavailable implements GetbuildHandoffPort {
     return Promise.resolve(null);
   }
   deliverInvitation(): Promise<void> {
+    return Promise.reject(new GetbuildUnavailableError());
+  }
+  handoverRejected(): Promise<void> {
     return Promise.reject(new GetbuildUnavailableError());
   }
 }

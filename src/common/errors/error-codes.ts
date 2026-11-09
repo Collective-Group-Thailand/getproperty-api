@@ -336,6 +336,12 @@ export const ERROR_CODES = {
   // G8 (D-299): getbuild rental handoff, employer housing, relocation network
   'handoff.invalid_state': HttpStatus.CONFLICT,
   'handoff.landlord_required': HttpStatus.UNPROCESSABLE_ENTITY,
+  // J3.2 (D-314, D-333): developer handover from getbuild
+  'handover.invalid_state': HttpStatus.CONFLICT,
+  'handover.not_due': HttpStatus.CONFLICT,
+  'handover.invalid': HttpStatus.UNPROCESSABLE_ENTITY,
+  'handover.unit_owned': HttpStatus.CONFLICT,
+  'handover.totals_mismatch': HttpStatus.CONFLICT,
   'employer.invalid_state': HttpStatus.CONFLICT,
   'employer.building_mismatch': HttpStatus.UNPROCESSABLE_ENTITY,
   'relocation.consent_required': HttpStatus.CONFLICT,
