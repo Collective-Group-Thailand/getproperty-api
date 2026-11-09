@@ -1962,5 +1962,27 @@
       "title": "Already decided",
       "detail": "You already decided on this award."
     }
+  },
+  "handover": {
+    "invalid_state": {
+      "title": "Handover not in this state",
+      "detail": "The handover is not in a state that allows this action."
+    },
+    "not_due": {
+      "title": "Handover date not reached",
+      "detail": "The developer's handover date has not come yet; accept it on or after that date."
+    },
+    "invalid": {
+      "title": "Handover cannot be applied",
+      "detail": "The handover has problems listed in its review; reject it with the reason or fix the building data first."
+    },
+    "unit_owned": {
+      "title": "Unit already has owners",
+      "detail": "A unit of the handover already has current owners in the register; the handover would register them twice."
+    },
+    "totals_mismatch": {
+      "title": "Totals differ from the handover",
+      "detail": "What would be recorded does not equal the totals the developer sent; nothing was recorded."
+    }
   }
 }

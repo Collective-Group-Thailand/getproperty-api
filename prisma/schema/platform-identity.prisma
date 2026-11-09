@@ -399,6 +399,7 @@ model TenantBankAccount {
   webhooks        PaymentWebhook[]
   settlementFiles  PaymentSettlementFile[]
   juristicFunds          Fund[]
+  juristicHandovers      Handover[]
   juristicAccounts       Account[]
   bankStatements         BankStatement[]
   bankStatementLines     BankStatementLine[]

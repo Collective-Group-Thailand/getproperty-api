@@ -38,6 +38,7 @@ import { JuristicBudgetsService } from './ops-juristic/budgets.service';
 import { CollectionReportsService } from './ops-juristic/collection-reports.service';
 import { CollectionsService } from './ops-juristic/collections.service';
 import { DebtClearancesService } from './ops-juristic/debt-clearances.service';
+import { HandoversService } from './ops-juristic/handovers/handovers.service';
 import { JuristicFullExportService } from './ops-juristic/imports/full-export.service';
 import { ImportsService } from './ops-juristic/imports/imports.service';
 import { JuristicWorkspaceService } from './ops-juristic/juristic-workspace.service';
@@ -169,6 +170,7 @@ const SERVICES = [
   QuotationsService,
   VendorEvaluationsService,
   ImportsService,
+  HandoversService,
   JuristicFullExportService,
   ContractRenderer,
   LeasesService,

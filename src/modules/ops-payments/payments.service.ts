@@ -618,6 +618,9 @@ export class PaymentsService extends TenantScopedRepository {
   async applyCredit(tx: Tx, invoiceId: string): Promise<Payment | null> {
     const inv = await tx.invoice.findUniqueOrThrow({ where: { id: invoiceId } });
     if (!inv.issuedAt || !OPEN.includes(inv.status) || D(inv.balance).lte(0)) return null;
+    // D-333 (J3.2): receivables a developer handed over are never set off against the owner's credit (advance fees
+    // paid for later periods) — the owner pays them, or the office allocates a payment explicitly
+    if (inv.handoverId) return null;
     await this.lockCredit(tx, inv.billedPartyId, inv.unitId);
     const credit = await this.creditBalance(tx, inv.billedPartyId, inv.unitId);
     if (credit.lte(0)) return null;

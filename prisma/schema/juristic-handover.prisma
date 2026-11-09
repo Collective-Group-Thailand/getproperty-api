@@ -1,0 +1,106 @@
+// J3.2 developer handover from getbuild (D-314 = D-J13, D-333; migration 0080).
+
+enum HandoverState {
+  received
+  pending_review
+  accepted
+  rejected
+  superseded
+
+  @@map("handover_state")
+  @@schema("juristic")
+}
+
+/// One building.handover.requested from getbuild (D-314, D-333): inbox of the juristic office, accepted or rejected.
+model Handover {
+  id                    String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId              String?       @map("tenant_id") @db.Uuid
+  integrationEventId    String        @map("integration_event_id") @db.Uuid
+  contractVersion       Int           @map("contract_version") @db.SmallInt
+  state                 HandoverState @default(received)
+  developerRef          String        @map("developer_ref")
+  propertyRef           String        @map("property_ref")
+  buildingRef           String        @map("building_ref")
+  buildingName          String        @map("building_name")
+  requestedHandoverAt   DateTime      @map("requested_handover_at") @db.Timestamptz(6)
+  asOfDate              DateTime?     @map("as_of_date") @db.Date
+  payload               Json
+  totals                Json          @default("{}")
+  receivingBank         Json?         @map("receiving_bank")
+  developerTenantId     String?       @map("developer_tenant_id") @db.Uuid
+  buildingId            String?       @map("building_id") @db.Uuid
+  bankAccountId         String?       @map("bank_account_id") @db.Uuid
+  assignedAt            DateTime?     @map("assigned_at") @db.Timestamptz(6)
+  assignedBy            String?       @map("assigned_by") @db.Uuid
+  acceptedAt            DateTime?     @map("accepted_at") @db.Timestamptz(6)
+  acceptedBy            String?       @map("accepted_by") @db.Uuid
+  notifyOpeningBalances Boolean?      @map("notify_opening_balances")
+  rejectedAt            DateTime?     @map("rejected_at") @db.Timestamptz(6)
+  rejectedBy            String?       @map("rejected_by") @db.Uuid
+  rejectReason          String?       @map("reject_reason")
+  rejectionDeliveredAt  DateTime?     @map("rejection_delivered_at") @db.Timestamptz(6)
+  rejectionAttempts     Int           @default(0) @map("rejection_attempts")
+  lastDeliveryError     String?       @map("last_delivery_error")
+  supersededById        String?       @map("superseded_by_id") @db.Uuid
+  formedOn              DateTime?     @map("formed_on") @db.Date
+  formedAt              DateTime?     @map("formed_at") @db.Timestamptz(6)
+  formedBy              String?       @map("formed_by") @db.Uuid
+  registrationNo        String?       @map("registration_no")
+  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy             String?       @map("created_by") @db.Uuid
+  updatedAt             DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy             String?       @map("updated_by") @db.Uuid
+  version               Int           @default(1)
+
+  tenant           Tenant?            @relation("HandoverTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "handover_tenant_id_fkey")
+  integrationEvent IntegrationEvent   @relation(fields: [integrationEventId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "handover_integration_event_id_fkey")
+  developerTenant  Tenant?            @relation("HandoverDeveloperTenant", fields: [developerTenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "handover_developer_tenant_id_fkey")
+  building         Building?          @relation("HandoverBuilding", fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "handover_building_id_fkey")
+  bankAccount      TenantBankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "handover_bank_account_id_fkey")
+  supersededBy     Handover?          @relation("HandoverSupersede", fields: [supersededById], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "handover_superseded_by_id_fkey")
+  supersedes       Handover[]         @relation("HandoverSupersede")
+
+  units    HandoverUnit[]
+  invoices Invoice[]
+  credits  PayerCredit[]
+
+  @@unique([integrationEventId], map: "handover_integration_event_id_key")
+  @@unique([developerRef, buildingRef], map: "handover_building_open_key", where: raw("(state = ANY (ARRAY['received'::juristic.handover_state, 'pending_review'::juristic.handover_state, 'accepted'::juristic.handover_state]))"))
+  @@index([tenantId, state], map: "handover_tenant_id_state_idx")
+  @@index([state], map: "handover_state_idx", where: raw("((state = 'rejected'::juristic.handover_state) AND (rejection_delivered_at IS NULL))"))
+  @@index([developerTenantId], map: "handover_developer_tenant_id_idx", where: raw("(developer_tenant_id IS NOT NULL)"))
+  @@index([buildingId], map: "handover_building_id_idx", where: raw("(building_id IS NOT NULL)"))
+  @@index([bankAccountId], map: "handover_bank_account_id_idx", where: raw("(bank_account_id IS NOT NULL)"))
+  @@index([supersededById], map: "handover_superseded_by_id_idx", where: raw("(superseded_by_id IS NOT NULL)"))
+  @@map("handover")
+  @@schema("juristic")
+}
+
+/// The money a unit brought with an accepted handover and its journal (D-333).
+model HandoverUnit {
+  id                String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  handoverId        String    @map("handover_id") @db.Uuid
+  unitId            String    @map("unit_id") @db.Uuid
+  unitRef           String    @map("unit_ref")
+  advanceAmount     Decimal   @default(0) @map("advance_amount") @db.Decimal(14, 2)
+  advancePeriodFrom DateTime? @map("advance_period_from") @db.Date
+  advancePeriodTo   DateTime? @map("advance_period_to") @db.Date
+  fundAmount        Decimal   @default(0) @map("fund_amount") @db.Decimal(14, 2)
+  receivablesAmount Decimal   @default(0) @map("receivables_amount") @db.Decimal(14, 2)
+  journalId         String?   @map("journal_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?   @map("created_by") @db.Uuid
+
+  tenant   Tenant   @relation("HandoverUnitTenant", fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "handover_unit_tenant_id_fkey")
+  handover Handover @relation(fields: [handoverId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "handover_unit_handover_id_fkey")
+  unit     Unit     @relation("HandoverUnitUnit", fields: [unitId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "handover_unit_unit_id_fkey")
+  journal  Journal? @relation(fields: [journalId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "handover_unit_journal_id_fkey")
+
+  @@unique([handoverId, unitId], map: "handover_unit_handover_id_unit_id_key")
+  @@index([tenantId], map: "handover_unit_tenant_id_idx")
+  @@index([unitId], map: "handover_unit_unit_id_idx")
+  @@index([journalId], map: "handover_unit_journal_id_idx", where: raw("(journal_id IS NOT NULL)"))
+  @@map("handover_unit")
+  @@schema("juristic")
+}

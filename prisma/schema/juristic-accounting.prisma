@@ -27,6 +27,7 @@ enum JournalSource {
   manual
   opening
   reversal
+  handover
 
   @@map("journal_source")
   @@schema("juristic")
@@ -233,6 +234,7 @@ model Journal {
   fundTransfers    FundTransfer[]
   expenseRequests  ExpenseRequest[]
   pettyCashEntries PettyCashEntry[]
+  handoverUnits    HandoverUnit[]
 
   @@unique([tenantId, sourceType, sourceId], map: "journal_source_key", where: raw("(source_id IS NOT NULL)"))
   @@unique([reversesJournalId], map: "journal_reverses_journal_id_key", where: raw("(reverses_journal_id IS NOT NULL)"))

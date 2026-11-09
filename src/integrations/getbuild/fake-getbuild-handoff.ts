@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import {
   type GetbuildHandoffPort,
+  type GetbuildHandoverRejection,
   type GetbuildInvitation,
   type GetbuildUnitFacts,
   type GetbuildUnitRef,
@@ -15,6 +16,7 @@ import {
 export class FakeGetbuildHandoff implements GetbuildHandoffPort {
   readonly mode = 'fake' as const;
   readonly delivered: GetbuildInvitation[] = [];
+  readonly rejections: GetbuildHandoverRejection[] = [];
   private readonly facts = new Map<string, GetbuildUnitFacts | null>();
   failNext = false;
 
@@ -53,6 +55,15 @@ export class FakeGetbuildHandoff implements GetbuildHandoffPort {
       return Promise.reject(new Error('fake getbuild: delivery refused'));
     }
     this.delivered.push(invitation);
+    return Promise.resolve();
+  }
+
+  handoverRejected(rejection: GetbuildHandoverRejection): Promise<void> {
+    if (this.failNext) {
+      this.failNext = false;
+      return Promise.reject(new Error('fake getbuild: rejection refused'));
+    }
+    this.rejections.push(rejection);
     return Promise.resolve();
   }
 

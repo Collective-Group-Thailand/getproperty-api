@@ -224,6 +224,14 @@ export const AUDIT_ACTIONS = [
   'juristic.import_difference_explained',
   'juristic.import_went_live',
   'juristic.import_cancelled',
+  // J3.2 (D-314, D-333)
+  'juristic.handover_received',
+  'juristic.handover_superseded',
+  'juristic.handover_assigned',
+  'juristic.handover_accepted',
+  'juristic.handover_rejected',
+  'juristic.handover_rejection_delivered',
+  'juristic.handover_formed',
   // J2.1 (D-311, D-312, D-329)
   'juristic.ledger_back_posted',
   'juristic.account_created',

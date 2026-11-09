@@ -21,6 +21,7 @@ import { AdminContractLibraryController } from './admin-contract-library.control
 import { AdminProviderCredentialsController } from './admin-credentials.controller';
 import { AdminFeeAccrualsController, AdminMediaServicesController } from './admin-growth.controller';
 import { AdminGuidesController } from './admin-guides.controller';
+import { AdminJuristicHandoversController } from './admin-handovers.controller';
 import { AdminListingsController } from './admin-listings.controller';
 import { AdminMessagingRatesController } from './admin-messaging.controller';
 import {
@@ -79,6 +80,7 @@ import { AdminSupportGrantsController, AdminTenantsController } from './admin-te
     AdminNotificationTemplatesController,
     AdminDevicesController,
     AdminBuildingsController,
+    AdminJuristicHandoversController,
     AdminFleetController,
     AdminOtaController,
     AdminIngestController,
