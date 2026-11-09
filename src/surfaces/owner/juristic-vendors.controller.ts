@@ -62,6 +62,7 @@ import {
   type InstalmentFrequencyName,
   QuotationAwardDto,
   QuotationCreateDto,
+  QuotationRoundCountsDto,
   QuotationRoundCreateDto,
   QuotationRoundDto,
   QuotationRoundListQuery,
@@ -71,6 +72,7 @@ import {
   SlaMonthDto,
   SlaMonthQuery,
   type VendorCategoryName,
+  VendorContractCountsDto,
   VendorContractCreateDto,
   VendorContractDetailDto,
   VendorContractDto,
@@ -79,6 +81,7 @@ import {
   type VendorContractStateName,
   VendorContractTerminateDto,
   VendorContractUpdateDto,
+  VendorCountsDto,
   VendorCreateDto,
   VendorDto,
   VendorEvaluationCreateDto,
@@ -582,16 +585,29 @@ export class OwnerVendorsController {
       'The juristic tenant’s vendors by name; filters state, category and part of the name. Tax id and bank account are shown masked (last 4) (D-310, D-331).',
     implements: ['D-310', 'D-331'],
   })
-  @ApiPaginated(VendorDto, { example: VENDOR_EXAMPLE })
+  @ApiPaginated(VendorDto, {
+    example: VENDOR_EXAMPLE,
+    counts: {
+      model: VendorCountsDto,
+      example: { all: 14, active: 13, blocked: 1 },
+      description:
+        'Vendors per state for the same search and categories, whatever `state` asks (J-CR, D-335).',
+    },
+  })
   @ApiStandardErrors(...READ)
-  async list(@CurrentTenant() ctx: TenantContext, @Query() q: VendorListQuery): Promise<Page<VendorDto>> {
-    const { rows, total } = await this.vendors.listVendors(ctx, {
+  async list(
+    @CurrentTenant() ctx: TenantContext,
+    @Query() q: VendorListQuery,
+  ): Promise<Page<VendorDto> & { counts: VendorCountsDto }> {
+    const { rows, total, counts } = await this.vendors.listVendors(ctx, {
       state: q.state,
       category: q.category,
+      categories: q.categories,
+      partyId: q.partyId,
       q: q.q,
       ...toSkipTake(q),
     });
-    return paginated(rows.map(vendorDto), total, q);
+    return { ...paginated(rows.map(vendorDto), total, q), counts };
   }
 
   @Post()
@@ -688,13 +704,29 @@ export class OwnerVendorContractsController {
       'By end date; filters vendor, building, state and `endingWithinDays` (active contracts ending within N days — the renewal queue) (D-310, D-331).',
     implements: ['D-310', 'D-331'],
   })
-  @ApiPaginated(VendorContractDto, { example: CONTRACT_EXAMPLE })
+  @ApiPaginated(VendorContractDto, {
+    example: CONTRACT_EXAMPLE,
+    counts: {
+      model: VendorContractCountsDto,
+      example: {
+        all: 9,
+        draft: 1,
+        active: 6,
+        expired: 1,
+        terminated: 1,
+        endingSoon: 2,
+        endingWithinDays: 90,
+      },
+      description:
+        'Contracts per state for the same vendor and building, whatever `state` asks, and the renewal queue (J-CR, D-335).',
+    },
+  })
   @ApiStandardErrors(...READ)
   async list(
     @CurrentTenant() ctx: TenantContext,
     @Query() q: VendorContractListQuery,
-  ): Promise<Page<VendorContractDto>> {
-    const { rows, total } = await this.vendors.listContracts(ctx, {
+  ): Promise<Page<VendorContractDto> & { counts: VendorContractCountsDto }> {
+    const { rows, total, counts } = await this.vendors.listContracts(ctx, {
       vendorId: q.vendorId,
       buildingId: q.buildingId,
       state: q.state,
@@ -702,11 +734,14 @@ export class OwnerVendorContractsController {
       ...toSkipTake(q),
     });
     const today = this.today();
-    return paginated(
-      rows.map((r) => contractSummary(r, today)),
-      total,
-      q,
-    );
+    return {
+      ...paginated(
+        rows.map((r) => contractSummary(r, today)),
+        total,
+        q,
+      ),
+      counts,
+    };
   }
 
   @Post()
@@ -1048,24 +1083,35 @@ export class OwnerQuotationRoundsController {
       'Newest first; filters state, building and `awaitingMe` (awards my role may approve that I did not ask for) (D-310, D-331).',
     implements: ['D-310', 'D-331'],
   })
-  @ApiPaginated(QuotationRoundDto, { example: ROUND_EXAMPLE })
+  @ApiPaginated(QuotationRoundDto, {
+    example: ROUND_EXAMPLE,
+    counts: {
+      model: QuotationRoundCountsDto,
+      example: { all: 7, awaitingMe: 1, open: 2, awaitingApproval: 1, awarded: 3, cancelled: 1 },
+      description:
+        'Rounds per state for the same building, whatever `state` / `awaitingMe` ask, and the awards awaiting me (J-CR, D-335).',
+    },
+  })
   @ApiStandardErrors(...READ)
   async list(
     @CurrentTenant() ctx: TenantContext,
     @Query() q: QuotationRoundListQuery,
-  ): Promise<Page<QuotationRoundDto>> {
-    const { rows, total } = await this.rounds.list(ctx, {
+  ): Promise<Page<QuotationRoundDto> & { counts: QuotationRoundCountsDto }> {
+    const { rows, total, counts } = await this.rounds.list(ctx, {
       state: q.state,
       buildingId: q.buildingId,
       awaitingMe: q.awaitingMe === true,
       ...toSkipTake(q),
     });
     const threshold = await this.threshold(ctx);
-    return paginated(
-      rows.map((r) => roundDto(ctx, r, threshold)),
-      total,
-      q,
-    );
+    return {
+      ...paginated(
+        rows.map((r) => roundDto(ctx, r, threshold)),
+        total,
+        q,
+      ),
+      counts,
+    };
   }
 
   @Post()

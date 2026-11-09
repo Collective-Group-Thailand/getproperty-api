@@ -1,6 +1,7 @@
 import { Public } from '@common/auth/auth.decorators';
 import { ApiEndpoint, ApiJsonBody, ApiStandardErrors, ApiSuccess } from '@common/openapi/decorators';
 import { FAKE } from '@common/openapi/examples';
+import { toBangkokIso } from '@common/time/bangkok';
 import { GuardAuthService } from '@modules/smart-gate/guard-auth.service';
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -92,7 +93,7 @@ export class GuardAuthController {
     example: {
       gateName: 'ป้อมหน้า',
       propertyName: 'หมู่บ้านตัวอย่าง',
-      guards: [{ guardId: FAKE.uuid, displayName: 'สมศักดิ์', locked: false }],
+      guards: [{ guardId: FAKE.uuid, displayName: 'สมศักดิ์', locked: false, lockedUntil: null }],
     },
   })
   @ApiStandardErrors('validation.failed', 'http.bad_request', 'gate.device_unknown', 'gate.inactive')
@@ -102,11 +103,15 @@ export class GuardAuthController {
     return {
       gateName: r.device.gate.name,
       propertyName: r.device.gate.property.name,
-      guards: r.guards.map((g) => ({
-        guardId: g.id,
-        displayName: g.displayName,
-        locked: Boolean(g.lockedUntil && g.lockedUntil.getTime() > now),
-      })),
+      guards: r.guards.map((g) => {
+        const locked = Boolean(g.lockedUntil && g.lockedUntil.getTime() > now);
+        return {
+          guardId: g.id,
+          displayName: g.displayName,
+          locked,
+          lockedUntil: locked ? toBangkokIso(g.lockedUntil!) : null,
+        };
+      }),
     };
   }
 

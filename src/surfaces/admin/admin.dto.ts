@@ -1154,3 +1154,22 @@ export class AdminBuildingDto {
   })
   roles!: BuildingTenantRoleName[];
 }
+
+/** A stub building a juristic tenant may claim (J-CR, D-335; D-251, D-280). */
+export class AdminStubBuildingDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.buildingId }) id!: string;
+  @ApiProperty({ example: 'ไลฟ์ สุขุมวิท 48' }) name!: string;
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid }) propertyId!: string;
+  @ApiProperty({ example: 'ไลฟ์ สุขุมวิท 48' }) propertyName!: string;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'ถนนสุขุมวิท พระโขนง คลองเตย กรุงเทพมหานคร 10110',
+    description: 'The project’s address as landlords entered it.',
+  })
+  address!: string | null;
+  @ApiProperty({ type: 'integer', example: 7, description: 'Units landlords put in the stub.' })
+  landlordUnits!: number;
+}
+
+export class AdminStubBuildingQuery extends PageQuery {}

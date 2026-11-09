@@ -264,6 +264,61 @@ export class PortfolioService {
   }
 
   /**
+   * `GET /v1/admin/buildings/stubs?q=` (J-CR, D-335): stub buildings (status `external`, D-251) a juristic tenant may
+   * claim — by project name or address — with how many units landlords put in each. Platform read.
+   */
+  async stubs(q: { q?: string; skip: number; take: number }) {
+    return this.db.platform(async (tx) => {
+      const term = q.q?.trim();
+      const where: Prisma.BuildingWhereInput = {
+        status: 'external',
+        deletedAt: null,
+        ...(term
+          ? {
+              OR: [
+                { name: { contains: term, mode: 'insensitive' } },
+                { property: { name: { contains: term, mode: 'insensitive' } } },
+                ...['line1', 'subdistrict', 'district', 'province'].map((k) => ({
+                  property: { address: { path: [k], string_contains: term } },
+                })),
+              ],
+            }
+          : {}),
+      };
+      const [rows, total] = await Promise.all([
+        tx.building.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            property: { select: { id: true, name: true, address: true } },
+            _count: { select: { units: { where: { deletedAt: null } } } },
+          },
+          orderBy: [{ name: 'asc' }, { id: 'asc' }],
+          skip: q.skip,
+          take: q.take,
+        }),
+        tx.building.count({ where }),
+      ]);
+      return {
+        rows: rows.map((b) => {
+          const a = (b.property.address ?? {}) as Record<string, string | null | undefined>;
+          return {
+            id: b.id,
+            name: b.name,
+            propertyId: b.property.id,
+            propertyName: b.property.name,
+            address:
+              [a.line1, a.subdistrict, a.district, a.province, a.postcode].filter(Boolean).join(' ') || null,
+            landlordUnits: b._count.units,
+          };
+        }),
+        total,
+      };
+    });
+  }
+
+  /**
    * `POST /v1/admin/buildings/{id}/actions/claim-stub` (D-280): the juristic person of a condo joins getproperty and
    * takes over the stub building its landlords created. The building moves to the juristic tenant (owner) and its
    * operator (itself or a PM company); the landlords keep their units, leases and invoices — nothing is copied.

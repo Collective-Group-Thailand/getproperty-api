@@ -88,6 +88,7 @@ import {
   type ReadingRequestStatusName,
   ResidentInvoiceDto,
   ResidentInvoiceListQuery,
+  RevenueScheduleDto,
 } from './billing.dto';
 
 const T = [
@@ -908,6 +909,44 @@ export class OwnerBillingCyclesController {
     @Param('billingCycleId', ParseUUIDPipe) id: string,
   ): Promise<BillingCycleDetailDto> {
     return cycleDetailDto(await this.cycles.get(ctx, id));
+  }
+
+  @Get(':billingCycleId/revenue-schedule')
+  @TenantScoped()
+  @Can('invoice.read')
+  @ApiEndpoint({
+    id: 'owner.billingCycles.revenueSchedule',
+    summary: 'Unearned schedule of an advance cycle',
+    description:
+      'Quarterly / semiannual / annual cycles: Σ per month of the revenue schedule of the cycle’s issued invoice lines (money billed in advance is recognised month by month), with what the ledger recognised and what credit notes took back; a monthly cycle answers no months. Another tenant’s cycle → 404 (J-CR, D-335; D-303).',
+    implements: ['D-303', 'D-335'],
+  })
+  @ApiSuccess(200, {
+    description: 'Schedule',
+    type: RevenueScheduleDto,
+    example: {
+      billingCycleId: FAKE.uuid,
+      frequency: 'annual',
+      months: [
+        {
+          month: '2027-01',
+          amount: '2400.00',
+          recognised: '2400.00',
+          credited: '0.00',
+          fullyRecognised: true,
+        },
+        { month: '2027-02', amount: '2400.00', recognised: '0.00', credited: '0.00', fullyRecognised: false },
+      ],
+      total: '4800.00',
+    },
+  })
+  @ApiStandardErrors('http.not_found', 'validation.failed', ...T)
+  async revenueSchedule(
+    @CurrentTenant() ctx: TenantContext,
+    @Param('billingCycleId', ParseUUIDPipe) id: string,
+  ): Promise<RevenueScheduleDto> {
+    const r = await this.cycles.revenueSchedule(ctx, id);
+    return { ...r, frequency: r.frequency as BillingFrequencyName };
   }
 
   @Post(':billingCycleId/actions/compute')

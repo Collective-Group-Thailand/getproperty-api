@@ -8,6 +8,9 @@ import {
   ApiSuccess,
 } from '@common/openapi/decorators';
 import { FAKE } from '@common/openapi/examples';
+import { ApiPaginated } from '@common/pagination/api-paginated.decorator';
+import { paginated, toSkipTake } from '@common/pagination/pagination';
+import { type Page } from '@common/pagination/pagination.dto';
 import { BuildingService } from '@core/asset/asset.services';
 import { DeviceRegistryService } from '@core/devices/device-registry.service';
 import { OutboxAdminService } from '@core/events/outbox-admin.service';
@@ -37,6 +40,8 @@ import { tariffVersionActions } from '../shared/next-actions';
 import { ApiSurface, SURFACES } from '../surfaces';
 import {
   AcceptedDto,
+  AdminStubBuildingDto,
+  AdminStubBuildingQuery,
   ConsumptionListQuery,
   type ConsumptionStateName,
   DeviceCreateDto,
@@ -687,6 +692,31 @@ export class AdminBuildingsController {
     private readonly buildings: BuildingService,
     private readonly portfolio: PortfolioService,
   ) {}
+
+  @Get('stubs')
+  @Can('admin.building.manage')
+  @ApiEndpoint({
+    id: 'admin.buildings.stubs',
+    summary: 'Stub buildings to claim',
+    description:
+      'Condo stubs that landlords created before the juristic person joined (status `external`, D-251), by building / project name or address (`q`), with the number of units landlords put in each — to pick the stub to hand over with `claim-stub` instead of pasting its id (J-CR, D-335; D-280).',
+    implements: ['D-280', 'D-335'],
+  })
+  @ApiPaginated(AdminStubBuildingDto, {
+    example: {
+      id: FAKE.buildingId,
+      name: 'ไลฟ์ สุขุมวิท 48',
+      propertyId: FAKE.uuid,
+      propertyName: 'ไลฟ์ สุขุมวิท 48',
+      address: 'ถนนสุขุมวิท พระโขนง คลองเตย กรุงเทพมหานคร 10110',
+      landlordUnits: 7,
+    },
+  })
+  @ApiStandardErrors('validation.failed')
+  async stubs(@Query() q: AdminStubBuildingQuery): Promise<Page<AdminStubBuildingDto>> {
+    const { rows, total } = await this.portfolio.stubs({ q: q.q, ...toSkipTake(q) });
+    return paginated(rows, total, q);
+  }
 
   @Post(':buildingId/actions/change-operator')
   @HttpCode(200)

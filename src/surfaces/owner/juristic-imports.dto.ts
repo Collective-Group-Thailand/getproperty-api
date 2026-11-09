@@ -41,6 +41,10 @@ export enum ReconcileStatusName {
   Mismatch = 'mismatch',
   NoStatement = 'no_statement',
 }
+export enum ReconcileAccountTypeName {
+  Operating = 'operating',
+  Fund = 'fund',
+}
 export enum ReconcileKindName {
   Receivables = 'receivables',
   Bank = 'bank',
@@ -80,6 +84,16 @@ export class JuristicImportCreateDto {
 }
 
 export class JuristicImportListQuery extends PageQuery {
+  @ApiPropertyOptional({
+    type: Boolean,
+    description:
+      'true: only jobs that block a new one (draft, validated, reconciled, committed); false: only the others (J-CR, D-335).',
+  })
+  @IsOptional()
+  @toBool()
+  @IsBoolean()
+  open?: boolean;
+
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()
@@ -328,6 +342,29 @@ export class JuristicReconcileItemDto {
   @MoneyOutput({ example: '0.00', nullable: true, description: 'imported − reference.' }) difference!:
     string | null;
   @ApiProperty({ enum: ReconcileStatusName, enumName: 'ReconcileStatus' }) status!: ReconcileStatusName;
+  @ApiProperty({
+    enum: ReconcileAccountTypeName,
+    enumName: 'ReconcileAccountType',
+    nullable: true,
+    example: 'operating',
+    description:
+      'Bank items: the account the row names (J-CR, D-335); null on the receivables item and on reconciliations recorded before.',
+  })
+  accountType!: ReconcileAccountTypeName | null;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '4012',
+    description: 'Bank items: the last four digits.',
+  })
+  last4!: string | null;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: null,
+    description: 'Fund items: the fund’s name (from the row or the building’s fund).',
+  })
+  fundName!: string | null;
 }
 
 export class JuristicImportReconciliationDto {

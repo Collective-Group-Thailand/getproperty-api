@@ -27,6 +27,9 @@ const BUILDING_OPERATORS: readonly TenantTypeKey[] = [
 /** Juristic tenants (and the deprecated alias). */
 const JURISTIC: readonly TenantTypeKey[] = ['juristic', 'condo_juristic'];
 
+/** J-CR (D-335): leases and deposits are not a juristic office's business (D-309: a lease is context only). */
+const LEASING: readonly TenantTypeKey[] = ['apartment', 'pm_company', 'landlord', 'agency'];
+
 export const OWNER_MENU: readonly MenuEntry[] = [
   // D-251: a landlord's home is the portfolio of its units across projects, not a building
   { key: 'portfolio', anyOf: ['unit.read'], tenantTypes: ['landlord'] },
@@ -43,8 +46,8 @@ export const OWNER_MENU: readonly MenuEntry[] = [
   { key: 'buildings', anyOf: ['property.read'], tenantTypes: BUILDING_OPERATORS },
   { key: 'units', anyOf: ['unit.read'], tenantTypes: BUILDING_OPERATORS },
   { key: 'parties', anyOf: ['party.read'] },
-  { key: 'leases', anyOf: ['lease.read'] },
-  { key: 'deposits', anyOf: ['deposit.read'] },
+  { key: 'leases', anyOf: ['lease.read'], tenantTypes: LEASING },
+  { key: 'deposits', anyOf: ['deposit.read'], tenantTypes: LEASING },
   { key: 'readings', anyOf: ['reading.read'] },
   { key: 'devices', anyOf: ['device.read'], tenantTypes: BUILDING_OPERATORS },
   { key: 'rate_plans', anyOf: ['rate_plan.read'] },
@@ -66,6 +69,8 @@ export const OWNER_MENU: readonly MenuEntry[] = [
     tenantTypes: BUILDING_OPERATORS,
   },
   // pack J (D-302, D-J20 J-DESIGN §5): juristic console keys whose endpoints exist; later steps add theirs
+  // J-CR (D-335): the juristic overview (the `dashboard` key stays for consoles that route by it)
+  { key: 'juristic_overview', anyOf: ['report.read', 'property.read'], tenantTypes: JURISTIC },
   { key: 'juristic_register', anyOf: ['juristic.register.read'], tenantTypes: JURISTIC },
   { key: 'juristic_cycles', anyOf: ['invoice.read'], tenantTypes: JURISTIC },
   {
@@ -73,6 +78,7 @@ export const OWNER_MENU: readonly MenuEntry[] = [
     anyOf: ['juristic.budget.read', 'juristic.resolution.read'],
     tenantTypes: JURISTIC,
   },
+  { key: 'juristic_resolutions', anyOf: ['juristic.resolution.read'], tenantTypes: JURISTIC },
   // J1.2a (D-306, D-308): payment plans and debt clearance certificates
   { key: 'juristic_payment_plans', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
   { key: 'juristic_debt_clearances', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
@@ -80,6 +86,9 @@ export const OWNER_MENU: readonly MenuEntry[] = [
   { key: 'juristic_receivables', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
   { key: 'juristic_statements', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
   { key: 'juristic_collection_ladder', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
+  // J-CR (D-335): collection reports and auto-pay mandates of their own
+  { key: 'juristic_reports', anyOf: ['juristic.collections.read'], tenantTypes: JURISTIC },
+  { key: 'juristic_payment_mandates', anyOf: ['payment.read'], tenantTypes: JURISTIC },
   // J2.1 (D-311, D-312, D-329): accounting, expenses, funds and petty cash, bank statements
   { key: 'juristic_accounting', anyOf: ['juristic.accounting.read'], tenantTypes: JURISTIC },
   {
@@ -89,6 +98,12 @@ export const OWNER_MENU: readonly MenuEntry[] = [
   },
   {
     key: 'juristic_funds',
+    anyOf: ['juristic.accounting.read', 'juristic.petty_cash.spend'],
+    tenantTypes: JURISTIC,
+  },
+  // J-CR (D-335): petty cash of its own (`juristic_funds` stays granted to spenders until the console adopts it)
+  {
+    key: 'juristic_petty_cash',
     anyOf: ['juristic.accounting.read', 'juristic.petty_cash.spend'],
     tenantTypes: JURISTIC,
   },

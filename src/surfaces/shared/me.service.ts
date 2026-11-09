@@ -15,6 +15,10 @@ import { ConsentService } from '@core/privacy/consent.service';
 import { ADMIN_MENU, entitledMenu, type MenuEntry, OWNER_MENU, STAFF_MENU } from '@core/rbac/menu';
 import { AccessService } from '@core/tenancy/access.service';
 import { TenantTx } from '@database/tenant-tx';
+import {
+  RECURRING_PAYMENTS,
+  type RecurringPaymentsPort,
+} from '@integrations/recurring-payments/recurring-payments.port';
 import { ResidentLeasesService } from '@modules/ops-leases/resident-leases.service';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -62,6 +66,7 @@ export class MeService {
     private readonly consents: ConsentService,
     private readonly residentLeases: ResidentLeasesService,
     @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(RECURRING_PAYMENTS) private readonly recurring: RecurringPaymentsPort,
   ) {}
 
   private userId(): string {
@@ -281,7 +286,7 @@ export class MeService {
    */
   private async unitView(userId: string) {
     const today = bangkokDate(this.clock.now());
-    const { roles, units, tenants } = await this.db.platform(async (tx) => {
+    const { roles, units, tenants, gatedProperties } = await this.db.platform(async (tx) => {
       const roles = await residentUnitRoles(tx, userId, today);
       const ids = listedUnitIds(roles);
       const units = ids.length
@@ -291,6 +296,10 @@ export class MeService {
               id: true,
               unitNo: true,
               buildingId: true,
+              areaSqm: true,
+              ownershipRatio: true,
+              landAreaSqwa: true,
+              plotNo: true,
               building: {
                 select: {
                   name: true,
@@ -302,6 +311,15 @@ export class MeService {
             },
           })
         : [];
+      // J-CR (D-335): estates with at least one active gate (the `gate` capability)
+      const propertyIds = [...new Set(units.map((u) => u.building.propertyId))];
+      const gated = propertyIds.length
+        ? await tx.gate.findMany({
+            where: { propertyId: { in: propertyIds }, state: 'active' },
+            select: { propertyId: true },
+            distinct: ['propertyId'],
+          })
+        : [];
       const tenantIds = [...new Set(roles.map((r) => r.tenantId))];
       const tenants = tenantIds.length
         ? await tx.tenant.findMany({
@@ -309,7 +327,12 @@ export class MeService {
             select: { id: true, displayName: true },
           })
         : [];
-      return { roles, units: ids.map((id) => units.find((u) => u.id === id)!).filter(Boolean), tenants };
+      return {
+        roles,
+        units: ids.map((id) => units.find((u) => u.id === id)!).filter(Boolean),
+        tenants,
+        gatedProperties: new Set(gated.map((g) => g.propertyId)),
+      };
     });
     const rolesOf = (unitId: string) => roles.filter((r) => r.unitId === unitId);
     // the tenant that runs the unit for me: my occupancy's, else the ownership register's
@@ -327,7 +350,7 @@ export class MeService {
         to: r.to,
       })),
     );
-    return { roles, units, tenants, rolesOf, tenantOf, refs };
+    return { roles, units, tenants, rolesOf, tenantOf, refs, gatedProperties };
   }
 
   /** `GET /v1/resident/me/units` (JR, D-322): my units with roles, navigation capabilities and the roles' hash. */
@@ -364,7 +387,15 @@ export class MeService {
             from: r.from,
             to: r.to,
           })),
-          capabilities: unitCapabilities(roles),
+          capabilities: unitCapabilities(roles, {
+            gate: view.gatedProperties.has(u.building.propertyId),
+          }),
+          areaSqm: u.areaSqm?.toFixed(2) ?? null,
+          ownershipRatio: u.ownershipRatio?.toFixed(6) ?? null,
+          landAreaSqwa: u.landAreaSqwa?.toFixed(2) ?? null,
+          plotNo: u.plotNo,
+          recurringAvailable:
+            this.recurring.mode !== 'off' && roles.some((r) => RECURRING_ROLES.includes(r.role)),
           leaseIds: [...new Set(roles.filter((r) => r.source === 'lease').map((r) => r.sourceId))],
         };
       }),
@@ -508,8 +539,19 @@ export class MeService {
   }
 }
 
-/** JR (D-322): what the resident app may show for a unit, from my roles on it (`ResidentMeUnitDto.capabilities`). */
-export function unitCapabilities(roles: readonly UnitRole[]): ResidentUnitCapability[] {
+/** Roles that may set up auto-pay for a unit (`RecurringPaymentsService.residentCreate`). */
+const RECURRING_ROLES: readonly string[] = ['co_owner', 'payer', 'tenant'];
+/** Roles that see the gate of their estate (`GATE_UNIT_ROLES` of the gate module, D-322). */
+const GATE_ROLES: readonly string[] = ['co_owner', 'tenant', 'co_tenant', 'family'];
+
+/**
+ * JR (D-322): what the resident app may show for a unit, from my roles on it (`ResidentMeUnitDto.capabilities`);
+ * `gate` (J-CR, D-335) where the unit's estate has an active gate and I hold a gate role.
+ */
+export function unitCapabilities(
+  roles: readonly UnitRole[],
+  estate: { gate?: boolean } = {},
+): ResidentUnitCapability[] {
   const out = new Set<ResidentUnitCapability>([
     ResidentUnitCapability.Notices,
     ResidentUnitCapability.Parcels,
@@ -526,6 +568,7 @@ export function unitCapabilities(roles: readonly UnitRole[]): ResidentUnitCapabi
     out.add(ResidentUnitCapability.Access);
   }
   if (roles.some((r) => r.source === 'lease' && r.role !== 'payer')) out.add(ResidentUnitCapability.Lease);
+  if (estate.gate && roles.some((r) => GATE_ROLES.includes(r.role))) out.add(ResidentUnitCapability.Gate);
   const order = Object.values(ResidentUnitCapability);
   return [...out].sort((a, b) => order.indexOf(a) - order.indexOf(b));
 }

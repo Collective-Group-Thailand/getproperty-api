@@ -10,6 +10,7 @@ import { type Page } from '@common/pagination/pagination.dto';
 import { GateAdminService } from '@modules/smart-gate/gate-admin.service';
 import { GateHardwareService } from '@modules/smart-gate/gate-hardware.service';
 import { IncidentsService } from '@modules/smart-gate/incidents.service';
+import { VisitsService } from '@modules/smart-gate/visits.service';
 import {
   Body,
   Controller,
@@ -711,7 +712,10 @@ export class OwnerGateInvitesController {
 @ApiSurface(SURFACES.owner)
 @Controller('owner/gate-visits')
 export class OwnerGateVisitsController {
-  constructor(private readonly gates: GateAdminService) {}
+  constructor(
+    private readonly gates: GateAdminService,
+    private readonly visits: VisitsService,
+  ) {}
 
   @Get()
   @TenantScoped()
@@ -733,7 +737,12 @@ export class OwnerGateVisitsController {
       toSkipTake(q).skip,
       toSkipTake(q).take,
     );
-    return paginated(rows.map(guardVisitDto), total, q);
+    const names = await this.visits.userNames(rows);
+    return paginated(
+      rows.map((v) => guardVisitDto(v, names)),
+      total,
+      q,
+    );
   }
 
   @Get(':visitId')
@@ -757,7 +766,10 @@ export class OwnerGateVisitsController {
     @Query() q: VisitLogReasonQuery,
   ): Promise<VisitLogDetailDto> {
     const r = await this.gates.visitLogGet(ctx, id, q.reason);
-    return { ...guardVisitDto(r.visit), events: r.events.map(visitEventDto) };
+    return {
+      ...guardVisitDto(r.visit, await this.visits.userNames([r.visit])),
+      events: r.events.map(visitEventDto),
+    };
   }
 }
 

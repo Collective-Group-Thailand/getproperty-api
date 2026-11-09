@@ -40,6 +40,8 @@ export interface UnitInput {
 
 export interface UnitListQuery {
   buildingId?: string;
+  /** J-CR (D-335): every building of the property (a housing estate's soi). */
+  propertyId?: string;
   floorId?: string;
   status?: UnitStatus;
   q?: string;
@@ -369,6 +371,7 @@ export class UnitsService extends TenantScopedRepository {
         deletedAt: null,
         ...(ctx.buildingIds ? { buildingId: { in: [...ctx.buildingIds] } } : {}),
         ...(query.buildingId ? { buildingId: query.buildingId } : {}),
+        ...(query.propertyId ? { building: { propertyId: query.propertyId } } : {}),
         ...(query.floorId ? { floorId: query.floorId } : {}),
         ...(query.status ? { status: query.status } : {}),
         ...(query.q ? { unitNo: { contains: query.q, mode: 'insensitive' } } : {}),

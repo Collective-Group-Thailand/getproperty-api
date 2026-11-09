@@ -169,7 +169,34 @@ export class QuotationsService extends TenantScopedRepository implements OnModul
         }),
         tx.quotationRound.count({ where }),
       ]);
-      return { rows, total };
+      // Tab badges (J-CR): per state for the same building, and the awards awaiting me.
+      const scopeWhere: Prisma.QuotationRoundWhereInput = {
+        tenantId: ctx.tenantId,
+        ...(q.buildingId
+          ? { buildingId: q.buildingId }
+          : ctx.buildingIds
+            ? { buildingId: { in: [...ctx.buildingIds] } }
+            : {}),
+      };
+      const [byState, awaitingMe] = await Promise.all([
+        tx.quotationRound.groupBy({ by: ['state'], where: scopeWhere, _count: { _all: true } }),
+        me
+          ? tx.quotationRound.count({
+              where: {
+                ...scopeWhere,
+                state: 'awaiting_approval',
+                awardRequestedBy: { not: me },
+                approverRoles: { has: ctx.role ?? '-' },
+              },
+            })
+          : Promise.resolve(0),
+      ]);
+      const counts = { all: 0, awaitingMe, open: 0, awaitingApproval: 0, awarded: 0, cancelled: 0 };
+      for (const g of byState) {
+        counts[g.state === 'awaiting_approval' ? 'awaitingApproval' : g.state] = g._count._all;
+        counts.all += g._count._all;
+      }
+      return { rows, total, counts };
     });
   }
 

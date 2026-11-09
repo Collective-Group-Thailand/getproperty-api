@@ -598,12 +598,27 @@ export interface ReconcileItem {
   reference: string | null;
   difference: string | null;
   status: ReconcileStatus;
+  /** Bank items (J-CR): the account the row names; absent on receivables and on reconciliations stored before. */
+  accountType?: 'operating' | 'fund';
+  last4?: string | null;
+  fundName?: string | null;
+}
+
+/** One bank row of the import with the statement balance it is compared with. */
+export interface ReconcileBankInput {
+  rowNo: number;
+  label: string;
+  accountType: 'operating' | 'fund';
+  last4: string | null;
+  fundName: string | null;
+  balance: string;
+  statementBalance: string | null;
 }
 
 export function reconcileItems(
   totals: Pick<PlanTotals, 'receivables'>,
   declaredReceivables: string,
-  bank: readonly { rowNo: number; label: string; balance: string; statementBalance: string | null }[],
+  bank: readonly ReconcileBankInput[],
 ): { items: ReconcileItem[]; explanationRequired: boolean } {
   const items: ReconcileItem[] = [];
   const diff = D(totals.receivables).minus(declaredReceivables);
@@ -626,6 +641,9 @@ export function reconcileItems(
       reference: b.statementBalance === null ? null : D(b.statementBalance).toFixed(2),
       difference: d === null ? null : d.toFixed(2),
       status: d === null ? 'no_statement' : d.eq(0) ? 'match' : 'mismatch',
+      accountType: b.accountType,
+      last4: b.last4,
+      fundName: b.fundName,
     });
   }
   return { items, explanationRequired: items.some((i) => i.status !== 'match') };

@@ -33,6 +33,8 @@ export enum ResidentUnitCapability {
   Usage = 'usage',
   Access = 'access',
   Lease = 'lease',
+  /** J-CR (D-335): the estate has an active gate and I hold a gate role (co-owner, tenant, co-tenant, family). */
+  Gate = 'gate',
 }
 
 /** One entry of `GET /v1/resident/me` `unitRoles` (the pack's `unitRoles[]`). */

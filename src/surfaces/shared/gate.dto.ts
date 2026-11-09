@@ -391,6 +391,33 @@ export class GuardVisitDto extends VisitDto {
     description: 'Offline record: when the tablet recorded it.',
   })
   recordedAt!: string | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    example: null,
+    description:
+      'When the visit was found inside longer than the estate allows (`gate.visit.overstayed`) — survives a reload (J-CR, D-335).',
+  })
+  overstayedAt!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'เกริก',
+    description: 'First name of the resident who approved or denied (first names only, D-315; J-CR, D-335).',
+  })
+  decidedByName!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: null,
+    description:
+      'First name of the resident who asked the guard to call (the guard calls the house number on file; D-315, J-CR).',
+  })
+  callBackName!: string | null;
 }
 
 export const GUARD_VISIT_EXAMPLE: GuardVisitDto = {
@@ -399,6 +426,9 @@ export const GUARD_VISIT_EXAMPLE: GuardVisitDto = {
   idLast4: '1234',
   note: null,
   recordedAt: null,
+  overstayedAt: null,
+  decidedByName: null,
+  callBackName: null,
 };
 
 export class VisitCreatedDto extends GuardVisitDto {
@@ -434,14 +464,6 @@ export class VisitEventDto {
 export class GuardVisitDetailDto extends GuardVisitDto {
   @ApiProperty({ type: [VisitEventDto], example: [] })
   events!: VisitEventDto[];
-
-  @ApiProperty({
-    type: String,
-    nullable: true,
-    example: null,
-    description: 'Name of the resident who asked to be called (the guard calls the house number on file).',
-  })
-  callBackName!: string | null;
 
   @ApiProperty({ type: String, nullable: true, example: null, description: '5-minute link to the photo.' })
   photoUrl!: string | null;
@@ -686,6 +708,14 @@ export class GuardMeDto {
 
   @ApiProperty({ type: PrivacyNoticeDto, example: NOTICE_EXAMPLE })
   privacyNotice!: PrivacyNoticeDto;
+
+  @ApiProperty({
+    type: 'integer',
+    example: 5,
+    description:
+      'Minutes without a touch before the tablet locks to the PIN pad (`gate.tablet.auto_lock_minutes` of the property; J-CR, D-335).',
+  })
+  autoLockMinutes!: number;
 }
 
 // ------------------------------------------------------------------------------------------------ guard sign-in
@@ -765,6 +795,15 @@ export class GuardRosterItemDto {
 
   @ApiProperty({ example: false })
   locked!: boolean;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    example: null,
+    description: 'While `locked`: when the guard may enter the PIN again (J-CR, D-335).',
+  })
+  lockedUntil!: string | null;
 }
 
 export class GuardRosterDto {
@@ -776,7 +815,7 @@ export class GuardRosterDto {
 
   @ApiProperty({
     type: [GuardRosterItemDto],
-    example: [{ guardId: FAKE.uuid, displayName: 'สมศักดิ์', locked: false }],
+    example: [{ guardId: FAKE.uuid, displayName: 'สมศักดิ์', locked: false, lockedUntil: null }],
   })
   guards!: GuardRosterItemDto[];
 }
@@ -1455,4 +1494,18 @@ export class ResidentGateDto {
 
   @ApiProperty({ type: PrivacyNoticeDto, example: NOTICE_EXAMPLE })
   privacyNotice!: PrivacyNoticeDto;
+
+  @ApiProperty({
+    type: 'integer',
+    example: 30,
+    description: 'Days a remembered car stays valid (`gate.remember_days` of the estate; J-CR, D-335).',
+  })
+  rememberDays!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    example: 30,
+    description: 'Longest window of an invite (`gate.invite_max_days` of the estate; J-CR, D-335).',
+  })
+  inviteMaxDays!: number;
 }

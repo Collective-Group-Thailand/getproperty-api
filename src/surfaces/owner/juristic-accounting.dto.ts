@@ -2001,3 +2001,20 @@ export class BankLineMatchDto {
   @IsUUID()
   targetId!: string;
 }
+
+/** Expense requests per state for the list's tab badges (J-CR, D-335). */
+export class ExpenseRequestCountsDto {
+  @ApiProperty({ type: 'integer', example: 12 }) all!: number;
+  @ApiProperty({
+    type: 'integer',
+    example: 2,
+    description: 'Submitted requests my role may approve, not requested nor decided by me.',
+  })
+  awaitingMe!: number;
+  @ApiProperty({ type: 'integer', example: 1 }) draft!: number;
+  @ApiProperty({ type: 'integer', example: 3 }) submitted!: number;
+  @ApiProperty({ type: 'integer', example: 2 }) approved!: number;
+  @ApiProperty({ type: 'integer', example: 1 }) rejected!: number;
+  @ApiProperty({ type: 'integer', example: 4 }) paid!: number;
+  @ApiProperty({ type: 'integer', example: 1 }) cancelled!: number;
+}

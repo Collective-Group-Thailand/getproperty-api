@@ -36,6 +36,7 @@ import {
   planImport,
   type PlanResult,
   type PlanTotals,
+  type ReconcileBankInput,
   type ReconcileItem,
   reconcileItems,
 } from './import-plan';
@@ -166,7 +167,11 @@ export class ImportsService extends TenantScopedRepository {
         where: { buildingId: b.id, state: { in: [...OPEN, 'committed'] } },
         select: { id: true, number: true },
       });
-      if (open) throw new DomainException('import.job_open', { params: { number: open.number } });
+      if (open)
+        throw new DomainException('import.job_open', {
+          params: { number: open.number },
+          extensions: { jobId: open.id, jobNumber: open.number },
+        });
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`import-job:${ctx.tenantId}`}))`;
       const last = await tx.importJob.aggregate({
         where: { tenantId: ctx.tenantId },
@@ -195,13 +200,18 @@ export class ImportsService extends TenantScopedRepository {
     });
   }
 
-  list(ctx: TenantContext, q: { buildingId?: string; state?: ImportState; skip: number; take: number }) {
+  list(
+    ctx: TenantContext,
+    q: { buildingId?: string; state?: ImportState; open?: boolean; skip: number; take: number },
+  ) {
     return this.db.tenant(ctx, async (tx) => {
       await this.ledger.assertJuristic(tx, ctx.tenantId);
       const where: Prisma.ImportJobWhereInput = {
         tenantId: ctx.tenantId,
         ...(q.state ? { state: q.state } : {}),
         AND: [
+          ...(q.open === true ? [{ state: { in: [...OPEN, 'committed' as const] } }] : []),
+          ...(q.open === false ? [{ state: { notIn: [...OPEN, 'committed' as const] } }] : []),
           ...(q.buildingId ? [{ buildingId: q.buildingId }] : []),
           ...(ctx.buildingIds ? [{ buildingId: { in: [...ctx.buildingIds] } }] : []),
         ],
@@ -611,7 +621,7 @@ export class ImportsService extends TenantScopedRepository {
   private async statementBalances(tx: Tx, ctx: TenantContext, job: ImportJob, plan: ImportPlan) {
     const funds = await tx.fund.findMany({ where: { buildingId: job.buildingId } });
     const asOf = day(job.asOfDate);
-    const out: { rowNo: number; label: string; balance: string; statementBalance: string | null }[] = [];
+    const out: ReconcileBankInput[] = [];
     for (const b of plan.bankRows) {
       const fund = b.fundId ? funds.find((f) => f.id === b.fundId) : null;
       const accountId = b.bankAccountId ?? fund?.bankAccountId ?? null;
@@ -630,6 +640,9 @@ export class ImportsService extends TenantScopedRepository {
       }
       out.push({
         rowNo: b.rowNo,
+        accountType: b.accountType,
+        last4: b.last4,
+        fundName: b.accountType === 'fund' ? (b.fundName ?? fund?.name ?? null) : null,
         label:
           b.accountType === 'operating'
             ? `operating ••${b.last4 ?? ''}`
@@ -1109,7 +1122,10 @@ export class ImportsService extends TenantScopedRepository {
   }
 
   private blocked(b: Blocker) {
-    return new DomainException('import.rollback_blocked', { params: { table: b.table } });
+    return new DomainException('import.rollback_blocked', {
+      params: { table: b.table },
+      extensions: { table: b.table },
+    });
   }
 
   /** The referencing table of a foreign-key violation (PostgreSQL 23503 / Prisma P2003), else null. */

@@ -1303,6 +1303,15 @@ export class ResidentLeaseDto {
   })
   rulesAcknowledgedAt!: string | null;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '9f2c1a0e5b7d4c3a8e6f1b2d0c9a7e5f3b1d8c6a4e2f0b9d7c5a3e1f8b6d4c2a',
+    description:
+      'sha256 (hex) of the contract PDF a signature would bind — the same value `GET …/contract` answers; null until the contract is rendered (J-CR, LIFF #38).',
+  })
+  contractSha256!: string | null;
+
   @ApiProperty({ type: [String], example: ['view-contract', 'sign', 'acknowledge-rules'] })
   nextActions!: string[];
 }

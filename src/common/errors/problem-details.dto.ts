@@ -55,6 +55,13 @@ export interface ProblemExtensions {
   reviewEligibleFrom?: string | null;
   /** `debt_clearance.outstanding` only (J1.2a, D-306): what is still owed (decimal string, THB). */
   outstanding?: string;
+  /** `import.rollback_blocked` only (J-CR, D-335): the table whose rows still refer to what the import created. */
+  table?: string;
+  /** `import.job_open` only (J-CR, D-335): the building's open or committed import job. */
+  jobId?: string;
+  jobNumber?: number;
+  /** `collections.legal_review_required` only (J-CR, D-335): why the step's legal gate is closed. */
+  gateClosedReason?: string;
 }
 
 /** The storage position sent with `storage.allowance_exceeded` (G1). */
@@ -264,6 +271,37 @@ export class ProblemDetails {
       '`debt_clearance.outstanding` only (J1.2a, D-306): what the owner still owes for the unit (decimal string, THB) — pay it, then ask again.',
   })
   outstanding?: string;
+
+  @ApiPropertyOptional({
+    type: String,
+    example: 'ops.invoice',
+    description:
+      '`import.rollback_blocked` only (J-CR, D-335): the table whose rows still refer to what the import created (e.g. `ops.invoice` — an issued invoice, `ops.payment`, `juristic.journal`)',
+  })
+  table?: string;
+
+  @ApiPropertyOptional({
+    type: String,
+    format: 'uuid',
+    example: '0199f2a0-0000-7000-8000-0000000000ab',
+    description: '`import.job_open` only (J-CR, D-335): the building’s open or committed import job',
+  })
+  jobId?: string;
+
+  @ApiPropertyOptional({
+    type: 'integer',
+    example: 3,
+    description: '`import.job_open` only (J-CR, D-335): that job’s number',
+  })
+  jobNumber?: number;
+
+  @ApiPropertyOptional({
+    type: String,
+    example: 'surcharge_disabled',
+    description:
+      '`collections.legal_review_required` only (J-CR, D-335): why the step’s legal gate is closed — the same value as the step’s `gateClosedReason`',
+  })
+  gateClosedReason?: string;
 
   @ApiProperty({ example: '6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e' })
   requestId!: string;

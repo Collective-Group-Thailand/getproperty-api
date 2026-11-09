@@ -1264,3 +1264,42 @@ export class ResidentInvoiceListQuery extends PageQuery {
   @IsUUID()
   unitId?: string;
 }
+
+/** One month of an advance cycle's unearned schedule (J-CR, D-303). */
+export class RevenueScheduleMonthDto {
+  @ApiProperty({ example: '2027-02', description: 'YYYY-MM (Bangkok).' })
+  month!: string;
+
+  @MoneyOutput({
+    example: '2400.00',
+    description: 'Σ scheduled for the month over the cycle’s invoice lines.',
+  })
+  amount!: string;
+
+  @MoneyOutput({ example: '2400.00', description: 'Σ recognised by the ledger job so far.' })
+  recognised!: string;
+
+  @MoneyOutput({ example: '0.00', description: 'Σ taken back by credit notes.' })
+  credited!: string;
+
+  @ApiProperty({ example: true, description: 'Every line of the month was recognised.' })
+  fullyRecognised!: boolean;
+}
+
+export class RevenueScheduleDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid })
+  billingCycleId!: string;
+
+  @ApiProperty({
+    enum: BillingFrequencyName,
+    enumName: 'BillingFrequency',
+    example: BillingFrequencyName.Annual,
+  })
+  frequency!: BillingFrequencyName;
+
+  @ApiProperty({ type: [RevenueScheduleMonthDto] })
+  months!: RevenueScheduleMonthDto[];
+
+  @MoneyOutput({ example: '28800.00', description: 'Σ of the months.' })
+  total!: string;
+}

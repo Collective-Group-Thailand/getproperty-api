@@ -476,7 +476,15 @@ export class VisitsService {
         where: {
           propertyId: g.propertyId,
           deletedAt: null,
-          ...(text ? { unitNo: { contains: text, mode: 'insensitive' as const } } : {}),
+          // J-CR (D-335): the house number or the soi / building name
+          ...(text
+            ? {
+                OR: [
+                  { unitNo: { contains: text, mode: 'insensitive' as const } },
+                  { building: { name: { contains: text, mode: 'insensitive' as const } } },
+                ],
+              }
+            : {}),
         },
         select: { id: true, unitNo: true, buildingId: true, building: { select: { name: true } } },
         orderBy: [{ unitNo: 'asc' }],
@@ -530,13 +538,35 @@ export class VisitsService {
         orderBy: { id: 'asc' },
         select: { id: true, kind: true, actorKind: true, occurredAt: true, payload: true },
       });
-      const caller = v.callMeUserId
-        ? await this.db.platform((p) =>
-            p.userAccount.findUnique({ where: { id: v.callMeUserId! }, select: { displayName: true } }),
-          )
-        : null;
-      return { ...v, events, callBack: caller ? { name: caller.displayName } : null };
+      return { ...v, events };
     });
+  }
+
+  /** `gate.tablet.auto_lock_minutes` of the property (J-CR, D-335). */
+  async autoLockMinutes(tenantId: string, propertyId: string): Promise<number> {
+    return (
+      (await this.settings.valueAt<number>('gate.tablet.auto_lock_minutes', this.now(), {
+        tenantId,
+        propertyId,
+      })) ?? 5
+    );
+  }
+
+  /**
+   * Display names of the residents who decided or asked to be called on these visits (J-CR): user id → name, read
+   * through the platform role (logins are not tenant rows). The gate shows first names only (D-315).
+   */
+  async userNames(
+    visits: readonly { decidedByUserId: string | null; callMeUserId: string | null }[],
+  ): Promise<Map<string, string>> {
+    const ids = [
+      ...new Set(visits.flatMap((v) => [v.decidedByUserId, v.callMeUserId]).filter((x): x is string => !!x)),
+    ];
+    if (!ids.length) return new Map();
+    const rows = await this.db.platform((p) =>
+      p.userAccount.findMany({ where: { id: { in: ids } }, select: { id: true, displayName: true } }),
+    );
+    return new Map(rows.map((r) => [r.id, r.displayName]));
   }
 
   /** The gate's lists: `waiting` (requested / approved / timed out), `inside` (entered), `today` (all of the day). */

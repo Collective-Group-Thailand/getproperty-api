@@ -229,7 +229,45 @@ export class ExpensesService extends TenantScopedRepository implements EventSubs
         }),
         tx.expenseRequest.count({ where }),
       ]);
-      return { rows, total };
+      // Tab badges (J-CR): the same building / kind filters, per state, plus what awaits me.
+      const scopeWhere: Prisma.ExpenseRequestWhereInput = {
+        tenantId: ctx.tenantId,
+        ...(q.kind ? { kind: q.kind } : {}),
+        ...(q.buildingId
+          ? { buildingId: q.buildingId }
+          : ctx.buildingIds
+            ? { buildingId: { in: [...ctx.buildingIds] } }
+            : {}),
+      };
+      const [byState, awaitingMe] = await Promise.all([
+        tx.expenseRequest.groupBy({ by: ['state'], where: scopeWhere, _count: { _all: true } }),
+        me
+          ? tx.expenseRequest.count({
+              where: {
+                ...scopeWhere,
+                state: 'submitted',
+                requestedBy: { not: me },
+                approverRoles: { has: ctx.role ?? '-' },
+                approvals: { none: { approverUserId: me } },
+              },
+            })
+          : Promise.resolve(0),
+      ]);
+      const counts = {
+        all: 0,
+        awaitingMe,
+        draft: 0,
+        submitted: 0,
+        approved: 0,
+        rejected: 0,
+        paid: 0,
+        cancelled: 0,
+      };
+      for (const g of byState) {
+        counts[g.state] = g._count._all;
+        counts.all += g._count._all;
+      }
+      return { rows, total, counts };
     });
   }
 

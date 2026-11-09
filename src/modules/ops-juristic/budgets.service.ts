@@ -28,7 +28,10 @@ const D = (v: Decimal.Value) => new Decimal(v);
 const asDate = (s: string) => new Date(`${s}T00:00:00Z`);
 
 export const RESOLUTION_INCLUDE = {
-  documents: { orderBy: { createdAt: 'asc' } },
+  documents: {
+    orderBy: { createdAt: 'asc' },
+    include: { document: { select: { title: true, mimeType: true, sizeBytes: true } } },
+  },
 } as const satisfies Prisma.ResolutionInclude;
 export type ResolutionRow = Prisma.ResolutionGetPayload<{ include: typeof RESOLUTION_INCLUDE }>;
 

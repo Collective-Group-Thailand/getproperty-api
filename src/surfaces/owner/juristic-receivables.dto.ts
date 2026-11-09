@@ -539,6 +539,13 @@ export class JuristicReceivableTotalsDto {
   surcharge!: string;
 }
 
+export class ReceivableTabCountsDto {
+  @ApiProperty({ type: 'integer', example: 42 }) all!: number;
+  @ApiProperty({ type: 'integer', example: 17 }) atStep!: number;
+  @ApiProperty({ type: 'integer', example: 3 }) plan!: number;
+  @ApiProperty({ type: 'integer', example: 1 }) dispute!: number;
+}
+
 export class ReceivablesPageDto {
   @ApiProperty({ type: [ReceivableRowDto] })
   data!: ReceivableRowDto[];
@@ -548,6 +555,12 @@ export class ReceivablesPageDto {
 
   @ApiProperty({ type: JuristicReceivableTotalsDto })
   totals!: JuristicReceivableTotalsDto;
+
+  @ApiProperty({
+    type: ReceivableTabCountsDto,
+    description: 'Rows of each tab for the same search and building (J-CR, D-335) — the tab badges.',
+  })
+  counts!: ReceivableTabCountsDto;
 }
 
 export class ReceivablesQuery extends PageQuery {

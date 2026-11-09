@@ -132,6 +132,40 @@ export class ResidentMeUnitDto {
   capabilities!: ResidentUnitCapability[];
 
   @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '34.77',
+    description: 'Floor area m² (J-CR, D-335).',
+  })
+  areaSqm!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '0.012345',
+    description: 'อัตราส่วนกรรมสิทธิ์ as the register keeps it (6 decimals; J-CR, D-335).',
+  })
+  ownershipRatio!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, example: null, description: 'Land area in ตารางวา (J-CR).' })
+  landAreaSqwa!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: null,
+    description: 'Plot number (housing estates; J-CR).',
+  })
+  plotNo!: string | null;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'Auto-pay can be set up here now: a recurring channel is configured (O-020) and I hold a role that may set it up (co-owner, payer, tenant). False → hide the link (J-CR, D-335).',
+  })
+  recurringAvailable!: boolean;
+
+  @ApiProperty({
     type: [String],
     example: [],
     description: 'Leases in force on this unit that I am a party of.',

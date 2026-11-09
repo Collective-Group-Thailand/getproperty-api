@@ -361,6 +361,21 @@ export class DebtClearancesService extends TenantScopedRepository implements OnM
     );
   }
 
+  /** `GET /v1/resident/units/{unitId}/debt-clearances/{id}` (J-CR): one of mine on the unit, else 404. */
+  async residentGet(unitId: string, id: string): Promise<DebtClearanceRow> {
+    const access = await this.db.platform((tx) =>
+      residentUnitAccess(tx, unitId, ['co_owner'], this.clock.now()),
+    );
+    const row = await this.db.tenant(access.ctx, (tx) =>
+      tx.debtClearance.findFirst({
+        where: { id, tenantId: access.tenantId, unitId, partyId: { in: access.partyIds } },
+        include: CLEARANCE_INCLUDE,
+      }),
+    );
+    if (!row) throw new DomainException('http.not_found');
+    return row;
+  }
+
   async residentDocument(unitId: string, id: string) {
     const access = await this.db.platform((tx) =>
       residentUnitAccess(tx, unitId, ['co_owner'], this.clock.now()),

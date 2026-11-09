@@ -65,6 +65,20 @@ export class ResidentStatementsController {
     return paginated(rows.map(statementDto), total, q);
   }
 
+  @Get(':statementId')
+  @ApiEndpoint({
+    id: 'resident.statements.get',
+    summary: 'One of my statements',
+    description:
+      'The statement a LINE message links (`/statements/{id}`); a statement of a party not linked to my login is a 404 (J-CR, D-335; D-307, D-326).',
+    implements: ['D-307', 'D-326', 'D-335'],
+  })
+  @ApiSuccess(200, { description: 'Statement', type: StatementDto, example: EXAMPLE })
+  @ApiStandardErrors('validation.failed', 'http.not_found')
+  async get(@Param('statementId', ParseUUIDPipe) id: string): Promise<StatementDto> {
+    return statementDto(await this.statements.residentGet(id));
+  }
+
   @Get(':statementId/document')
   @ApiEndpoint({
     id: 'resident.statements.document',

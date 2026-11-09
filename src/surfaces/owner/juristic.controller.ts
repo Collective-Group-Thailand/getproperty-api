@@ -61,6 +61,8 @@ import {
   RatePreviewDto,
   RatePreviewRequestDto,
   RegisterListQuery,
+  RegisterOwnerPickListDto,
+  RegisterOwnersQuery,
   type RegisterPartyDto,
   RegisterUnitDetailDto,
   RegisterUnitDto,
@@ -129,6 +131,10 @@ function registerDto(e: RegisterEntry): RegisterUnitDto {
     landAreaSqwa: u.landAreaSqwa?.toFixed(2) ?? null,
     plotNo: u.plotNo,
     titleDeedNo: u.titleDeedNo,
+    propertyId: u.building.propertyId,
+    floorId: u.floor?.id ?? null,
+    floorLevel: u.floor?.level ?? null,
+    floorName: u.floor?.name ?? null,
     owners: e.owners.map(ownerDto),
     sharesTotal: e.sharesTotal,
     incomplete: e.incomplete,
@@ -188,6 +194,9 @@ function resolutionDto(r: ResolutionRow, perms: ReadonlySet<string>): Resolution
     documents: r.documents.map((d) => ({
       documentId: d.documentId,
       kind: d.kind as ResolutionDocumentKindName,
+      title: d.document.title,
+      mimeType: d.document.mimeType,
+      sizeBytes: Number(d.document.sizeBytes),
       createdAt: iso(d.createdAt),
     })),
     version: r.version,
@@ -249,6 +258,10 @@ const REGISTER_EXAMPLE: RegisterUnitDto = {
   landAreaSqwa: null,
   plotNo: null,
   titleDeedNo: null,
+  propertyId: FAKE.uuid,
+  floorId: FAKE.uuid,
+  floorLevel: 12,
+  floorName: 'ชั้น 12',
   owners: [
     {
       ownershipId: FAKE.uuid,
@@ -369,11 +382,53 @@ export class OwnerJuristicRegisterController {
   ): Promise<Page<RegisterUnitDto>> {
     const { rows, total } = await this.register.list(ctx, {
       buildingId: q.buildingId,
+      propertyId: q.propertyId,
       q: q.q,
       incomplete: q.incomplete,
       ...toSkipTake(q),
     });
     return paginated(rows.map(registerDto), total, q);
+  }
+
+  @Get('owners')
+  @TenantScoped()
+  @Can('juristic.register.read')
+  @ApiEndpoint({
+    id: 'owner.juristicRegister.owners',
+    summary: 'Co-owners for a picker',
+    description:
+      'Today’s co-owners of the tenant’s units, one row per unit × owner, by owner name — for the debt-clearance and statement pickers without reading the whole register. `q` matches the owner name, unit or plot number; `buildingId` / `propertyId` narrow it (another tenant’s building or property → 404); at most `limit` (≤ 100) rows (J-CR, D-335; D-306, D-324).',
+    implements: ['D-335', 'D-306', 'D-324'],
+  })
+  @ApiSuccess(200, {
+    description: 'Owners',
+    type: RegisterOwnerPickListDto,
+    example: {
+      data: [
+        {
+          unitId: FAKE.uuid,
+          unitNo: FAKE.unitCode,
+          buildingId: FAKE.buildingId,
+          buildingName: 'อาคาร A',
+          partyId: FAKE.uuid,
+          partyName: FAKE.nameTh,
+        },
+      ],
+    },
+  })
+  @ApiStandardErrors('validation.failed', 'http.not_found', ...T)
+  async owners(
+    @CurrentTenant() ctx: TenantContext,
+    @Query() q: RegisterOwnersQuery,
+  ): Promise<RegisterOwnerPickListDto> {
+    return {
+      data: await this.register.owners(ctx, {
+        q: q.q,
+        buildingId: q.buildingId,
+        propertyId: q.propertyId,
+        take: q.limit ?? 25,
+      }),
+    };
   }
 
   @Get('units/:unitId')

@@ -74,6 +74,7 @@ import {
   ExpenseListQuery,
   ExpensePayDto,
   type ExpensePaymentMethodName,
+  ExpenseRequestCountsDto,
   ExpenseRequestDto,
   type ExpenseStateName,
   ExpenseUpdateDto,
@@ -1127,6 +1128,36 @@ export class OwnerJuristicLedgerController {
   }
 }
 
+// ------------------------------------------------------------------------------------------- expense accounts
+
+@ApiTags('owner.juristicAccounting')
+@ApiSurface(SURFACES.owner)
+@Controller('owner/juristic/expense-accounts')
+export class OwnerJuristicExpenseAccountsController {
+  constructor(private readonly ledger: LedgerService) {}
+
+  @Get()
+  @TenantScoped()
+  @Can('juristic.expense.request')
+  @ApiEndpoint({
+    id: 'owner.juristicExpenseAccounts.list',
+    summary: 'Expense accounts to request against',
+    description:
+      'The active expense accounts of the chart, for whoever may request an expense or spend petty cash (staff, accountant) without reading the whole chart (`juristic.accounting.read`). Juristic tenants only (404 otherwise) (J-CR, D-335; D-311, D-329).',
+    implements: ['D-311', 'D-329', 'D-335'],
+  })
+  @ApiSuccess(200, {
+    description: 'Expense accounts by code',
+    type: AccountListDto,
+    example: { data: [{ ...ACCOUNT_EXAMPLE, code: '5100', type: 'expense' as AccountTypeName }] },
+  })
+  @ApiStandardErrors('http.not_found', ...T)
+  async list(@CurrentTenant() ctx: TenantContext): Promise<AccountListDto> {
+    const rows = await this.ledger.accounts(ctx, { type: 'expense', active: true });
+    return { data: rows.map(accountDto) };
+  }
+}
+
 // ------------------------------------------------------------------------------------------- expenses
 
 const EXPENSE_ERRORS = ['expense.invalid_state', 'idempotency.key_required', ...WRITE] as const;
@@ -1147,24 +1178,44 @@ export class OwnerExpenseRequestsController {
       'Newest first; filters state, kind (expense · petty_cash_top_up), building and `awaitingMe` (submitted requests the caller’s role may approve, not requested nor decided by the caller) (D-311, D-329).',
     implements: ['D-311', 'D-329'],
   })
-  @ApiPaginated(ExpenseRequestDto, { example: EXPENSE_EXAMPLE })
+  @ApiPaginated(ExpenseRequestDto, {
+    example: EXPENSE_EXAMPLE,
+    counts: {
+      model: ExpenseRequestCountsDto,
+      example: {
+        all: 12,
+        awaitingMe: 2,
+        draft: 1,
+        submitted: 3,
+        approved: 2,
+        rejected: 1,
+        paid: 4,
+        cancelled: 1,
+      },
+      description:
+        'Requests per state and awaiting me for the same building and kind, whatever `state` / `awaitingMe` ask (J-CR, D-335).',
+    },
+  })
   @ApiStandardErrors('validation.failed', 'http.not_found', ...T)
   async list(
     @CurrentTenant() ctx: TenantContext,
     @Query() q: ExpenseListQuery,
-  ): Promise<Page<ExpenseRequestDto>> {
-    const { rows, total } = await this.expenses.list(ctx, {
+  ): Promise<Page<ExpenseRequestDto> & { counts: ExpenseRequestCountsDto }> {
+    const { rows, total, counts } = await this.expenses.list(ctx, {
       state: q.state,
       kind: q.kind,
       buildingId: q.buildingId,
       awaitingMe: q.awaitingMe === true,
       ...toSkipTake(q),
     });
-    return paginated(
-      rows.map((r) => expenseDto(ctx, r)),
-      total,
-      q,
-    );
+    return {
+      ...paginated(
+        rows.map((r) => expenseDto(ctx, r)),
+        total,
+        q,
+      ),
+      counts,
+    };
   }
 
   @Get(':expenseRequestId')

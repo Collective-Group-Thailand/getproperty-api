@@ -361,6 +361,14 @@ export class RelocationOfferDto {
   @ApiProperty({ type: [String], format: 'uuid', description: 'Listings I enquired about from this offer.' })
   enquiredListingIds!: string[];
 
+  @ApiProperty({
+    type: [String],
+    example: ['condo-1br-0a1b2c3d4e'],
+    description:
+      'The same listings by slug (as `listings[].slug`) — to mark which places I already asked about (J-CR, LIFF #37).',
+  })
+  enquiredListingSlugs!: string[];
+
   @ApiProperty({ format: 'date-time' })
   createdAt!: string;
 }
@@ -426,7 +434,11 @@ export class RelocationEnquiryDto {
   rentRecordShared!: boolean;
 }
 
-const offerDto = (o: OfferRow, listings: unknown[]): RelocationOfferDto => ({
+const offerDto = (
+  o: OfferRow,
+  listings: unknown[],
+  slugs: ReadonlyMap<string, string> = new Map(),
+): RelocationOfferDto => ({
   id: o.id,
   leaseId: o.leaseId,
   unitNo: o.lease.unit.unitNo,
@@ -444,6 +456,7 @@ const offerDto = (o: OfferRow, listings: unknown[]): RelocationOfferDto => ({
       : null,
   listings: listings as PublicListingSummaryDto[],
   enquiredListingIds: o.clickedListingIds,
+  enquiredListingSlugs: o.clickedListingIds.map((id) => slugs.get(id)).filter((x): x is string => !!x),
   createdAt: iso(o.createdAt),
 });
 
@@ -457,6 +470,7 @@ const OFFER_EXAMPLE: RelocationOfferDto = {
   destination: { areaSlug: null, province: 'เชียงใหม่', district: 'เมืองเชียงใหม่', maxRent: '12000.00' },
   listings: [SUMMARY_EXAMPLE as unknown as PublicListingSummaryDto],
   enquiredListingIds: [],
+  enquiredListingSlugs: [],
   createdAt: FAKE.dateTime,
 };
 
@@ -487,7 +501,8 @@ export class ResidentRelocationOffersController {
   @ApiStandardErrors('auth.unauthenticated')
   async list(@Req() req: Request): Promise<RelocationOffersDto> {
     const { consented, offers } = await this.relocation.list(lang(req.headers['accept-language']));
-    return { consented, data: offers.map((o) => offerDto(o.offer, o.listings)) };
+    const slugs = await this.relocation.slugsOf(offers.map((o) => o.offer));
+    return { consented, data: offers.map((o) => offerDto(o.offer, o.listings, slugs)) };
   }
 
   @Put(':offerId/destination')
@@ -518,7 +533,11 @@ export class ResidentRelocationOffersController {
   ): Promise<RelocationOfferDto> {
     const offer = await this.relocation.setDestination(id, body);
     const { offers } = await this.relocation.list(lang(req.headers['accept-language']));
-    return offerDto(offer, offers.find((o) => o.offer.id === id)?.listings ?? []);
+    return offerDto(
+      offer,
+      offers.find((o) => o.offer.id === id)?.listings ?? [],
+      await this.relocation.slugsOf([offer]),
+    );
   }
 
   @Post(':offerId/actions/enquire')
@@ -580,6 +599,7 @@ export class ResidentRelocationOffersController {
   })
   @ApiStandardErrors('http.not_found', 'validation.failed', 'relocation.invalid_state')
   async dismiss(@Param('offerId', ParseUUIDPipe) id: string): Promise<RelocationOfferDto> {
-    return offerDto(await this.relocation.dismiss(id), []);
+    const offer = await this.relocation.dismiss(id);
+    return offerDto(offer, [], await this.relocation.slugsOf([offer]));
   }
 }

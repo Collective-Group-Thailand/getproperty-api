@@ -501,8 +501,22 @@ export class ConsentPurposeDto {
   })
   granted!: boolean | null;
 
-  @ApiProperty({ type: 'integer', nullable: true, example: 1 })
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    example: 1,
+    description: 'Version of my last answer (a grant or a withdrawal — see `lastGranted`).',
+  })
   grantedVersion!: number | null;
+
+  @ApiProperty({
+    type: Boolean,
+    nullable: true,
+    example: true,
+    description:
+      'My last answer on file, whatever its version: true granted, false withdrawn, null never answered (J-CR, LIFF #39). With `granted: null` and `lastGranted: false` the purpose was withdrawn under an earlier version — nothing to stop.',
+  })
+  lastGranted!: boolean | null;
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true, example: FAKE.dateTime })
   capturedAt!: string | null;

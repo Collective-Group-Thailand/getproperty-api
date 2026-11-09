@@ -673,6 +673,7 @@ export class OwnerJuristicReportsController {
       ],
       meta: { page: 1, perPage: 25, total: 1 },
       totals: { outstanding: '7500.00', surcharge: '120.55' },
+      counts: { all: 1, atStep: 1, plan: 0, dispute: 0 },
     },
   })
   @ApiStandardErrors('validation.failed', 'http.not_found', ...T)
@@ -700,6 +701,7 @@ export class OwnerJuristicReportsController {
       })),
       meta: { page: q.page, perPage: q.perPage, total: r.total },
       totals: r.totals,
+      counts: r.counts,
     };
   }
 

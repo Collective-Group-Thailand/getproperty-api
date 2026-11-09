@@ -71,6 +71,7 @@ import {
   JuristicImportTemplateQuery,
   type JuristicImportTotalsDto,
   JuristicParallelCycleReportDto,
+  type ReconcileAccountTypeName,
   type ReconcileKindName,
   type ReconcileStatusName,
 } from './juristic-imports.dto';
@@ -175,6 +176,9 @@ export function importJobDto(
               ...i,
               kind: i.kind as ReconcileKindName,
               status: i.status as ReconcileStatusName,
+              accountType: (i.accountType ?? null) as ReconcileAccountTypeName | null,
+              last4: i.last4 ?? null,
+              fundName: i.fundName ?? null,
             })),
             explanationRequired: rec.explanationRequired,
             declaredReceivables: job.declaredReceivables?.toFixed(2) ?? '0.00',
@@ -303,6 +307,21 @@ const JOB_EXAMPLE: JuristicImportJobDto = {
         reference: '845210.50',
         difference: '0.00',
         status: 'match' as ReconcileStatusName,
+        accountType: null,
+        last4: null,
+        fundName: null,
+      },
+      {
+        key: 'bank:2',
+        kind: 'bank' as ReconcileKindName,
+        label: 'operating ••4012',
+        imported: '120000.00',
+        reference: '120000.00',
+        difference: '0.00',
+        status: 'match' as ReconcileStatusName,
+        accountType: 'operating' as ReconcileAccountTypeName,
+        last4: '4012',
+        fundName: null,
       },
     ],
     explanationRequired: false,
@@ -449,6 +468,7 @@ export class OwnerJuristicImportsController {
     const { rows, total } = await this.imports.list(ctx, {
       buildingId: q.buildingId,
       state: q.state,
+      open: q.open,
       ...toSkipTake(q),
     });
     return paginated(

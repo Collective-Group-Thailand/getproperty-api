@@ -458,6 +458,12 @@ export class PaymentMandateDto {
   @ApiProperty({ format: 'uuid', example: FAKE.uuid })
   partyId!: string;
 
+  @ApiProperty({
+    example: FAKE.nameTh,
+    description: 'Whose mandate it is: the party’s display name (J-CR, D-335).',
+  })
+  partyName!: string;
+
   @ApiProperty({ example: 'fake' })
   provider!: string;
 
@@ -538,4 +544,22 @@ export class PaymentMandateListQuery extends PageQuery {
   @IsOptional()
   @IsUUID()
   unitId?: string;
+}
+
+/** What a resident's payment-plan request may ask (J-CR, D-335). */
+export class PaymentPlanOptionsDto {
+  @ApiProperty({ type: 'integer', example: 2 }) minInstalments!: number;
+  @ApiProperty({ type: 'integer', example: 12, description: '`juristic.plan_max_instalments`.' })
+  maxInstalments!: number;
+  @ApiProperty({ format: 'date', example: '2027-01-15' }) earliestFirstDueOn!: string;
+  @ApiProperty({ format: 'date', example: '2027-04-17' }) latestFirstDueOn!: string;
+  @ApiProperty({ format: 'date', example: '2027-02-01', description: 'The 1st of next month.' })
+  defaultFirstDueOn!: string;
+  @MoneyOutput({
+    example: '10000.00',
+    description: 'What would be split now (open balance of my billed party).',
+  })
+  proposedPrincipal!: string;
+  @ApiProperty({ example: true, description: 'Something can be split now.' })
+  available!: boolean;
 }
