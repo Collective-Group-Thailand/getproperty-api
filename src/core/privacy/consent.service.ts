@@ -24,6 +24,8 @@ export interface PurposeView {
   effectiveFrom: Date;
   granted: boolean | null;
   grantedVersion: number | null;
+  /** The answer on file whatever its version (LIFF #39, J-CR): true granted, false withdrawn, null never answered. */
+  lastGranted: boolean | null;
   capturedAt: Date | null;
 }
 
@@ -92,6 +94,7 @@ export class ConsentService {
             effectiveFrom: current.effectiveFrom,
             granted: valid ? s.granted : null,
             grantedVersion: s?.purpose_version ?? null,
+            lastGranted: s ? s.granted : null,
             capturedAt: s?.captured_at ?? null,
           },
         ];

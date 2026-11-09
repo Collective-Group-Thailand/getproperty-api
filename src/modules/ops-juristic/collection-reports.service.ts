@@ -59,6 +59,14 @@ export interface ReceivableRow {
   channels: string[];
 }
 
+/** Rows per tab for the same search (J-CR): the console's tab badges. */
+export interface ReceivableTabCounts {
+  all: number;
+  atStep: number;
+  plan: number;
+  dispute: number;
+}
+
 export interface ReceivablesQuery {
   tab?: ReceivablesTab;
   q?: string;
@@ -105,6 +113,7 @@ export class CollectionReportsService extends TenantScopedRepository implements 
     tenantId: string,
     buildingIds: readonly string[] | null | undefined,
     q: ReceivablesQuery,
+    counts: ReceivableTabCounts = { all: 0, atStep: 0, plan: 0, dispute: 0 },
   ): Promise<ReceivableRow[]> {
     const today = this.today();
     const scope = q.buildingId ? [q.buildingId] : buildingIds ? [...buildingIds] : null;
@@ -258,16 +267,24 @@ export class CollectionReportsService extends TenantScopedRepository implements 
     }
     const tab = q.tab ?? 'all';
     const needle = q.q?.trim().toLowerCase();
-    const filtered = rows.filter((r) => {
+    const inTab = (r: ReceivableRow, t: ReceivablesTab) => {
+      if (t === 'at_step')
+        return Boolean(r.caseId && cases.find((c) => c.id === r.caseId)!.events.length > 0);
+      if (t === 'plan') return Boolean(r.planId);
+      if (t === 'dispute') return r.disputeOpen;
+      return true;
+    };
+    const base = rows.filter((r) => {
       if (D(r.outstanding).lte(0) && !r.planId && !r.caseId) return false;
-      if (tab === 'at_step' && !(r.caseId && cases.find((c) => c.id === r.caseId)!.events.length > 0))
-        return false;
-      if (tab === 'plan' && !r.planId) return false;
-      if (tab === 'dispute' && !r.disputeOpen) return false;
       if (needle && !r.unitNo.toLowerCase().includes(needle) && !r.ownerName.toLowerCase().includes(needle))
         return false;
       return true;
     });
+    counts.all = base.length;
+    counts.atStep = base.filter((r) => inTab(r, 'at_step')).length;
+    counts.plan = base.filter((r) => inTab(r, 'plan')).length;
+    counts.dispute = base.filter((r) => inTab(r, 'dispute')).length;
+    const filtered = base.filter((r) => inTab(r, tab));
     const sort = q.sort ?? 'amount';
     filtered.sort((a, b) =>
       sort === 'age'
@@ -286,10 +303,12 @@ export class CollectionReportsService extends TenantScopedRepository implements 
   receivables(ctx: TenantContext, q: ReceivablesQuery & { skip: number; take: number }) {
     return this.db.tenant(ctx, async (tx) => {
       if (q.buildingId) await this.ownBuilding(tx, ctx, q.buildingId);
-      const all = await this.rowsOf(tx, ctx.tenantId, ctx.buildingIds, q);
+      const counts: ReceivableTabCounts = { all: 0, atStep: 0, plan: 0, dispute: 0 };
+      const all = await this.rowsOf(tx, ctx.tenantId, ctx.buildingIds, q, counts);
       return {
         rows: all.slice(q.skip, q.skip + q.take),
         total: all.length,
+        counts,
         totals: {
           outstanding: all.reduce((s, r) => s.plus(r.outstanding), D(0)).toFixed(2),
           surcharge: all.reduce((s, r) => s.plus(r.surcharge), D(0)).toFixed(2),

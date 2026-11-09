@@ -471,6 +471,7 @@ export class OwnerUnitsController {
   async list(@CurrentTenant() ctx: TenantContext, @Query() query: UnitListQuery): Promise<Page<UnitDto>> {
     const { rows, total } = await this.units.list(ctx, {
       buildingId: query.buildingId,
+      propertyId: query.propertyId,
       floorId: query.floorId,
       status: query.status,
       q: query.q,

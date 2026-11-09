@@ -392,6 +392,7 @@ export class CollectionsService extends TenantScopedRepository implements EventS
         if (reason)
           throw new DomainException('collections.legal_review_required', {
             params: { action: step.action, reason },
+            extensions: { gateClosedReason: reason },
           });
       }
       const channels = patch.channels ? [...new Set(patch.channels)] : undefined;

@@ -4,7 +4,7 @@ import { ApiEndpoint, ApiJsonBody, ApiStandardErrors, ApiSuccess } from '@common
 import { FAKE } from '@common/openapi/examples';
 import { RealtimeHub } from '@core/realtime/realtime.hub';
 import { GuardAuthService } from '@modules/smart-gate/guard-auth.service';
-import { guardContext, VisitsService } from '@modules/smart-gate/visits.service';
+import { guardContext, type VisitRow, VisitsService } from '@modules/smart-gate/visits.service';
 import {
   Body,
   Controller,
@@ -70,6 +70,11 @@ export class GuardGateController {
     private readonly hub: RealtimeHub,
   ) {}
 
+  /** The gate's view with the first names of who decided / asked to be called (J-CR). */
+  private async view(v: VisitRow): Promise<GuardVisitDto> {
+    return guardVisitDto(v, await this.visits.userNames([v]));
+  }
+
   @Get('me')
   @Can('gate.visit.record')
   @ApiEndpoint({
@@ -94,6 +99,7 @@ export class GuardGateController {
       gateDeviceId: FAKE.uuid,
       gateDeviceName: 'แท็บเล็ตป้อมหน้า',
       privacyNotice: NOTICE_EXAMPLE,
+      autoLockMinutes: 5,
     } satisfies GuardMeDto,
   })
   @ApiStandardErrors('http.not_found', 'auth.forbidden')
@@ -111,6 +117,7 @@ export class GuardGateController {
       gateDeviceId: s.gateDeviceId,
       gateDeviceName: s.gateDevice.name,
       privacyNotice: await this.visits.privacyNotice(s.tenantId),
+      autoLockMinutes: await this.visits.autoLockMinutes(s.tenantId, s.gate.propertyId),
     };
   }
 
@@ -151,7 +158,7 @@ export class GuardGateController {
     id: 'guard.units.list',
     summary: 'Find a destination unit',
     description:
-      'Units of the gate’s property by number (`q`), with whether anyone of the house can be asked in LINE (no names) and the house policy. `hasArrears` appears only while `gate.show_arrears` is on (⚖ O-038, off by default) — otherwise no arrears data at all (D-315).',
+      'Units of the gate’s property by house number or soi / building name (`q`, J-CR), with whether anyone of the house can be asked in LINE (no names) and the house policy. `hasArrears` appears only while `gate.show_arrears` is on (⚖ O-038, off by default) — otherwise no arrears data at all (D-315).',
     implements: ['D-315', 'D-327'],
   })
   @ApiSuccess(200, {
@@ -208,7 +215,7 @@ export class GuardGateController {
   )
   async create(@Body() body: VisitCreateDto): Promise<VisitCreatedDto> {
     const r = await this.visits.create(body);
-    return { ...guardVisitDto(r.visit), replayed: r.replayed };
+    return { ...(await this.view(r.visit)), replayed: r.replayed };
   }
 
   @Get('visits')
@@ -223,9 +230,9 @@ export class GuardGateController {
   @ApiSuccess(200, { description: 'Visits', type: [GuardVisitDto], example: [GUARD_VISIT_EXAMPLE] })
   @ApiStandardErrors('validation.failed', 'auth.forbidden')
   async list(@Query() q: GuardVisitListQuery): Promise<GuardVisitDto[]> {
-    return (await this.visits.guardList(q.view ?? GuardVisitViewName.Waiting, q.limit ?? 50)).map(
-      guardVisitDto,
-    );
+    const rows = await this.visits.guardList(q.view ?? GuardVisitViewName.Waiting, q.limit ?? 50);
+    const names = await this.visits.userNames(rows);
+    return rows.map((v) => guardVisitDto(v, names));
   }
 
   @Get('visits/changes')
@@ -271,15 +278,14 @@ export class GuardGateController {
   @ApiSuccess(200, {
     description: 'Visit',
     type: GuardVisitDetailDto,
-    example: { ...GUARD_VISIT_EXAMPLE, events: [], callBackName: null, photoUrl: null },
+    example: { ...GUARD_VISIT_EXAMPLE, events: [], photoUrl: null },
   })
   @ApiStandardErrors('http.not_found', 'validation.failed', 'auth.forbidden')
   async get(@Param('visitId', ParseUUIDPipe) id: string): Promise<GuardVisitDetailDto> {
     const v = await this.visits.guardGet(id);
     return {
-      ...guardVisitDto(v),
+      ...(await this.view(v)),
       events: v.events.map(visitEventDto),
-      callBackName: v.callBack?.name ?? null,
       photoUrl: await this.visits.photoLink(guardContext().ctx, v.photoDocumentId),
     };
   }
@@ -312,7 +318,7 @@ export class GuardGateController {
     @Param('visitId', ParseUUIDPipe) id: string,
     @Body() body: VisitReasonDto,
   ): Promise<GuardVisitDto> {
-    return guardVisitDto(await this.visits.enter(id, body.reason ?? null));
+    return this.view(await this.visits.enter(id, body.reason ?? null));
   }
 
   @Post('visits/:visitId/actions/exit')
@@ -338,7 +344,7 @@ export class GuardGateController {
     'visit.invalid_state',
   )
   async exit(@Param('visitId', ParseUUIDPipe) id: string): Promise<GuardVisitDto> {
-    return guardVisitDto(await this.visits.guardExit(id));
+    return this.view(await this.visits.guardExit(id));
   }
 
   @Post('visits/:visitId/actions/cancel')
@@ -368,7 +374,7 @@ export class GuardGateController {
     @Param('visitId', ParseUUIDPipe) id: string,
     @Body() body: VisitReasonDto,
   ): Promise<GuardVisitDto> {
-    return guardVisitDto(await this.visits.cancel(id, body.reason ?? null));
+    return this.view(await this.visits.cancel(id, body.reason ?? null));
   }
 
   @Post('visits/:visitId/photo')
@@ -399,7 +405,7 @@ export class GuardGateController {
     @Param('visitId', ParseUUIDPipe) id: string,
     @Body() body: VisitPhotoDto,
   ): Promise<GuardVisitDto> {
-    return guardVisitDto(await this.visits.addPhoto(id, body.contentBase64, body.mimeType));
+    return this.view(await this.visits.addPhoto(id, body.contentBase64, body.mimeType));
   }
 
   @Post('invites/actions/scan')
@@ -434,7 +440,7 @@ export class GuardGateController {
   )
   async scan(@Body() body: InviteScanDto): Promise<VisitCreatedDto> {
     const r = await this.visits.scanInvite(body);
-    return { ...guardVisitDto(r.visit), replayed: r.replayed };
+    return { ...(await this.view(r.visit)), replayed: r.replayed };
   }
 
   @Get('events')

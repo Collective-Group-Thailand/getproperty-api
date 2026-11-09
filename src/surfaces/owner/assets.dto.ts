@@ -739,6 +739,14 @@ export class UnitListQuery extends PageQuery {
   @IsUUID()
   buildingId?: string;
 
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Units of every building of this property (a housing estate’s soi) — J-CR (D-335).',
+  })
+  @IsOptional()
+  @IsUUID()
+  propertyId?: string;
+
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()

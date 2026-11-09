@@ -543,6 +543,19 @@ export class StatementsService extends TenantScopedRepository implements EventSu
     });
   }
 
+  /** `GET /v1/resident/statements/{id}` (J-CR): one statement of a party linked to my login (else 404). */
+  async residentGet(id: string) {
+    const parties = await this.myParties();
+    return this.db.platform(async (tx) => {
+      const s = await tx.statement.findFirst({
+        where: { id, partyId: { in: parties } },
+        include: STATEMENT_INCLUDE,
+      });
+      if (!s) throw new DomainException('http.not_found');
+      return s;
+    });
+  }
+
   async residentDocument(id: string) {
     const parties = await this.myParties();
     return this.db.platform(async (tx) => {

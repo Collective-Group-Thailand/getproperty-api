@@ -26,6 +26,7 @@ import {
   PaymentMandateDto,
   type PaymentMandateStateName,
   PaymentPlanDto,
+  PaymentPlanOptionsDto,
   PaymentPlanRequestDto,
   type PaymentPlanStateName,
 } from '../owner/juristic-collections.dto';
@@ -84,6 +85,32 @@ export class ResidentUnitCollectionsController {
     return paymentPlanDto(await this.plans.residentRequest(unitId, body), ['withdraw']);
   }
 
+  @Get('payment-plan-requests/options')
+  @ApiEndpoint({
+    id: 'resident.units.paymentPlanOptions',
+    summary: 'What a payment-plan request may ask',
+    description:
+      'The instalment range (2 … `juristic.plan_max_instalments`), the first due date window (today … +92 days, default the 1st of next month) and what would be split now (`proposedPrincipal`, the open balance of my billed party on the unit); `available` false = nothing to split. Same rules as the request (J-CR, D-335; D-308, D-325).',
+    implements: ['D-308', 'D-325', 'D-335'],
+  })
+  @ApiSuccess(200, {
+    description: 'Options',
+    type: PaymentPlanOptionsDto,
+    example: {
+      minInstalments: 2,
+      maxInstalments: 12,
+      earliestFirstDueOn: '2027-01-15',
+      latestFirstDueOn: '2027-04-17',
+      defaultFirstDueOn: '2027-02-01',
+      proposedPrincipal: '10000.00',
+      available: true,
+    },
+  })
+  @ApiStandardErrors('validation.failed', 'http.not_found')
+  async planOptions(@Param('unitId', ParseUUIDPipe) unitId: string): Promise<PaymentPlanOptionsDto> {
+    return this.plans.residentOptions(unitId);
+  }
+
   @Get('payment-plans')
   @ApiEndpoint({
     id: 'resident.units.paymentPlans',
@@ -101,6 +128,28 @@ export class ResidentUnitCollectionsController {
     return (await this.plans.residentList(unitId)).map((p) =>
       paymentPlanDto(p, p.state === 'proposed' ? ['withdraw'] : []),
     );
+  }
+
+  @Get('payment-plans/:planId')
+  @ApiEndpoint({
+    id: 'resident.units.paymentPlan',
+    summary: 'One of my payment plans',
+    description:
+      'A plan of mine on this unit with its instalments (the LINE message links it); another unit’s or another party’s plan is a 404 (J-CR, D-335; D-325).',
+    implements: ['D-325', 'D-335'],
+  })
+  @ApiSuccess(200, {
+    description: 'Plan',
+    type: PaymentPlanDto,
+    example: { ...PLAN_EXAMPLE, nextActions: [] },
+  })
+  @ApiStandardErrors('validation.failed', 'http.not_found')
+  async getPlan(
+    @Param('unitId', ParseUUIDPipe) unitId: string,
+    @Param('planId', ParseUUIDPipe) planId: string,
+  ): Promise<PaymentPlanDto> {
+    const p = await this.plans.residentGet(unitId, planId);
+    return paymentPlanDto(p, p.state === 'proposed' ? ['withdraw'] : []);
   }
 
   @Post('payment-plans/:planId/actions/withdraw')
@@ -171,6 +220,27 @@ export class ResidentUnitCollectionsController {
   @ApiStandardErrors('validation.failed', 'http.not_found')
   async listClearances(@Param('unitId', ParseUUIDPipe) unitId: string): Promise<DebtClearanceDto[]> {
     return (await this.clearances.residentList(unitId)).map((r) => debtClearanceDto(r));
+  }
+
+  @Get('debt-clearances/:debtClearanceId')
+  @ApiEndpoint({
+    id: 'resident.units.debtClearance',
+    summary: 'One of my debt clearance certificates',
+    description:
+      'A request or certificate of mine on this unit (the LINE message links it; the verify code is never shown again); another unit’s or another party’s is a 404 (J-CR, D-335; D-306).',
+    implements: ['D-306', 'D-335'],
+  })
+  @ApiSuccess(200, {
+    description: 'Certificate',
+    type: DebtClearanceDto,
+    example: { ...CLEARANCE_EXAMPLE, verifyCode: null },
+  })
+  @ApiStandardErrors('validation.failed', 'http.not_found')
+  async getClearance(
+    @Param('unitId', ParseUUIDPipe) unitId: string,
+    @Param('debtClearanceId', ParseUUIDPipe) id: string,
+  ): Promise<DebtClearanceDto> {
+    return debtClearanceDto(await this.clearances.residentGet(unitId, id));
   }
 
   @Get('debt-clearances/:debtClearanceId/document')

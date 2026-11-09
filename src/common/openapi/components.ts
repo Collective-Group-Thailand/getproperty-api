@@ -171,6 +171,12 @@ export function problemExamples(i18nDir: string): Record<string, ExampleObject> 
         value.errors = [{ path: 'x-tenant-id', code: 'isUuid', message: 'X-Tenant-Id must be a uuid' }];
       }
       if (code === 'auth.otp_invalid') value.attemptsRemaining = 4;
+      if (code === 'import.rollback_blocked') value.table = 'ops.invoice';
+      if (code === 'import.job_open') {
+        value.jobId = FAKE.uuid;
+        value.jobNumber = 3;
+      }
+      if (code === 'collections.legal_review_required') value.gateClosedReason = 'surcharge_disabled';
       if (code === 'auth.totp_enrollment_required')
         value.enrollmentToken = 'q2r8XoT1Vb9mJ0yPz4LkWnE6aGs3dHf5';
       if (group === 'compliance') {

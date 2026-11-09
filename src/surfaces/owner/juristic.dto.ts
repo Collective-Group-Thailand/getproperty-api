@@ -224,6 +224,34 @@ export class RegisterUnitDto {
   })
   titleDeedNo!: string | null;
 
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid, description: 'The building’s property (J-CR, D-335).' })
+  propertyId!: string;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    example: FAKE.uuid,
+    description: 'J-CR (D-335).',
+  })
+  floorId!: string | null;
+
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    example: 12,
+    description: 'The floor’s level (J-CR, D-335).',
+  })
+  floorLevel!: number | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'ชั้น 12',
+    description: 'The floor’s name (J-CR, D-335).',
+  })
+  floorName!: string | null;
+
   @ApiProperty({ type: () => [RegisterOwnerDto], description: 'Owners current today.' })
   owners!: RegisterOwnerDto[];
 
@@ -307,6 +335,14 @@ export class RegisterListQuery extends PageQuery {
   @IsOptional()
   @IsUUID()
   buildingId?: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Every building (soi) of this property — a housing estate in one list (J-CR, D-335).',
+  })
+  @IsOptional()
+  @IsUUID()
+  propertyId?: string;
 
   @ApiPropertyOptional({
     type: Boolean,
@@ -512,6 +548,20 @@ export class ResolutionDocumentDto {
 
   @ApiProperty({ enum: ResolutionDocumentKindName, enumName: 'ResolutionDocumentKind', example: 'minutes' })
   kind!: ResolutionDocumentKindName;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'รายงานการประชุมใหญ่สามัญประจำปี 2569.pdf',
+    description: 'The file’s title (J-CR, D-335).',
+  })
+  title!: string | null;
+
+  @ApiProperty({ example: 'application/pdf', description: 'J-CR (D-335).' })
+  mimeType!: string;
+
+  @ApiProperty({ type: 'integer', example: 482113, description: 'Bytes (J-CR, D-335).' })
+  sizeBytes!: number;
 
   @ApiProperty({ format: 'date-time', example: FAKE.dateTime })
   createdAt!: string;
@@ -986,4 +1036,47 @@ export class RateDraftDto {
 
   @ApiProperty({ type: () => RatePreviewDto })
   preview!: RatePreviewDto;
+}
+
+export class RegisterOwnersQuery {
+  @ApiPropertyOptional({
+    example: 'สมชาย',
+    description: 'Owner name, unit number or plot number (contains).',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  q?: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  buildingId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  propertyId?: string;
+
+  @ApiPropertyOptional({ type: 'integer', minimum: 1, maximum: 100, default: 25 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+}
+
+export class RegisterOwnerPickDto {
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid }) unitId!: string;
+  @ApiProperty({ example: FAKE.unitCode }) unitNo!: string;
+  @ApiProperty({ format: 'uuid', example: FAKE.buildingId }) buildingId!: string;
+  @ApiProperty({ example: 'อาคาร A' }) buildingName!: string;
+  @ApiProperty({ format: 'uuid', example: FAKE.uuid }) partyId!: string;
+  @ApiProperty({ example: FAKE.nameTh }) partyName!: string;
+}
+
+export class RegisterOwnerPickListDto {
+  @ApiProperty({ type: [RegisterOwnerPickDto] })
+  data!: RegisterOwnerPickDto[];
 }

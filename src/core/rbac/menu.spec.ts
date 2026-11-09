@@ -64,4 +64,25 @@ describe('menu entitlements (/me)', () => {
     expect(support).not.toContain('outbox');
     expect(support).toContain('listings');
   });
+
+  it('J-CR (D-335): juristic consoles get their own keys and no leases / deposits', () => {
+    const owner = entitledMenu(OWNER_MENU, set('owner'), 'juristic', {});
+    expect(owner).toEqual(
+      expect.arrayContaining([
+        'juristic_overview',
+        'juristic_resolutions',
+        'juristic_reports',
+        'juristic_payment_mandates',
+        'juristic_petty_cash',
+      ]),
+    );
+    for (const key of ['leases', 'deposits']) expect(owner).not.toContain(key);
+    expect(entitledMenu(OWNER_MENU, set('owner'), 'apartment', {})).toEqual(
+      expect.arrayContaining(['leases', 'deposits']),
+    );
+    expect(entitledMenu(OWNER_MENU, set('owner'), 'apartment', {})).not.toContain('juristic_petty_cash');
+    const staff = entitledMenu(OWNER_MENU, set('staff'), 'juristic', {});
+    expect(staff).toContain('juristic_petty_cash');
+    expect(staff).not.toContain('juristic_accounting');
+  });
 });

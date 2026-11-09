@@ -219,6 +219,8 @@ export class ResidentUnitGateController {
       canEdit: r.canEdit,
       gates: r.gates.map((g) => ({ id: g.id, name: g.name, kind: g.kind as GateKindName })),
       privacyNotice: r.notice,
+      rememberDays: r.rememberDays,
+      inviteMaxDays: r.inviteMaxDays,
     };
   }
 
@@ -240,6 +242,8 @@ export class ResidentUnitGateController {
       canEdit: true,
       gates: [{ id: FAKE.uuid, name: 'ป้อมหน้า', kind: GateKindName.Main }],
       privacyNotice: NOTICE_EXAMPLE,
+      rememberDays: 30,
+      inviteMaxDays: 30,
     },
   })
   @ApiStandardErrors('validation.failed', 'http.not_found')
@@ -266,6 +270,8 @@ export class ResidentUnitGateController {
       canEdit: true,
       gates: [],
       privacyNotice: NOTICE_EXAMPLE,
+      rememberDays: 30,
+      inviteMaxDays: 30,
     },
   })
   @ApiStandardErrors('validation.failed', 'http.bad_request', 'http.not_found')
@@ -317,6 +323,23 @@ export class ResidentUnitGateController {
   @ApiStandardErrors('validation.failed', 'http.not_found')
   async invites(@Param('unitId', ParseUUIDPipe) unitId: string): Promise<VisitInviteDto[]> {
     return (await this.gates.residentInvites(unitId)).map(inviteDto);
+  }
+
+  @Get('visit-invites/:inviteId')
+  @ApiEndpoint({
+    id: 'resident.units.visitInvite',
+    summary: 'One invite of my house',
+    description:
+      'The invite with its uses and state (the token is never shown again). An invite of another unit — or a unit not mine — is a 404 (J-CR, D-335; D-315).',
+    implements: ['D-315', 'D-335'],
+  })
+  @ApiSuccess(200, { description: 'Invite', type: VisitInviteDto, example: INVITE_EXAMPLE })
+  @ApiStandardErrors('validation.failed', 'http.not_found')
+  async invite(
+    @Param('unitId', ParseUUIDPipe) unitId: string,
+    @Param('inviteId', ParseUUIDPipe) inviteId: string,
+  ): Promise<VisitInviteDto> {
+    return inviteDto(await this.gates.residentInvite(unitId, inviteId));
   }
 
   @Post('visit-invites/:inviteId/actions/revoke')

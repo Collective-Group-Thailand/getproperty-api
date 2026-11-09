@@ -803,6 +803,15 @@ export class GateAdminService extends TenantScopedRepository {
       }),
       notice: await this.visits.privacyNotice(unit.tenantId),
       canEdit: canDecide,
+      // J-CR (D-335): the estate's limits the app must not hard-code
+      rememberDays: await this.settings.valueAt<number>('gate.remember_days', this.now(), {
+        tenantId: unit.tenantId,
+        propertyId: unit.propertyId,
+      }),
+      inviteMaxDays: await this.settings.valueAt<number>('gate.invite_max_days', this.now(), {
+        tenantId: unit.tenantId,
+        propertyId: unit.propertyId,
+      }),
     }));
   }
 
@@ -891,6 +900,16 @@ export class GateAdminService extends TenantScopedRepository {
         orderBy: { createdAt: 'desc' },
         take: 100,
       }),
+    );
+  }
+
+  /** `GET /v1/resident/units/{unitId}/visit-invites/{inviteId}` (J-CR): one invite of my house (another unit's → 404). */
+  async residentInvite(unitId: string, inviteId: string) {
+    const { unit, ctx } = await this.householdUnit(unitId, GATE_UNIT_ROLES);
+    return this.db.tenant(ctx, async (tx) =>
+      this.found(
+        await tx.visitInvite.findFirst({ where: { id: inviteId, unitId: unit.id, tenantId: unit.tenantId } }),
+      ),
     );
   }
 

@@ -338,6 +338,39 @@ export class PaymentPlansService extends TenantScopedRepository implements OnMod
     );
   }
 
+  /**
+   * `GET /v1/resident/units/{unitId}/payment-plan-requests/options` (J-CR, D-335): the limits a request must meet and
+   * what would be split now — the same rules as `residentRequest` (2 … `juristic.plan_max_instalments`, first due date
+   * today … +92 days, default the 1st of next month; principal = the open balance of my billed party on the unit).
+   */
+  async residentOptions(unitId: string) {
+    const access = await this.db.platform((tx) =>
+      residentUnitAccess(tx, unitId, ['co_owner', 'payer', 'tenant'], this.clock.now()),
+    );
+    const max = Number(
+      await this.settings.valueAt<number>('juristic.plan_max_instalments', this.clock.now(), {
+        tenantId: access.tenantId,
+      }),
+    );
+    const today = this.today();
+    const principal = await this.db.tenant(access.ctx, async (tx) => {
+      for (const p of access.partyIds) {
+        const open = await this.openInvoices(tx, access.tenantId, unitId, p);
+        if (open.length) return open.reduce((s, i) => s.plus(D(i.balance)), D(0));
+      }
+      return D(0);
+    });
+    return {
+      minInstalments: 2,
+      maxInstalments: max,
+      earliestFirstDueOn: today,
+      latestFirstDueOn: addCalendarDays(today, 92),
+      defaultFirstDueOn: addMonths(`${today.slice(0, 8)}01`, 1),
+      proposedPrincipal: principal.toFixed(2),
+      available: principal.gte(2),
+    };
+  }
+
   async residentList(unitId: string): Promise<PaymentPlanRow[]> {
     const access = await this.db.platform((tx) =>
       residentUnitAccess(tx, unitId, ['co_owner', 'payer', 'tenant'], this.clock.now()),
@@ -350,6 +383,21 @@ export class PaymentPlansService extends TenantScopedRepository implements OnMod
         take: 50,
       }),
     );
+  }
+
+  /** `GET /v1/resident/units/{unitId}/payment-plans/{planId}` (J-CR): one of mine on the unit, else 404. */
+  async residentGet(unitId: string, planId: string): Promise<PaymentPlanRow> {
+    const access = await this.db.platform((tx) =>
+      residentUnitAccess(tx, unitId, ['co_owner', 'payer', 'tenant'], this.clock.now()),
+    );
+    const plan = await this.db.tenant(access.ctx, (tx) =>
+      tx.paymentPlan.findFirst({
+        where: { id: planId, tenantId: access.tenantId, unitId, partyId: { in: access.partyIds } },
+        include: PLAN_INCLUDE,
+      }),
+    );
+    if (!plan) throw new DomainException('http.not_found');
+    return plan;
   }
 
   /** The resident withdraws their own request while it waits. */

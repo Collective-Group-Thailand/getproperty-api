@@ -47,7 +47,9 @@ const REGISTER_UNIT_SELECT = {
   plotNo: true,
   titleDeedNo: true,
   version: true,
-  building: { select: { id: true, name: true, legalForm: true } },
+  floorId: true,
+  floor: { select: { id: true, level: true, name: true } },
+  building: { select: { id: true, name: true, legalForm: true, propertyId: true } },
 } as const satisfies Prisma.UnitSelect;
 
 export type RegisterUnitRow = Prisma.UnitGetPayload<{ select: typeof REGISTER_UNIT_SELECT }>;
@@ -130,18 +132,24 @@ export class JuristicRegisterService extends TenantScopedRepository {
     return { unit, building };
   }
 
-  private async buildingIds(tx: Tx, ctx: TenantContext, buildingId?: string): Promise<string[]> {
+  private async buildingIds(
+    tx: Tx,
+    ctx: TenantContext,
+    buildingId?: string,
+    propertyId?: string,
+  ): Promise<string[]> {
     const rows = await tx.building.findMany({
       where: {
         deletedAt: null,
         OR: [{ operatorTenantId: ctx.tenantId }, { ownerTenantId: ctx.tenantId }],
         ...(buildingId ? { id: buildingId } : {}),
+        ...(propertyId ? { propertyId } : {}),
         ...(ctx.buildingIds ? { id: { in: [...ctx.buildingIds] } } : {}),
       },
       select: { id: true },
     });
     const ids = rows.map((b) => b.id).filter((id) => !buildingId || id === buildingId);
-    if (buildingId && !ids.length) throw new DomainException('http.not_found');
+    if ((buildingId || propertyId) && !ids.length) throw new DomainException('http.not_found');
     return ids;
   }
 
@@ -187,10 +195,17 @@ export class JuristicRegisterService extends TenantScopedRepository {
   /** `GET /v1/owner/juristic/register`: units with their current owners (today), Σ shares and the incomplete flag. */
   async list(
     ctx: TenantContext,
-    q: { buildingId?: string; q?: string; incomplete?: boolean; skip: number; take: number },
+    q: {
+      buildingId?: string;
+      propertyId?: string;
+      q?: string;
+      incomplete?: boolean;
+      skip: number;
+      take: number;
+    },
   ): Promise<{ rows: RegisterEntry[]; total: number }> {
     return this.db.tenant(ctx, async (tx) => {
-      const buildingIds = await this.buildingIds(tx, ctx, q.buildingId);
+      const buildingIds = await this.buildingIds(tx, ctx, q.buildingId, q.propertyId);
       const term = q.q?.trim();
       const where: Prisma.UnitWhereInput = {
         buildingId: { in: buildingIds },
@@ -217,6 +232,66 @@ export class JuristicRegisterService extends TenantScopedRepository {
       let rows = await this.entries(tx, units, this.today());
       if (q.incomplete !== undefined) rows = rows.filter((r) => r.incomplete === q.incomplete);
       return { rows: rows.slice(q.skip, q.skip + q.take), total: rows.length };
+    });
+  }
+
+  /**
+   * `GET /v1/owner/juristic/register/owners?q=` (J-CR, D-335): today's co-owners of the tenant's units — one row per
+   * unit × owner, for pickers (debt clearance, statements). `q` matches the owner's name, the unit or plot number.
+   */
+  async owners(
+    ctx: TenantContext,
+    q: { q?: string; buildingId?: string; propertyId?: string; take: number },
+  ): Promise<
+    {
+      unitId: string;
+      unitNo: string;
+      buildingId: string;
+      buildingName: string;
+      partyId: string;
+      partyName: string;
+    }[]
+  > {
+    return this.db.tenant(ctx, async (tx) => {
+      const buildingIds = await this.buildingIds(tx, ctx, q.buildingId, q.propertyId);
+      const date = asDate(this.today());
+      const term = q.q?.trim();
+      const rows = await tx.unitOwnership.findMany({
+        where: {
+          unit: { buildingId: { in: buildingIds }, deletedAt: null },
+          validFrom: { lte: date },
+          OR: [{ validTo: null }, { validTo: { gt: date } }],
+          ...(term
+            ? {
+                AND: [
+                  {
+                    OR: [
+                      { party: { displayName: { contains: term, mode: 'insensitive' } } },
+                      { unit: { unitNo: { contains: term, mode: 'insensitive' } } },
+                      { unit: { plotNo: { contains: term, mode: 'insensitive' } } },
+                    ],
+                  },
+                ],
+              }
+            : {}),
+        },
+        select: {
+          unit: {
+            select: { id: true, unitNo: true, buildingId: true, building: { select: { name: true } } },
+          },
+          party: { select: { id: true, displayName: true } },
+        },
+        orderBy: [{ party: { displayName: 'asc' } }, { unit: { unitNo: 'asc' } }, { id: 'asc' }],
+        take: q.take,
+      });
+      return rows.map((r) => ({
+        unitId: r.unit.id,
+        unitNo: r.unit.unitNo,
+        buildingId: r.unit.buildingId,
+        buildingName: r.unit.building.name,
+        partyId: r.party.id,
+        partyName: r.party.displayName,
+      }));
     });
   }
 

@@ -194,15 +194,27 @@ export class VendorsService extends TenantScopedRepository implements OnModuleIn
 
   listVendors(
     ctx: TenantContext,
-    q: { state?: VendorState; category?: VendorCategory; q?: string; skip: number; take: number },
+    q: {
+      state?: VendorState;
+      category?: VendorCategory;
+      categories?: VendorCategory[];
+      partyId?: string;
+      q?: string;
+      skip: number;
+      take: number;
+    },
   ) {
     return this.db.tenant(ctx, async (tx) => {
       await this.ledger.assertJuristic(tx, ctx.tenantId);
       const where: Prisma.VendorWhereInput = {
         tenantId: ctx.tenantId,
         ...(q.state ? { state: q.state } : {}),
-        ...(q.category ? { categories: { has: q.category } } : {}),
+        ...(q.partyId ? { partyId: q.partyId } : {}),
         ...(q.q ? { name: { contains: q.q, mode: 'insensitive' } } : {}),
+        AND: [
+          ...(q.category ? [{ categories: { has: q.category } }] : []),
+          ...(q.categories?.length ? [{ categories: { hasSome: q.categories } }] : []),
+        ],
       };
       const [rows, total] = await Promise.all([
         tx.vendor.findMany({
@@ -214,7 +226,18 @@ export class VendorsService extends TenantScopedRepository implements OnModuleIn
         }),
         tx.vendor.count({ where }),
       ]);
-      return { rows, total };
+      // Tab badges (J-CR): per state for the same search and categories.
+      const byState = await tx.vendor.groupBy({
+        by: ['state'],
+        where: { ...where, state: undefined },
+        _count: { _all: true },
+      });
+      const counts = { all: 0, active: 0, blocked: 0 };
+      for (const g of byState) {
+        counts[g.state] = g._count._all;
+        counts.all += g._count._all;
+      }
+      return { rows, total, counts };
     });
   }
 
@@ -452,7 +475,51 @@ export class VendorsService extends TenantScopedRepository implements OnModuleIn
         }),
         tx.vendorContract.count({ where }),
       ]);
-      return { rows, total };
+      // Tab badges (J-CR): per state for the same vendor / building, and the renewal queue.
+      const scopeWhere: Prisma.VendorContractWhereInput = {
+        tenantId: ctx.tenantId,
+        ...(q.vendorId ? { vendorId: q.vendorId } : {}),
+        ...(q.buildingId
+          ? { buildingId: q.buildingId }
+          : ctx.buildingIds
+            ? { buildingId: { in: [...ctx.buildingIds] } }
+            : {}),
+      };
+      const within =
+        q.endingWithinDays ??
+        Math.max(
+          ...((await this.settings.valueAt<number[]>(
+            'juristic.contract_expiry_alert_days',
+            this.clock.now(),
+            {
+              tenantId: ctx.tenantId,
+            },
+          )) ?? [90, 60, 30]),
+        );
+      const [byState, endingSoon] = await Promise.all([
+        tx.vendorContract.groupBy({ by: ['state'], where: scopeWhere, _count: { _all: true } }),
+        tx.vendorContract.count({
+          where: {
+            ...scopeWhere,
+            state: 'active',
+            endsOn: { lte: asDate(addCalendarDays(this.today(), within)) },
+          },
+        }),
+      ]);
+      const counts = {
+        all: 0,
+        draft: 0,
+        active: 0,
+        expired: 0,
+        terminated: 0,
+        endingSoon,
+        endingWithinDays: within,
+      };
+      for (const g of byState) {
+        counts[g.state] = g._count._all;
+        counts.all += g._count._all;
+      }
+      return { rows, total, counts };
     });
   }
 

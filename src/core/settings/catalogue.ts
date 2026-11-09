@@ -1145,6 +1145,14 @@ export const SETTINGS: readonly SettingDef[] = [
         'minutes a guard stays locked out after too many wrong PINs',
         ['platform', 'tenant'],
       ],
+      [
+        'gate.tablet.auto_lock_minutes',
+        5,
+        1,
+        60,
+        'minutes without a touch before the gate tablet locks to the PIN pad (J-CR, D-335; read by the tablet from GET /v1/guard/me)',
+        ['platform', 'tenant', 'property'],
+      ],
     ] as const
   ).map(([key, value, min, max, what, scopes]): SettingDef => ({
     key,

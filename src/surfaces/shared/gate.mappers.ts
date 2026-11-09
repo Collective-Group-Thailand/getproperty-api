@@ -89,13 +89,24 @@ export function visitDto(v: VisitRow): VisitDto {
   };
 }
 
-export function guardVisitDto(v: VisitRow): GuardVisitDto {
+/** The first word of a display name — the gate shows first names only (D-315). */
+export const firstNameOf = (name: string | null | undefined): string | null =>
+  name?.trim().split(/\s+/)[0] || null;
+
+/**
+ * The gate's view of a visit. `names` (user id → display name, from `VisitsService.userNames`) fills the first names of
+ * who decided and who asked to be called (J-CR); without it they are null.
+ */
+export function guardVisitDto(v: VisitRow, names?: ReadonlyMap<string, string>): GuardVisitDto {
   return {
     ...visitDto(v),
     clientRef: v.clientRef,
     idLast4: v.idLast4,
     note: v.note,
     recordedAt: isoOrNull(v.recordedAt),
+    overstayedAt: isoOrNull(v.overstayNotifiedAt),
+    decidedByName: v.decidedByUserId ? firstNameOf(names?.get(v.decidedByUserId)) : null,
+    callBackName: v.callMeUserId ? firstNameOf(names?.get(v.callMeUserId)) : null,
   };
 }
 

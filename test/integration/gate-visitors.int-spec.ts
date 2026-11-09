@@ -256,7 +256,7 @@ describe('J4.1 gate & visitor (real PostgreSQL)', () => {
   it('enrols a tablet once, signs a guard in with the PIN, locks out after wrong PINs, scopes the token to the gate', async () => {
     const roster = await t.http.post('/v1/auth/guard/roster').send(tablet).expect(200);
     expect(roster.body.guards).toEqual([
-      { guardId: ids.guard, displayName: 'สมศักดิ์ กะเช้า', locked: false },
+      { guardId: ids.guard, displayName: 'สมศักดิ์ กะเช้า', locked: false, lockedUntil: null },
     ]);
     await t.http
       .post('/v1/auth/guard/roster')
@@ -267,6 +267,7 @@ describe('J4.1 gate & visitor (real PostgreSQL)', () => {
     const me = await t.http.get('/v1/guard/me').set(G()).expect(200);
     expect(me.body).toMatchObject({ gateId: ids.gate, propertyId: ids.property, guardId: ids.guard });
     expect(me.body.privacyNotice.version).toBe(1);
+    expect(me.body.autoLockMinutes).toBe(5); // J-CR: gate.tablet.auto_lock_minutes
     // the guard token works nowhere else
     await t.http.get('/v1/owner/gates').set(G()).expect(403);
     await t.http.get('/v1/resident/visits').set(G()).expect(403);
@@ -285,6 +286,13 @@ describe('J4.1 gate & visitor (real PostgreSQL)', () => {
     expect(locked.status).toBe(423);
     expect(locked.body.lockedUntil).toBeTruthy();
     expect((await signIn(tablet, scratch, '135790')).status).toBe(423);
+    // J-CR: the roster says until when
+    const lockedRoster = await t.http.post('/v1/auth/guard/roster').send(tablet).expect(200);
+    expect(
+      (lockedRoster.body.guards as { guardId: string; locked: boolean; lockedUntil: string | null }[]).find(
+        (g) => g.guardId === scratch,
+      ),
+    ).toMatchObject({ locked: true, lockedUntil: expect.stringMatching(/\+07:00$/) });
     await t.http
       .post(`/v1/owner/gate-guards/${scratch}/actions/reset-pin`)
       .set(J())
@@ -448,7 +456,7 @@ describe('J4.1 gate & visitor (real PostgreSQL)', () => {
           .expect(200);
         expect(call.body.accepted).toBe(true);
         const g = await t.http.get(`/v1/guard/visits/${v.id}`).set(G()).expect(200);
-        expect(g.body.callBackName).toBe('สมหญิง ร่วม');
+        expect(g.body.callBackName).toBe('สมหญิง'); // first names only at the gate (D-315, J-CR D-335)
       }
       t.clock.advance(59_000);
       await visits().sweep();
@@ -766,6 +774,78 @@ describe('J4.1 gate & visitor (real PostgreSQL)', () => {
     for (const u of picked) expect(u).not.toHaveProperty('hasArrears');
     expect(picked.find((u) => u.unitNo === 'A-101')?.lineLinked).toBe(true);
     expect(picked.find((u) => u.unitNo === 'A-103')?.lineLinked).toBe(false);
+  });
+
+  it('J-CR (D-335): first names on the gate lists, soi search, estate limits, the gate capability, one invite', async () => {
+    // the gate lists name who decided — first names only (D-315)
+    const today = await t.http.get('/v1/guard/visits?view=today&limit=200').set(G()).expect(200);
+    const decided = (today.body as { decidedByName: string | null; overstayedAt: string | null }[]).filter(
+      (v) => v.decidedByName,
+    );
+    expect(decided.length).toBeGreaterThan(0);
+    for (const v of decided) {
+      expect(['สมชาย', 'สมหญิง', 'สมศักดิ์']).toContain(v.decidedByName);
+      expect(v.decidedByName).not.toMatch(/\s/);
+    }
+    expect(today.body[0]).toHaveProperty('overstayedAt');
+    expect(today.body[0]).toHaveProperty('callBackName');
+    // soi / building name search
+    const bySoi = await t.http
+      .get(`/v1/guard/units?q=${encodeURIComponent('อาคาร A')}`)
+      .set(G())
+      .expect(200);
+    expect((bySoi.body as { unitNo: string }[]).map((u) => u.unitNo)).toEqual(
+      expect.arrayContaining(['A-101', 'A-102']),
+    );
+    // the estate's limits on the resident gate view
+    const view = await t.http.get(`/v1/resident/units/${ids.u1}/gate`).set(bearer(residents.P!)).expect(200);
+    expect(view.body).toMatchObject({ rememberDays: 30, inviteMaxDays: 30 });
+    // the gate capability follows the unit and the role (payer-only: none)
+    const capsOf = async (token: string, unitId: string) =>
+      (
+        (await t.http.get('/v1/resident/me/units').set(bearer(token)).expect(200)).body.units as {
+          unitId: string;
+          capabilities: string[];
+          areaSqm: string | null;
+          recurringAvailable: boolean;
+        }[]
+      ).find((u) => u.unitId === unitId);
+    const pUnit = (await capsOf(residents.P!, ids.u1!))!;
+    expect(pUnit.capabilities).toContain('gate');
+    expect(pUnit.areaSqm).toBe('40.00');
+    expect(typeof pUnit.recurringAvailable).toBe('boolean');
+    expect((await capsOf(residents.F!, ids.u1!))!.capabilities).toContain('gate');
+    expect((await capsOf(residents.B!, ids.u1!))?.capabilities ?? []).not.toContain('gate');
+    // one invite of my house; another house's path or id is a 404
+    const inv = await t.http
+      .post(`/v1/resident/units/${ids.u1}/visit-invites`)
+      .set(bearer(residents.P!))
+      .set(idem())
+      .send({
+        usage: 'single',
+        visitorKind: 'guest',
+        validFrom: '2027-01-10T08:00:00+07:00',
+        validTo: '2027-01-11T18:00:00+07:00',
+      })
+      .expect(201);
+    const got = await t.http
+      .get(`/v1/resident/units/${ids.u1}/visit-invites/${inv.body.id}`)
+      .set(bearer(residents.Q!))
+      .expect(200);
+    expect(got.body).toMatchObject({ id: inv.body.id, usage: 'single' });
+    expect(got.body).not.toHaveProperty('token');
+    await t.http
+      .get(`/v1/resident/units/${ids.u2}/visit-invites/${inv.body.id}`)
+      .set(bearer(residents.R!))
+      .expect(404);
+    await t.http
+      .get(`/v1/resident/units/${ids.u1}/visit-invites/${inv.body.id}`)
+      .set(bearer(residents.R!))
+      .expect(404);
+    await t.http
+      .get(`/v1/resident/units/${ids.u1}/visit-invites/${randomUUID()}`)
+      .set(bearer(residents.P!))
+      .expect(404);
   });
 
   it('retention deletes visits, their events, photos (rows and objects), ended invites and expired cars', async () => {

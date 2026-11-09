@@ -44,7 +44,7 @@ export class ResidentMeUnitsController {
     id: 'resident.units.list',
     summary: 'My units and what I am there',
     description:
-      'Every unit of my `unit:` scopes across tenants — units I live in (occupancy) **or** own (co-owner in the register, D-309) — with my roles today (`co_owner`, `tenant`, `co_tenant`, `family`, `payer`; source `ownership`, `occupancy` or `lease`) and the navigation `capabilities` of each unit (D-322). A lease alone never adds a unit; a former owner’s unit disappears on the ownership’s end date. `unitsHash` changes with any role; `refreshRequired` = my token’s unit scopes differ from today’s units (refresh before switching unit).',
+      'Every unit of my `unit:` scopes across tenants (with the register’s measures and whether auto-pay can be set up, J-CR) — units I live in (occupancy) **or** own (co-owner in the register, D-309) — with my roles today (`co_owner`, `tenant`, `co_tenant`, `family`, `payer`; source `ownership`, `occupancy` or `lease`) and the navigation `capabilities` of each unit (D-322). A lease alone never adds a unit; a former owner’s unit disappears on the ownership’s end date. `unitsHash` changes with any role; `refreshRequired` = my token’s unit scopes differ from today’s units (refresh before switching unit).',
     implements: ['D-025', 'D-309', 'D-322'],
   })
   @ApiSuccess(200, {
@@ -81,6 +81,11 @@ export class ResidentMeUnitsController {
             ResidentUnitCapability.ServiceRequests,
             ResidentUnitCapability.Invoices,
           ],
+          areaSqm: '34.77',
+          ownershipRatio: '0.012345',
+          landAreaSqwa: null,
+          plotNo: null,
+          recurringAvailable: false,
           leaseIds: [],
         },
       ],

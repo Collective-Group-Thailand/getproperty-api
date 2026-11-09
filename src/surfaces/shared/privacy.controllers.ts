@@ -31,6 +31,7 @@ export const purposeDto = (p: PurposeView): ConsentPurposeDto => ({
   effectiveFrom: iso(p.effectiveFrom),
   granted: p.granted,
   grantedVersion: p.grantedVersion,
+  lastGranted: p.lastGranted,
   capturedAt: isoOrNull(p.capturedAt),
 });
 
@@ -44,6 +45,7 @@ export const PURPOSE_EXAMPLE = {
   effectiveFrom: FAKE.dateTime,
   granted: true,
   grantedVersion: 1,
+  lastGranted: true,
   capturedAt: FAKE.dateTime,
 };
 const CAPTURE_EXAMPLE = {

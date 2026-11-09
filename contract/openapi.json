@@ -624,6 +624,7 @@
         "value": {
           "code": "collections.legal_review_required",
           "detail": "มาตรการนี้ยังเปิดใช้ไม่ได้จนกว่าทนายจะยืนยันข้อกำหนด ({reason}) (D-305, O-038)",
+          "gateClosedReason": "surcharge_disabled",
           "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
           "status": 422,
           "title": "ขั้นตอนนี้ต้องรอการตรวจทางกฎหมาย",
@@ -1968,6 +1969,8 @@
         "value": {
           "code": "import.job_open",
           "detail": "อาคารนี้มีงานนำเข้าที่ยังไม่เสร็จ กรุณาดำเนินการให้เสร็จ ย้อนกลับ หรือยกเลิกก่อน",
+          "jobId": "3b241101-e2bb-4255-8caf-4136c566a962",
+          "jobNumber": 3,
           "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
           "status": 409,
           "title": "มีงานนำเข้าที่ยังเปิดอยู่",
@@ -2014,6 +2017,7 @@
           "detail": "มีข้อมูลอื่นอ้างถึงรายการที่นำเข้าแล้ว จึงไม่ได้ย้อนกลับ",
           "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
           "status": 409,
+          "table": "ops.invoice",
           "title": "ย้อนกลับการนำเข้าไม่ได้",
           "type": "https://errors.getproperty.co/import.rollback_blocked"
         }
@@ -6893,6 +6897,50 @@
           "tenants",
           "usedBytes",
           "nearOrOver"
+        ],
+        "type": "object"
+      },
+      "AdminStubBuildingDto": {
+        "properties": {
+          "address": {
+            "description": "The project’s address as landlords entered it.",
+            "example": "ถนนสุขุมวิท พระโขนง คลองเตย กรุงเทพมหานคร 10110",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "example": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+            "format": "uuid",
+            "type": "string"
+          },
+          "landlordUnits": {
+            "description": "Units landlords put in the stub.",
+            "example": 7,
+            "type": "integer"
+          },
+          "name": {
+            "example": "ไลฟ์ สุขุมวิท 48",
+            "type": "string"
+          },
+          "propertyId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "propertyName": {
+            "example": "ไลฟ์ สุขุมวิท 48",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "propertyId",
+          "propertyName",
+          "address",
+          "landlordUnits"
         ],
         "type": "object"
       },
@@ -13849,6 +13897,7 @@
             ]
           },
           "grantedVersion": {
+            "description": "Version of my last answer (a grant or a withdrawal — see `lastGranted`).",
             "example": 1,
             "type": [
               "integer",
@@ -13862,6 +13911,14 @@
           "language": {
             "example": "th",
             "type": "string"
+          },
+          "lastGranted": {
+            "description": "My last answer on file, whatever its version: true granted, false withdrawn, null never answered (J-CR, LIFF #39). With `granted: null` and `lastGranted: false` the purpose was withdrawn under an earlier version — nothing to stop.",
+            "example": true,
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "required": {
             "example": true,
@@ -13886,6 +13943,7 @@
           "effectiveFrom",
           "granted",
           "grantedVersion",
+          "lastGranted",
           "capturedAt"
         ],
         "type": "object"
@@ -20347,6 +20405,54 @@
         ],
         "type": "string"
       },
+      "ExpenseRequestCountsDto": {
+        "properties": {
+          "all": {
+            "example": 12,
+            "type": "integer"
+          },
+          "approved": {
+            "example": 2,
+            "type": "integer"
+          },
+          "awaitingMe": {
+            "description": "Submitted requests my role may approve, not requested nor decided by me.",
+            "example": 2,
+            "type": "integer"
+          },
+          "cancelled": {
+            "example": 1,
+            "type": "integer"
+          },
+          "draft": {
+            "example": 1,
+            "type": "integer"
+          },
+          "paid": {
+            "example": 4,
+            "type": "integer"
+          },
+          "rejected": {
+            "example": 1,
+            "type": "integer"
+          },
+          "submitted": {
+            "example": 3,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "all",
+          "awaitingMe",
+          "draft",
+          "submitted",
+          "approved",
+          "rejected",
+          "paid",
+          "cancelled"
+        ],
+        "type": "object"
+      },
       "ExpenseRequestDto": {
         "properties": {
           "amount": {
@@ -23801,6 +23907,11 @@
       },
       "GuardMeDto": {
         "properties": {
+          "autoLockMinutes": {
+            "description": "Minutes without a touch before the tablet locks to the PIN pad (`gate.tablet.auto_lock_minutes` of the property; J-CR, D-335).",
+            "example": 5,
+            "type": "integer"
+          },
           "gateDeviceId": {
             "example": "3b241101-e2bb-4255-8caf-4136c566a962",
             "format": "uuid",
@@ -23872,7 +23983,8 @@
           "propertyName",
           "gateDeviceId",
           "gateDeviceName",
-          "privacyNotice"
+          "privacyNotice",
+          "autoLockMinutes"
         ],
         "type": "object"
       },
@@ -23911,7 +24023,8 @@
               {
                 "displayName": "สมศักดิ์",
                 "guardId": "3b241101-e2bb-4255-8caf-4136c566a962",
-                "locked": false
+                "locked": false,
+                "lockedUntil": null
               }
             ],
             "items": {
@@ -23945,12 +24058,22 @@
           "locked": {
             "example": false,
             "type": "boolean"
+          },
+          "lockedUntil": {
+            "description": "While `locked`: when the guard may enter the PIN again (J-CR, D-335).",
+            "example": null,
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "guardId",
           "displayName",
-          "locked"
+          "locked",
+          "lockedUntil"
         ],
         "type": "object"
       },
@@ -24052,7 +24175,7 @@
       "GuardVisitDetailDto": {
         "properties": {
           "callBackName": {
-            "description": "Name of the resident who asked to be called (the guard calls the house number on file).",
+            "description": "First name of the resident who asked the guard to call (the guard calls the house number on file; D-315, J-CR).",
             "example": null,
             "type": [
               "string",
@@ -24090,6 +24213,14 @@
           "decidedAt": {
             "example": null,
             "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decidedByName": {
+            "description": "First name of the resident who approved or denied (first names only, D-315; J-CR, D-335).",
+            "example": "เกริก",
             "type": [
               "string",
               "null"
@@ -24184,6 +24315,15 @@
           },
           "note": {
             "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "overstayedAt": {
+            "description": "When the visit was found inside longer than the estate allows (`gate.visit.overstayed`) — survives a reload (J-CR, D-335).",
+            "example": null,
+            "format": "date-time",
             "type": [
               "string",
               "null"
@@ -24298,14 +24438,24 @@
           "idLast4",
           "note",
           "recordedAt",
-          "events",
+          "overstayedAt",
+          "decidedByName",
           "callBackName",
+          "events",
           "photoUrl"
         ],
         "type": "object"
       },
       "GuardVisitDto": {
         "properties": {
+          "callBackName": {
+            "description": "First name of the resident who asked the guard to call (the guard calls the house number on file; D-315, J-CR).",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "callMeAt": {
             "description": "A resident asked the guard to call.",
             "example": null,
@@ -24337,6 +24487,14 @@
           "decidedAt": {
             "example": null,
             "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decidedByName": {
+            "description": "First name of the resident who approved or denied (first names only, D-315; J-CR, D-335).",
+            "example": "เกริก",
             "type": [
               "string",
               "null"
@@ -24424,6 +24582,15 @@
           },
           "note": {
             "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "overstayedAt": {
+            "description": "When the visit was found inside longer than the estate allows (`gate.visit.overstayed`) — survives a reload (J-CR, D-335).",
+            "example": null,
+            "format": "date-time",
             "type": [
               "string",
               "null"
@@ -24529,7 +24696,10 @@
           "clientRef",
           "idLast4",
           "note",
-          "recordedAt"
+          "recordedAt",
+          "overstayedAt",
+          "decidedByName",
+          "callBackName"
         ],
         "type": "object"
       },
@@ -31448,10 +31618,30 @@
       },
       "JuristicReconcileItemDto": {
         "properties": {
+          "accountType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReconcileAccountType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bank items: the account the row names (J-CR, D-335); null on the receivables item and on reconciliations recorded before.",
+            "example": "operating"
+          },
           "difference": {
             "description": "imported − reference. Unit: THB, decimal string (D-046).",
             "example": "0.00",
             "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fundName": {
+            "description": "Fund items: the fund’s name (from the row or the building’s fund).",
+            "example": null,
             "type": [
               "string",
               "null"
@@ -31478,6 +31668,14 @@
             "example": "receivables",
             "type": "string"
           },
+          "last4": {
+            "description": "Bank items: the last four digits.",
+            "example": "4012",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "reference": {
             "description": "The declared total, or the bank statement balance (null: no statement). Unit: THB, decimal string (D-046).",
             "example": "845210.50",
@@ -31502,7 +31700,10 @@
           "imported",
           "reference",
           "difference",
-          "status"
+          "status",
+          "accountType",
+          "last4",
+          "fundName"
         ],
         "type": "object"
       },
@@ -42081,17 +42282,22 @@
           "access",
           "parcels",
           "announcements",
+          "juristic_overview",
           "juristic_register",
           "juristic_cycles",
           "juristic_budgets",
+          "juristic_resolutions",
           "juristic_payment_plans",
           "juristic_debt_clearances",
           "juristic_receivables",
           "juristic_statements",
           "juristic_collection_ladder",
+          "juristic_reports",
+          "juristic_payment_mandates",
           "juristic_accounting",
           "juristic_expenses",
           "juristic_funds",
+          "juristic_petty_cash",
           "juristic_bank_statements",
           "juristic_vendors",
           "juristic_vendor_contracts",
@@ -44165,6 +44371,11 @@
             "format": "uuid",
             "type": "string"
           },
+          "partyName": {
+            "description": "Whose mandate it is: the party’s display name (J-CR, D-335).",
+            "example": "ผู้เช่า ทดสอบ",
+            "type": "string"
+          },
           "provider": {
             "example": "fake",
             "type": "string"
@@ -44201,6 +44412,7 @@
           "unitId",
           "unitNo",
           "partyId",
+          "partyName",
           "provider",
           "method",
           "scope",
@@ -44528,6 +44740,56 @@
           "state",
           "invoiceChargeId",
           "paidAt"
+        ],
+        "type": "object"
+      },
+      "PaymentPlanOptionsDto": {
+        "properties": {
+          "available": {
+            "description": "Something can be split now.",
+            "example": true,
+            "type": "boolean"
+          },
+          "defaultFirstDueOn": {
+            "description": "The 1st of next month.",
+            "example": "2027-02-01",
+            "format": "date",
+            "type": "string"
+          },
+          "earliestFirstDueOn": {
+            "example": "2027-01-15",
+            "format": "date",
+            "type": "string"
+          },
+          "latestFirstDueOn": {
+            "example": "2027-04-17",
+            "format": "date",
+            "type": "string"
+          },
+          "maxInstalments": {
+            "description": "`juristic.plan_max_instalments`.",
+            "example": 12,
+            "type": "integer"
+          },
+          "minInstalments": {
+            "example": 2,
+            "type": "integer"
+          },
+          "proposedPrincipal": {
+            "description": "What would be split now (open balance of my billed party). Unit: THB, decimal string (D-046).",
+            "example": "10000.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "minInstalments",
+          "maxInstalments",
+          "earliestFirstDueOn",
+          "latestFirstDueOn",
+          "defaultFirstDueOn",
+          "proposedPrincipal",
+          "available"
         ],
         "type": "object"
       },
@@ -48168,6 +48430,11 @@
             "format": "uuid",
             "type": "string"
           },
+          "gateClosedReason": {
+            "description": "`collections.legal_review_required` only (J-CR, D-335): why the step’s legal gate is closed — the same value as the step’s `gateClosedReason`",
+            "example": "surcharge_disabled",
+            "type": "string"
+          },
           "heldDocumentIds": {
             "description": "`storage.legal_hold` only (D-286): the requested documents held until their retention date",
             "example": [
@@ -48177,6 +48444,17 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "jobId": {
+            "description": "`import.job_open` only (J-CR, D-335): the building’s open or committed import job",
+            "example": "0199f2a0-0000-7000-8000-0000000000ab",
+            "format": "uuid",
+            "type": "string"
+          },
+          "jobNumber": {
+            "description": "`import.job_open` only (J-CR, D-335): that job’s number",
+            "example": 3,
+            "type": "integer"
           },
           "legalRef": {
             "description": "`compliance.*` only: the legal reference of the refused rule (D-020)",
@@ -48261,6 +48539,11 @@
               }
             ],
             "description": "`storage.allowance_exceeded` only (G1, D-285): what is stored, the quota (free + packages) and where to buy more space"
+          },
+          "table": {
+            "description": "`import.rollback_blocked` only (J-CR, D-335): the table whose rows still refer to what the import created (e.g. `ops.invoice` — an issued invoice, `ops.payment`, `juristic.journal`)",
+            "example": "ops.invoice",
+            "type": "string"
           },
           "title": {
             "example": "Bill line above the utility tariff cap",
@@ -50432,6 +50715,44 @@
         ],
         "type": "object"
       },
+      "QuotationRoundCountsDto": {
+        "properties": {
+          "all": {
+            "example": 7,
+            "type": "integer"
+          },
+          "awaitingApproval": {
+            "example": 1,
+            "type": "integer"
+          },
+          "awaitingMe": {
+            "description": "Awards my role may approve that I did not ask for.",
+            "example": 1,
+            "type": "integer"
+          },
+          "awarded": {
+            "example": 3,
+            "type": "integer"
+          },
+          "cancelled": {
+            "example": 1,
+            "type": "integer"
+          },
+          "open": {
+            "example": 2,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "all",
+          "awaitingMe",
+          "open",
+          "awaitingApproval",
+          "awarded",
+          "cancelled"
+        ],
+        "type": "object"
+      },
       "QuotationRoundCreateDto": {
         "properties": {
           "buildingId": {
@@ -52228,6 +52549,33 @@
         ],
         "type": "string"
       },
+      "ReceivableTabCountsDto": {
+        "properties": {
+          "all": {
+            "example": 42,
+            "type": "integer"
+          },
+          "atStep": {
+            "example": 17,
+            "type": "integer"
+          },
+          "dispute": {
+            "example": 1,
+            "type": "integer"
+          },
+          "plan": {
+            "example": 3,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "all",
+          "atStep",
+          "plan",
+          "dispute"
+        ],
+        "type": "object"
+      },
       "ReceivableTotalsDto": {
         "properties": {
           "aging": {
@@ -52283,6 +52631,14 @@
       },
       "ReceivablesPageDto": {
         "properties": {
+          "counts": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReceivableTabCountsDto"
+              }
+            ],
+            "description": "Rows of each tab for the same search and building (J-CR, D-335) — the tab badges."
+          },
           "data": {
             "items": {
               "$ref": "#/components/schemas/ReceivableRowDto"
@@ -52299,7 +52655,8 @@
         "required": [
           "data",
           "meta",
-          "totals"
+          "totals",
+          "counts"
         ],
         "type": "object"
       },
@@ -52503,6 +52860,14 @@
           "preferences"
         ],
         "type": "object"
+      },
+      "ReconcileAccountType": {
+        "description": "Bank items: the account the row names (J-CR, D-335); null on the receivables item and on reconciliations recorded before.",
+        "enum": [
+          "operating",
+          "fund"
+        ],
+        "type": "string"
       },
       "ReconcileKind": {
         "enum": [
@@ -52788,6 +53153,60 @@
         ],
         "type": "object"
       },
+      "RegisterOwnerPickDto": {
+        "properties": {
+          "buildingId": {
+            "example": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+            "format": "uuid",
+            "type": "string"
+          },
+          "buildingName": {
+            "example": "อาคาร A",
+            "type": "string"
+          },
+          "partyId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "partyName": {
+            "example": "ผู้เช่า ทดสอบ",
+            "type": "string"
+          },
+          "unitId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "unitNo": {
+            "example": "A-201",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unitId",
+          "unitNo",
+          "buildingId",
+          "buildingName",
+          "partyId",
+          "partyName"
+        ],
+        "type": "object"
+      },
+      "RegisterOwnerPickListDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/RegisterOwnerPickDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
       "RegisterPartyDto": {
         "properties": {
           "displayName": {
@@ -52876,6 +53295,31 @@
             "example": "อาคาร A",
             "type": "string"
           },
+          "floorId": {
+            "description": "J-CR (D-335).",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "floorLevel": {
+            "description": "The floor’s level (J-CR, D-335).",
+            "example": 12,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "floorName": {
+            "description": "The floor’s name (J-CR, D-335).",
+            "example": "ชั้น 12",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "history": {
             "description": "Every ownership row of the unit, oldest first.",
             "items": {
@@ -52930,6 +53374,12 @@
               "null"
             ]
           },
+          "propertyId": {
+            "description": "The building’s property (J-CR, D-335).",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
           "sharesTotal": {
             "description": "Σ of the current owners’ shares.",
             "example": "100.0000",
@@ -52981,6 +53431,10 @@
           "landAreaSqwa",
           "plotNo",
           "titleDeedNo",
+          "propertyId",
+          "floorId",
+          "floorLevel",
+          "floorName",
           "owners",
           "sharesTotal",
           "incomplete",
@@ -53017,6 +53471,31 @@
           "buildingName": {
             "example": "อาคาร A",
             "type": "string"
+          },
+          "floorId": {
+            "description": "J-CR (D-335).",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "floorLevel": {
+            "description": "The floor’s level (J-CR, D-335).",
+            "example": 12,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "floorName": {
+            "description": "The floor’s name (J-CR, D-335).",
+            "example": "ชั้น 12",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "incomplete": {
             "description": "Σ shares < 100 %: the register misses an owner; common-fee drafts of the unit are not issuable (`ownership_shares_incomplete`, D-323).",
@@ -53065,6 +53544,12 @@
               "null"
             ]
           },
+          "propertyId": {
+            "description": "The building’s property (J-CR, D-335).",
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
           "sharesTotal": {
             "description": "Σ of the current owners’ shares.",
             "example": "100.0000",
@@ -53110,6 +53595,10 @@
           "landAreaSqwa",
           "plotNo",
           "titleDeedNo",
+          "propertyId",
+          "floorId",
+          "floorLevel",
+          "floorName",
           "owners",
           "sharesTotal",
           "incomplete",
@@ -53375,6 +53864,16 @@
             },
             "type": "array"
           },
+          "enquiredListingSlugs": {
+            "description": "The same listings by slug (as `listings[].slug`) — to mark which places I already asked about (J-CR, LIFF #37).",
+            "example": [
+              "condo-1br-0a1b2c3d4e"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "type": "string"
@@ -53424,6 +53923,7 @@
           "destination",
           "listings",
           "enquiredListingIds",
+          "enquiredListingSlugs",
           "createdAt"
         ],
         "type": "object"
@@ -55028,6 +55528,11 @@
             },
             "type": "array"
           },
+          "inviteMaxDays": {
+            "description": "Longest window of an invite (`gate.invite_max_days` of the estate; J-CR, D-335).",
+            "example": 30,
+            "type": "integer"
+          },
           "policy": {
             "allOf": [
               {
@@ -55055,6 +55560,11 @@
               "version": 1
             }
           },
+          "rememberDays": {
+            "description": "Days a remembered car stays valid (`gate.remember_days` of the estate; J-CR, D-335).",
+            "example": 30,
+            "type": "integer"
+          },
           "unitId": {
             "example": "3b241101-e2bb-4255-8caf-4136c566a962",
             "format": "uuid",
@@ -55071,7 +55581,9 @@
           "policy",
           "canEdit",
           "gates",
-          "privacyNotice"
+          "privacyNotice",
+          "rememberDays",
+          "inviteMaxDays"
         ],
         "type": "object"
       },
@@ -55748,6 +56260,14 @@
             "example": true,
             "type": "boolean"
           },
+          "contractSha256": {
+            "description": "sha256 (hex) of the contract PDF a signature would bind — the same value `GET …/contract` answers; null until the contract is rendered (J-CR, LIFF #38).",
+            "example": "9f2c1a0e5b7d4c3a8e6f1b2d0c9a7e5f3b1d8c6a4e2f0b9d7c5a3e1f8b6d4c2a",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "currency": {
             "example": "THB",
             "type": "string"
@@ -55900,6 +56420,7 @@
           "contractAvailable",
           "noticeEarliestDate",
           "rulesAcknowledgedAt",
+          "contractSha256",
           "nextActions"
         ],
         "type": "object"
@@ -56132,6 +56653,14 @@
       },
       "ResidentMeUnitDto": {
         "properties": {
+          "areaSqm": {
+            "description": "Floor area m² (J-CR, D-335).",
+            "example": "34.77",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "buildingId": {
             "example": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
             "format": "uuid",
@@ -56157,6 +56686,14 @@
             },
             "type": "array"
           },
+          "landAreaSqwa": {
+            "description": "Land area in ตารางวา (J-CR).",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "leaseIds": {
             "description": "Leases in force on this unit that I am a party of.",
             "example": [],
@@ -56177,6 +56714,22 @@
             "description": "The law the building’s juristic management runs under (D-302); null for rentals without one.",
             "example": "condo_act"
           },
+          "ownershipRatio": {
+            "description": "อัตราส่วนกรรมสิทธิ์ as the register keeps it (6 decimals; J-CR, D-335).",
+            "example": "0.012345",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plotNo": {
+            "description": "Plot number (housing estates; J-CR).",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "propertyId": {
             "example": "3b241101-e2bb-4255-8caf-4136c566a962",
             "format": "uuid",
@@ -56193,6 +56746,11 @@
             ],
             "description": "What the place is (D-302): the app names the unit by it — ห้อง (condo / apartment), บ้าน (village), พื้นที่ (office / retail). null = not set.",
             "example": "condo"
+          },
+          "recurringAvailable": {
+            "description": "Auto-pay can be set up here now: a recurring channel is configured (O-020) and I hold a role that may set it up (co-owner, payer, tenant). False → hide the link (J-CR, D-335).",
+            "example": false,
+            "type": "boolean"
           },
           "roles": {
             "description": "Every role I hold on the unit today.",
@@ -56233,6 +56791,11 @@
           "tenantName",
           "roles",
           "capabilities",
+          "areaSqm",
+          "ownershipRatio",
+          "landAreaSqwa",
+          "plotNo",
+          "recurringAvailable",
           "leaseIds"
         ],
         "type": "object"
@@ -57367,7 +57930,8 @@
           "invoices",
           "usage",
           "access",
-          "lease"
+          "lease",
+          "gate"
         ],
         "type": "string"
       },
@@ -58224,11 +58788,32 @@
               }
             ],
             "example": "minutes"
+          },
+          "mimeType": {
+            "description": "J-CR (D-335).",
+            "example": "application/pdf",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "description": "Bytes (J-CR, D-335).",
+            "example": 482113,
+            "type": "integer"
+          },
+          "title": {
+            "description": "The file’s title (J-CR, D-335).",
+            "example": "รายงานการประชุมใหญ่สามัญประจำปี 2569.pdf",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "documentId",
           "kind",
+          "title",
+          "mimeType",
+          "sizeBytes",
           "createdAt"
         ],
         "type": "object"
@@ -58648,6 +59233,82 @@
         "required": [
           "idNumber",
           "emergencyContactPhone"
+        ],
+        "type": "object"
+      },
+      "RevenueScheduleDto": {
+        "properties": {
+          "billingCycleId": {
+            "example": "3b241101-e2bb-4255-8caf-4136c566a962",
+            "format": "uuid",
+            "type": "string"
+          },
+          "frequency": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BillingFrequency"
+              }
+            ],
+            "example": "annual"
+          },
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/RevenueScheduleMonthDto"
+            },
+            "type": "array"
+          },
+          "total": {
+            "description": "Σ of the months. Unit: THB, decimal string (D-046).",
+            "example": "28800.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "billingCycleId",
+          "frequency",
+          "months",
+          "total"
+        ],
+        "type": "object"
+      },
+      "RevenueScheduleMonthDto": {
+        "properties": {
+          "amount": {
+            "description": "Σ scheduled for the month over the cycle’s invoice lines. Unit: THB, decimal string (D-046).",
+            "example": "2400.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "credited": {
+            "description": "Σ taken back by credit notes. Unit: THB, decimal string (D-046).",
+            "example": "0.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          },
+          "fullyRecognised": {
+            "description": "Every line of the month was recognised.",
+            "example": true,
+            "type": "boolean"
+          },
+          "month": {
+            "description": "YYYY-MM (Bangkok).",
+            "example": "2027-02",
+            "type": "string"
+          },
+          "recognised": {
+            "description": "Σ recognised by the ledger job so far. Unit: THB, decimal string (D-046).",
+            "example": "2400.00",
+            "pattern": "^-?\\d{1,12}\\.\\d{2}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "month",
+          "amount",
+          "recognised",
+          "credited",
+          "fullyRecognised"
         ],
         "type": "object"
       },
@@ -70628,6 +71289,50 @@
         ],
         "type": "string"
       },
+      "VendorContractCountsDto": {
+        "properties": {
+          "active": {
+            "example": 6,
+            "type": "integer"
+          },
+          "all": {
+            "example": 9,
+            "type": "integer"
+          },
+          "draft": {
+            "example": 1,
+            "type": "integer"
+          },
+          "endingSoon": {
+            "description": "Active contracts ending within `endingWithinDays`.",
+            "example": 2,
+            "type": "integer"
+          },
+          "endingWithinDays": {
+            "description": "The query’s `endingWithinDays`, else the largest threshold of `juristic.contract_expiry_alert_days`.",
+            "example": 90,
+            "type": "integer"
+          },
+          "expired": {
+            "example": 1,
+            "type": "integer"
+          },
+          "terminated": {
+            "example": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "all",
+          "draft",
+          "active",
+          "expired",
+          "terminated",
+          "endingSoon",
+          "endingWithinDays"
+        ],
+        "type": "object"
+      },
       "VendorContractCreateDto": {
         "properties": {
           "buildingId": {
@@ -71356,6 +72061,28 @@
             ]
           }
         },
+        "type": "object"
+      },
+      "VendorCountsDto": {
+        "properties": {
+          "active": {
+            "example": 13,
+            "type": "integer"
+          },
+          "all": {
+            "example": 14,
+            "type": "integer"
+          },
+          "blocked": {
+            "example": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "all",
+          "active",
+          "blocked"
+        ],
         "type": "object"
       },
       "VendorCreateDto": {
@@ -72673,6 +73400,14 @@
       },
       "VisitCreatedDto": {
         "properties": {
+          "callBackName": {
+            "description": "First name of the resident who asked the guard to call (the guard calls the house number on file; D-315, J-CR).",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "callMeAt": {
             "description": "A resident asked the guard to call.",
             "example": null,
@@ -72704,6 +73439,14 @@
           "decidedAt": {
             "example": null,
             "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decidedByName": {
+            "description": "First name of the resident who approved or denied (first names only, D-315; J-CR, D-335).",
+            "example": "เกริก",
             "type": [
               "string",
               "null"
@@ -72791,6 +73534,15 @@
           },
           "note": {
             "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "overstayedAt": {
+            "description": "When the visit was found inside longer than the estate allows (`gate.visit.overstayed`) — survives a reload (J-CR, D-335).",
+            "example": null,
+            "format": "date-time",
             "type": [
               "string",
               "null"
@@ -72902,6 +73654,9 @@
           "idLast4",
           "note",
           "recordedAt",
+          "overstayedAt",
+          "decidedByName",
+          "callBackName",
           "replayed"
         ],
         "type": "object"
@@ -73515,6 +74270,14 @@
       },
       "VisitLogDetailDto": {
         "properties": {
+          "callBackName": {
+            "description": "First name of the resident who asked the guard to call (the guard calls the house number on file; D-315, J-CR).",
+            "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "callMeAt": {
             "description": "A resident asked the guard to call.",
             "example": null,
@@ -73546,6 +74309,14 @@
           "decidedAt": {
             "example": null,
             "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decidedByName": {
+            "description": "First name of the resident who approved or denied (first names only, D-315; J-CR, D-335).",
+            "example": "เกริก",
             "type": [
               "string",
               "null"
@@ -73640,6 +74411,15 @@
           },
           "note": {
             "example": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "overstayedAt": {
+            "description": "When the visit was found inside longer than the estate allows (`gate.visit.overstayed`) — survives a reload (J-CR, D-335).",
+            "example": null,
+            "format": "date-time",
             "type": [
               "string",
               "null"
@@ -73746,6 +74526,9 @@
           "idLast4",
           "note",
           "recordedAt",
+          "overstayedAt",
+          "decidedByName",
+          "callBackName",
           "events"
         ],
         "type": "object"
@@ -76422,6 +77205,242 @@
         ],
         "x-required-permissions": [
           "admin.setting.manage"
+        ],
+        "x-surface": "admin"
+      }
+    },
+    "/v1/admin/buildings/stubs": {
+      "get": {
+        "description": "Condo stubs that landlords created before the juristic person joined (status `external`, D-251), by building / project name or address (`q`), with the number of units landlords put in each — to pick the stub to hand over with `claim-stub` instead of pasting its id (J-CR, D-335; D-280).\n\nImplements: D-280, D-335.",
+        "operationId": "admin.buildings.stubs",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Sort field; each endpoint validates it against its own allow-list.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "example": "createdAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "description": "Free-text search",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "address": "ถนนสุขุมวิท พระโขนง คลองเตย กรุงเทพมหานคร 10110",
+                      "id": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                      "landlordUnits": 7,
+                      "name": "ไลฟ์ สุขุมวิท 48",
+                      "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "propertyName": "ไลฟ์ สุขุมวิท 48"
+                    }
+                  ],
+                  "meta": {
+                    "page": 1,
+                    "perPage": 25,
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/AdminStubBuildingDto"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "One page of results",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platformBearer": []
+          }
+        ],
+        "summary": "Stub buildings to claim",
+        "tags": [
+          "admin.buildings"
+        ],
+        "x-required-permissions": [
+          "admin.building.manage"
         ],
         "x-surface": "admin"
       }
@@ -115712,7 +116731,8 @@
                     {
                       "displayName": "สมศักดิ์",
                       "guardId": "3b241101-e2bb-4255-8caf-4136c566a962",
-                      "locked": false
+                      "locked": false,
+                      "lockedUntil": null
                     }
                   ],
                   "propertyName": "หมู่บ้านตัวอย่าง"
@@ -123906,11 +124926,13 @@
             "content": {
               "application/json": {
                 "example": {
+                  "callBackName": null,
                   "callMeAt": null,
                   "cancelledAt": null,
                   "clientRef": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "createdAt": "2026-11-05T18:00:00+07:00",
                   "decidedAt": null,
+                  "decidedByName": null,
                   "decisionReason": null,
                   "enteredAt": null,
                   "entryBasis": "invite",
@@ -123923,6 +124945,7 @@
                   "idLast4": "1234",
                   "kind": "guest",
                   "note": null,
+                  "overstayedAt": null,
                   "plate": {
                     "category": "1กข",
                     "number": "1234",
@@ -124181,6 +125204,7 @@
             "content": {
               "application/json": {
                 "example": {
+                  "autoLockMinutes": 5,
                   "gateDeviceId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "gateDeviceName": "แท็บเล็ตป้อมหน้า",
                   "gateId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -125381,7 +126405,7 @@
     },
     "/v1/guard/units": {
       "get": {
-        "description": "Units of the gate’s property by number (`q`), with whether anyone of the house can be asked in LINE (no names) and the house policy. `hasArrears` appears only while `gate.show_arrears` is on (⚖ O-038, off by default) — otherwise no arrears data at all (D-315).\n\nImplements: D-315, D-327.",
+        "description": "Units of the gate’s property by house number or soi / building name (`q`, J-CR), with whether anyone of the house can be asked in LINE (no names) and the house policy. `hasArrears` appears only while `gate.show_arrears` is on (⚖ O-038, off by default) — otherwise no arrears data at all (D-315).\n\nImplements: D-315, D-327.",
         "operationId": "guard.units.list",
         "parameters": [
           {
@@ -125609,11 +126633,13 @@
               "application/json": {
                 "example": [
                   {
+                    "callBackName": null,
                     "callMeAt": null,
                     "cancelledAt": null,
                     "clientRef": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "createdAt": "2026-11-05T18:00:00+07:00",
                     "decidedAt": null,
+                    "decidedByName": null,
                     "decisionReason": null,
                     "enteredAt": null,
                     "entryBasis": null,
@@ -125626,6 +126652,7 @@
                     "idLast4": "1234",
                     "kind": "guest",
                     "note": null,
+                    "overstayedAt": null,
                     "plate": {
                       "category": "1กข",
                       "number": "1234",
@@ -125828,11 +126855,13 @@
             "content": {
               "application/json": {
                 "example": {
+                  "callBackName": null,
                   "callMeAt": null,
                   "cancelledAt": null,
                   "clientRef": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "createdAt": "2026-11-05T18:00:00+07:00",
                   "decidedAt": null,
+                  "decidedByName": null,
                   "decisionReason": null,
                   "enteredAt": null,
                   "entryBasis": null,
@@ -125845,6 +126874,7 @@
                   "idLast4": "1234",
                   "kind": "guest",
                   "note": null,
+                  "overstayedAt": null,
                   "plate": {
                     "category": "1กข",
                     "number": "1234",
@@ -126289,6 +127319,7 @@
                   "clientRef": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "createdAt": "2026-11-05T18:00:00+07:00",
                   "decidedAt": null,
+                  "decidedByName": null,
                   "decisionReason": null,
                   "enteredAt": null,
                   "entryBasis": null,
@@ -126302,6 +127333,7 @@
                   "idLast4": "1234",
                   "kind": "guest",
                   "note": null,
+                  "overstayedAt": null,
                   "photoUrl": null,
                   "plate": {
                     "category": "1กข",
@@ -126522,11 +127554,13 @@
             "content": {
               "application/json": {
                 "example": {
+                  "callBackName": null,
                   "callMeAt": null,
                   "cancelledAt": null,
                   "clientRef": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "createdAt": "2026-11-05T18:00:00+07:00",
                   "decidedAt": null,
+                  "decidedByName": null,
                   "decisionReason": null,
                   "enteredAt": null,
                   "entryBasis": null,
@@ -126539,6 +127573,7 @@
                   "idLast4": "1234",
                   "kind": "guest",
                   "note": null,
+                  "overstayedAt": null,
                   "plate": {
                     "category": "1กข",
                     "number": "1234",
@@ -126808,11 +127843,13 @@
             "content": {
               "application/json": {
                 "example": {
+                  "callBackName": null,
                   "callMeAt": null,
                   "cancelledAt": null,
                   "clientRef": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "createdAt": "2026-11-05T18:00:00+07:00",
                   "decidedAt": null,
+                  "decidedByName": null,
                   "decisionReason": null,
                   "enteredAt": null,
                   "entryBasis": null,
@@ -126825,6 +127862,7 @@
                   "idLast4": "1234",
                   "kind": "guest",
                   "note": null,
+                  "overstayedAt": null,
                   "plate": {
                     "category": "1กข",
                     "number": "1234",
@@ -127084,11 +128122,13 @@
             "content": {
               "application/json": {
                 "example": {
+                  "callBackName": null,
                   "callMeAt": null,
                   "cancelledAt": null,
                   "clientRef": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "createdAt": "2026-11-05T18:00:00+07:00",
                   "decidedAt": null,
+                  "decidedByName": null,
                   "decisionReason": null,
                   "enteredAt": null,
                   "entryBasis": null,
@@ -127101,6 +128141,7 @@
                   "idLast4": "1234",
                   "kind": "guest",
                   "note": null,
+                  "overstayedAt": null,
                   "plate": {
                     "category": "1กข",
                     "number": "1234",
@@ -127370,11 +128411,13 @@
             "content": {
               "application/json": {
                 "example": {
+                  "callBackName": null,
                   "callMeAt": null,
                   "cancelledAt": null,
                   "clientRef": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "createdAt": "2026-11-05T18:00:00+07:00",
                   "decidedAt": null,
+                  "decidedByName": null,
                   "decisionReason": null,
                   "enteredAt": null,
                   "entryBasis": null,
@@ -127387,6 +128430,7 @@
                   "idLast4": "1234",
                   "kind": "guest",
                   "note": null,
+                  "overstayedAt": null,
                   "plate": {
                     "category": "1กข",
                     "number": "1234",
@@ -134916,6 +135960,243 @@
         ],
         "x-required-permissions": [
           "invoice.issue"
+        ],
+        "x-surface": "owner"
+      }
+    },
+    "/v1/owner/billing-cycles/{billingCycleId}/revenue-schedule": {
+      "get": {
+        "description": "Quarterly / semiannual / annual cycles: Σ per month of the revenue schedule of the cycle’s issued invoice lines (money billed in advance is recognised month by month), with what the ledger recognised and what credit notes took back; a monthly cycle answers no months. Another tenant’s cycle → 404 (J-CR, D-335; D-303).\n\nImplements: D-303, D-335.",
+        "operationId": "owner.billingCycles.revenueSchedule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "billingCycleId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "billingCycleId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "frequency": "annual",
+                  "months": [
+                    {
+                      "amount": "2400.00",
+                      "credited": "0.00",
+                      "fullyRecognised": true,
+                      "month": "2027-01",
+                      "recognised": "2400.00"
+                    },
+                    {
+                      "amount": "2400.00",
+                      "credited": "0.00",
+                      "fullyRecognised": false,
+                      "month": "2027-02",
+                      "recognised": "0.00"
+                    }
+                  ],
+                  "total": "4800.00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RevenueScheduleDto"
+                }
+              }
+            },
+            "description": "Schedule",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Unearned schedule of an advance cycle",
+        "tags": [
+          "owner.billing"
+        ],
+        "x-required-permissions": [
+          "invoice.read"
         ],
         "x-surface": "owner"
       }
@@ -148598,6 +149879,7 @@
                     "grantedVersion": 1,
                     "key": "operator.terms",
                     "language": "th",
+                    "lastGranted": true,
                     "required": true,
                     "title": "ข้อกำหนดการใช้งาน getproperty",
                     "version": 1
@@ -148801,6 +150083,7 @@
                       "grantedVersion": 1,
                       "key": "operator.terms",
                       "language": "th",
+                      "lastGranted": true,
                       "required": true,
                       "title": "ข้อกำหนดการใช้งาน getproperty",
                       "version": 1
@@ -172344,11 +173627,13 @@
                 "example": {
                   "data": [
                     {
+                      "callBackName": null,
                       "callMeAt": null,
                       "cancelledAt": null,
                       "clientRef": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "createdAt": "2026-11-05T18:00:00+07:00",
                       "decidedAt": null,
+                      "decidedByName": null,
                       "decisionReason": null,
                       "enteredAt": null,
                       "entryBasis": null,
@@ -172361,6 +173646,7 @@
                       "idLast4": "1234",
                       "kind": "guest",
                       "note": null,
+                      "overstayedAt": null,
                       "plate": {
                         "category": "1กข",
                         "number": "1234",
@@ -172604,11 +173890,13 @@
             "content": {
               "application/json": {
                 "example": {
+                  "callBackName": null,
                   "callMeAt": null,
                   "cancelledAt": null,
                   "clientRef": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "createdAt": "2026-11-05T18:00:00+07:00",
                   "decidedAt": null,
+                  "decidedByName": null,
                   "decisionReason": null,
                   "enteredAt": null,
                   "entryBasis": null,
@@ -172622,6 +173910,7 @@
                   "idLast4": "1234",
                   "kind": "guest",
                   "note": null,
+                  "overstayedAt": null,
                   "plate": {
                     "category": "1กข",
                     "number": "1234",
@@ -194716,6 +196005,212 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/juristic/expense-accounts": {
+      "get": {
+        "description": "The active expense accounts of the chart, for whoever may request an expense or spend petty cash (staff, accountant) without reading the whole chart (`juristic.accounting.read`). Juristic tenants only (404 otherwise) (J-CR, D-335; D-311, D-329).\n\nImplements: D-311, D-329, D-335.",
+        "operationId": "owner.juristicExpenseAccounts.list",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "bankAccountId": null,
+                      "code": "5100",
+                      "fundId": null,
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "isActive": true,
+                      "isSystem": true,
+                      "nameEn": "Common fee income",
+                      "nameTh": "รายได้ค่าส่วนกลาง",
+                      "role": "income_common_fee",
+                      "type": "expense",
+                      "used": true,
+                      "version": 1
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AccountListDto"
+                }
+              }
+            },
+            "description": "Expense accounts by code",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Expense accounts to request against",
+        "tags": [
+          "owner.juristicAccounting"
+        ],
+        "x-required-permissions": [
+          "juristic.expense.request"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/juristic/expense-requests": {
       "get": {
         "description": "Newest first; filters state, kind (expense · petty_cash_top_up), building and `awaitingMe` (submitted requests the caller’s role may approve, not requested nor decided by the caller) (D-311, D-329).\n\nImplements: D-311, D-329.",
@@ -194815,6 +196310,16 @@
             "content": {
               "application/json": {
                 "example": {
+                  "counts": {
+                    "all": 12,
+                    "approved": 2,
+                    "awaitingMe": 2,
+                    "cancelled": 1,
+                    "draft": 1,
+                    "paid": 4,
+                    "rejected": 1,
+                    "submitted": 3
+                  },
                   "data": [
                     {
                       "amount": "42800.00",
@@ -194910,6 +196415,10 @@
                 },
                 "schema": {
                   "properties": {
+                    "counts": {
+                      "$ref": "#/components/schemas/ExpenseRequestCountsDto",
+                      "description": "Requests per state and awaiting me for the same building and kind, whatever `state` / `awaitingMe` ask (J-CR, D-335)."
+                    },
                     "data": {
                       "items": {
                         "$ref": "#/components/schemas/ExpenseRequestDto"
@@ -194922,7 +196431,8 @@
                   },
                   "required": [
                     "data",
-                    "meta"
+                    "meta",
+                    "counts"
                   ],
                   "type": "object"
                 }
@@ -203012,6 +204522,15 @@
             }
           },
           {
+            "description": "true: only jobs that block a new one (draft, validated, reconciled, committed); false: only the others (J-CR, D-335).",
+            "in": "query",
+            "name": "open",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "in": "query",
             "name": "buildingId",
             "required": false,
@@ -203080,12 +204599,27 @@
                         "explanationRequired": false,
                         "items": [
                           {
+                            "accountType": null,
                             "difference": "0.00",
+                            "fundName": null,
                             "imported": "845210.50",
                             "key": "receivables",
                             "kind": "receivables",
                             "label": "receivables",
+                            "last4": null,
                             "reference": "845210.50",
+                            "status": "match"
+                          },
+                          {
+                            "accountType": "operating",
+                            "difference": "0.00",
+                            "fundName": null,
+                            "imported": "120000.00",
+                            "key": "bank:2",
+                            "kind": "bank",
+                            "label": "operating ••4012",
+                            "last4": "4012",
+                            "reference": "120000.00",
                             "status": "match"
                           }
                         ],
@@ -203914,12 +205448,27 @@
                     "explanationRequired": false,
                     "items": [
                       {
+                        "accountType": null,
                         "difference": "0.00",
+                        "fundName": null,
                         "imported": "845210.50",
                         "key": "receivables",
                         "kind": "receivables",
                         "label": "receivables",
+                        "last4": null,
                         "reference": "845210.50",
+                        "status": "match"
+                      },
+                      {
+                        "accountType": "operating",
+                        "difference": "0.00",
+                        "fundName": null,
+                        "imported": "120000.00",
+                        "key": "bank:2",
+                        "kind": "bank",
+                        "label": "operating ••4012",
+                        "last4": "4012",
+                        "reference": "120000.00",
                         "status": "match"
                       }
                     ],
@@ -204203,12 +205752,27 @@
                     "explanationRequired": false,
                     "items": [
                       {
+                        "accountType": null,
                         "difference": "0.00",
+                        "fundName": null,
                         "imported": "845210.50",
                         "key": "receivables",
                         "kind": "receivables",
                         "label": "receivables",
+                        "last4": null,
                         "reference": "845210.50",
+                        "status": "match"
+                      },
+                      {
+                        "accountType": "operating",
+                        "difference": "0.00",
+                        "fundName": null,
+                        "imported": "120000.00",
+                        "key": "bank:2",
+                        "kind": "bank",
+                        "label": "operating ••4012",
+                        "last4": "4012",
+                        "reference": "120000.00",
                         "status": "match"
                       }
                     ],
@@ -204548,12 +206112,27 @@
                     "explanationRequired": false,
                     "items": [
                       {
+                        "accountType": null,
                         "difference": "0.00",
+                        "fundName": null,
                         "imported": "845210.50",
                         "key": "receivables",
                         "kind": "receivables",
                         "label": "receivables",
+                        "last4": null,
                         "reference": "845210.50",
+                        "status": "match"
+                      },
+                      {
+                        "accountType": "operating",
+                        "difference": "0.00",
+                        "fundName": null,
+                        "imported": "120000.00",
+                        "key": "bank:2",
+                        "kind": "bank",
+                        "label": "operating ••4012",
+                        "last4": "4012",
+                        "reference": "120000.00",
                         "status": "match"
                       }
                     ],
@@ -204931,12 +206510,27 @@
                     "explanationRequired": false,
                     "items": [
                       {
+                        "accountType": null,
                         "difference": "0.00",
+                        "fundName": null,
                         "imported": "845210.50",
                         "key": "receivables",
                         "kind": "receivables",
                         "label": "receivables",
+                        "last4": null,
                         "reference": "845210.50",
+                        "status": "match"
+                      },
+                      {
+                        "accountType": "operating",
+                        "difference": "0.00",
+                        "fundName": null,
+                        "imported": "120000.00",
+                        "key": "bank:2",
+                        "kind": "bank",
+                        "label": "operating ••4012",
+                        "last4": "4012",
+                        "reference": "120000.00",
                         "status": "match"
                       }
                     ],
@@ -205291,12 +206885,27 @@
                     "explanationRequired": false,
                     "items": [
                       {
+                        "accountType": null,
                         "difference": "0.00",
+                        "fundName": null,
                         "imported": "845210.50",
                         "key": "receivables",
                         "kind": "receivables",
                         "label": "receivables",
+                        "last4": null,
                         "reference": "845210.50",
+                        "status": "match"
+                      },
+                      {
+                        "accountType": "operating",
+                        "difference": "0.00",
+                        "fundName": null,
+                        "imported": "120000.00",
+                        "key": "bank:2",
+                        "kind": "bank",
+                        "label": "operating ••4012",
+                        "last4": "4012",
+                        "reference": "120000.00",
                         "status": "match"
                       }
                     ],
@@ -205650,12 +207259,27 @@
                     "explanationRequired": false,
                     "items": [
                       {
+                        "accountType": null,
                         "difference": "0.00",
+                        "fundName": null,
                         "imported": "845210.50",
                         "key": "receivables",
                         "kind": "receivables",
                         "label": "receivables",
+                        "last4": null,
                         "reference": "845210.50",
+                        "status": "match"
+                      },
+                      {
+                        "accountType": "operating",
+                        "difference": "0.00",
+                        "fundName": null,
+                        "imported": "120000.00",
+                        "key": "bank:2",
+                        "kind": "bank",
+                        "label": "operating ••4012",
+                        "last4": "4012",
+                        "reference": "120000.00",
                         "status": "match"
                       }
                     ],
@@ -205986,12 +207610,27 @@
                     "explanationRequired": false,
                     "items": [
                       {
+                        "accountType": null,
                         "difference": "0.00",
+                        "fundName": null,
                         "imported": "845210.50",
                         "key": "receivables",
                         "kind": "receivables",
                         "label": "receivables",
+                        "last4": null,
                         "reference": "845210.50",
+                        "status": "match"
+                      },
+                      {
+                        "accountType": "operating",
+                        "difference": "0.00",
+                        "fundName": null,
+                        "imported": "120000.00",
+                        "key": "bank:2",
+                        "kind": "bank",
+                        "label": "operating ••4012",
+                        "last4": "4012",
+                        "reference": "120000.00",
                         "status": "match"
                       }
                     ],
@@ -206586,12 +208225,27 @@
                     "explanationRequired": false,
                     "items": [
                       {
+                        "accountType": null,
                         "difference": "0.00",
+                        "fundName": null,
                         "imported": "845210.50",
                         "key": "receivables",
                         "kind": "receivables",
                         "label": "receivables",
+                        "last4": null,
                         "reference": "845210.50",
+                        "status": "match"
+                      },
+                      {
+                        "accountType": "operating",
+                        "difference": "0.00",
+                        "fundName": null,
+                        "imported": "120000.00",
+                        "key": "bank:2",
+                        "kind": "bank",
+                        "label": "operating ••4012",
+                        "last4": "4012",
+                        "reference": "120000.00",
                         "status": "match"
                       }
                     ],
@@ -206927,12 +208581,27 @@
                     "explanationRequired": false,
                     "items": [
                       {
+                        "accountType": null,
                         "difference": "0.00",
+                        "fundName": null,
                         "imported": "845210.50",
                         "key": "receivables",
                         "kind": "receivables",
                         "label": "receivables",
+                        "last4": null,
                         "reference": "845210.50",
+                        "status": "match"
+                      },
+                      {
+                        "accountType": "operating",
+                        "difference": "0.00",
+                        "fundName": null,
+                        "imported": "120000.00",
+                        "key": "bank:2",
+                        "kind": "bank",
+                        "label": "operating ••4012",
+                        "last4": "4012",
+                        "reference": "120000.00",
                         "status": "match"
                       }
                     ],
@@ -217603,6 +219272,14 @@
             "content": {
               "application/json": {
                 "example": {
+                  "counts": {
+                    "all": 7,
+                    "awaitingApproval": 1,
+                    "awaitingMe": 1,
+                    "awarded": 3,
+                    "cancelled": 1,
+                    "open": 2
+                  },
                   "data": [
                     {
                       "aboveThreshold": true,
@@ -217673,6 +219350,10 @@
                 },
                 "schema": {
                   "properties": {
+                    "counts": {
+                      "$ref": "#/components/schemas/QuotationRoundCountsDto",
+                      "description": "Rounds per state for the same building, whatever `state` / `awaitingMe` ask, and the awards awaiting me (J-CR, D-335)."
+                    },
                     "data": {
                       "items": {
                         "$ref": "#/components/schemas/QuotationRoundDto"
@@ -217685,7 +219366,8 @@
                   },
                   "required": [
                     "data",
-                    "meta"
+                    "meta",
+                    "counts"
                   ],
                   "type": "object"
                 }
@@ -220198,6 +221880,12 @@
             "content": {
               "application/json": {
                 "example": {
+                  "counts": {
+                    "all": 1,
+                    "atStep": 1,
+                    "dispute": 0,
+                    "plan": 0
+                  },
                   "data": [
                     {
                       "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
@@ -220775,6 +222463,16 @@
             }
           },
           {
+            "description": "Every building (soi) of this property — a housing estate in one list (J-CR, D-335).",
+            "in": "query",
+            "name": "propertyId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
             "description": "Only units whose shares sum below (true) / to (false) 100 %.",
             "in": "query",
             "name": "incomplete",
@@ -220801,6 +222499,9 @@
                       "billTo": [],
                       "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                       "buildingName": "อาคาร A",
+                      "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "floorLevel": 12,
+                      "floorName": "ชั้น 12",
                       "incomplete": true,
                       "landAreaSqwa": null,
                       "legalForm": "condo_act",
@@ -220824,6 +222525,7 @@
                       ],
                       "ownershipRatio": "0.012345",
                       "plotNo": null,
+                      "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "sharesTotal": "60.0000",
                       "titleDeedNo": null,
                       "type": "condo_unit",
@@ -221045,6 +222747,265 @@
         "x-surface": "owner"
       }
     },
+    "/v1/owner/juristic/register/owners": {
+      "get": {
+        "description": "Today’s co-owners of the tenant’s units, one row per unit × owner, by owner name — for the debt-clearance and statement pickers without reading the whole register. `q` matches the owner name, unit or plot number; `buildingId` / `propertyId` narrow it (another tenant’s building or property → 404); at most `limit` (≤ 100) rows (J-CR, D-335; D-306, D-324).\n\nImplements: D-335, D-306, D-324.",
+        "operationId": "owner.juristicRegister.owners",
+        "parameters": [
+          {
+            "description": "Owner name, unit number or plot number (contains).",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "example": "สมชาย",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "buildingId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "propertyId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
+                      "buildingName": "อาคาร A",
+                      "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "partyName": "ผู้เช่า ทดสอบ",
+                      "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "unitNo": "A-201"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterOwnerPickListDto"
+                }
+              }
+            },
+            "description": "Owners",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "tenant.context_invalid": {
+                    "$ref": "#/components/examples/problem.tenant.context_invalid"
+                  },
+                  "tenant.context_required": {
+                    "$ref": "#/components/examples/problem.tenant.context_required"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `tenant.context_invalid`, `tenant.context_required`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  },
+                  "tenant.not_in_scope": {
+                    "$ref": "#/components/examples/problem.tenant.not_in_scope"
+                  },
+                  "tenant.read_only": {
+                    "$ref": "#/components/examples/problem.tenant.read_only"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`, `tenant.not_in_scope`, `tenant.read_only`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "operatorBearer": []
+          }
+        ],
+        "summary": "Co-owners for a picker",
+        "tags": [
+          "owner.juristicRegister"
+        ],
+        "x-required-permissions": [
+          "juristic.register.read"
+        ],
+        "x-surface": "owner"
+      }
+    },
     "/v1/owner/juristic/register/units/{unitId}": {
       "get": {
         "description": "The unit’s current owners plus every ownership row (history), every bill-to row and the recorded transfers (D-303, D-307, D-324). A unit of a building the tenant does not operate is 404.\n\nImplements: D-307, D-324.",
@@ -221075,6 +223036,9 @@
                   "billToHistory": [],
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
+                  "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "floorLevel": 12,
+                  "floorName": "ชั้น 12",
                   "history": [
                     {
                       "ownershipId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -221116,6 +223080,7 @@
                   ],
                   "ownershipRatio": "0.012345",
                   "plotNo": null,
+                  "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "sharesTotal": "60.0000",
                   "titleDeedNo": null,
                   "transfers": [
@@ -221385,6 +223350,9 @@
                   "billToHistory": [],
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
+                  "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "floorLevel": 12,
+                  "floorName": "ชั้น 12",
                   "history": [
                     {
                       "ownershipId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -221426,6 +223394,7 @@
                   ],
                   "ownershipRatio": "0.012345",
                   "plotNo": null,
+                  "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "sharesTotal": "60.0000",
                   "titleDeedNo": null,
                   "transfers": [
@@ -221728,6 +223697,9 @@
                   "billToHistory": [],
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
+                  "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "floorLevel": 12,
+                  "floorName": "ชั้น 12",
                   "history": [
                     {
                       "ownershipId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -221769,6 +223741,7 @@
                   ],
                   "ownershipRatio": "0.012345",
                   "plotNo": null,
+                  "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "sharesTotal": "60.0000",
                   "titleDeedNo": null,
                   "transfers": [
@@ -222050,6 +224023,9 @@
                   "billToHistory": [],
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
+                  "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "floorLevel": 12,
+                  "floorName": "ชั้น 12",
                   "history": [
                     {
                       "ownershipId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -222091,6 +224067,7 @@
                   ],
                   "ownershipRatio": "0.012345",
                   "plotNo": null,
+                  "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "sharesTotal": "60.0000",
                   "titleDeedNo": null,
                   "transfers": [
@@ -222369,6 +224346,9 @@
                   "billToHistory": [],
                   "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                   "buildingName": "อาคาร A",
+                  "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "floorLevel": 12,
+                  "floorName": "ชั้น 12",
                   "history": [
                     {
                       "ownershipId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -222410,6 +224390,7 @@
                   ],
                   "ownershipRatio": "0.012345",
                   "plotNo": null,
+                  "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "sharesTotal": "60.0000",
                   "titleDeedNo": null,
                   "transfers": [
@@ -222938,6 +224919,9 @@
                     "billToHistory": [],
                     "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                     "buildingName": "อาคาร A",
+                    "floorId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "floorLevel": 12,
+                    "floorName": "ชั้น 12",
                     "history": [
                       {
                         "ownershipId": "3b241101-e2bb-4255-8caf-4136c566a962",
@@ -222979,6 +224963,7 @@
                     ],
                     "ownershipRatio": "0.012345",
                     "plotNo": null,
+                    "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                     "sharesTotal": "60.0000",
                     "titleDeedNo": null,
                     "transfers": [
@@ -228634,6 +230619,15 @@
             "content": {
               "application/json": {
                 "example": {
+                  "counts": {
+                    "active": 6,
+                    "all": 9,
+                    "draft": 1,
+                    "endingSoon": 2,
+                    "endingWithinDays": 90,
+                    "expired": 1,
+                    "terminated": 1
+                  },
                   "data": [
                     {
                       "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
@@ -228664,6 +230658,10 @@
                 },
                 "schema": {
                   "properties": {
+                    "counts": {
+                      "$ref": "#/components/schemas/VendorContractCountsDto",
+                      "description": "Contracts per state for the same vendor and building, whatever `state` asks, and the renewal queue (J-CR, D-335)."
+                    },
                     "data": {
                       "items": {
                         "$ref": "#/components/schemas/VendorContractDto"
@@ -228676,7 +230674,8 @@
                   },
                   "required": [
                     "data",
-                    "meta"
+                    "meta",
+                    "counts"
                   ],
                   "type": "object"
                 }
@@ -232506,6 +234505,28 @@
             }
           },
           {
+            "description": "Vendors offering any of these categories (repeat the parameter or separate with commas; J-CR, D-335). Combined with `category` by AND.",
+            "in": "query",
+            "name": "categories",
+            "required": false,
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/VendorCategory"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "description": "The vendor of this party (a vendor per party; J-CR, D-335).",
+            "in": "query",
+            "name": "partyId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
             "$ref": "#/components/parameters/TenantIdHeader"
           },
           {
@@ -232517,6 +234538,11 @@
             "content": {
               "application/json": {
                 "example": {
+                  "counts": {
+                    "active": 13,
+                    "all": 14,
+                    "blocked": 1
+                  },
                   "data": [
                     {
                       "activeContracts": 1,
@@ -232549,6 +234575,10 @@
                 },
                 "schema": {
                   "properties": {
+                    "counts": {
+                      "$ref": "#/components/schemas/VendorCountsDto",
+                      "description": "Vendors per state for the same search and categories, whatever `state` asks (J-CR, D-335)."
+                    },
                     "data": {
                       "items": {
                         "$ref": "#/components/schemas/VendorDto"
@@ -232561,7 +234591,8 @@
                   },
                   "required": [
                     "data",
-                    "meta"
+                    "meta",
+                    "counts"
                   ],
                   "type": "object"
                 }
@@ -272262,6 +274293,7 @@
                       "masked": "xxx-x-x1234-x",
                       "method": "direct_debit",
                       "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "partyName": "ผู้เช่า ทดสอบ",
                       "provider": "fake",
                       "scope": "advance_invoices",
                       "state": "active",
@@ -272513,6 +274545,7 @@
                   "masked": "xxx-x-x1234-x",
                   "method": "direct_debit",
                   "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "partyName": "ผู้เช่า ทดสอบ",
                   "provider": "fake",
                   "scope": "advance_invoices",
                   "state": "revoked",
@@ -306283,6 +308316,16 @@
             }
           },
           {
+            "description": "Units of every building of this property (a housing estate’s soi) — J-CR (D-335).",
+            "in": "query",
+            "name": "propertyId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
             "name": "floorId",
             "required": false,
@@ -329211,6 +331254,7 @@
                     "grantedVersion": 1,
                     "key": "resident.service",
                     "language": "th",
+                    "lastGranted": true,
                     "required": true,
                     "title": "การใช้ข้อมูลเพื่อให้บริการผู้พักอาศัย",
                     "version": 1
@@ -329385,6 +331429,7 @@
                       "grantedVersion": 1,
                       "key": "resident.service",
                       "language": "th",
+                      "lastGranted": true,
                       "required": true,
                       "title": "การใช้ข้อมูลเพื่อให้บริการผู้พักอาศัย",
                       "version": 1
@@ -337241,6 +339286,7 @@
                     "advanceRentAmount": "4500.00",
                     "buildingName": "อาคาร A",
                     "contractAvailable": true,
+                    "contractSha256": "9f2c1a0e5b7d4c3a8e6f1b2d0c9a7e5f3b1d8c6a4e2f0b9d7c5a3e1f8b6d4c2a",
                     "currency": "THB",
                     "depositAmount": "4500.00",
                     "endDate": "2027-10-31",
@@ -337433,6 +339479,7 @@
                   "advanceRentAmount": "4500.00",
                   "buildingName": "อาคาร A",
                   "contractAvailable": true,
+                  "contractSha256": "9f2c1a0e5b7d4c3a8e6f1b2d0c9a7e5f3b1d8c6a4e2f0b9d7c5a3e1f8b6d4c2a",
                   "currency": "THB",
                   "depositAmount": "4500.00",
                   "endDate": "2027-10-31",
@@ -337892,6 +339939,7 @@
                   "advanceRentAmount": "4500.00",
                   "buildingName": "อาคาร A",
                   "contractAvailable": true,
+                  "contractSha256": "9f2c1a0e5b7d4c3a8e6f1b2d0c9a7e5f3b1d8c6a4e2f0b9d7c5a3e1f8b6d4c2a",
                   "currency": "THB",
                   "depositAmount": "4500.00",
                   "endDate": "2027-10-31",
@@ -339930,6 +341978,7 @@
                   "advanceRentAmount": "4500.00",
                   "buildingName": "อาคาร A",
                   "contractAvailable": true,
+                  "contractSha256": "9f2c1a0e5b7d4c3a8e6f1b2d0c9a7e5f3b1d8c6a4e2f0b9d7c5a3e1f8b6d4c2a",
                   "currency": "THB",
                   "depositAmount": "4500.00",
                   "endDate": "2027-10-31",
@@ -340230,6 +342279,7 @@
                   "advanceRentAmount": "4500.00",
                   "buildingName": "อาคาร A",
                   "contractAvailable": true,
+                  "contractSha256": "9f2c1a0e5b7d4c3a8e6f1b2d0c9a7e5f3b1d8c6a4e2f0b9d7c5a3e1f8b6d4c2a",
                   "currency": "THB",
                   "depositAmount": "4500.00",
                   "endDate": "2027-10-31",
@@ -343206,6 +345256,7 @@
                       "grantedVersion": 1,
                       "key": "resident.service",
                       "language": "th",
+                      "lastGranted": true,
                       "required": true,
                       "title": "การใช้ข้อมูลเพื่อให้บริการผู้พักอาศัย",
                       "version": 1
@@ -344724,7 +346775,7 @@
     },
     "/v1/resident/me/units": {
       "get": {
-        "description": "Every unit of my `unit:` scopes across tenants — units I live in (occupancy) **or** own (co-owner in the register, D-309) — with my roles today (`co_owner`, `tenant`, `co_tenant`, `family`, `payer`; source `ownership`, `occupancy` or `lease`) and the navigation `capabilities` of each unit (D-322). A lease alone never adds a unit; a former owner’s unit disappears on the ownership’s end date. `unitsHash` changes with any role; `refreshRequired` = my token’s unit scopes differ from today’s units (refresh before switching unit).\n\nImplements: D-025, D-309, D-322.",
+        "description": "Every unit of my `unit:` scopes across tenants (with the register’s measures and whether auto-pay can be set up, J-CR) — units I live in (occupancy) **or** own (co-owner in the register, D-309) — with my roles today (`co_owner`, `tenant`, `co_tenant`, `family`, `payer`; source `ownership`, `occupancy` or `lease`) and the navigation `capabilities` of each unit (D-322). A lease alone never adds a unit; a former owner’s unit disappears on the ownership’s end date. `unitsHash` changes with any role; `refreshRequired` = my token’s unit scopes differ from today’s units (refresh before switching unit).\n\nImplements: D-025, D-309, D-322.",
         "operationId": "resident.units.list",
         "parameters": [
           {
@@ -344739,6 +346790,7 @@
                   "refreshRequired": false,
                   "units": [
                     {
+                      "areaSqm": "34.77",
                       "buildingId": "5c8e2a1f-6b3d-4e7a-9f0c-1d2e3f4a5b6c",
                       "buildingName": "อาคาร A",
                       "capabilities": [
@@ -344750,10 +346802,14 @@
                         "service_requests",
                         "invoices"
                       ],
+                      "landAreaSqwa": null,
                       "leaseIds": [],
                       "legalForm": "condo_act",
+                      "ownershipRatio": "0.012345",
+                      "plotNo": null,
                       "propertyId": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "propertyKind": "condo",
+                      "recurringAvailable": false,
                       "roles": [
                         {
                           "from": "2026-10-01",
@@ -347398,6 +349454,7 @@
                         "province": "เชียงใหม่"
                       },
                       "enquiredListingIds": [],
+                      "enquiredListingSlugs": [],
                       "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                       "landlordName": "หอพักตัวอย่าง",
                       "leaseId": "0199f2a0-0000-7000-8000-0000000000d1",
@@ -347590,6 +349647,7 @@
                   "createdAt": "2026-11-01T00:15:00+07:00",
                   "destination": null,
                   "enquiredListingIds": [],
+                  "enquiredListingSlugs": [],
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "landlordName": "หอพักตัวอย่าง",
                   "leaseId": "0199f2a0-0000-7000-8000-0000000000d1",
@@ -348106,6 +350164,7 @@
                     "province": "เชียงใหม่"
                   },
                   "enquiredListingIds": [],
+                  "enquiredListingSlugs": [],
                   "id": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "landlordName": "หอพักตัวอย่าง",
                   "leaseId": "0199f2a0-0000-7000-8000-0000000000d1",
@@ -352772,6 +354831,218 @@
         "x-surface": "resident"
       }
     },
+    "/v1/resident/statements/{statementId}": {
+      "get": {
+        "description": "The statement a LINE message links (`/statements/{id}`); a statement of a party not linked to my login is a 404 (J-CR, D-335; D-307, D-326).\n\nImplements: D-307, D-326, D-335.",
+        "operationId": "resident.statements.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "statementId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "amountDue": "4500.00",
+                  "charges": "4500.00",
+                  "closing": "4500.00",
+                  "credits": "0.00",
+                  "deliveredVia": [
+                    "line"
+                  ],
+                  "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "issuedAt": "2026-11-01T00:15:00+07:00",
+                  "language": "th",
+                  "letterBatchId": null,
+                  "number": "STM-2027-00001",
+                  "openInvoices": [],
+                  "opening": "0.00",
+                  "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "partyName": "ผู้เช่า ทดสอบ",
+                  "paymentIds": [],
+                  "payments": "0.00",
+                  "period": "2027-01",
+                  "periodEnd": "2027-01-31",
+                  "periodStart": "2027-01-01",
+                  "units": [
+                    {
+                      "building": "อาคาร A",
+                      "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "unitNo": "A-101"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/StatementDto"
+                }
+              }
+            },
+            "description": "Statement",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "One of my statements",
+        "tags": [
+          "resident.statements"
+        ],
+        "x-surface": "resident"
+      }
+    },
     "/v1/resident/statements/{statementId}/document": {
       "get": {
         "description": "A 5-minute link to the PDF; 409 `statement.document_pending` while it is being prepared (D-307, D-326).\n\nImplements: D-307, D-326.",
@@ -354844,6 +357115,216 @@
         "x-surface": "resident"
       }
     },
+    "/v1/resident/units/{unitId}/debt-clearances/{debtClearanceId}": {
+      "get": {
+        "description": "A request or certificate of mine on this unit (the LINE message links it; the verify code is never shown again); another unit’s or another party’s is a 404 (J-CR, D-335; D-306).\n\nImplements: D-306, D-335.",
+        "operationId": "resident.units.debtClearance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unitId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "debtClearanceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "asOf": "2027-03-15",
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "documentId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "fee": "0.00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "issuedAt": "2026-11-01T00:15:00+07:00",
+                  "language": "th",
+                  "nextActions": [],
+                  "number": "DCL-2027-00001",
+                  "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "partyName": "ผู้เช่า ทดสอบ",
+                  "refuseReason": null,
+                  "requestedVia": "liff",
+                  "state": "issued",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "unitNo": "A-201",
+                  "validUntil": "2027-04-14",
+                  "verifyCode": null,
+                  "verifyCodeHint": "R7QX"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/DebtClearanceDto"
+                }
+              }
+            },
+            "description": "Certificate",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "One of my debt clearance certificates",
+        "tags": [
+          "resident.collections"
+        ],
+        "x-surface": "resident"
+      }
+    },
     "/v1/resident/units/{unitId}/debt-clearances/{debtClearanceId}/document": {
       "get": {
         "description": "A 5-minute signed URL of the certificate PDF (D-306).\n\nImplements: D-306.",
@@ -355069,6 +357550,7 @@
                       "name": "ป้อมหน้า"
                     }
                   ],
+                  "inviteMaxDays": 30,
                   "policy": {
                     "action": "guard_calls",
                     "custom": false,
@@ -355082,6 +357564,7 @@
                     "th": "นิติบุคคลเก็บทะเบียนรถ ชื่อ (ถ้าให้) เลขบัตร 4 ตัวท้าย (ถ้าให้) และรูปถ่าย (ถ้ามี) ของผู้มาติดต่อ …",
                     "version": 1
                   },
+                  "rememberDays": 30,
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitNo": "88/12"
                 },
@@ -355288,6 +357771,7 @@
                 "example": {
                   "canEdit": true,
                   "gates": [],
+                  "inviteMaxDays": 30,
                   "policy": {
                     "action": "guard_calls",
                     "custom": true,
@@ -355301,6 +357785,7 @@
                     "th": "นิติบุคคลเก็บทะเบียนรถ ชื่อ (ถ้าให้) เลขบัตร 4 ตัวท้าย (ถ้าให้) และรูปถ่าย (ถ้ามี) ของผู้มาติดต่อ …",
                     "version": 1
                   },
+                  "rememberDays": 30,
                   "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
                   "unitNo": "88/12"
                 },
@@ -355515,6 +358000,7 @@
                     "masked": "xxx-x-x1234-x",
                     "method": "direct_debit",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "partyName": "ผู้เช่า ทดสอบ",
                     "provider": "fake",
                     "scope": "advance_invoices",
                     "state": "active",
@@ -355736,6 +358222,7 @@
                     "masked": null,
                     "method": "direct_debit",
                     "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                    "partyName": "ผู้เช่า ทดสอบ",
                     "provider": "fake",
                     "scope": "advance_invoices",
                     "state": "pending",
@@ -356000,6 +358487,7 @@
                   "masked": "xxx-x-x1234-x",
                   "method": "direct_debit",
                   "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "partyName": "ผู้เช่า ทดสอบ",
                   "provider": "fake",
                   "scope": "advance_invoices",
                   "state": "revoked",
@@ -356478,6 +358966,196 @@
         "x-surface": "resident"
       }
     },
+    "/v1/resident/units/{unitId}/payment-plan-requests/options": {
+      "get": {
+        "description": "The instalment range (2 … `juristic.plan_max_instalments`), the first due date window (today … +92 days, default the 1st of next month) and what would be split now (`proposedPrincipal`, the open balance of my billed party on the unit); `available` false = nothing to split. Same rules as the request (J-CR, D-335; D-308, D-325).\n\nImplements: D-308, D-325, D-335.",
+        "operationId": "resident.units.paymentPlanOptions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unitId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "available": true,
+                  "defaultFirstDueOn": "2027-02-01",
+                  "earliestFirstDueOn": "2027-01-15",
+                  "latestFirstDueOn": "2027-04-17",
+                  "maxInstalments": 12,
+                  "minInstalments": 2,
+                  "proposedPrincipal": "10000.00"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentPlanOptionsDto"
+                }
+              }
+            },
+            "description": "Options",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "What a payment-plan request may ask",
+        "tags": [
+          "resident.collections"
+        ],
+        "x-surface": "resident"
+      }
+    },
     "/v1/resident/units/{unitId}/payment-plans": {
       "get": {
         "description": "My plans on this unit, newest first, with their instalments (D-325).\n\nImplements: D-325.",
@@ -356712,6 +359390,249 @@
           }
         ],
         "summary": "My payment plans",
+        "tags": [
+          "resident.collections"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/units/{unitId}/payment-plans/{planId}": {
+      "get": {
+        "description": "A plan of mine on this unit with its instalments (the LINE message links it); another unit’s or another party’s plan is a 404 (J-CR, D-335; D-325).\n\nImplements: D-325, D-335.",
+        "operationId": "resident.units.paymentPlan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unitId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "planId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "acceleratedChargeId": null,
+                  "approvedAt": "2026-11-01T00:15:00+07:00",
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "creditNoteIds": [
+                    "3b241101-e2bb-4255-8caf-4136c566a962"
+                  ],
+                  "decidedReason": null,
+                  "defaultAfterDays": 30,
+                  "endedAt": null,
+                  "firstDueOn": "2027-02-01",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "instalmentCount": 3,
+                  "instalments": [
+                    {
+                      "amount": "3333.33",
+                      "dueOn": "2027-02-01",
+                      "invoiceChargeId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                      "paidAt": null,
+                      "seq": 1,
+                      "state": "billed"
+                    },
+                    {
+                      "amount": "3333.33",
+                      "dueOn": "2027-03-01",
+                      "invoiceChargeId": null,
+                      "paidAt": null,
+                      "seq": 2,
+                      "state": "scheduled"
+                    },
+                    {
+                      "amount": "3333.34",
+                      "dueOn": "2027-04-01",
+                      "invoiceChargeId": null,
+                      "paidAt": null,
+                      "seq": 3,
+                      "state": "scheduled"
+                    }
+                  ],
+                  "invoiceIds": [
+                    "3b241101-e2bb-4255-8caf-4136c566a962"
+                  ],
+                  "nextActions": [],
+                  "note": "ขอผ่อน 3 งวด",
+                  "partyId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "partyName": "ผู้เช่า ทดสอบ",
+                  "principal": "10000.00",
+                  "proposedBy": "resident",
+                  "proposedPrincipal": "10000.00",
+                  "state": "active",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "unitNo": "A-201",
+                  "version": 2
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentPlanDto"
+                }
+              }
+            },
+            "description": "Plan",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "One of my payment plans",
         "tags": [
           "resident.collections"
         ],
@@ -358979,6 +361900,212 @@
           }
         ],
         "summary": "Invite a visitor",
+        "tags": [
+          "resident.gate"
+        ],
+        "x-surface": "resident"
+      }
+    },
+    "/v1/resident/units/{unitId}/visit-invites/{inviteId}": {
+      "get": {
+        "description": "The invite with its uses and state (the token is never shown again). An invite of another unit — or a unit not mine — is a 404 (J-CR, D-335; D-315).\n\nImplements: D-315, D-335.",
+        "operationId": "resident.units.visitInvite",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unitId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "inviteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "createdAt": "2026-11-01T00:15:00+07:00",
+                  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "maxUses": 1,
+                  "note": null,
+                  "plate": null,
+                  "rejectReason": null,
+                  "state": "active",
+                  "unitId": "3b241101-e2bb-4255-8caf-4136c566a962",
+                  "unitNo": "88/12",
+                  "usage": "single",
+                  "uses": 0,
+                  "validFrom": "2026-11-06T09:00:00+07:00",
+                  "validTo": "2026-11-06T18:00:00+07:00",
+                  "visitorKind": "guest",
+                  "visitorName": "คุณแม่"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/VisitInviteDto"
+                }
+              }
+            },
+            "description": "Invite",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.unauthenticated": {
+                    "$ref": "#/components/examples/problem.auth.unauthenticated"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.unauthenticated`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "auth.forbidden": {
+                    "$ref": "#/components/examples/problem.auth.forbidden"
+                  },
+                  "auth.wrong_audience": {
+                    "$ref": "#/components/examples/problem.auth.wrong_audience"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `auth.forbidden`, `auth.wrong_audience`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.not_found": {
+                    "$ref": "#/components/examples/problem.http.not_found"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.not_found`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "validation.failed": {
+                    "$ref": "#/components/examples/problem.validation.failed"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `validation.failed`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "http.too_many_requests": {
+                    "$ref": "#/components/examples/problem.http.too_many_requests"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `http.too_many_requests`",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "internal.unexpected": {
+                    "$ref": "#/components/examples/problem.internal.unexpected"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Problem: `internal.unexpected`",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "residentBearer": []
+          }
+        ],
+        "summary": "One invite of my house",
         "tags": [
           "resident.gate"
         ],

@@ -301,13 +301,31 @@ describe('J3.1 import plan (D-332)', () => {
   it('reconcile: receivables against the declared total, bank rows against the statement', () => {
     expect(
       reconcileItems({ receivables: '100.00' }, '100.00', [
-        { rowNo: 2, label: 'operating ••4321', balance: '50.00', statementBalance: '50.00' },
+        {
+          rowNo: 2,
+          label: 'operating ••4321',
+          accountType: 'operating',
+          last4: '4321',
+          fundName: null,
+          balance: '50.00',
+          statementBalance: '50.00',
+        },
       ]),
     ).toMatchObject({ explanationRequired: false });
     const r = reconcileItems({ receivables: '100.00' }, '90.00', [
-      { rowNo: 2, label: 'fund', balance: '5.00', statementBalance: null },
+      {
+        rowNo: 2,
+        label: 'fund กองทุนสำรอง',
+        accountType: 'fund',
+        last4: null,
+        fundName: 'กองทุนสำรอง',
+        balance: '5.00',
+        statementBalance: null,
+      },
     ]);
     expect(r.explanationRequired).toBe(true);
+    expect(r.items[1]).toMatchObject({ accountType: 'fund', last4: null, fundName: 'กองทุนสำรอง' });
+    expect(r.items[0]).not.toHaveProperty('accountType');
     expect(r.items.map((i) => [i.status, i.difference])).toEqual([
       ['mismatch', '10.00'],
       ['no_statement', null],

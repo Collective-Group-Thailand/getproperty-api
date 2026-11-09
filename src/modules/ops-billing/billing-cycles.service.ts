@@ -311,6 +311,44 @@ export class BillingCyclesService extends TenantScopedRepository implements OnMo
     return this.db.tenant(ctx, (tx) => this.loadCycle(tx, ctx, id));
   }
 
+  /**
+   * `GET …/billing-cycles/{id}/revenue-schedule` (J-CR, D-303): the advance cycle's unearned schedule — Σ per month of
+   * `juristic.revenue_schedule` over the lines of the cycle's invoices (drafts have none until issued), with what was
+   * recognised and credited. A monthly cycle has no schedule (empty).
+   */
+  revenueSchedule(ctx: TenantContext, id: string) {
+    return this.db.tenant(ctx, async (tx) => {
+      const cycle = await this.loadCycle(tx, ctx, id);
+      const rows = await tx.$queryRaw<
+        { month: Date; amount: string; recognised: string; credited: string; pending: bigint }[]
+      >`
+        SELECT s.month,
+               sum(s.amount)::text AS amount,
+               COALESCE(sum(s.recognised_amount), 0)::text AS recognised,
+               sum(s.credited_amount)::text AS credited,
+               count(*) FILTER (WHERE s.recognised_at IS NULL) AS pending
+          FROM juristic.revenue_schedule s
+          JOIN ops.invoice_line l ON l.id = s.invoice_line_id
+          JOIN ops.invoice i ON i.id = l.invoice_id
+         WHERE s.tenant_id = ${ctx.tenantId}::uuid AND i.tenant_id = ${ctx.tenantId}::uuid
+           AND i.billing_cycle_id = ${cycle.id}::uuid
+         GROUP BY s.month ORDER BY s.month`;
+      const months = rows.map((r) => ({
+        month: day(r.month).slice(0, 7),
+        amount: new Decimal(r.amount).toFixed(2),
+        recognised: new Decimal(r.recognised).toFixed(2),
+        credited: new Decimal(r.credited).toFixed(2),
+        fullyRecognised: Number(r.pending) === 0,
+      }));
+      return {
+        billingCycleId: cycle.id,
+        frequency: cycle.frequency,
+        months,
+        total: months.reduce((t, m) => t.plus(m.amount), new Decimal(0)).toFixed(2),
+      };
+    });
+  }
+
   list(
     ctx: TenantContext,
     q: {

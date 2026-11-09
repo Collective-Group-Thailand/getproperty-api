@@ -354,6 +354,34 @@ export class VendorListQuery extends PageQuery {
   @IsOptional()
   @IsEnum(VendorCategoryName)
   category?: VendorCategoryName;
+
+  @ApiPropertyOptional({
+    enum: VendorCategoryName,
+    enumName: 'VendorCategory',
+    isArray: true,
+    example: ['lift', 'electrical'],
+    description:
+      'Vendors offering any of these categories (repeat the parameter or separate with commas; J-CR, D-335). Combined with `category` by AND.',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    (Array.isArray(value) ? value : [value])
+      .flatMap((v) => String(v).split(','))
+      .map((v) => v.trim())
+      .filter(Boolean),
+  )
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsEnum(VendorCategoryName, { each: true })
+  categories?: VendorCategoryName[];
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'The vendor of this party (a vendor per party; J-CR, D-335).',
+  })
+  @IsOptional()
+  @IsUUID()
+  partyId?: string;
 }
 
 // ------------------------------------------------------------------------------------------- contracts
@@ -1396,4 +1424,48 @@ export class QuotationRoundListQuery extends PageQuery {
   @Transform(toBool)
   @IsBoolean()
   awaitingMe?: boolean;
+}
+
+/** Vendors per state for the list's tab badges (J-CR, D-335). */
+export class VendorCountsDto {
+  @ApiProperty({ type: 'integer', example: 14 }) all!: number;
+  @ApiProperty({ type: 'integer', example: 13 }) active!: number;
+  @ApiProperty({ type: 'integer', example: 1 }) blocked!: number;
+}
+
+/** Contracts per state and the renewal queue for the list's tab badges (J-CR, D-335). */
+export class VendorContractCountsDto {
+  @ApiProperty({ type: 'integer', example: 9 }) all!: number;
+  @ApiProperty({ type: 'integer', example: 1 }) draft!: number;
+  @ApiProperty({ type: 'integer', example: 6 }) active!: number;
+  @ApiProperty({ type: 'integer', example: 1 }) expired!: number;
+  @ApiProperty({ type: 'integer', example: 1 }) terminated!: number;
+  @ApiProperty({
+    type: 'integer',
+    example: 2,
+    description: 'Active contracts ending within `endingWithinDays`.',
+  })
+  endingSoon!: number;
+  @ApiProperty({
+    type: 'integer',
+    example: 90,
+    description:
+      'The query’s `endingWithinDays`, else the largest threshold of `juristic.contract_expiry_alert_days`.',
+  })
+  endingWithinDays!: number;
+}
+
+/** Quotation rounds per state and the awards awaiting me for the list's tab badges (J-CR, D-335). */
+export class QuotationRoundCountsDto {
+  @ApiProperty({ type: 'integer', example: 7 }) all!: number;
+  @ApiProperty({
+    type: 'integer',
+    example: 1,
+    description: 'Awards my role may approve that I did not ask for.',
+  })
+  awaitingMe!: number;
+  @ApiProperty({ type: 'integer', example: 2 }) open!: number;
+  @ApiProperty({ type: 'integer', example: 1 }) awaitingApproval!: number;
+  @ApiProperty({ type: 'integer', example: 3 }) awarded!: number;
+  @ApiProperty({ type: 'integer', example: 1 }) cancelled!: number;
 }

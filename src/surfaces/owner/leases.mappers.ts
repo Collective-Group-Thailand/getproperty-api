@@ -203,6 +203,7 @@ export function residentLeaseDto(
     contractAvailable,
     noticeEarliestDate: canGiveNotice ? addCalendarDays(today, LESSEE_NOTICE_DAYS) : null,
     rulesAcknowledgedAt: isoOrNull(acknowledged),
+    contractSha256: LeasesService.hex(l.contractSha256),
     nextActions: actions,
   };
 }
@@ -325,6 +326,7 @@ export const RESIDENT_LEASE_EXAMPLE: ResidentLeaseDto = {
   contractAvailable: true,
   noticeEarliestDate: null,
   rulesAcknowledgedAt: null,
+  contractSha256: '9f2c1a0e5b7d4c3a8e6f1b2d0c9a7e5f3b1d8c6a4e2f0b9d7c5a3e1f8b6d4c2a',
   nextActions: ['view-contract', 'sign', 'acknowledge-rules'],
 };
 

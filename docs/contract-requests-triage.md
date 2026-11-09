@@ -231,3 +231,65 @@ OpenAPI 536 paths (**unchanged**; `POST /v1/device/token` response schema `Devic
 | CR-015 | **edge** | `POST /v1/device/token` answers `{ accessToken, expiresAt, mqtt: { url, wsUrl? } }` (D-249): `wsUrl` only while the platform admin has this gateway's WebSocket fallback on **and** the platform publishes `MQTT_PUBLIC_WS_URL`; absent otherwise. Evaluated from the presenting certificate's gateway on every call; the bootstrap answer uses the same rule. Additive — protocol 1.2. | `pnpm gen:protocol`, copy `docs/contract/device-protocol.md`; read `mqtt` from every refresh and store / apply a changed `wsUrl` (added or removed) on the next connect — still only with `GP_MQTT_WS_FALLBACK=on` and the device-CA certificate check (fail closed); mark CR-015 done |
 | CR-016 | edge | **No protocol change needed** (closed, info): the api derives `meter_status_changed` device events itself from `Health.meters[]` (T-13, `IngestPipelineService` — one event per meter whose status differs from the last sample) and stores health samples without `meters[]`. `Health.meters` stays **required** and `DeviceEventType` gains no `meter_status_changed` — a gateway must **not** send that event (it would fail the schema). F11-5's "health samples no longer carry `meters[]`" means the *stored* samples, not the wire payload. Smaller heartbeats (gateway-side events, optional `meters`) would be a future 1.3 revision only if heartbeat size becomes a measured problem. | keep sending `meters[]` in every heartbeat; do not emit `meter_status_changed`; mark CR-016 done |
 | F12-1 | web | nothing new: the admin `set-mqtt-transport` description now says the change reaches the gateway at its next token refresh (≤ 1 h). | optional: show "takes effect within an hour" next to the switch |
+
+## J-CR — cheap contract requests of getproperty-web (JW1–JW4) and getproperty-liff (#34–#52) (2026-11-10, D-335)
+
+Additive contract changes only (fields, query parameters, problem extension members, enum values, small read endpoints);
+everything else is backlog in `docs/PROGRESS.md` § Backlog (J-CR) with its reason and size. Consumers adopt with
+`pnpm gen:api` and close their rows.
+
+### getproperty-web — done
+
+| Request (web row) | What the API did | Status |
+|---|---|---|
+| Problem extensions of `import.rollback_blocked` / `import.job_open` | Members `table` (rollback) and `jobId`, `jobNumber` (open job) on the problem (`ProblemDetails`) | **done** J-CR |
+| `JuristicReconcileItemDto.accountType`, `last4`, `fundName` | On every reconcile item (`ReconcileAccountType` `operating \| fund`; null on the receivables item and on reconciliations stored before J-CR) | **done** J-CR |
+| `imports?open=true` | `GET /v1/owner/juristic/imports?open=true` (draft · validated · reconciled · committed) / `false` (the others) | **done** J-CR |
+| Tab counts of vendor contracts, vendors, quotation rounds | `counts` on the pages: `VendorContractCountsDto` (per state + `endingSoon`, `endingWithinDays`), `VendorCountsDto`, `QuotationRoundCountsDto` (per state + `awaitingMe`) | **done** J-CR |
+| `vendors?category=` several, by party | `categories` (repeated or comma-separated, any of) and `partyId`; `perPage` stays ≤ 100 (contract §3) | **done** J-CR |
+| Expense accounts readable by requesters | `GET /v1/owner/juristic/expense-accounts` (`juristic.expense.request`): active expense accounts (`AccountListDto`) | **done** J-CR |
+| Expense request tab counts | `counts` (`ExpenseRequestCountsDto`: all, awaitingMe, per state) | **done** J-CR |
+| `OwnerMenuKey` `juristic_petty_cash` | New key (accounting read or petty-cash spend); `juristic_funds` unchanged until adopted | **done** J-CR |
+| `GET /v1/guard/units?q=` soi | `q` also matches the soi / building name (first names: O-045) | **done** J-CR (names → O-045) |
+| `GuardVisitDto.overstayed`, `.decidedByName` | `overstayedAt`, `decidedByName` (first name) on every `GuardVisitDto` (gate lists, actions, owner visit log) | **done** J-CR |
+| `GuardVisitDto.callBackName` on the list | `callBackName` (first name) on every `GuardVisitDto` | **done** J-CR |
+| `GuardRosterItemDto.lockedUntil` | `lockedUntil` (null unless locked) | **done** J-CR |
+| `gate.tablet.auto_lock_minutes` | Setting (int 1–60, default 5, platform / tenant / property) → `GuardMeDto.autoLockMinutes` | **done** J-CR |
+| `GET /v1/owner/units?propertyId=` | `propertyId` filter | **done** J-CR |
+| Receivables tab counts | `ReceivablesPageDto.counts` (`all`, `atStep`, `plan`, `dispute`) for the same search | **done** J-CR |
+| `collections.legal_review_required` reason | Problem member `gateClosedReason` | **done** J-CR |
+| `PaymentMandateDto.partyName` | `partyName` (also on the resident's mandates) | **done** J-CR |
+| `OwnerMenuKey` `juristic_reports`, `juristic_payment_mandates` | New keys (`juristic_workspace`: backlog) | **done** J-CR (partly) |
+| Tenant-type filter for apartment keys | `leases`, `deposits` no longer for juristic tenants; `readings`, `devices`, `utility_loss` stay | **done** J-CR |
+| Debt-clearance owners picker | `GET /v1/owner/juristic/register/owners?q=&buildingId=&propertyId=&limit=` → `{ data: [{ unitId, unitNo, buildingId, buildingName, partyId, partyName }] }` | **done** J-CR |
+| `RegisterUnitDto` floor | `floorId`, `floorLevel`, `floorName` (+ `propertyId`) | **done** J-CR |
+| Register by property | `GET /v1/owner/juristic/register?propertyId=` (another tenant's property → 404) | **done** J-CR |
+| Revenue schedule of an advance cycle | `GET /v1/owner/billing-cycles/{id}/revenue-schedule` → `RevenueScheduleDto { billingCycleId, frequency, months: [{ month, amount, recognised, credited, fullyRecognised }], total }` | **done** J-CR |
+| `ResolutionDocumentDto` file facts | `title`, `mimeType`, `sizeBytes` | **done** J-CR |
+| Admin stub buildings to claim | `GET /v1/admin/buildings/stubs?q=` (paged `AdminStubBuildingDto`: id, name, propertyId, propertyName, address, landlordUnits; `admin.building.manage`) | **done** J-CR |
+| `OwnerMenuKey` `juristic_overview`, `juristic_resolutions` | New keys (`dashboard` stays) | **done** J-CR |
+| Parties lookup | No change: `GET /v1/owner/parties?q=&perPage=20` is the typeahead (name, exact phone, exact ID number) | answered J-CR |
+| `BankMatchSuggestionDto.href` | No change: the console builds the link from `kind` + `id` | answered J-CR |
+
+### getproperty-liff — done
+
+| # | What the API did | Status |
+|---|---|---|
+| 37 | `RelocationOfferDto.enquiredListingSlugs` (the same listings by slug) | **done** J-CR |
+| 38 | `ResidentLeaseDto.contractSha256` (hex, the value `GET …/contract` answers) | **done** J-CR |
+| 39 | `ConsentPurposeDto.lastGranted` (last answer whatever its version) | **done** J-CR |
+| 42 | `ResidentMeUnitDto.areaSqm`, `ownershipRatio` (the register's 6-decimal ratio, not a percentage), `landAreaSqwa`, `plotNo` | **done** J-CR |
+| 44 | `ResidentMeUnitDto.recurringAvailable` | **done** J-CR |
+| 45 | `GET /v1/resident/units/{unitId}/payment-plan-requests/options` → `PaymentPlanOptionsDto { minInstalments, maxInstalments, earliestFirstDueOn, latestFirstDueOn, defaultFirstDueOn, proposedPrincipal, available }` | **done** J-CR |
+| 48 | `GET /v1/resident/statements/{id}`, `GET /v1/resident/units/{unitId}/payment-plans/{planId}`, `GET /v1/resident/units/{unitId}/debt-clearances/{id}` | **done** J-CR |
+| 49 | `ResidentUnitCapability` `gate` | **done** J-CR |
+| 50 | `ResidentGateDto.rememberDays` | **done** J-CR |
+| 51 | `ResidentGateDto.inviteMaxDays` | **done** J-CR |
+| 52 | `GET /v1/resident/units/{unitId}/visit-invites/{inviteId}` | **done** J-CR |
+
+Not done (backlog / open question): web — import row PATCH, go-live readiness, contract schedule preview, vendor
+evaluation summary, award band preview, display names on rounds / evaluations / expenses / transfers / floats,
+`SlaBreachDto.workOrderNumber`, `monthsToEvaluate`, expense band preview, `JournalDto.number`, ledger-receivables
+`asOf`, guard unit names (O-045), guard units `limit` > 100, receivables bulk remind, `CollectionEventDto.actor` /
+`channels`, notification template preview, `juristic_workspace`, transfer preview, and the earlier (2026-10-21 …
+10-29) web rows; liff — #34, #35, #36 (O-045), #40, #43, #46, #47.

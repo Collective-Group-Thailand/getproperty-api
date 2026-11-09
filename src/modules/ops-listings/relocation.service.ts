@@ -302,6 +302,16 @@ export class RelocationService implements EventSubscriber, OnModuleInit {
     };
   }
 
+  /** Listing id → slug of the listings I enquired about (LIFF #37, J-CR): the offer page marks them by slug. */
+  async slugsOf(offers: readonly { clickedListingIds: string[] }[]): Promise<Map<string, string>> {
+    const ids = [...new Set(offers.flatMap((o) => o.clickedListingIds))];
+    if (!ids.length) return new Map();
+    const rows = await this.db.platform((tx) =>
+      tx.listing.findMany({ where: { id: { in: ids } }, select: { id: true, slug: true } }),
+    );
+    return new Map(rows.map((r) => [r.id, r.slug]));
+  }
+
   async matches(offer: RelocationOffer, lang: 'th' | 'en', limit: number) {
     if (!offer.areaSlug && !offer.province) return [];
     const page = await this.publicListings.search(
