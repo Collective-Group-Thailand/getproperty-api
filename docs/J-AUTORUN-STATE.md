@@ -25,7 +25,7 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 | JW2 | web | done | web 9dae497 (d86f05b) JW2a · 6911ce7 (ed8e1a3) JW2b |  |  | JW2a accounting, expenses, funds, petty cash, bank statements · JW2b vendors, contracts, quotations, evaluations |
 | J3.1 | api | done | api 0b42645 (d2991e6) |  |  | D-332; migration 0079 — import wizard, OPB series, go-live, full export |
 | J3.2 | api | done | api a5332b0 (ac28baa) | 1025 paths (+7) | — | D-333; migration 0080 — handover intake/supersede, admin assign, inbox review/accept/reject, juristic-formed, retry job; getbuild fake (O-033); unit 745 (+2 skipped), int 601/602 (0 failed) |
-| J3.3 | api | todo | | | | |
+| J3.3 | api | done | api ae3c0d7 (b4ff761) | 1043 paths (+18) | O-044 | D-334; migration 0081 — management contracts → monthly expense requests (arrears, prorated), PM read-only grant, staff board, committee isolation; unit 752 (+2 skipped), int 608/609 (0 failed) |
 | JW3 | web | todo |  |  |  | JW3a done: web 32f942e (6d3755e) import wizard; JW3b (handover inbox + /portfolio) todo |
 | e2e | all | todo | | | | deferred runs |
 | Review | all | todo | | | | |
@@ -50,3 +50,5 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 **2026-11-09 21:20** — session_01UnpBfz2oYacVHd9Vgetpo4 resumed: bundles imported fast-forward (api 0b42645, web 32f942e, liff e0c3972, edge 559653b, asset-core 7dcf39c); branch feat/J3.2-developer-handover restored at 1a3ca7d. Next: finish J3.2, then J3.3 → JW3b → sync chores → e2e → Review → Report.
 
 **2026-11-09 22:40** — J3.2 merged (api a5332b0, ff on the Mac). Next: J3.3 (PM company portfolio).
+
+**2026-11-10 ~01:40** — J3.3 merged (api ae3c0d7). Chore JS-ui merged in liff (764621c: shared ui re-synced from web 32f942e, shared:check --strict 0 drift, lhci green after lazy API client); J-DESIGN §7 +117 rows from web/liff PROGRESS. Next: JW3b (web) beside the cheap-CR api step.
