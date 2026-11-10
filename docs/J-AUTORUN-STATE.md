@@ -30,7 +30,7 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 | J-CR | api | done | api 1b89544 (1ad0276) | 1052 paths (+9) | O-045 | D-335; cheap web CRs + LIFF #37–#52 answered, rest backlog in PROGRESS; unit 755 (+2 skipped), int 618/619 (0 failed) |
 | JS-ui | liff | done | liff 764621c (4a1bb52) | — | — | shared ui re-sync from web 32f942e; shared:check --strict 0 drift; lazy API client keeps every page ≤ 180 KB; unit 996 |
 | JS-adopt | web, liff, edge | done | web ad0e414 (6848b58) · liff adf6e50 (fe8b56f) · edge cd8a037 | web apiCommit d33fed129a51 · liff sourceCommit d33fed1… | — | contract re-adopted at api d33fed1, J-CR answers consumed, decisions.md synced to web/liff/edge; web unit 1862, liff unit 1001; budgets met (/gate 175.5 KB, LIFF max 179.8 KB) |
-| e2e | all | todo | | | | deferred runs |
+| e2e | all | done | api 6c2830a (9407b8d) · web bbbab2b (ce1a992) · liff 750ace8 (fb42f33) | liff sourceCommit 6c2830a… | — | api e2e 36/36 (served contract ImportSheet enum fix); web Playwright 278/278 (first 209/278: a11y, gate offline queue, DCL code dialog, seeds clock-independent; 7 shell snapshots re-baselined to the redesign); LIFF 208/208 (first 197: redeem focus, error-summary focus, field labels, script fonts regression, spec updates; 3 snapshots re-baselined) |
 | Review | all | todo | | | | |
 | Report | api | todo | | | | |
 
@@ -59,3 +59,5 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 **2026-11-10 ~04:00** — JW3b merged (web 7899e05) and J-CR merged (api 1b89544). Next: web + LIFF re-adopt the contract at the final api, decisions.md copy, then deferred e2e.
 
 **2026-11-10 ~06:20** — server restart stopped the adopt agents; resumed and merged (web ad0e414, liff adf6e50, edge cd8a037). Next: deferred e2e on final HEADs.
+
+**2026-11-10** — deferred e2e green on all three repos. Next: 3 independent reviews.
