@@ -31,7 +31,7 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 | JS-ui | liff | done | liff 764621c (4a1bb52) | — | — | shared ui re-sync from web 32f942e; shared:check --strict 0 drift; lazy API client keeps every page ≤ 180 KB; unit 996 |
 | JS-adopt | web, liff, edge | done | web ad0e414 (6848b58) · liff adf6e50 (fe8b56f) · edge cd8a037 | web apiCommit d33fed129a51 · liff sourceCommit d33fed1… | — | contract re-adopted at api d33fed1, J-CR answers consumed, decisions.md synced to web/liff/edge; web unit 1862, liff unit 1001; budgets met (/gate 175.5 KB, LIFF max 179.8 KB) |
 | e2e | all | done | api 6c2830a (9407b8d) · web bbbab2b (ce1a992) · liff 750ace8 (fb42f33) | liff sourceCommit 6c2830a… | — | api e2e 36/36 (served contract ImportSheet enum fix); web Playwright 278/278 (first 209/278: a11y, gate offline queue, DCL code dialog, seeds clock-independent; 7 shell snapshots re-baselined to the redesign); LIFF 208/208 (first 197: redeem focus, error-summary focus, field labels, script fonts regression, spec updates; 3 snapshots re-baselined) |
-| Review | all | todo | | | | |
+| Review | all | done | api 3321b18 (abd0c1b) · web 67e5776 (241b48f) · liff c96166a (393ce93) + adopt cab2e35 · edge 6baceca (2543f42) + 1a84474 | web apiCommit 3321b18b11b9 · liff sourceCommit 3321b18… | — | D-336; 20 findings (api 6, web 7, liff 3, edge 4; no critical/high) all fixed with regression tests; api unit 757, int 622/623, e2e 36/36; web unit 1882, Playwright 279/279; liff unit 1010, Playwright 208/208; edge 240 unit + 29 int |
 | Report | api | todo | | | | |
 
 **2026-11-05 00:58** — J0 merged (api 246d7cf). Orchestrator (team lead) accepted J0 findings: J1.1 and J1.2 split into a/b slices; pack corrections marked "J0:" in J-juristic-api.md. JA restarted with corrected spec (no own_unit helper, title_deed_no exists, enum core.building_legal_form, event unit_ownership.transferred).
@@ -61,3 +61,5 @@ Baseline (2026-11-05): api 143943c · web 77b4f25 · liff 1f8ce19 · edge 2d508c
 **2026-11-10 ~06:20** — server restart stopped the adopt agents; resumed and merged (web ad0e414, liff adf6e50, edge cd8a037). Next: deferred e2e on final HEADs.
 
 **2026-11-10** — deferred e2e green on all three repos. Next: 3 independent reviews.
+
+**2026-11-10** — reviews done and every finding fixed. Next: report.
