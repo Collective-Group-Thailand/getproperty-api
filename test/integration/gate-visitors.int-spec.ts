@@ -326,6 +326,35 @@ describe('J4.1 gate & visitor (real PostgreSQL)', () => {
     expect(JSON.stringify(members.body)).not.toContain('กะเช้า');
   });
 
+  it('J review A1: a second sign-in of the same guard supersedes the first shift and its token stops at once', async () => {
+    const twin = (
+      await t.http
+        .post('/v1/owner/gate-guards')
+        .set(J())
+        .set(idem())
+        .send({ propertyId: ids.property, displayName: 'ทดสอบ สองเครื่อง', pin: '913570' })
+        .expect(201)
+    ).body.id as string;
+    const first = (await signIn(tablet, twin, '913570').expect(200)).body;
+    await t.http.get('/v1/guard/me').set(bearer(first.accessToken)).expect(200);
+    const second = (await signIn(tablet, twin, '913570').expect(200)).body;
+    // the superseded shift's access token is refused at once (not after its 15-minute lifetime)
+    await t.http.get('/v1/guard/me').set(bearer(first.accessToken)).expect(401);
+    await t.http
+      .post(`/v1/guard/gates/${ids.gate}/actions/open`)
+      .set(bearer(first.accessToken))
+      .set(idem())
+      .send({ reason: 'other', note: 'ทดสอบ' })
+      .expect(401);
+    await t.http.post('/v1/auth/refresh').send({ refreshToken: first.refreshToken }).expect(401);
+    await t.http.get('/v1/guard/me').set(bearer(second.accessToken)).expect(200);
+    const shifts = await q<{ end_reason: string | null }>(
+      `SELECT end_reason::text FROM smart.guard_shift WHERE guard_id = $1 ORDER BY ended_at NULLS LAST`,
+      [twin],
+    );
+    expect(shifts.map((s) => s.end_reason)).toEqual(['superseded', null]);
+  });
+
   it('full loop: every resident of the unit is asked (not the payer-only party), concurrent answers — one wins, entry and exit', async () => {
     const created = await newVisit(guard, {
       unitId: ids.u1,
@@ -774,6 +803,57 @@ describe('J4.1 gate & visitor (real PostgreSQL)', () => {
     for (const u of picked) expect(u).not.toHaveProperty('hasArrears');
     expect(picked.find((u) => u.unitNo === 'A-101')?.lineLinked).toBe(true);
     expect(picked.find((u) => u.unitNo === 'A-103')?.lineLinked).toBe(false);
+  });
+
+  it('J review A4: with gate.show_arrears on, only an overdue balance net of credit is an arrear (not a bill not yet due)', async () => {
+    const setAdmin = async (key: string, value: unknown) => {
+      t.clock.advance(1_000);
+      await t.http
+        .put(`/v1/admin/settings/${key}`)
+        .set(bearer(admin))
+        .send({ value, reason: 'J review A4' })
+        .expect(200);
+      t.app.get(SettingsService).invalidate(key);
+    };
+    const day = (offset: number) =>
+      new Date(t.clock.now().getTime() + 7 * 3_600_000 + offset * 86_400_000).toISOString().slice(0, 10);
+    let n = 0;
+    const bill = async (unitId: string, partyId: string, due: string, status: string, balance: number) => {
+      n += 1;
+      await q(
+        `INSERT INTO ops.invoice (tenant_id, building_id, unit_id, billed_party_id, number, snapshot, period_start,
+           period_end, issued_at, due_date, status, subtotal, total, paid_total, balance)
+         VALUES ($1, $2, $3, $4, $5, '{}', $6::date - 30, $6::date - 1, now(), $6::date, $7::ops.invoice_status, $8, $8, 0, $8)`,
+        [jur.tenantId, ids.building, unitId, partyId, `INV-A4-${n}`, due, status, balance],
+      );
+      // the receivables projection as the subscriber keeps it (balance > 0 for both units)
+      await q(
+        `INSERT INTO ops.receivable_balance (tenant_id, building_id, party_id, unit_id, balance, open_invoices_count, oldest_due_date)
+         VALUES ($1, $2, $3, $4, $5, 1, $6::date)
+         ON CONFLICT (tenant_id, party_id, unit_id) WHERE unit_id IS NOT NULL DO UPDATE SET balance = EXCLUDED.balance`,
+        [jur.tenantId, ids.building, partyId, unitId, balance, due],
+      );
+    };
+    await bill(ids.u1!, ids.P!, day(5), 'issued', 1200); // A-101: this month's bill, not yet due
+    await bill(ids.u2!, ids.R!, day(-10), 'overdue', 500); // A-102: 10 days overdue
+    await setAdmin('gate.show_arrears', true);
+    const flags = async () =>
+      Object.fromEntries(
+        (
+          (await t.http.get('/v1/guard/units?q=A-10').set(G()).expect(200)).body as {
+            unitNo: string;
+            hasArrears: boolean;
+          }[]
+        ).map((u) => [u.unitNo, u.hasArrears]),
+      );
+    expect(await flags()).toEqual({ 'A-101': false, 'A-102': true, 'A-103': false, 'A-104': false });
+    // the payer's credit on that unit covers the overdue bill → no arrear
+    await q(
+      `INSERT INTO ops.payer_credit (tenant_id, building_id, unit_id, party_id, kind, amount) VALUES ($1, $2, $3, $4, 'overpayment', 500)`,
+      [jur.tenantId, ids.building, ids.u2, ids.R],
+    );
+    expect((await flags())['A-102']).toBe(false);
+    await setAdmin('gate.show_arrears', false);
   });
 
   it('J-CR (D-335): first names on the gate lists, soi search, estate limits, the gate capability, one invite', async () => {

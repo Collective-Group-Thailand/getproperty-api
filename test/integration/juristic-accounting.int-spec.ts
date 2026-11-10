@@ -1153,6 +1153,86 @@ describe('J2.1 light GL, expenses, funds, petty cash, bank statements (real Post
     expect(list.body.meta.total).toBe(2);
   });
 
+  it('J review A5: a hand match keeps to the statement account and the money direction (as the suggestions do)', async () => {
+    const csv = (rows: string[]) =>
+      [
+        'ธนาคารกสิกรไทย (ตัวอย่าง)',
+        'วันที่,เวลา,รายการ,ถอนเงิน,ฝากเงิน,ยอดคงเหลือ,ช่องทาง,รายละเอียด',
+        ...rows,
+      ].join('\n');
+    type Line = { id: string; amount: string; bookedOn: string; matchKind: string; matchId: string | null };
+    const importInto = async (bankAccountId: string, fileName: string, rows: string[]) =>
+      (
+        await t.http
+          .post('/v1/owner/juristic/bank-statements')
+          .set(J())
+          .set(idem())
+          .send({ bankAccountId, formatKey: 'kbank', fileName, content: b64(csv(rows)) })
+          .expect(201)
+      ).body.statement.id as string;
+    const linesOf = async (statementId: string, state = 'all') =>
+      (
+        await t.http
+          .get(`/v1/owner/juristic/bank-statement-lines?state=${state}&statementId=${statementId}`)
+          .set(J())
+          .expect(200)
+      ).body.data as Line[];
+    const match = (lineId: string, kind: string, targetId: string) =>
+      t.http
+        .post(`/v1/owner/juristic/bank-statement-lines/${lineId}/actions/match`)
+        .set(J())
+        .set(idem())
+        .send({ kind, targetId });
+    // the payment was received on the first account
+    const bank2 = (
+      await one<{ id: string }>(
+        `INSERT INTO platform.tenant_bank_account (tenant_id, bank_code, bank_name_th, account_no_enc, account_no_hash, account_no_masked,
+                                                   account_name, state, is_default, confirmed_at)
+         VALUES ($1, '014', 'ธนาคารไทยพาณิชย์', '\\x03', '\\x04', 'xxx-x-x8765-x', 'นิติบุคคลอาคารชุด J21 (2)', 'active', false, now()) RETURNING id`,
+        [jur.tenantId],
+      )
+    ).id;
+    await q(`UPDATE ops.payment SET bank_account_id = $2 WHERE id = $1`, [ids.payment, ids.bank]);
+    const held = (
+      await q<{ id: string }>(
+        `SELECT id FROM juristic.bank_statement_line WHERE match_kind = 'payment' AND match_id = $1`,
+        [ids.payment],
+      )
+    )[0]!.id;
+    await t.http
+      .post(`/v1/owner/juristic/bank-statement-lines/${held}/actions/unmatch`)
+      .set(J())
+      .set(idem())
+      .expect(200);
+    // the same amount on the same day on another account of the estate: not this payment
+    const other = await importInto(bank2, 'scb-a5.csv', [
+      '10/03/2570,10:05,รับโอนเงิน,,"1,000.00","5,000.00",K PLUS,KB0310A001',
+    ]);
+    const cross = (await linesOf(other))[0]!;
+    const refused = await match(cross.id, 'payment', ids.payment!).expect(422);
+    expect(refused.body.code).toBe('bank_statement.account_mismatch');
+    await match(held, 'payment', ids.payment!).expect(200);
+    // a posted fund transfer of 1,000.00 on 15 Dec: only the line of its direction may take it
+    const both = await importInto(ids.bank!, 'kbank-a5.csv', [
+      '15/12/2570,16:00,รับโอนเงิน,,"1,000.00","61,162.00",K BIZ,A5-IN',
+      '15/12/2570,16:05,โอนเงิน,"1,000.00",,"60,162.00",K BIZ,A5-OUT',
+    ]);
+    // the line of its direction takes it on import; the other way round is refused by hand too
+    const pair = await linesOf(both);
+    const right = pair.find((l) => l.matchKind === 'fund_transfer' && l.matchId === ids.transferIn)!;
+    const wrongWay = pair.find((l) => l.id !== right.id)!;
+    expect(wrongWay).toMatchObject({ matchKind: 'none' });
+    expect(Number(wrongWay.amount)).toBe(-Number(right.amount));
+    await t.http
+      .post(`/v1/owner/juristic/bank-statement-lines/${right.id}/actions/unmatch`)
+      .set(J())
+      .set(idem())
+      .expect(200);
+    const reversed = await match(wrongWay.id, 'fund_transfer', ids.transferIn!).expect(422);
+    expect(reversed.body.code).toBe('bank_statement.account_mismatch');
+    await match(right.id, 'fund_transfer', ids.transferIn!).expect(200);
+  });
+
   it('cross-tenant ids are 404 on every endpoint; other tenants see empty lists; apartments have no accounting', async () => {
     const journal = (
       await q<{ id: string }>(

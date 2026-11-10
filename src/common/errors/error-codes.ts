@@ -280,6 +280,7 @@ export const ERROR_CODES = {
   'bank_statement.unreadable': HttpStatus.UNPROCESSABLE_ENTITY,
   'bank_statement.line_not_open': HttpStatus.CONFLICT,
   'bank_statement.amount_mismatch': HttpStatus.UNPROCESSABLE_ENTITY,
+  'bank_statement.account_mismatch': HttpStatus.UNPROCESSABLE_ENTITY,
   'bank_statement.already_matched': HttpStatus.CONFLICT,
   // J2.2 (D-310, D-331): vendors, contracts, quotation rounds, evaluations
   'vendor.blocked': HttpStatus.UNPROCESSABLE_ENTITY,

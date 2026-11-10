@@ -29,10 +29,12 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   insideGeofence,
   isLateRead,
+  lprAutoEntry,
   matchPlate,
   normaliseLprPlate,
   openRetryAfter,
   type PlateCandidate,
+  readClockSuspect,
 } from './gate-hardware-rules';
 import { normalisePlate, type PlateInput } from './gate-rules';
 import { GATE_UNIT_ROLES, guardContext, HOUSEHOLD_DECIDERS, VisitsService } from './visits.service';
@@ -574,10 +576,13 @@ export class GateHardwareService extends TenantScopedRepository {
     await tx.gateDevice.update({ where: { id: device.id }, data: { lastSeenAt: now } });
     // CR-017 / D-330: a read that reaches us later than gate.lpr.max_event_age_seconds after the camera read it (edge
     // outage, queued) is history — the car is no longer at the barrier. It is kept as a past read only: no entry, no
-    // gate.open, nothing for the guard to claim. An unreadable read time cannot prove it is live → history too.
+    // gate.open, nothing for the guard to claim. An unreadable read time cannot prove it is live → history too; so is
+    // a read time further ahead than gate.lpr.max_clock_skew_seconds (gateway clock suspect, D-336).
     const detectedAt = new Date(data.at);
     const maxAge = await this.settings.valueAt<number>('gate.lpr.max_event_age_seconds', now, scope);
-    const historical = isLateRead(detectedAt, now, maxAge);
+    const maxSkew = await this.settings.valueAt<number>('gate.lpr.max_clock_skew_seconds', now, scope);
+    const historical = isLateRead(detectedAt, now, maxAge, maxSkew);
+    const clockSuspect = readClockSuspect(detectedAt, now, maxSkew);
     // one car, one entry: the same plate again at this gate within the window is ignored (no row kept). Live reads
     // compare receipt times among live reads; late reads compare read times among late reads (a flushed queue of
     // frames keeps one row) — a late read never suppresses the next live read, nor the other way round.
@@ -633,7 +638,8 @@ export class GateHardwareService extends TenantScopedRepository {
     ];
     const result = matchPlate(plate, candidates);
     const known = result.match === 'resident_vehicle' || result.match === 'remembered_vehicle';
-    const confident = data.confidence >= minConfidence;
+    // D-336 (J review A6): without a province the read is not sure enough to enter on its own
+    const confident = lprAutoEntry(plate, data.confidence >= minConfidence);
     const match = blacklisted ? 'blacklisted' : known && !confident ? 'low_confidence' : result.match;
     const candidate = known ? result.candidate : null;
     const enters = !historical && Boolean(candidate) && confident && !blacklisted;
@@ -731,10 +737,12 @@ export class GateHardwareService extends TenantScopedRepository {
           gateId: gate.id,
           eventId,
           match,
+          reason: clockSuspect ? 'clock_suspect' : 'late',
           ageSeconds: Number.isNaN(detectedAt.getTime())
             ? null
             : Math.round((now.getTime() - detectedAt.getTime()) / 1000),
           maxAgeSeconds: maxAge,
+          maxSkewSeconds: maxSkew,
         },
       });
     if (

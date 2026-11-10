@@ -365,8 +365,7 @@ export class BankStatementsService extends TenantScopedRepository {
       transfers.map((t) => t.id),
     );
     for (const t of transfers.filter((x) => !usedT.has(x.id))) {
-      const onFundSide = t.fund.bankAccountId === bankAccountId && t.counterAccountId !== glAccountId;
-      const signed = (t.direction === 'in') === onFundSide ? D(t.amount) : D(t.amount).negated();
+      const signed = transferSigned(t, bankAccountId, glAccountId);
       if (!signed.eq(amount)) continue;
       out.push({
         kind: 'fund_transfer',
@@ -507,25 +506,43 @@ export class BankStatementsService extends TenantScopedRepository {
       if (l.matchKind !== 'none')
         throw new DomainException('bank_statement.line_not_open', { params: { state: l.matchKind } });
       const amount = D(l.amount);
+      // D-336 (J review A5): the same account and direction rules as the suggestions (`candidates`)
+      const notThisAccount = () => new DomainException('bank_statement.account_mismatch');
       let expected: Decimal;
       if (input.kind === 'payment') {
         const p = await tx.payment.findFirst({
-          where: { id: input.targetId, tenantId: ctx.tenantId, confirmedAt: { not: null } },
+          where: { id: input.targetId, tenantId: ctx.tenantId, confirmedAt: { not: null }, reversedAt: null },
         });
         if (!p) throw new DomainException('http.not_found');
+        if (
+          p.method === 'cash' ||
+          p.method === 'offset' ||
+          (p.bankAccountId !== null && p.bankAccountId !== l.bankAccountId)
+        )
+          throw notThisAccount();
         expected = D(p.amount);
       } else if (input.kind === 'expense') {
         const e = await tx.expenseRequest.findFirst({
           where: { id: input.targetId, tenantId: ctx.tenantId, state: 'paid' },
         });
         if (!e) throw new DomainException('http.not_found');
+        if (
+          e.paidFromAccountId !== l.statement.accountId ||
+          !(e.paymentMethod === 'bank_transfer' || e.paymentMethod === 'cheque')
+        )
+          throw notThisAccount();
         expected = D(e.netAmount).negated();
       } else {
         const t = await tx.fundTransfer.findFirst({
           where: { id: input.targetId, tenantId: ctx.tenantId, state: 'posted' },
+          include: { fund: { select: { bankAccountId: true } } },
         });
         if (!t) throw new DomainException('http.not_found');
-        expected = amount.abs().eq(t.amount) ? amount : D(t.amount);
+        if (t.counterAccountId !== l.statement.accountId && t.fund.bankAccountId !== l.bankAccountId)
+          throw notThisAccount();
+        expected = transferSigned(t, l.bankAccountId, l.statement.accountId);
+        // the right amount the wrong way round (money into the fund is money out of the operating account)
+        if (expected.negated().eq(amount)) throw notThisAccount();
       }
       if (!expected.eq(amount))
         throw new DomainException('bank_statement.amount_mismatch', {
@@ -626,4 +643,22 @@ export class BankStatementsService extends TenantScopedRepository {
     });
     return this.line(ctx, id);
   }
+}
+
+/**
+ * A posted fund transfer as it shows on a bank account's statement: + on the side the money goes to. On the fund's
+ * own bank account (not the counter account) `in` is money in; on the counter account `in` (to the fund) is money out.
+ */
+function transferSigned(
+  t: {
+    direction: string;
+    amount: { toString(): string };
+    counterAccountId: string;
+    fund: { bankAccountId: string | null };
+  },
+  bankAccountId: string,
+  glAccountId: string,
+): Decimal {
+  const onFundSide = t.fund.bankAccountId === bankAccountId && t.counterAccountId !== glAccountId;
+  return (t.direction === 'in') === onFundSide ? D(t.amount) : D(t.amount).negated();
 }

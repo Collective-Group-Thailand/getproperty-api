@@ -141,7 +141,8 @@ export class PlateDetectedData {
     description:
       'Read time (gateway clock). Send the camera read time, also for reads queued offline: a read that reaches the ' +
       'cloud more than gate.lpr.max_event_age_seconds (20) after it is kept as a past read only — never an automatic ' +
-      'entry or barrier open (D-330, CR-017).',
+      'entry or barrier open (D-330, CR-017); so is a read time more than gate.lpr.max_clock_skew_seconds (60) ahead ' +
+      'of the cloud clock (gateway clock suspect, D-336) — keep the gateway clock on NTP.',
     examples: ['2026-11-05T18:00:00+07:00'],
   })
   @IsISO8601({ strict: true })

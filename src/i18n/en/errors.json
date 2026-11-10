@@ -1892,6 +1892,10 @@
       "title": "Amounts differ",
       "detail": "The line ({line}) and the chosen item ({target}) differ."
     },
+    "account_mismatch": {
+      "title": "Not this account",
+      "detail": "The chosen item is not a movement of this bank account in this direction."
+    },
     "already_matched": {
       "title": "Already matched",
       "detail": "This item is matched to another statement line."

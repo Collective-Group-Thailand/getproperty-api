@@ -1028,6 +1028,18 @@ export const SETTINGS: readonly SettingDef[] = [
       Number.isInteger(v) && (v as number) >= 5 && (v as number) <= 300 ? [] : ['an integer 5–300'],
   },
   {
+    key: 'gate.lpr.max_clock_skew_seconds',
+    valueType: 'int',
+    scopeAllowed: ['platform', 'tenant', 'property'],
+    description:
+      'D-336 (J review A2): a plate read whose read time (`plate.detected` `data.at`) is more than this many seconds ahead of the cloud clock cannot be proven live (gateway clock suspect) — kept as a past read only (audit `gate.plate_read_late`, reason `clock_suspect`), like a late read.',
+    editableBy: OWNER_SETTINGS,
+    value: 60,
+    reason: 'seed: D-336 (conservative: a read from a wrong clock never opens the gate)',
+    check: (v) =>
+      Number.isInteger(v) && (v as number) >= 5 && (v as number) <= 300 ? [] : ['an integer 5–300'],
+  },
+  {
     key: 'gate.lpr.min_confidence',
     valueType: 'decimal',
     scopeAllowed: ['platform', 'tenant', 'property'],

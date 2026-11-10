@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 
 import { DomainException } from '@common/errors/domain.exception';
+import Decimal from 'decimal.js';
 
 /**
  * Pure rules of the gate (D-315, D-327, J4.1): plate and ID-digit validation, the house-policy defaults, visit state
@@ -130,4 +131,32 @@ export function samePlate(a: Plate | null, b: Plate | null): boolean {
 export function plateText(p: PlateInput | null | undefined): string | null {
   if (!p?.number) return null;
   return [p.category, p.number, p.province].filter(Boolean).join(' ');
+}
+
+/**
+ * D-336 (J review A4): the units shown "in arrears" at the gate (only while `gate.show_arrears` is on, ⚖ O-038) — a
+ * payer of the unit whose overdue open balances (due before today, Bangkok) exceed that payer's credit on the unit. A
+ * bill not yet due is never an arrear; another payer's credit never settles it.
+ */
+export function unitsInArrears(
+  overdue: readonly { unitId: string; partyId: string; balance: Decimal.Value }[],
+  credits: readonly { unitId: string; partyId: string; amount: Decimal.Value }[],
+): Set<string> {
+  const key = (unitId: string, partyId: string) => `${unitId}|${partyId}`;
+  const owed = new Map<string, Decimal>();
+  for (const o of overdue)
+    owed.set(
+      key(o.unitId, o.partyId),
+      (owed.get(key(o.unitId, o.partyId)) ?? new Decimal(0)).plus(o.balance),
+    );
+  const credit = new Map<string, Decimal>();
+  for (const c of credits)
+    credit.set(
+      key(c.unitId, c.partyId),
+      (credit.get(key(c.unitId, c.partyId)) ?? new Decimal(0)).plus(c.amount),
+    );
+  const out = new Set<string>();
+  for (const [k, amount] of owed)
+    if (amount.minus(Decimal.max(0, credit.get(k) ?? 0)).gt(0)) out.add(k.split('|')[0]!);
+  return out;
 }

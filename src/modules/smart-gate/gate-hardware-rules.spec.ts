@@ -2,10 +2,12 @@ import {
   distanceMetres,
   insideGeofence,
   isLateRead,
+  lprAutoEntry,
   matchPlate,
   normaliseLprPlate,
   openRetryAfter,
   type PlateCandidate,
+  readClockSuspect,
   sosCancellable,
   visitActiveAt,
 } from './gate-hardware-rules';
@@ -112,5 +114,28 @@ describe('J4.2 gate hardware rules (D-316, D-317, D-328)', () => {
     expect(isLateRead(new Date('2026-11-06T02:58:00Z'), now, 20)).toBe(true);
     expect(isLateRead(new Date('2026-11-06T03:00:05Z'), now, 20)).toBe(false); // gateway clock slightly ahead
     expect(isLateRead(new Date('not a date'), now, 20)).toBe(true);
+  });
+
+  it('J review A2: a read stamped further ahead of the cloud clock than the skew allowance is not live (clock suspect)', () => {
+    const now = new Date('2026-11-06T03:00:00Z');
+    expect(isLateRead(new Date(now.getTime() + 3_600_000), now, 20, 60)).toBe(true); // now + 1 h
+    expect(isLateRead(new Date(now.getTime() + 61_000), now, 20, 60)).toBe(true);
+    expect(isLateRead(new Date(now.getTime() + 60_000), now, 20, 60)).toBe(false); // within the allowance
+    expect(isLateRead(new Date(now.getTime() + 5_000), now, 20, 60)).toBe(false);
+    expect(readClockSuspect(new Date(now.getTime() + 3_600_000), now, 60)).toBe(true);
+    expect(readClockSuspect(new Date(now.getTime() + 60_000), now, 60)).toBe(false);
+    expect(readClockSuspect(new Date(now.getTime() - 3_600_000), now, 60)).toBe(false); // late, not suspect
+  });
+
+  it('J review A6: a known car read without a province never enters on its own (the guard confirms)', () => {
+    const a = car('v1', 'u1', 'resident_vehicle');
+    expect(lprAutoEntry({ category: '1กข', number: '1234', province: null }, true)).toBe(false);
+    expect(lprAutoEntry({ category: '1กข', number: '1234', province: BKK }, true)).toBe(true);
+    expect(lprAutoEntry({ category: '1กข', number: '1234', province: BKK }, false)).toBe(false);
+    // the province-less read still names the unit (to pre-fill the guard form)
+    expect(matchPlate({ category: '1กข', number: '1234', province: null }, [a])).toEqual({
+      match: 'resident_vehicle',
+      candidate: a,
+    });
   });
 });

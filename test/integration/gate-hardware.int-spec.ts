@@ -524,9 +524,9 @@ describe('J4.2 barrier, LPR, resident open, SOS (real PostgreSQL)', () => {
     t.clock.advance(10_000);
     const before = gateOpens(ids.gw).length;
     const eventId = randomUUID();
-    await plate(ids.gw, ids.gate, { category: '๑ กข', number: '๑๒๓๔' }, 0.96, eventId);
-    await plate(ids.gw, ids.gate, { category: '1กข', number: '1234' }, 0.96, eventId); // redelivery
-    await plate(ids.gw, ids.gate, { category: '1กข', number: '1234' }, 0.96); // same car, next frame
+    await plate(ids.gw, ids.gate, { category: '๑ กข', number: '๑๒๓๔', province: ` ${BKK} ` }, 0.96, eventId);
+    await plate(ids.gw, ids.gate, CAR_P, 0.96, eventId); // redelivery
+    await plate(ids.gw, ids.gate, CAR_P, 0.96); // same car, next frame
     const visits = await q<{ id: string; state: string; kind: string; entry_basis: string; unit_id: string }>(
       `SELECT id, state::text, kind::text, entry_basis::text, unit_id FROM smart.visit WHERE client_ref = $1`,
       [eventId],
@@ -700,6 +700,54 @@ describe('J4.2 barrier, LPR, resident open, SOS (real PostgreSQL)', () => {
     expect(await t.app.get(GateHardwareService).expireDetections()).toBeGreaterThanOrEqual(0);
     expect((await t.http.get('/v1/guard/plate-detections').set(G()).expect(200)).body).toEqual([]);
     expect((await q(`SELECT 1 FROM smart.plate_detection WHERE state = 'pending'`)).length).toBe(0);
+  });
+
+  it('J review A2 / A6: a future-stamped read is history (clock suspect); a province-less read waits for the guard', async () => {
+    t.clock.advance(61_000);
+    await setOwner(jur.token, 'gate.auto_open_known_plates', true);
+    t.clock.advance(1_000);
+    const before = gateOpens(ids.gw).length;
+    // A2: the gateway clock is an hour ahead — the read cannot be proven live (CR-017 bypass otherwise)
+    const futureId = randomUUID();
+    await deviceEvent(
+      ids.gw,
+      'plate.detected',
+      {
+        gateId: ids.gate,
+        plate: CAR_P,
+        confidence: 0.99,
+        at: new Date(t.clock.now().getTime() + 3_600_000).toISOString(),
+      },
+      futureId,
+    );
+    await settle();
+    expect(gateOpens(ids.gw).length).toBe(before);
+    expect(await q(`SELECT 1 FROM smart.visit WHERE client_ref = $1`, [futureId])).toEqual([]);
+    const future = await one<{ id: string; state: string; visit_id: string | null }>(
+      `SELECT id, state::text, visit_id FROM smart.plate_detection WHERE event_id = $1`,
+      [futureId],
+    );
+    expect(future).toMatchObject({ state: 'historical', visit_id: null });
+    expect(
+      await q<{ reason: string }>(
+        `SELECT metadata->>'reason' AS reason FROM platform.audit_log WHERE action = 'gate.plate_read_late' AND subject_id = $1`,
+        [future.id],
+      ),
+    ).toEqual([{ reason: 'clock_suspect' }]);
+    // A6: the camera missed the province — the same category + number may be another province's car: no automatic
+    // entry nor open; the read waits for the guard with the unit pre-filled
+    const blindId = randomUUID();
+    await plate(ids.gw, ids.gate, { category: '1กข', number: '1234' }, 0.99, blindId);
+    await settle();
+    expect(gateOpens(ids.gw).length).toBe(before);
+    expect(await q(`SELECT 1 FROM smart.visit WHERE client_ref = $1`, [blindId])).toEqual([]);
+    const blind = await one<{ id: string; state: string; match: string; unit_id: string }>(
+      `SELECT id, state::text, match::text, unit_id FROM smart.plate_detection WHERE event_id = $1`,
+      [blindId],
+    );
+    expect(blind).toMatchObject({ state: 'pending', match: 'low_confidence', unit_id: ids.u1 });
+    await t.http.post(`/v1/guard/plate-detections/${blind.id}/actions/dismiss`).set(G()).expect(200);
+    await setOwner(jur.token, 'gate.auto_open_known_plates', false);
   });
 
   it('resident open: own registered car only (other unit / payer-only 404), switch, geofence, hourly cap', async () => {
