@@ -1,3 +1,4 @@
+import { recurringWebhookSecret } from '../integrations/recurring-payments/fake-recurring-payments';
 import { DataStoresMode, IntegrationsMode, NodeEnv } from './env.schema';
 import { InvalidEnvironmentError, validateEnv } from './validate-env';
 
@@ -113,5 +114,32 @@ describe('validateEnv', () => {
   it('DATABASE_POOL_MAX is 1…15 (the per-process ceiling is enforced at start-up, T-5)', () => {
     expect(validateEnv({ DATABASE_POOL_MAX: '12' }).DATABASE_POOL_MAX).toBe(12);
     expect(() => validateEnv({ DATABASE_POOL_MAX: '40' })).toThrow(/DATABASE_POOL_MAX/);
+  });
+
+  it('J review A3 (D-336): the fake recurring provider never runs in production; a provider needs its own webhook secret', () => {
+    const prod = {
+      NODE_ENV: 'production',
+      RECURRING_PAYMENTS_MODE: 'fake',
+    };
+    expect(() => validateEnv(prod)).toThrow(
+      /RECURRING_PAYMENTS_MODE: must be "off" when NODE_ENV=production/,
+    );
+    expect(() => validateEnv(prod)).toThrow(
+      /RECURRING_WEBHOOK_SECRET: required when RECURRING_PAYMENTS_MODE is not "off"/,
+    );
+    // off (or unset with real integrations) needs no secret
+    expect(() => validateEnv({ NODE_ENV: 'production', RECURRING_PAYMENTS_MODE: 'off' })).not.toThrow(
+      /RECURRING_/,
+    );
+    expect(() => validateEnv({ NODE_ENV: 'production', INTEGRATIONS_MODE: 'real' })).not.toThrow(
+      /RECURRING_/,
+    );
+    // outside production an explicit fake may run on the public test constant
+    expect(validateEnv({ RECURRING_PAYMENTS_MODE: 'fake' }).RECURRING_PAYMENTS_MODE).toBe('fake');
+    // the public constant serves tests and local development only
+    expect(recurringWebhookSecret('test', undefined)).toBe('fake-recurring-webhook-secret');
+    expect(recurringWebhookSecret('development', undefined)).toBe('fake-recurring-webhook-secret');
+    expect(recurringWebhookSecret('production', 's'.repeat(32))).toBe('s'.repeat(32));
+    expect(() => recurringWebhookSecret('production', undefined)).toThrow(/RECURRING_WEBHOOK_SECRET/);
   });
 });

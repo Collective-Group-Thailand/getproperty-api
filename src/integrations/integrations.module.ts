@@ -84,7 +84,7 @@ import { FakePdfRenderer } from './pdf/fake-pdf-renderer';
 import { PDF_RENDERER, type PdfRendererPort } from './pdf/pdf-renderer.port';
 import { PuppeteerPdfRenderer } from './pdf/puppeteer-pdf-renderer';
 import { BullmqPdfRenderTransport, QueuePdfRenderer } from './pdf/queue-pdf-renderer';
-import { FAKE_RECURRING_SECRET, FakeRecurringPayments } from './recurring-payments/fake-recurring-payments';
+import { FakeRecurringPayments, recurringWebhookSecret } from './recurring-payments/fake-recurring-payments';
 import {
   RECURRING_PAYMENTS,
   type RecurringPaymentsPort,
@@ -418,7 +418,7 @@ function required(config: AppConfig, key: Parameters<AppConfig['get']>[0]): stri
         (config.get('RECURRING_PAYMENTS_MODE') ?? (config.useFakes ? 'fake' : 'off')) === 'fake'
           ? new FakeRecurringPayments(
               config.get('PUBLIC_API_BASE_URL'),
-              config.get('RECURRING_WEBHOOK_SECRET') ?? FAKE_RECURRING_SECRET,
+              recurringWebhookSecret(config.get('NODE_ENV'), config.get('RECURRING_WEBHOOK_SECRET')),
             )
           : new UnconfiguredRecurringPayments(),
     },

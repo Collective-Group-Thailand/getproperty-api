@@ -113,10 +113,31 @@ export function sosCancellable(createdAt: Date, now: Date, cancelSeconds: number
 /**
  * CR-017 / D-330: a plate read is late (history, never acted on) when the camera read it more than `maxAgeSeconds`
  * before it reached the cloud, or when its read time is unreadable. A read time slightly ahead of the cloud clock
- * (gateway clock skew) is live.
+ * (gateway clock skew, up to `maxSkewSeconds`) is live; further ahead the gateway clock is suspect and the read cannot
+ * be proven live, so it is history too (D-336, J review A2 — otherwise a wrong edge clock bypasses CR-017).
  */
-export function isLateRead(detectedAt: Date, receivedAt: Date, maxAgeSeconds: number): boolean {
+export function isLateRead(
+  detectedAt: Date,
+  receivedAt: Date,
+  maxAgeSeconds: number,
+  maxSkewSeconds = 60,
+): boolean {
   const t = detectedAt.getTime();
   if (Number.isNaN(t)) return true;
+  if (readClockSuspect(detectedAt, receivedAt, maxSkewSeconds)) return true;
   return receivedAt.getTime() - t > maxAgeSeconds * 1000;
+}
+
+/** D-336 (J review A2): the read time is further ahead of the cloud clock than the allowed gateway skew. */
+export function readClockSuspect(detectedAt: Date, receivedAt: Date, maxSkewSeconds: number): boolean {
+  const t = detectedAt.getTime();
+  return !Number.isNaN(t) && t - receivedAt.getTime() > maxSkewSeconds * 1000;
+}
+
+/**
+ * D-336 (J review A6): a known car read with enough confidence enters on its own only when the camera read the
+ * province — category + number alone may be the same plate of another province; the guard confirms instead.
+ */
+export function lprAutoEntry(read: LprPlate, confident: boolean): boolean {
+  return confident && read.province !== null;
 }

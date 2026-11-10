@@ -67,6 +67,16 @@ export function validateEnv(raw: Record<string, unknown>): EnvironmentVariables 
       problems.push('REDIS_MODE: must not be "fake" when NODE_ENV=production');
     if (env.MQTT_MODE === DataStoresMode.Fake)
       problems.push('MQTT_MODE: must not be "fake" when NODE_ENV=production');
+    // D-336 (J review A3): the fake recurring provider settles charges on a webhook signed with a public test
+    // constant — never in production (O-020: `off` until a provider is chosen); any provider needs its own secret
+    const recurring =
+      env.RECURRING_PAYMENTS_MODE ?? (env.INTEGRATIONS_MODE === IntegrationsMode.Fake ? 'fake' : 'off');
+    if (recurring === 'fake')
+      problems.push('RECURRING_PAYMENTS_MODE: must be "off" when NODE_ENV=production (O-020)');
+    if (recurring !== 'off' && !env.RECURRING_WEBHOOK_SECRET)
+      problems.push(
+        'RECURRING_WEBHOOK_SECRET: required when RECURRING_PAYMENTS_MODE is not "off" and NODE_ENV=production',
+      );
     for (const key of [
       'FIELD_HASH_KEY',
       'AUTH_JWT_PRIVATE_KEY',

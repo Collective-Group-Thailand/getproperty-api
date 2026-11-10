@@ -39,6 +39,7 @@ import {
   type PlateInput,
   type PolicyActionName,
   samePlate,
+  unitsInArrears,
 } from './gate-rules';
 
 const invalid = (path: string, code: string, message: string) =>
@@ -503,14 +504,37 @@ export class VisitsService {
       }
       return out;
     });
+    // D-336 (J review A4): overdue (due before today) open balances net of the payer's credit — never a bill not yet due
     const arrears = showArrears
       ? await this.db.tenant(g.ctx, async (tx) => {
-          const rows = await tx.receivableBalance.groupBy({
-            by: ['unitId'],
-            where: { unitId: { in: units.map((u) => u.id) }, balance: { gt: 0 } },
-            _count: { _all: true },
+          const unitIds = units.map((u) => u.id);
+          const overdue = await tx.invoice.groupBy({
+            by: ['unitId', 'billedPartyId'],
+            where: {
+              unitId: { in: unitIds },
+              status: { in: ['issued', 'partially_paid', 'overdue'] },
+              balance: { gt: 0 },
+              dueDate: { lt: new Date(`${today}T00:00:00Z`) },
+            },
+            _sum: { balance: true },
           });
-          return new Set(rows.map((r) => r.unitId));
+          const credits = await tx.payerCredit.groupBy({
+            by: ['unitId', 'partyId'],
+            where: { unitId: { in: unitIds } },
+            _sum: { amount: true },
+          });
+          return unitsInArrears(
+            overdue.map((o) => ({
+              unitId: o.unitId!,
+              partyId: o.billedPartyId,
+              balance: o._sum.balance?.toString() ?? '0',
+            })),
+            credits.map((c) => ({
+              unitId: c.unitId!,
+              partyId: c.partyId,
+              amount: c._sum.amount?.toString() ?? '0',
+            })),
+          );
         })
       : null;
     return this.db.tenant(g.ctx, async (tx) => {

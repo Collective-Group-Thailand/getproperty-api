@@ -12,8 +12,22 @@ import {
   signRecurringBody,
 } from './recurring-payments.port';
 
-/** The webhook secret of the fake when `RECURRING_WEBHOOK_SECRET` is not set (tests, demos). */
+/** The webhook secret of the fake when `RECURRING_WEBHOOK_SECRET` is not set (tests, local development only). */
 export const FAKE_RECURRING_SECRET = 'fake-recurring-webhook-secret';
+
+/**
+ * The fake's webhook secret: `RECURRING_WEBHOOK_SECRET`, else the public constant — only outside production (D-336,
+ * J review A3: a public constant would let anyone sign a "charge succeeded" webhook). `validateEnv` refuses the fake in
+ * production already; this is the second line.
+ */
+export function recurringWebhookSecret(nodeEnv: string, secret: string | undefined): string {
+  if (secret) return secret;
+  if (nodeEnv === 'production')
+    throw new Error(
+      'RECURRING_WEBHOOK_SECRET: required when RECURRING_PAYMENTS_MODE is not "off" in production',
+    );
+  return FAKE_RECURRING_SECRET;
+}
 
 /**
  * The recurring-payment stand-in (tests, demos, O-020): mandates and charges in memory, idempotent per charge key; the

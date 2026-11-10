@@ -204,11 +204,12 @@ export class GuardAuthService {
         });
       throw new DomainException('gate.pin_invalid');
     }
+    const superseded: (string | null)[] = [];
     const pair = await this.db.platform(async (tx) => {
       const live = await tx.gateGuard.findUniqueOrThrow({ where: { id: guard.id } });
       if (live.state !== 'active') throw new DomainException('gate.pin_invalid');
       const open = await tx.guardShift.findMany({ where: { guardId: guard.id, endedAt: null } });
-      for (const s of open) await this.closeShift(tx, s.id, 'superseded');
+      for (const s of open) superseded.push(await this.closeShift(tx, s.id, 'superseded'));
       const shiftId = uuidv7(now.getTime());
       const scopes = guardScopes({
         id: shiftId,
@@ -285,6 +286,8 @@ export class GuardAuthService {
         },
       } satisfies TokenPair;
     });
+    // the superseded shifts' access tokens stop at once (J review A1), not after their lifetime
+    await this.afterClose(superseded);
     await this.access.changed(guard.userId);
     return pair;
   }

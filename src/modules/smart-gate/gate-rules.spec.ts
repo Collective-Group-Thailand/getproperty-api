@@ -10,6 +10,7 @@ import {
   normalisePlate,
   plateText,
   samePlate,
+  unitsInArrears,
 } from './gate-rules';
 
 const code = (fn: () => unknown): string | undefined => {
@@ -114,5 +115,35 @@ describe('J4.1 gate rules (D-315, D-327)', () => {
       '1กข 1234 กรุงเทพมหานคร',
     );
     expect(plateText({ number: null })).toBeNull();
+  });
+
+  it('J review A4 (D-336): arrears at the gate = overdue balances net of the payer credit, never a not-yet-due bill', () => {
+    // a bill not yet due is not an arrear (it is not in the overdue rows at all)
+    expect(unitsInArrears([], [])).toEqual(new Set());
+    // overdue 1,500.00 with no credit → arrears
+    expect(unitsInArrears([{ unitId: 'u1', partyId: 'p1', balance: '1500.00' }], [])).toEqual(
+      new Set(['u1']),
+    );
+    // overdue fully covered by the payer's credit on that unit → none
+    expect(
+      unitsInArrears(
+        [{ unitId: 'u1', partyId: 'p1', balance: '1500.00' }],
+        [{ unitId: 'u1', partyId: 'p1', amount: '1500.00' }],
+      ),
+    ).toEqual(new Set());
+    // credit of another payer of the unit does not settle this payer's overdue bill
+    expect(
+      unitsInArrears(
+        [
+          { unitId: 'u1', partyId: 'p1', balance: '100.00' },
+          { unitId: 'u1', partyId: 'p1', balance: '0.50' },
+        ],
+        [
+          { unitId: 'u1', partyId: 'p1', amount: '100.00' },
+          { unitId: 'u1', partyId: 'p2', amount: '999.00' },
+          { unitId: 'u2', partyId: 'p1', amount: '999.00' },
+        ],
+      ),
+    ).toEqual(new Set(['u1']));
   });
 });

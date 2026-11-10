@@ -2188,7 +2188,7 @@ export class OwnerBankStatementLinesController {
     id: 'owner.juristicBankStatementLines.match',
     summary: 'Match by hand',
     description:
-      'An unmatched line (409 `bank_statement.line_not_open`) matched to a confirmed payment, a paid expense request or a posted fund transfer of the same signed amount (422 `bank_statement.amount_mismatch`) not matched to another line (409 `bank_statement.already_matched`). Audited. Requires `Idempotency-Key` (D-329).',
+      'An unmatched line (409 `bank_statement.line_not_open`) matched to a confirmed payment, a paid expense request or a posted fund transfer of the same signed amount (422 `bank_statement.amount_mismatch`) on the bank account of the statement in this direction, as the suggestions (422 `bank_statement.account_mismatch`, D-336) not matched to another line (409 `bank_statement.already_matched`). Audited. Requires `Idempotency-Key` (D-329).',
     implements: ['D-329'],
   })
   @ApiJsonBody(BankLineMatchDto, { kind: 'payment', targetId: FAKE.uuid })
@@ -2207,6 +2207,7 @@ export class OwnerBankStatementLinesController {
   @ApiStandardErrors(
     'bank_statement.line_not_open',
     'bank_statement.amount_mismatch',
+    'bank_statement.account_mismatch',
     'bank_statement.already_matched',
     'idempotency.key_required',
     ...WRITE,

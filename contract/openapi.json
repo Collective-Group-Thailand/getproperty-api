@@ -421,6 +421,17 @@
           "type": "https://errors.getproperty.co/bank_account.owner_phone_missing"
         }
       },
+      "problem.bank_statement.account_mismatch": {
+        "summary": "bank_statement.account_mismatch",
+        "value": {
+          "code": "bank_statement.account_mismatch",
+          "detail": "รายการที่เลือกไม่ใช่การเคลื่อนไหวของบัญชีธนาคารนี้ในทิศทางนี้",
+          "requestId": "6f1c2d8e-2c7b-4d0e-9d1c-3f1a2b3c4d5e",
+          "status": 422,
+          "title": "ไม่ใช่รายการของบัญชีนี้",
+          "type": "https://errors.getproperty.co/bank_statement.account_mismatch"
+        }
+      },
       "problem.bank_statement.already_matched": {
         "summary": "bank_statement.already_matched",
         "value": {
@@ -45848,6 +45859,7 @@
                 "$ref": "#/components/schemas/PlateMatch"
               }
             ],
+            "description": "`low_confidence`: a known car read below gate.lpr.min_confidence, or read without a province (the same category + number may be another province — D-336); it waits for the guard with the unit pre-filled.",
             "example": "none"
           },
           "plate": {
@@ -45873,7 +45885,7 @@
                 "$ref": "#/components/schemas/PlateDetectionState"
               }
             ],
-            "description": "`historical` (D-330, edge CR-017): the read reached the cloud more than gate.lpr.max_event_age_seconds after the camera read it (queued during an outage) — kept as a past read only: no entry, no barrier open, not claimable.",
+            "description": "`historical` (D-330, edge CR-017): the read reached the cloud more than gate.lpr.max_event_age_seconds after the camera read it (queued during an outage), or its read time is more than gate.lpr.max_clock_skew_seconds ahead of the cloud clock (gateway clock suspect, D-336) — kept as a past read only: no entry, no barrier open, not claimable.",
             "example": "pending"
           },
           "unit": {
@@ -45914,7 +45926,7 @@
         "type": "object"
       },
       "PlateDetectionState": {
-        "description": "`historical` (D-330, edge CR-017): the read reached the cloud more than gate.lpr.max_event_age_seconds after the camera read it (queued during an outage) — kept as a past read only: no entry, no barrier open, not claimable.",
+        "description": "`historical` (D-330, edge CR-017): the read reached the cloud more than gate.lpr.max_event_age_seconds after the camera read it (queued during an outage), or its read time is more than gate.lpr.max_clock_skew_seconds ahead of the cloud clock (gateway clock suspect, D-336) — kept as a past read only: no entry, no barrier open, not claimable.",
         "enum": [
           "pending",
           "matched",
@@ -45959,6 +45971,7 @@
         "type": "object"
       },
       "PlateMatch": {
+        "description": "`low_confidence`: a known car read below gate.lpr.min_confidence, or read without a province (the same category + number may be another province — D-336); it waits for the guard with the unit pre-filled.",
         "enum": [
           "resident_vehicle",
           "remembered_vehicle",
@@ -188183,7 +188196,7 @@
     },
     "/v1/owner/juristic/bank-statement-lines/{lineId}/actions/match": {
       "post": {
-        "description": "An unmatched line (409 `bank_statement.line_not_open`) matched to a confirmed payment, a paid expense request or a posted fund transfer of the same signed amount (422 `bank_statement.amount_mismatch`) not matched to another line (409 `bank_statement.already_matched`). Audited. Requires `Idempotency-Key` (D-329).\n\nImplements: D-329.",
+        "description": "An unmatched line (409 `bank_statement.line_not_open`) matched to a confirmed payment, a paid expense request or a posted fund transfer of the same signed amount (422 `bank_statement.amount_mismatch`) on the bank account of the statement in this direction, as the suggestions (422 `bank_statement.account_mismatch`, D-336) not matched to another line (409 `bank_statement.already_matched`). Audited. Requires `Idempotency-Key` (D-329).\n\nImplements: D-329.",
         "operationId": "owner.juristicBankStatementLines.match",
         "parameters": [
           {
@@ -188399,6 +188412,9 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "bank_statement.account_mismatch": {
+                    "$ref": "#/components/examples/problem.bank_statement.account_mismatch"
+                  },
                   "bank_statement.amount_mismatch": {
                     "$ref": "#/components/examples/problem.bank_statement.amount_mismatch"
                   },
@@ -188414,7 +188430,7 @@
                 }
               }
             },
-            "description": "Problem: `bank_statement.amount_mismatch`, `idempotency.key_reused`, `validation.failed`",
+            "description": "Problem: `bank_statement.account_mismatch`, `bank_statement.amount_mismatch`, `idempotency.key_reused`, `validation.failed`",
             "headers": {
               "X-Request-Id": {
                 "$ref": "#/components/headers/XRequestId"

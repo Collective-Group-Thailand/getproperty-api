@@ -369,11 +369,20 @@ export class PlateDetectionDto {
     example: PlateDetectionStateName.Pending,
     description:
       '`historical` (D-330, edge CR-017): the read reached the cloud more than gate.lpr.max_event_age_seconds after ' +
-      'the camera read it (queued during an outage) — kept as a past read only: no entry, no barrier open, not claimable.',
+      'the camera read it (queued during an outage), or its read time is more than gate.lpr.max_clock_skew_seconds ' +
+      'ahead of the cloud clock (gateway clock suspect, D-336) — kept as a past read only: no entry, no barrier open, ' +
+      'not claimable.',
   })
   state!: PlateDetectionStateName;
 
-  @ApiProperty({ enum: PlateMatchName, enumName: 'PlateMatch', example: PlateMatchName.None })
+  @ApiProperty({
+    enum: PlateMatchName,
+    enumName: 'PlateMatch',
+    example: PlateMatchName.None,
+    description:
+      '`low_confidence`: a known car read below gate.lpr.min_confidence, or read without a province (the same ' +
+      'category + number may be another province — D-336); it waits for the guard with the unit pre-filled.',
+  })
   match!: PlateMatchName;
 
   @ApiProperty({
