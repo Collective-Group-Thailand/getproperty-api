@@ -41,7 +41,7 @@ import {
   Query,
   Res,
 } from '@nestjs/common';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { type Response } from 'express';
 
 import { iso, isoOrNull } from '../shared/mappers';
@@ -405,6 +405,7 @@ export class OwnerJuristicImportsController {
   }
 
   @Get('imports/templates/:sheet')
+  @ApiParam({ name: 'sheet', enum: ImportSheetName, enumName: 'ImportSheet' })
   @TenantScoped()
   @Can('juristic.import.read')
   @ApiEndpoint({
@@ -521,6 +522,7 @@ export class OwnerJuristicImportsController {
   }
 
   @Delete('imports/:importId/files/:sheet')
+  @ApiParam({ name: 'sheet', enum: ImportSheetName, enumName: 'ImportSheet' })
   @TenantScoped()
   @Can('juristic.import.manage')
   @ApiEndpoint({
