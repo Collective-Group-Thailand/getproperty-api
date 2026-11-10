@@ -205155,7 +205155,7 @@
             "name": "sheet",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/components/schemas/ImportSheet"
             }
           },
           {
@@ -208528,7 +208528,7 @@
             "name": "sheet",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/components/schemas/ImportSheet"
             }
           },
           {
